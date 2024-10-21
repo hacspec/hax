@@ -58,16 +58,25 @@ module Make (F : Features.T) =
                thus useless, we can skip it *)
             | { e = Let { monadic = None; lhs; rhs; body }; _ }, _ ->
                 let body = self#visit_expr in_loop body in
-                { e with e = Let { monadic = None; lhs; rhs; body } }
+                {
+                  e with
+                  e = Let { monadic = None; lhs; rhs; body };
+                  typ = body.typ;
+                }
                 (* If a let expression is an exit node, then it's body
                    is as well *)
             | { e = Match { scrutinee; arms }; _ }, _ ->
                 let arms = List.map ~f:(self#visit_arm in_loop) arms in
-                { e with e = Match { scrutinee; arms } }
+                let typ =
+                  match arms with
+                  | { arm; _ } :: _ -> arm.body.typ
+                  | [] -> e.typ
+                in
+                { e with e = Match { scrutinee; arms }; typ }
             | { e = If { cond; then_; else_ }; _ }, _ ->
                 let then_ = self#visit_expr in_loop then_ in
                 let else_ = Option.map ~f:(self#visit_expr in_loop) else_ in
-                { e with e = If { cond; then_; else_ } }
+                { e with e = If { cond; then_; else_ }; typ = then_.typ }
             | ( { e = Return { e; _ }; span; _ },
                 Some ({ return_type; break_type }, acc_type) ) ->
                 U.make_control_flow_expr ~return_type ~span ~break_type ~e
