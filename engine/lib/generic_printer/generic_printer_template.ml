@@ -200,6 +200,9 @@ struct
       method item'_Alias ~super:_ ~name:_ ~item:_ =
         default_document_for "item'_Alias"
 
+      method item'_Enum_Variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
+        default_document_for "item'_Enum_Variant"
+
       method item'_Fn ~super:_ ~name:_ ~generics:_ ~body:_ ~params:_ ~safety:_ =
         default_document_for "item'_Fn"
 
@@ -359,9 +362,6 @@ struct
 
       method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
       method ty_TStr = default_document_for "ty_TStr"
-
-      method variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
-        default_document_for "variant"
       (* END GENERATED *)
     end
 end

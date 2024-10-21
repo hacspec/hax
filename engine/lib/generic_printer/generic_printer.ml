@@ -314,6 +314,25 @@ module Make (F : Features.T) = struct
           | _ -> self#unreachable ()
         else self#item'_Type_enum ~super ~name ~generics ~variants
 
+      method virtual item'_Enum_Variant
+        : name:concrete_ident lazy_doc ->
+          arguments:
+            (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+          is_record:bool ->
+          attrs:attrs lazy_doc ->
+          document
+
+
+      method _do_not_override_variant
+        : name:concrete_ident lazy_doc ->
+          arguments:
+            (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+          is_record:bool ->
+          attrs:attrs lazy_doc ->
+          document
+        = self#item'_Enum_Variant
+
+
       (** {2:common-nodes Printers for common nodes} *)
 
       method virtual common_array : document list -> document
@@ -586,13 +605,15 @@ module Make (F : Features.T) = struct
                 AstPos_generics__constraints x)
             value.constraints
         in
-        lazy_doc (fun (lazy_doc, _, _) -> lazy_doc#p) ast_position
-        ( lazy_doc
-            (fun (value : generics) ->
-              self#wrap_generics ast_position value
-                (self#generics ~params ~constraints))
-            ast_position value,
-          params,
-          constraints )
+        lazy_doc
+          (fun (lazy_doc, _, _) -> lazy_doc#p)
+          ast_position
+          ( lazy_doc
+              (fun (value : generics) ->
+                self#wrap_generics ast_position value
+                  (self#generics ~params ~constraints))
+              ast_position value,
+            params,
+            constraints )
     end
 end
