@@ -1,0 +1,33 @@
+(*****************************************)
+(* Top-level process *)
+(*****************************************)
+
+event Reach_end_Initiator.
+event Reach_end_Responder.
+
+query event(Reach_end_Initiator).
+query event(Reach_end_Responder).
+
+let Initiator(payload: nat) =
+    let ping_message = minimal_proverif__send_ping(payload) in
+    out(c, ping_message);
+
+    in(c, pong_message: minimal_proverif__t_Message );
+    let received_payload = accessor_minimal_proverif__Message__Pong_0(pong_message) in
+    event Reach_end_Initiator;
+    0.
+
+let Responder() =
+    in(c, ping_message: minimal_proverif__t_Message );
+    let minimal_proverif__Message_Message_Ping_c(received_payload) = ping_message in
+    let pong_message = minimal_proverif__Message_Message_Pong_c(received_payload) in
+    out(c, pong_message);
+    event Reach_end_Responder;
+    0.
+    
+process
+    in(c, payload: nat);
+
+    Initiator(payload) | Responder()
+
+
