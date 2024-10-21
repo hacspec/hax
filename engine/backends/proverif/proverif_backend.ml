@@ -129,14 +129,6 @@ module type MAKE = sig
   module Letfuns : sig
     val print : item list -> string
   end
-
-  module Processes : sig
-    val print : item list -> string
-  end
-
-  module Toplevel : sig
-    val print : item list -> string
-  end
 end
 
 module Make (Options : OPTS) : MAKE = struct
@@ -811,7 +803,8 @@ module Make (Options : OPTS) : MAKE = struct
        letfun bitstring_err() = let x = construct_fail() in \
        bitstring_default().\n\n\
        letfun nat_default() = 0.\n\
-       fun nat_to_bitstring(nat): bitstring.\n\n\
+       fun nat_to_bitstring(nat): bitstring.\n\
+       letfun nat_err() = let x = construct_fail() in nat_default().\n\n\
        letfun bool_default() = false.\n"
 
     let contents items = ""
@@ -845,24 +838,6 @@ module Make (Options : OPTS) : MAKE = struct
       in
       pure_letfuns_print ^ process_letfuns_print
   end)
-
-  module Processes = MkSubprinter (struct
-    let banner = "Processes"
-    let preamble items = ""
-    let process_filter item = [%matches? Fn _] item.v && is_process item
-
-    let contents items =
-      let contents, _ =
-        Print.items NoAuxInfo (List.filter ~f:process_filter items)
-      in
-      contents
-  end)
-
-  module Toplevel = MkSubprinter (struct
-    let banner = "Top-level process"
-    let preamble items = "process\n    0\n"
-    let contents items = ""
-  end)
 end
 
 let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
@@ -874,14 +849,9 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   in
   let lib_contents =
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
-    ^ M.Processes.print items
   in
-  let analysis_contents = M.Toplevel.print items in
   let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
-  let analysis_file =
-    Types.{ path = "analysis.pv"; contents = analysis_contents }
-  in
-  [ lib_file; analysis_file ]
+  [ lib_file; ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
