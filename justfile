@@ -28,7 +28,7 @@ expand *FLAGS:
 
 # Show the Rust to OCaml generated types available to the engine.
 @list-types:
-  just _ensure_binary_availability ocamlformat ocamlformat
+  just _ensure_command_in_path ocamlformat ocamlformat
   cd engine && dune describe pp lib/types.ml \
     | sed -e '1,/open ParseError/ d' \
     | sed '/let rec pp_/,$d' \
