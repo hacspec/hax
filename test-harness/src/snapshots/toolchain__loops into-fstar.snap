@@ -27,6 +27,201 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Loops.Control_flow.fst" = '''
+module Loops.Control_flow
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_M = { f_m:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
+
+let impl__M__decoded_message (self: t_M)
+    : Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
+  match
+    Rust_primitives.Hax.Folds.fold_range_return (sz 0)
+      (Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global self.f_m <: usize)
+      (fun temp_0_ temp_1_ ->
+          let _:Prims.unit = temp_0_ in
+          let _:usize = temp_1_ in
+          true)
+      ()
+      (fun temp_0_ i ->
+          let _:Prims.unit = temp_0_ in
+          let i:usize = i in
+          if i >. sz 5 <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Ops.Control_flow.ControlFlow_Break
+              (Core.Option.Option_None
+                <:
+                Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+              <:
+              Core.Ops.Control_flow.t_ControlFlow
+                (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                (Prims.unit & Prims.unit))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow
+                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                  (Prims.unit & Prims.unit)) Prims.unit
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue ()
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow
+                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                  (Prims.unit & Prims.unit)) Prims.unit)
+  with
+  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
+  | Core.Ops.Control_flow.ControlFlow_Continue _ ->
+    Core.Option.Option_Some
+    (Core.Clone.f_clone #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+        #FStar.Tactics.Typeclasses.solve
+        self.f_m)
+    <:
+    Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+
+let bigger_power_2_ (x: i32) : i32 =
+  let pow:i32 = 1l in
+  Rust_primitives.f_while_loop_cf (fun pow ->
+        let pow:i32 = pow in
+        pow <. 1000000l <: bool)
+    pow
+    (fun pow ->
+        let pow:i32 = pow in
+        let pow:i32 = pow *! 2l in
+        if pow <. x
+        then
+          let pow:i32 = pow *! 3l in
+          if true
+          then
+            Core.Ops.Control_flow.ControlFlow_Break ((), pow <: (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+        else
+          Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
+          <:
+          Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32)
+
+let double_sum (_: Prims.unit) : i32 =
+  let sum:i32 = 0l in
+  let sum:i32 =
+    Rust_primitives.Hax.Folds.fold_range_cf 1l
+      10l
+      (fun sum temp_1_ ->
+          let sum:i32 = sum in
+          let _:i32 = temp_1_ in
+          true)
+      sum
+      (fun sum i ->
+          let sum:i32 = sum in
+          let i:i32 = i in
+          if i <. 0l <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break ((), sum <: (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue (sum +! i <: i32)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32)
+  in
+  sum *! 2l
+
+let double_sum2 (_: Prims.unit) : i32 =
+  let sum:i32 = 0l in
+  let sum2:i32 = 0l in
+  let sum, sum2:(i32 & i32) =
+    Rust_primitives.Hax.Folds.fold_range_cf 1l
+      10l
+      (fun temp_0_ temp_1_ ->
+          let sum, sum2:(i32 & i32) = temp_0_ in
+          let _:i32 = temp_1_ in
+          true)
+      (sum, sum2 <: (i32 & i32))
+      (fun temp_0_ i ->
+          let sum, sum2:(i32 & i32) = temp_0_ in
+          let i:i32 = i in
+          if i <. 0l <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break
+            ((), (sum, sum2 <: (i32 & i32)) <: (Prims.unit & (i32 & i32)))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & (i32 & i32)) (i32 & i32)
+          else
+            let sum:i32 = sum +! i in
+            Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2 +! i <: (i32 & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & (i32 & i32)) (i32 & i32))
+  in
+  sum +! sum2
+
+let double_sum2_return (v: t_Slice i32) : i32 =
+  let sum:i32 = 0l in
+  let sum2:i32 = 0l in
+  match
+    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
+          #FStar.Tactics.Typeclasses.solve
+          v
+        <:
+        Core.Slice.Iter.t_Iter i32)
+      (sum, sum2 <: (i32 & i32))
+      (fun temp_0_ i ->
+          let sum, sum2:(i32 & i32) = temp_0_ in
+          let i:i32 = i in
+          if i <. 0l <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Ops.Control_flow.ControlFlow_Break 0l
+              <:
+              Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & (i32 & i32)))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & (i32 & i32))) (i32 & i32)
+          else
+            let sum:i32 = sum +! i in
+            Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2 +! i <: (i32 & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & (i32 & i32))) (i32 & i32))
+  with
+  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
+  | Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2) -> sum +! sum2
+
+let double_sum_return (v: t_Slice i32) : i32 =
+  let sum:i32 = 0l in
+  match
+    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
+          #FStar.Tactics.Typeclasses.solve
+          v
+        <:
+        Core.Slice.Iter.t_Iter i32)
+      sum
+      (fun sum i ->
+          let sum:i32 = sum in
+          let i:i32 = i in
+          if i <. 0l <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Ops.Control_flow.ControlFlow_Break 0l
+              <:
+              Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue (sum +! i <: i32)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+  with
+  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
+  | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
+'''
 "Loops.For_loops.fst" = '''
 module Loops.For_loops
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

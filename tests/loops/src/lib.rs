@@ -139,3 +139,80 @@ mod while_loops {
         x + 12
     }
 }
+
+mod control_flow {
+    fn double_sum() -> i32 {
+        let mut sum = 0;
+        for i in 1..10 {
+            if i < 0 {
+                break;
+            }
+            sum += i;
+        }
+        sum *= 2;
+        sum
+    }
+    fn double_sum2() -> i32 {
+        let mut sum = 0;
+        let mut sum2 = 0;
+        for i in 1..10 {
+            if i < 0 {
+                break;
+            }
+            sum += i;
+            sum2 += i
+        }
+        sum + sum2
+    }
+    fn double_sum_return(v: &[i32]) -> i32 {
+        let mut sum = 0;
+        for i in v {
+            if *i < 0 {
+                return 0;
+            }
+            sum += *i;
+        }
+        sum *= 2;
+        sum
+    }
+    fn double_sum2_return(v: &[i32]) -> i32 {
+        let mut sum = 0;
+        let mut sum2 = 0;
+        for i in v {
+            if *i < 0 {
+                return 0;
+            }
+            sum += *i;
+            sum2 += *i
+        }
+        sum + sum2
+    }
+    fn bigger_power_2(x: i32) -> i32 {
+        let mut pow = 1;
+        while pow < 1000000 {
+            pow *= 2;
+            if pow < x {
+                pow *= 3;
+                if true {
+                    break;
+                }
+            }
+            pow *= 2
+        }
+        pow
+    }
+    struct M {
+        m: Vec<u8>,
+    }
+
+    impl M {
+        fn decoded_message(&self) -> Option<Vec<u8>> {
+            for i in 0..self.m.len() {
+                if i > 5 {
+                    return None;
+                }
+            }
+            return Some(self.m.clone());
+        }
+    }
+}

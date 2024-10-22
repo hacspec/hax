@@ -142,6 +142,10 @@ module Make (F : Features.T) =
                     (* This avoids adding `let _ = ()` *)
                     | { p = PWild; _ }, { e = GlobalVar (`TupleCons 0); _ } ->
                         stmts_after
+                    (* This avoids adding `let x = x` *)
+                    | { p = PBinding { var; _ }; _ }, { e = LocalVar evar; _ }
+                      when Local_ident.equal var evar ->
+                        stmts_after
                     | stmt -> stmt :: stmts_after
                   in
                   U.make_lets (branch_stmts @ stmts_to_add) final

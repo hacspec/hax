@@ -169,13 +169,13 @@ let early_returns (x: u32) : u32 =
     then
       match true with
       | true -> 34ul
-      | _ -> Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul 3ul <: u32) x
+      | _ ->
+        let x, hoist5:(u32 & u32) = x, 3ul <: (u32 & u32) in
+        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x
     else
       let x:u32 = x +! 9ul in
-      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul (x +! 1ul <: u32)
-          <:
-          u32)
-        x
+      let x, hoist5:(u32 & u32) = x, x +! 1ul <: (u32 & u32) in
+      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x
 
 /// Exercise local mutation with control flow and loops
 let local_mutation (x: u32) : u32 =
@@ -393,7 +393,6 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
     then
       match Core.Result.Result_Err 12uy <: Core.Result.t_Result Prims.unit u8 with
       | Core.Result.Result_Ok ok ->
-        let _:Prims.unit = ok in
         Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
         <:
         Core.Result.t_Result u32 u32
@@ -427,13 +426,7 @@ let simplifiable_return (c1 c2 c3: bool) : i32 =
     if c2
     then
       let x:i32 = x +! 10l in
-      if c3
-      then 1l
-      else
-        let x:i32 = x +! 1l in
-        x
-    else
-      let x:i32 = x +! 1l in
-      x
+      if c3 then 1l else x +! 1l
+    else x +! 1l
   else x
 '''
