@@ -111,17 +111,17 @@ module%inlined_contents Make (FA : Features.T) = struct
       let mk_pconstruct ~is_struct ~is_record ~span ~typ
           (constructor : Concrete_ident_generated.t)
           (fields : (Concrete_ident_generated.t * pat) list) =
-        let name =
+        let constructor =
           Global_ident.of_name (Constructor { is_struct }) constructor
         in
-        let args =
+        let fields =
           List.map
             ~f:(fun (field, pat) ->
               let field = Global_ident.of_name Field field in
               { field; pat })
             fields
         in
-        let p = PConstruct { name; args; is_record; is_struct } in
+        let p = PConstruct { constructor; fields; is_record; is_struct } in
         { p; span; typ }
 
       (** [extract e] returns [Some (x, ty)] if [e] was a `y?`
@@ -153,8 +153,8 @@ module%inlined_contents Make (FA : Features.T) = struct
           match p.p with
           | PConstruct
               {
-                name;
-                args =
+                constructor = name;
+                fields =
                   [
                     {
                       pat =

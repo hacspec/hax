@@ -880,9 +880,9 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ pat.span ]
                   "Pattern match on union types: not supported"
           in
-          let name = def_id (Constructor { is_struct }) info.variant in
-          let args = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct { name; args; is_record; is_struct }
+          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let fields = List.map ~f:(c_field_pat info) subpatterns in
+          PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
           (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
@@ -1379,12 +1379,12 @@ let cast_of_enum typ_name generics typ thir_span
             {
               is_record = variant.is_record;
               is_struct = false;
-              args =
+              fields =
                 List.map
                   ~f:(fun (cid, typ, _) ->
                     { field = `Concrete cid; pat = { p = PWild; typ; span } })
                   variant.arguments;
-              name = `Concrete variant.name;
+              constructor = `Concrete variant.name;
             }
         in
         let pat = { p = pat; typ = self; span } in
@@ -1674,7 +1674,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                generics = c_generics generics;
                self_ty = c_ty item.span self_ty;
                of_trait =
-                 ( def_id Trait of_trait.def_id,
+                 ( Concrete_ident.of_def_id Trait of_trait.def_id,
                    List.map ~f:(c_generic_value item.span) of_trait.generic_args
                  );
                items =
