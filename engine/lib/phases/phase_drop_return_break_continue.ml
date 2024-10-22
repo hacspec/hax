@@ -44,6 +44,9 @@ module Make (F : Features.T) =
             | Return { e; _ } ->
                 { return_type = Some e.typ; break_type = U.unit_typ }
             | Break { e; _ } -> { return_type = None; break_type = e.typ }
+            (* We should avoid catching returns and breaks of a nested
+               loops as they could have different types. *)
+            | Loop _ -> { return_type = None; break_type = U.unit_typ }
             | _ -> super#visit_expr' () e
         end
 
@@ -108,9 +111,18 @@ module Make (F : Features.T) =
           method! visit_expr () e =
             match e.e with
             | Loop ({ body; control_flow; _ } as loop) when control_flow ->
+                let acc_type =
+                  match e.typ with
+                  | TApp { ident; args = [ GType _; GType continue_type ] }
+                    when Ast.Global_ident.equal ident
+                           (Ast.Global_ident.of_name Type
+                              Core__ops__control_flow__ControlFlow) ->
+                      continue_type
+                  | _ -> e.typ
+                in
                 let body =
                   visitor#visit_expr
-                    (Some (has_return#visit_expr () body, e.typ))
+                    (Some (has_return#visit_expr () body, acc_type))
                     body
                 in
                 super#visit_expr () { e with e = Loop { loop with body } }

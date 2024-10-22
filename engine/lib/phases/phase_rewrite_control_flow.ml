@@ -37,12 +37,12 @@ module Make (F : Features.T) =
       let loop_return_type =
         object (_self)
           inherit [_] Visitors.reduce as super
-          method zero = U.unit_typ
-          method plus l r = if [%eq: ty] l U.unit_typ then r else l
+          method zero = (U.unit_typ, None)
+          method plus l r = if [%eq: ty] (fst l) U.unit_typ then r else l
 
           method! visit_expr' () e =
             match e with
-            | Return { e; _ } -> e.typ
+            | Return { e; witness; _ } -> (e.typ, Some witness)
             | _ -> super#visit_expr' () e
         end
 
@@ -65,6 +65,12 @@ module Make (F : Features.T) =
 
           method! visit_expr in_loop e =
             let loop_with_return (loop : expr) stmts_after final pat =
+              let return_type, witness = loop_return_type#visit_expr () loop in
+
+              let typ =
+                U.make_control_flow_type ~continue_type:loop.typ
+                  ~break_type:return_type
+              in
               let loop =
                 match loop.e with
                 | Loop ({ kind; _ } as loop_info) ->
@@ -79,21 +85,23 @@ module Make (F : Features.T) =
                     { loop with e = Loop { loop_info with kind } }
                 | _ -> loop
               in
-              let return_type = loop_return_type#visit_expr () loop in
-
-              let typ =
-                U.make_control_flow_type ~continue_type:loop.typ
-                  ~break_type:return_type
-              in
+              let loop = { loop with typ } in
               let span = loop.span in
               let id = U.fresh_local_ident_in [] "ret" in
               let module MS = (val U.M.make span) in
               let mk_cf_pat = U.make_control_flow_pat ~span ~typ in
+              let return_expr =
+                let inner_e = MS.expr_LocalVar ~typ:return_type id in
+                match witness with
+                | Some witness ->
+                    MS.expr_Return ~typ:return_type ~witness ~inner_e
+                | None -> inner_e
+              in
               let arms =
                 [
                   MS.arm
                     (mk_cf_pat `Break (U.make_var_pat id typ span))
-                    (MS.expr_LocalVar ~typ:return_type id);
+                    return_expr;
                   MS.arm (mk_cf_pat `Continue pat)
                     (U.make_lets stmts_after final |> self#visit_expr in_loop);
                 ]

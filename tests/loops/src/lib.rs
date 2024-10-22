@@ -215,4 +215,32 @@ mod control_flow {
             return Some(self.m.clone());
         }
     }
+    fn nested() -> i32 {
+        let mut sum = 0;
+        for i in 1..10 {
+            for j in 1..10 {
+                if j < 0 {
+                    break;
+                }
+                sum += j;
+            }
+            sum += i;
+        }
+        sum *= 2;
+        sum
+    }
+    fn nested_return() -> i32 {
+        let mut sum = 0;
+        for i in 1..10 {
+            for j in 1..10 {
+                if j < 0 {
+                    return 0;
+                }
+                sum += j;
+            }
+            sum += i;
+        }
+        sum *= 2;
+        sum
+    }
 }

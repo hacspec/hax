@@ -221,6 +221,102 @@ let double_sum_return (v: t_Slice i32) : i32 =
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
+
+let nested (_: Prims.unit) : i32 =
+  let sum:i32 = 0l in
+  let sum:i32 =
+    Rust_primitives.Hax.Folds.fold_range 1l
+      10l
+      (fun sum temp_1_ ->
+          let sum:i32 = sum in
+          let _:i32 = temp_1_ in
+          true)
+      sum
+      (fun sum i ->
+          let sum:i32 = sum in
+          let i:i32 = i in
+          let sum:i32 =
+            Rust_primitives.Hax.Folds.fold_range_cf 1l
+              10l
+              (fun sum temp_1_ ->
+                  let sum:i32 = sum in
+                  let _:i32 = temp_1_ in
+                  true)
+              sum
+              (fun sum j ->
+                  let sum:i32 = sum in
+                  let j:i32 = j in
+                  if j <. 0l <: bool
+                  then
+                    Core.Ops.Control_flow.ControlFlow_Break ((), sum <: (Prims.unit & i32))
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+                  else
+                    Core.Ops.Control_flow.ControlFlow_Continue (sum +! j <: i32)
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32)
+          in
+          sum +! i)
+  in
+  sum *! 2l
+
+let nested_return (_: Prims.unit) : i32 =
+  let sum:i32 = 0l in
+  match
+    Rust_primitives.Hax.Folds.fold_range_return 1l
+      10l
+      (fun sum temp_1_ ->
+          let sum:i32 = sum in
+          let _:i32 = temp_1_ in
+          true)
+      sum
+      (fun sum i ->
+          let sum:i32 = sum in
+          let i:i32 = i in
+          match
+            Rust_primitives.Hax.Folds.fold_range_return 1l
+              10l
+              (fun sum temp_1_ ->
+                  let sum:i32 = sum in
+                  let _:i32 = temp_1_ in
+                  true)
+              sum
+              (fun sum j ->
+                  let sum:i32 = sum in
+                  let j:i32 = j in
+                  if j <. 0l <: bool
+                  then
+                    Core.Ops.Control_flow.ControlFlow_Break
+                    (Core.Ops.Control_flow.ControlFlow_Break 0l
+                      <:
+                      Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32))
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow
+                      (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32
+                  else
+                    Core.Ops.Control_flow.ControlFlow_Continue (sum +! j <: i32)
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow
+                      (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow i32 i32
+          with
+          | Core.Ops.Control_flow.ControlFlow_Break ret ->
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Ops.Control_flow.ControlFlow_Break ret
+              <:
+              Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32
+          | Core.Ops.Control_flow.ControlFlow_Continue sum ->
+            Core.Ops.Control_flow.ControlFlow_Continue (sum +! i <: i32)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+  with
+  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
+  | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
 '''
 "Loops.For_loops.fst" = '''
 module Loops.For_loops
