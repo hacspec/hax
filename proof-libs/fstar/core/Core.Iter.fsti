@@ -28,10 +28,10 @@ instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapter
       let open Core.Ops in
       let iter, opt = f_next iter in
       match opt with
-      | Some value -> if v count = max_usize
-                     then {iter; count                }, None
-                     else {iter; count = count +. sz 1}, Some (count, value)
-      | None -> {iter; count}, None
+      | Core.Option.Option_Some value -> if v count = max_usize
+                     then {iter; count                }, Core.Option.Option_None
+                     else {iter; count = count +. sz 1}, Core.Option.Option_Some (count, value)
+      | Core.Option.Option_None -> {iter; count}, Core.Option.Option_None
     );
     f_contains  = iterator_enumerate_contains  it i;
     f_fold      = iterator_enumerate_fold      it i;
@@ -84,7 +84,7 @@ val iterator_slice_all (t: eqtype): t_all (t_Slice t) t
 instance iterator_slice (t: eqtype): iterator (t_Slice t) = {
   f_Item = t;
   f_next = iterator_slice_next t;
-  // size_hint = (fun s -> Some (Rust_primitives.Arrays.length s));
+  // size_hint = (fun s -> Core.Option.Option_Some (Rust_primitives.Arrays.length s));
   f_contains  = iterator_slice_contains  t;
   f_fold      = iterator_slice_fold      t;
   f_enumerate = iterator_slice_enumerate t;
@@ -106,7 +106,7 @@ val iterator_array_all (t: eqtype) len: t_all (t_Array t len) t
 instance iterator_array (t: eqtype) len: iterator (t_Array t len) = {
   f_Item = t;
   f_next = iterator_array_next t len;
-  // size_hint = (fun (_s: t_Array t len) -> Some len);
+  // size_hint = (fun (_s: t_Array t len) -> Core.Option.Option_Some len);
   f_contains  = iterator_array_contains  t len;
   f_fold      = iterator_array_fold      t len;
   f_enumerate = iterator_array_enumerate t len;
