@@ -261,6 +261,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
             .iter()
             .filter_map(|(clause, _span)| clause.as_trait_clause())
             .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+            .map(|trait_ref| EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args))
             .map(|trait_ref| self.resolve(&trait_ref, warn))
             .collect::<Result<_, _>>()?;
 
