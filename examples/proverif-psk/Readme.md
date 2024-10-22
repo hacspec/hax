@@ -1,26 +1,29 @@
-# A minimal hax ProVerif example
+# A hax ProVerif example
 
-This crate demonstrates a minimal example of ProVerif extraction using hax.
+This crate demonstrates an example of ProVerif extraction using hax.
 
-The crate provides functions for implementing a simplistic protocol
+The crate provides functions for implementing a simplistic pre-shared-key (PSK) based protocol
 between an initiator and receiver, which is defined as follows:
 ```
-Initiator(payload: u8): let message = Ping(payload)
+Initiator(psk: AEADKey)): 
+    let response_key = AEAD.KeyGen()
+    let message = AEAD.Encrypt(psk, response_key)
 
 Initiator -> Responder: message
 
-Responder: If message was Ping(payload), 
-             let response = Pong(payload)
-           else abort
+Responder(psk: AEADKey, payload: &[u8]):
+    let response_key = AEAD.Decrypt(psk, message)
+    let response = AEAD.Encrypt(response_key, payload)
            
 Responder -> Initiator: response
 
-Initiator: If response was Pong(payload), 
-             return payload
-           else abort
+Initiator(response_key, response): 
+    let output = AEAD.Decrypt(response_key, response)
+    return output
 ```
 
-The crate does not implement message transport, only the initiator and responder protocol logic.
+The crate does not implement message transport, only the initiator and
+responder protocol logic.
 
 ## Extracting into ProVerif
 To obtain a ProVerif model of the protocol logic functions, run
@@ -33,7 +36,9 @@ This will generate a file `./proofs/proverif/extraction/lib.pvl`.
 We have provided a handwritten file
 `./proofs/proverif/extraction/analysis.pv`, which models the protocol
 using the extracted functions in `lib.pvl` and uses ProVerif to verify
-that initiator and receiver can both complete the protocol.
+
+- that initiator and receiver can both complete the protocol, as well as
+- confidentiality of the pre-shared key and the protocol payload
 
 To let ProVerif perform the analysis, from the crate root, run:
 
@@ -46,9 +51,13 @@ The expected final output is
 --------------------------------------------------------------
 Verification summary:
 
-Query not event(Reach_end_Initiator) is false.
+Query not event(InitiatorFinished(initiator_result)) is false.
 
-Query not event(Reach_end_Responder) is false.
+Query not event(ResponderFinished(responder_result)) is false.
+
+Query not attacker(PSK[]) is true.
+
+Query not attacker(SECRET_PAYLOAD[]) is true.
 
 --------------------------------------------------------------
 ```
