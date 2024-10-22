@@ -383,10 +383,9 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
         // }
         // ```
         // The generics for `insert` are `<u32>` for the impl and `<bool>` for the method.
-        let params_info = get_params_info(s, container_def_id);
-        let num_container_generics = params_info.num_generic_params;
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                let num_container_generics = tcx.generics_of(container_def_id).own_params.len();
                 // Retrieve the trait information
                 let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.

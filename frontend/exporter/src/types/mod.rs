@@ -4,8 +4,6 @@
 mod def_id;
 mod hir;
 mod mir;
-#[cfg(feature = "rustc")]
-mod mir_traits;
 mod new;
 pub(crate) mod serialize_int;
 mod span;
@@ -15,8 +13,6 @@ mod ty;
 pub use def_id::*;
 pub use hir::*;
 pub use mir::*;
-#[cfg(feature = "rustc")]
-pub use mir_traits::*;
 pub use new::*;
 pub use span::*;
 pub use thir::*;
