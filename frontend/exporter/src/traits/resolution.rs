@@ -255,15 +255,8 @@ impl<'tcx> PredicateSearcher<'tcx> {
             .enumerate();
 
         // Resolve predicates required to mention the item.
-        let nested_impl_exprs: Vec<_> = tcx
-            .predicates_defined_on(alias_ty.def_id)
-            .predicates
-            .iter()
-            .filter_map(|(clause, _span)| clause.as_trait_clause())
-            .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
-            .map(|trait_ref| EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args))
-            .map(|trait_ref| self.resolve(&trait_ref, warn))
-            .collect::<Result<_, _>>()?;
+        let nested_impl_exprs =
+            self.resolve_item_predicates(alias_ty.def_id, alias_ty.args, warn)?;
 
         // Add all the bounds on the corresponding associated item.
         self.extend(item_bounds.map(|(index, pred)| {
@@ -334,41 +327,59 @@ impl<'tcx> PredicateSearcher<'tcx> {
         let tcx = self.tcx;
         let impl_source =
             copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, erased_tref));
+        let nested;
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
                 ..
-            })) => ImplExprAtom::Concrete {
-                def_id: impl_def_id,
-                generics,
-            },
-            Ok(ImplSource::Param(_)) => match self
-                .resolve_local(erased_tref.upcast(self.tcx), warn)?
-            {
-                Some(candidate) => {
-                    let path = candidate.path;
-                    let r#trait = candidate.origin.clause.to_poly_trait_ref();
-                    match candidate.origin.origin {
-                        BoundPredicateOrigin::SelfPred => ImplExprAtom::SelfImpl { r#trait, path },
-                        BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
-                            predicate: candidate.origin.clause.upcast(tcx),
-                            index,
-                            r#trait,
-                            path,
-                        },
+            })) => {
+                // Resolve the predicates required by the impl.
+                nested = self.resolve_item_predicates(impl_def_id, generics, warn)?;
+                ImplExprAtom::Concrete {
+                    def_id: impl_def_id,
+                    generics,
+                }
+            }
+            Ok(ImplSource::Param(_)) => {
+                // Mentioning a local clause requires no extra predicates to hold.
+                nested = vec![];
+                match self.resolve_local(erased_tref.upcast(self.tcx), warn)? {
+                    Some(candidate) => {
+                        let path = candidate.path;
+                        let r#trait = candidate.origin.clause.to_poly_trait_ref();
+                        match candidate.origin.origin {
+                            BoundPredicateOrigin::SelfPred => {
+                                ImplExprAtom::SelfImpl { r#trait, path }
+                            }
+                            BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
+                                predicate: candidate.origin.clause.upcast(tcx),
+                                index,
+                                r#trait,
+                                path,
+                            },
+                        }
+                    }
+                    None => {
+                        let msg = format!(
+                            "Could not find a clause for `{tref:?}` in the item parameters"
+                        );
+                        warn(&msg);
+                        ImplExprAtom::Error(msg)
                     }
                 }
-                None => {
-                    let msg =
-                        format!("Could not find a clause for `{tref:?}` in the item parameters");
-                    warn(&msg);
-                    ImplExprAtom::Error(msg)
-                }
-            },
-            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
-            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
+            }
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => {
+                nested = vec![];
+                ImplExprAtom::Dyn
+            }
+            Ok(ImplSource::Builtin(_, _)) => {
+                // Builtin impls currently don't need nested predicates.
+                nested = vec![];
+                ImplExprAtom::Builtin { r#trait: *tref }
+            }
             Err(e) => {
+                nested = vec![];
                 let msg = format!(
                     "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
                 );
@@ -377,36 +388,32 @@ impl<'tcx> PredicateSearcher<'tcx> {
             }
         };
 
-        let nested = match &impl_source {
-            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
-                // The nested obligations of depth 1 correspond (we hope) to the predicates on the
-                // relevant impl that need to be satisfied.
-                nested
-                    .iter()
-                    .filter(|obligation| obligation.recursion_depth == 1)
-                    .filter_map(|obligation| {
-                        obligation.predicate.as_trait_clause().map(|trait_ref| {
-                            self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn)
-                        })
-                    })
-                    .collect::<Result<_, _>>()?
-            }
-            // Nested obligations can happen e.g. for GATs. We ignore these as we resolve local
-            // clauses ourselves.
-            Ok(ImplSource::Param(_)) => vec![],
-            // We ignore the contained obligations here. For example for `(): Send`, the
-            // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
-            // might be important obligations here in other cases; we'll have to see if that comes
-            // up.
-            Ok(ImplSource::Builtin(..)) => vec![],
-            Err(_) => vec![],
-        };
-
         Ok(ImplExpr {
             r#impl: atom,
             args: nested,
             r#trait: *tref,
         })
+    }
+
+    /// Resolve the predicates required by the given item.
+    pub fn resolve_item_predicates(
+        &mut self,
+        def_id: DefId,
+        generics: GenericArgsRef<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<Vec<ImplExpr<'tcx>>, String> {
+        let tcx = self.tcx;
+        tcx.predicates_defined_on(def_id)
+            .predicates
+            .into_iter()
+            .filter_map(|(pred, _)| pred.as_trait_clause())
+            .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+            // Substitute the item generics
+            .map(|trait_ref| EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
+            // Resolve
+            .map(|trait_ref| self.resolve(&trait_ref, warn))
+            .collect()
     }
 }
 
