@@ -2,19 +2,22 @@
 //! information and lightly desugared.
 use crate::prelude::*;
 
-/// Reflects [`rustc_middle::thir::LogicalOp`]
+#[cfg(feature = "rustc")]
+use rustc_middle::thir;
+
+/// Reflects [`thir::LogicalOp`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'a, S>, from: rustc_middle::thir::LogicalOp, state: S as _s)]
+#[args(<'a, S>, from: thir::LogicalOp, state: S as _s)]
 pub enum LogicalOp {
     And,
     Or,
 }
 
-/// Reflects [`rustc_middle::thir::LintLevel`]
+/// Reflects [`thir::LintLevel`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'slt, S: UnderOwnerState<'slt> + HasThir<'slt>>, from: rustc_middle::thir::LintLevel, state: S as gstate)]
+#[args(<'slt, S: UnderOwnerState<'slt> + HasThir<'slt>>, from: thir::LintLevel, state: S as gstate)]
 pub enum LintLevel {
     Inherited,
     Explicit(HirId),
@@ -22,8 +25,8 @@ pub enum LintLevel {
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::FruInfo<'tcx>, state: S as gstate)]
-/// Field Record Update (FRU) informations, this reflects [`rustc_middle::thir::FruInfo`]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::FruInfo<'tcx>, state: S as gstate)]
+/// Field Record Update (FRU) informations, this reflects [`thir::FruInfo`]
 pub struct FruInfo {
     /// The base, e.g. `Foo {x: 1, .. base}`
     pub base: Expr,
@@ -38,7 +41,7 @@ pub struct FieldExpr {
     pub value: Expr,
 }
 
-/// Reflects [`rustc_middle::thir::AdtExpr`]
+/// Reflects [`thir::AdtExpr`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct AdtExpr {
@@ -49,7 +52,7 @@ pub struct AdtExpr {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr<'tcx> {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for thir::AdtExpr<'tcx> {
     fn sinto(&self, s: &S) -> AdtExpr {
         let variants = self.adt_def.variants();
         let variant: &rustc_middle::ty::VariantDef = &variants[self.variant_index];
@@ -69,7 +72,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
     }
 }
 
-/// Reflects [`rustc_middle::thir::LocalVarId`]
+/// Reflects [`thir::LocalVarId`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct LocalIdent {
@@ -78,7 +81,7 @@ pub struct LocalIdent {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::LocalVarId {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for thir::LocalVarId {
     fn sinto(&self, s: &S) -> LocalIdent {
         LocalIdent {
             name: s
@@ -94,10 +97,10 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir
     }
 }
 
-/// Reflects [`rustc_middle::thir::BlockSafety`]
+/// Reflects [`thir::BlockSafety`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S>, from: rustc_middle::thir::BlockSafety, state: S as _s)]
+#[args(<'tcx, S>, from: thir::BlockSafety, state: S as _s)]
 pub enum BlockSafety {
     Safe,
     BuiltinUnsafe,
@@ -105,10 +108,10 @@ pub enum BlockSafety {
     ExplicitUnsafe,
 }
 
-/// Reflects [`rustc_middle::thir::Block`]
+/// Reflects [`thir::Block`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Block, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::Block, state: S as gstate)]
 pub struct Block {
     pub targeted_by_break: bool,
     pub region_scope: Scope,
@@ -118,9 +121,9 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-/// Reflects [`rustc_middle::thir::Stmt`]
+/// Reflects [`thir::Stmt`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Stmt<'tcx>, state: S as s)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::Stmt<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Stmt {
@@ -128,31 +131,31 @@ pub struct Stmt {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Block> for rustc_middle::thir::BlockId {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Block> for thir::BlockId {
     fn sinto(&self, s: &S) -> Block {
         s.thir().blocks[*self].sinto(s)
     }
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for thir::StmtId {
     fn sinto(&self, s: &S) -> Stmt {
         s.thir().stmts[*self].sinto(s)
     }
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
         let (hir_id, attributes) = self.hir_id_and_attributes(s);
         let hir_id = hir_id.map(|hir_id| hir_id.index());
         let unrolled = self.unroll_scope(s);
-        let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
+        let thir::Expr { span, kind, ty, .. } = unrolled;
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
                 // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
-                rustc_middle::thir::ExprKind::Cast { source } => {
+                thir::ExprKind::Cast { source } => {
                     if let rustc_middle::ty::TyKind::Adt(adt, _) = s.thir().exprs[source].ty.kind()
                     {
                         let tcx = s.base().tcx;
@@ -180,13 +183,13 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         kind.sinto(s)
                     }
                 }
-                rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
+                thir::ExprKind::NonHirLiteral { lit, .. } => {
                     let cexpr: ConstantExpr =
                         (ConstantExprKind::Literal(scalar_int_to_constant_literal(s, lit, ty)))
                             .decorate(ty.sinto(s), span.sinto(s));
                     return cexpr.into();
                 }
-                rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
+                thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, _generics) => {
                         /* TODO: translate generics
                         let tcx = s.base().tcx;
@@ -238,7 +241,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         }
                     }
                 },
-                rustc_middle::thir::ExprKind::Field {
+                thir::ExprKind::Field {
                     lhs,
                     variant_index,
                     name,
@@ -293,27 +296,25 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::ExprId {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::ExprId {
     fn sinto(&self, s: &S) -> Expr {
         s.thir().exprs[*self].sinto(s)
     }
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for thir::Pat<'tcx> {
     fn sinto(&self, s: &S) -> Pat {
-        let rustc_middle::thir::Pat { span, kind, ty } = self;
+        let thir::Pat { span, kind, ty } = self;
         let contents = match kind {
-            rustc_middle::thir::PatKind::Leaf { subpatterns } => match ty.kind() {
-                rustc_middle::ty::TyKind::Adt(adt_def, args) => {
-                    (rustc_middle::thir::PatKind::Variant {
-                        adt_def: *adt_def,
-                        args,
-                        variant_index: rustc_target::abi::VariantIdx::from_usize(0),
-                        subpatterns: subpatterns.clone(),
-                    })
-                    .sinto(s)
-                }
+            thir::PatKind::Leaf { subpatterns } => match ty.kind() {
+                rustc_middle::ty::TyKind::Adt(adt_def, args) => (thir::PatKind::Variant {
+                    adt_def: *adt_def,
+                    args,
+                    variant_index: rustc_target::abi::VariantIdx::from_usize(0),
+                    subpatterns: subpatterns.clone(),
+                })
+                .sinto(s),
                 rustc_middle::ty::TyKind::Tuple(..) => PatKind::Tuple {
                     subpatterns: subpatterns
                         .iter()
@@ -340,15 +341,15 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: ExprState<'tcx>> SInto<S, Arm> for rustc_middle::thir::ArmId {
+impl<'tcx, S: ExprState<'tcx>> SInto<S, Arm> for thir::ArmId {
     fn sinto(&self, s: &S) -> Arm {
         s.thir().arms[*self].sinto(s)
     }
 }
 
-/// Reflects [`rustc_middle::thir::StmtKind`]
+/// Reflects [`thir::StmtKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::StmtKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::StmtKind<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum StmtKind {
@@ -369,9 +370,9 @@ pub enum StmtKind {
     },
 }
 
-/// Reflects [`rustc_middle::thir::Ascription`]
+/// Reflects [`thir::Ascription`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Ascription<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: thir::Ascription<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Ascription {
@@ -379,9 +380,9 @@ pub struct Ascription {
     pub variance: Variance,
 }
 
-/// Reflects [`rustc_middle::thir::PatRange`]
+/// Reflects [`thir::PatRange`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: thir::PatRange<'tcx>, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct PatRange {
@@ -390,9 +391,9 @@ pub struct PatRange {
     pub end: RangeEnd,
 }
 
-/// Reflects [`rustc_middle::thir::PatRangeBoundary`]
+/// Reflects [`thir::PatRangeBoundary`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRangeBoundary<'tcx>, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: thir::PatRangeBoundary<'tcx>, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum PatRangeBoundary {
@@ -411,12 +412,12 @@ pub struct FieldPat {
 
 pub type Pat = Decorated<PatKind>;
 
-/// Reflects [`rustc_middle::thir::PatKind`]
+/// Reflects [`thir::PatKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::PatKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::PatKind<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
-#[append(rustc_middle::thir::PatKind::Leaf {..} => fatal!(gstate, "PatKind::Leaf: should never come up"),)]
+#[append(thir::PatKind::Leaf {..} => fatal!(gstate, "PatKind::Leaf: should never come up"),)]
 pub enum PatKind {
     Wild,
     AscribeUserType {
@@ -424,7 +425,7 @@ pub enum PatKind {
         subpattern: Pat,
     },
     #[custom_arm(
-        rustc_middle::thir::PatKind::Binding {name, mode, var, ty, subpattern, is_primary} => {
+        thir::PatKind::Binding {name, mode, var, ty, subpattern, is_primary} => {
             let local_ctx = gstate.base().local_ctx;
             local_ctx.borrow_mut().vars.insert(*var, name.to_string());
             PatKind::Binding {
@@ -500,9 +501,9 @@ pub enum PatKind {
     Error(ErrorGuaranteed),
 }
 
-/// Reflects [`rustc_middle::thir::Arm`]
+/// Reflects [`thir::Arm`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Arm<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::Arm<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Arm {
@@ -516,9 +517,9 @@ pub struct Arm {
     attributes: Vec<Attribute>,
 }
 
-/// Reflects [`rustc_middle::thir::Param`]
+/// Reflects [`thir::Param`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as s)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::Param<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Param {
@@ -537,19 +538,19 @@ pub struct Param {
 pub type ThirBody = Expr;
 pub type Expr = Decorated<ExprKind>;
 
-/// Reflects [`rustc_middle::thir::ExprKind`]
+/// Reflects [`thir::ExprKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::ExprKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: thir::ExprKind<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 #[append(
-    rustc_middle::thir::ExprKind::Scope {..} => {
+    thir::ExprKind::Scope {..} => {
         fatal!(gstate, "Scope should have been eliminated at this point");
     },
-    rustc_middle::thir::ExprKind::Field {..} => {
+    thir::ExprKind::Field {..} => {
         fatal!(gstate, "Field should have been eliminated at this point");
     },
-    rustc_middle::thir::ExprKind::NonHirLiteral {..} => {
+    thir::ExprKind::NonHirLiteral {..} => {
         fatal!(gstate, "NonHirLiteral should have been eliminated at this point");
     },
 )]
@@ -861,36 +862,28 @@ pub trait ExprKindExt<'tcx> {
         &self,
         s: &S,
     ) -> (Option<rustc_hir::HirId>, Vec<Attribute>);
-    fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
-        &self,
-        s: &S,
-    ) -> rustc_middle::thir::Expr<'tcx>;
+    fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(&self, s: &S) -> thir::Expr<'tcx>;
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
+impl<'tcx> ExprKindExt<'tcx> for thir::Expr<'tcx> {
     fn hir_id_and_attributes<S: ExprState<'tcx>>(
         &self,
         s: &S,
     ) -> (Option<rustc_hir::HirId>, Vec<Attribute>) {
         match &self.kind {
-            rustc_middle::thir::ExprKind::Scope {
+            thir::ExprKind::Scope {
                 region_scope: scope,
                 ..
             } => attribute_from_scope(s, scope),
             _ => (None, vec![]),
         }
     }
-    fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
-        &self,
-        s: &S,
-    ) -> rustc_middle::thir::Expr<'tcx> {
+    fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(&self, s: &S) -> thir::Expr<'tcx> {
         // TODO: when we see a loop, we should lookup its label! label is actually a scope id
         // we remove scopes here, whence the TODO
         match self.kind {
-            rustc_middle::thir::ExprKind::Scope { value, .. } => {
-                s.thir().exprs[value].unroll_scope(s)
-            }
+            thir::ExprKind::Scope { value, .. } => s.thir().exprs[value].unroll_scope(s),
             _ => self.clone(),
         }
     }

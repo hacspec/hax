@@ -32,19 +32,19 @@ pub enum CanonicalTyVarKind {
 
 sinto_as_usize!(rustc_middle::ty, UniverseIndex);
 
-/// Reflects [`rustc_middle::ty::ParamTy`]
+/// Reflects [`ty::ParamTy`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ParamTy, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::ParamTy, state: S as gstate)]
 pub struct ParamTy {
     pub index: u32,
     pub name: Symbol,
 }
 
-/// Reflects [`rustc_middle::ty::ParamConst`]
+/// Reflects [`ty::ParamConst`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<S>, from: rustc_middle::ty::ParamConst, state: S as gstate)]
+#[args(<S>, from: ty::ParamConst, state: S as gstate)]
 pub struct ParamConst {
     pub index: u32,
     pub name: Symbol,
@@ -52,9 +52,9 @@ pub struct ParamConst {
 
 /// A predicate without `Self`, for use in `dyn Trait`.
 ///
-/// Reflects [`rustc_middle::ty::ExistentialPredicate`]
+/// Reflects [`ty::ExistentialPredicate`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ExistentialPredicate<'tcx>, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::ExistentialPredicate<'tcx>, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExistentialPredicate {
@@ -88,28 +88,28 @@ pub struct ExistentialProjection {
     pub term: Term,
 }
 
-/// Reflects [`rustc_middle::ty::DynKind`]
+/// Reflects [`ty::DynKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<S>, from: rustc_middle::ty::DynKind, state: S as _s)]
+#[args(<S>, from: ty::DynKind, state: S as _s)]
 pub enum DynKind {
     Dyn,
     DynStar,
 }
 
-/// Reflects [`rustc_middle::ty::BoundTyKind`]
+/// Reflects [`ty::BoundTyKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundTyKind, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTyKind, state: S as gstate)]
 pub enum BoundTyKind {
     Anon,
     Param(DefId, Symbol),
 }
 
-/// Reflects [`rustc_middle::ty::BoundTy`]
+/// Reflects [`ty::BoundTy`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundTy, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTy, state: S as gstate)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
@@ -117,33 +117,33 @@ pub struct BoundTy {
 
 sinto_as_usize!(rustc_middle::ty, BoundVar);
 
-/// Reflects [`rustc_middle::ty::BoundRegionKind`]
+/// Reflects [`ty::BoundRegionKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
     BrAnon,
     BrNamed(DefId, Symbol),
     BrEnv,
 }
 
-/// Reflects [`rustc_middle::ty::BoundRegion`]
+/// Reflects [`ty::BoundRegion`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundRegion, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegion, state: S as gstate)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
 }
 
-/// Reflects [`rustc_middle::ty::PlaceholderRegion`]
+/// Reflects [`ty::PlaceholderRegion`]
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
-/// Reflects [`rustc_middle::ty::PlaceholderConst`]
+/// Reflects [`ty::PlaceholderConst`]
 pub type PlaceholderConst = Placeholder<BoundVar>;
-/// Reflects [`rustc_middle::ty::PlaceholderType`]
+/// Reflects [`ty::PlaceholderType`]
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-/// Reflects [`rustc_middle::ty::Placeholder`]
+/// Reflects [`ty::Placeholder`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Placeholder<T> {
@@ -153,7 +153,7 @@ pub struct Placeholder<T> {
 
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
-    for rustc_middle::ty::Placeholder<T>
+    for ty::Placeholder<T>
 {
     fn sinto(&self, s: &S) -> Placeholder<U> {
         Placeholder {
@@ -171,7 +171,7 @@ pub struct Canonical<T> {
     pub variables: Vec<CanonicalVarInfo>,
     pub value: T,
 }
-/// Reflects [`rustc_middle::ty::CanonicalUserType`]
+/// Reflects [`ty::CanonicalUserType`]
 pub type CanonicalUserType = Canonical<UserType>;
 
 #[cfg(feature = "rustc")]
@@ -201,30 +201,30 @@ pub enum CanonicalVarInfo {
     Effect,
 }
 
-/// Reflects [`rustc_middle::ty::UserSelfTy`]
+/// Reflects [`ty::UserSelfTy`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::UserSelfTy<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::UserSelfTy<'tcx>, state: S as gstate)]
 pub struct UserSelfTy {
     pub impl_def_id: DefId,
     pub self_ty: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::UserArgs`]
+/// Reflects [`ty::UserArgs`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::UserArgs<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::UserArgs<'tcx>, state: S as gstate)]
 pub struct UserArgs {
     pub args: Vec<GenericArg>,
     pub user_self_ty: Option<UserSelfTy>,
 }
 
-/// Reflects [`rustc_middle::ty::UserType`]: this is currently
+/// Reflects [`ty::UserType`]: this is currently
 /// disabled, and everything is printed as debug in the
 /// [`UserType::Todo`] variant.
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::UserType<'tcx>, state: S as _s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::UserType<'tcx>, state: S as _s)]
 pub enum UserType {
     // TODO: for now, we don't use user types at all.
     // We disable it for now, since it cause the following to fail:
@@ -242,7 +242,7 @@ pub enum UserType {
     //        u32::from(Alias::MY_CONST)
     //    }
     //
-    // In this case, we get a [rustc_middle::ty::ConstKind::Bound] in
+    // In this case, we get a [ty::ConstKind::Bound] in
     // [do_something], which we are not able to translate.
     // See: https://github.com/hacspec/hax/pull/209
 
@@ -252,25 +252,25 @@ pub enum UserType {
     Todo(String),
 }
 
-/// Reflects [`rustc_middle::ty::VariantDiscr`]
+/// Reflects [`ty::VariantDiscr`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::VariantDiscr, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::VariantDiscr, state: S as gstate)]
 pub enum DiscriminantDefinition {
     Explicit(DefId),
     Relative(u32),
 }
 
-/// Reflects [`rustc_middle::ty::util::Discr`]
+/// Reflects [`ty::util::Discr`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::util::Discr<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::util::Discr<'tcx>, state: S as gstate)]
 pub struct DiscriminantValue {
     pub val: u128,
     pub ty: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::Visibility`]
+/// Reflects [`ty::Visibility`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum Visibility<Id> {
@@ -279,9 +279,9 @@ pub enum Visibility<Id> {
 }
 
 #[cfg(feature = "rustc")]
-impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for rustc_middle::ty::Visibility<T> {
+impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for ty::Visibility<T> {
     fn sinto(&self, s: &S) -> Visibility<U> {
-        use rustc_middle::ty::Visibility as T;
+        use ty::Visibility as T;
         match self {
             T::Public => Visibility::Public,
             T::Restricted(id) => Visibility::Restricted(id.sinto(s)),
@@ -289,7 +289,7 @@ impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for rustc_middle::ty::Visibil
     }
 }
 
-/// Reflects [`rustc_middle::ty::FieldDef`]
+/// Reflects [`ty::FieldDef`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct FieldDef {
@@ -304,11 +304,11 @@ pub struct FieldDef {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::FieldDef {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for ty::FieldDef {
     fn sinto(&self, s: &S) -> FieldDef {
         let tcx = s.base().tcx;
         let ty = {
-            let generics = rustc_middle::ty::GenericArgs::identity_for_item(tcx, self.did);
+            let generics = ty::GenericArgs::identity_for_item(tcx, self.did);
             self.ty(tcx, generics).sinto(s)
         };
         let name = {
@@ -332,7 +332,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::Fi
     }
 }
 
-/// Reflects [`rustc_middle::ty::VariantDef`]
+/// Reflects [`ty::VariantDef`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct VariantDef {
@@ -369,28 +369,28 @@ impl VariantDef {
     }
 }
 
-/// Reflects [`rustc_middle::ty::EarlyParamRegion`]
+/// Reflects [`ty::EarlyParamRegion`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyParamRegion, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::EarlyParamRegion, state: S as gstate)]
 pub struct EarlyParamRegion {
     pub index: u32,
     pub name: Symbol,
 }
 
-/// Reflects [`rustc_middle::ty::LateParamRegion`]
+/// Reflects [`ty::LateParamRegion`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::LateParamRegion, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::LateParamRegion, state: S as gstate)]
 pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
 
-/// Reflects [`rustc_middle::ty::RegionKind`]
+/// Reflects [`ty::RegionKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::RegionKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::RegionKind<'tcx>, state: S as gstate)]
 pub enum RegionKind {
     ReEarlyParam(EarlyParamRegion),
     ReBound(DebruijnIndex, BoundRegion),
@@ -405,19 +405,19 @@ pub enum RegionKind {
 sinto_as_usize!(rustc_middle::ty, DebruijnIndex);
 sinto_as_usize!(rustc_middle::ty, RegionVid);
 
-/// Reflects [`rustc_middle::ty::Region`]
+/// Reflects [`ty::Region`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Region<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::Region<'tcx>, state: S as s)]
 pub struct Region {
     #[value(self.kind().sinto(s))]
     pub kind: RegionKind,
 }
 
-/// Reflects both [`rustc_middle::ty::GenericArg`] and [`rustc_middle::ty::GenericArgKind`]
+/// Reflects both [`ty::GenericArg`] and [`ty::GenericArgKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericArgKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::GenericArgKind<'tcx>, state: S as s)]
 pub enum GenericArg {
     Lifetime(Region),
     Type(Ty),
@@ -425,22 +425,20 @@ pub enum GenericArg {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericArg> for rustc_middle::ty::GenericArg<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericArg> for ty::GenericArg<'tcx> {
     fn sinto(&self, s: &S) -> GenericArg {
         self.unpack().sinto(s)
     }
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Vec<GenericArg>>
-    for rustc_middle::ty::GenericArgsRef<'tcx>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Vec<GenericArg>> for ty::GenericArgsRef<'tcx> {
     fn sinto(&self, s: &S) -> Vec<GenericArg> {
         self.iter().map(|v| v.unpack().sinto(s)).collect()
     }
 }
 
-/// Reflects both [`rustc_middle::ty::GenericArg`] and [`rustc_middle::ty::GenericArgKind`]
+/// Reflects both [`ty::GenericArg`] and [`ty::GenericArgKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitIntType, state: S as gstate)]
 #[derive_group(Serializers)]
@@ -451,10 +449,10 @@ pub enum LitIntType {
     Unsuffixed,
 }
 
-/// Reflects partially [`rustc_middle::ty::InferTy`]
+/// Reflects partially [`ty::InferTy`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S>, from: rustc_middle::ty::InferTy, state: S as gstate)]
+#[args(<'tcx, S>, from: ty::InferTy, state: S as gstate)]
 pub enum InferTy {
     #[custom_arm(FROM_TYPE::TyVar(..) => TO_TYPE::TyVar,)]
     TyVar, /*TODO?*/
@@ -577,9 +575,9 @@ impl ToString for UintTy {
     }
 }
 
-/// Reflects [`rustc_middle::ty::TypeAndMut`]
+/// Reflects [`ty::TypeAndMut`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::TypeAndMut<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TypeAndMut<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeAndMut {
@@ -588,15 +586,15 @@ pub struct TypeAndMut {
 }
 
 #[cfg(feature = "rustc")]
-impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
+impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for ty::List<T> {
     fn sinto(&self, s: &S) -> Vec<U> {
         self.iter().map(|x| x.sinto(s)).collect()
     }
 }
 
-/// Reflects [`rustc_middle::ty::GenericParamDef`]
+/// Reflects [`ty::GenericParamDef`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::GenericParamDef, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GenericParamDef {
@@ -617,7 +615,7 @@ pub struct GenericParamDef {
     pub kind: GenericParamDefKind,
 }
 
-/// Reflects [`rustc_middle::ty::GenericParamDefKind`]
+/// Reflects [`ty::GenericParamDefKind`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum GenericParamDefKind {
@@ -633,9 +631,9 @@ pub enum GenericParamDefKind {
     },
 }
 
-/// Reflects [`rustc_middle::ty::Generics`]
+/// Reflects [`ty::Generics`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Generics, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::Generics, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct TyGenerics {
@@ -649,7 +647,7 @@ pub struct TyGenerics {
 }
 
 /// This type merges the information from
-/// `rustc_type_ir::AliasKind` and `rustc_middle::ty::AliasTy`
+/// `rustc_type_ir::AliasKind` and `ty::AliasTy`
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Alias {
@@ -658,7 +656,7 @@ pub struct Alias {
     pub def_id: DefId,
 }
 
-/// Reflects [`rustc_middle::ty::AliasKind`]
+/// Reflects [`ty::AliasKind`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AliasKind {
@@ -686,7 +684,7 @@ impl Alias {
     fn from<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         alias_kind: &rustc_type_ir::AliasTyKind,
-        alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
+        alias_ty: &ty::AliasTy<'tcx>,
     ) -> TyKind {
         let tcx = s.base().tcx;
         use rustc_type_ir::AliasTyKind as RustAliasKind;
@@ -730,13 +728,13 @@ impl Alias {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Box<Ty> {
         Box::new(self.sinto(s))
     }
 }
 
-/// Reflects [`rustc_middle::ty::Ty`]
+/// Reflects [`ty::Ty`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Ty {
@@ -750,7 +748,7 @@ impl Ty {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
         if let Some(ty) = s.with_cache(|cache| cache.tys.get(self).cloned()) {
             return ty;
@@ -763,9 +761,9 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx>
     }
 }
 
-/// Reflects [`rustc_middle::ty::TyKind`]
+/// Reflects [`ty::TyKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::TyKind<'tcx>, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TyKind<'tcx>, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TyKind {
@@ -776,8 +774,8 @@ pub enum TyKind {
     Float(FloatTy),
 
     #[custom_arm(
-        rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
-        rustc_middle::ty::TyKind::FnDef(def, generics) => {
+        ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
+        ty::TyKind::FnDef(def, generics) => {
             let tcx = state.base().tcx;
             arrow_of_sig(&tcx.fn_sig(*def).instantiate(tcx, generics), state)
         },
@@ -787,11 +785,11 @@ pub enum TyKind {
             arrow_of_sig(&sig, state)
         },
     )]
-    /// Reflects [`rustc_middle::ty::TyKind::FnPtr`], [`rustc_middle::ty::TyKind::FnDef`] and [`rustc_middle::ty::TyKind::Closure`]
+    /// Reflects [`ty::TyKind::FnPtr`], [`ty::TyKind::FnDef`] and [`ty::TyKind::Closure`]
     Arrow(Box<PolyFnSig>),
 
     #[custom_arm(
-        rustc_middle::ty::TyKind::Adt(adt_def, generics) => {
+        ty::TyKind::Adt(adt_def, generics) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = generics.sinto(state);
             let trait_refs = solve_item_traits(state, adt_def.did(), generics, None);
@@ -799,7 +797,7 @@ pub enum TyKind {
         },
     )]
     Adt {
-        /// Reflects [`rustc_middle::ty::TyKind::Adt`]'s substitutions
+        /// Reflects [`ty::TyKind::Adt`]'s substitutions
         generic_args: Vec<GenericArg>,
         /// Predicates required by the type, e.g. `T: Sized` for `Option<T>` or `B: 'a + ToOwned`
         /// for `Cow<'a, B>`.
@@ -817,7 +815,7 @@ pub enum TyKind {
     Never,
     Tuple(Vec<Ty>),
     #[custom_arm(
-        rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
+        ty::TyKind::Alias(alias_kind, alias_ty) => {
             Alias::from(state, alias_kind, alias_ty)
         },
     )]
@@ -826,15 +824,15 @@ pub enum TyKind {
     Bound(DebruijnIndex, BoundTy),
     Placeholder(PlaceholderType),
     Infer(InferTy),
-    #[custom_arm(rustc_middle::ty::TyKind::Error(..) => TyKind::Error,)]
+    #[custom_arm(ty::TyKind::Error(..) => TyKind::Error,)]
     Error,
     #[todo]
     Todo(String),
 }
 
-/// Reflects [`rustc_middle::ty::Variance`]
+/// Reflects [`ty::Variance`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::Variance, state: S as _s)]
+#[args(<S>, from: ty::Variance, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum Variance {
@@ -844,9 +842,9 @@ pub enum Variance {
     Bivariant,
 }
 
-/// Reflects [`rustc_middle::ty::CanonicalUserTypeAnnotation`]
+/// Reflects [`ty::CanonicalUserTypeAnnotation`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::CanonicalUserTypeAnnotation<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::CanonicalUserTypeAnnotation<'tcx>, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct CanonicalUserTypeAnnotation {
@@ -855,10 +853,10 @@ pub struct CanonicalUserTypeAnnotation {
     pub inferred_ty: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::AdtKind`]
+/// Reflects [`ty::AdtKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Copy, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::AdtKind, state: S as _s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::AdtKind, state: S as _s)]
 pub enum AdtKind {
     Struct,
     Union,
@@ -867,7 +865,7 @@ pub enum AdtKind {
 
 // This comes from MIR
 // TODO: add the generics and the predicates
-/// Reflects [`rustc_middle::ty::AdtDef`]
+/// Reflects [`ty::AdtDef`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct AdtDef {
@@ -880,10 +878,10 @@ pub struct AdtDef {
 
 sinto_todo!(rustc_middle::ty, AdtFlags);
 
-/// Reflects [`rustc_middle::ty::ReprOptions`]
+/// Reflects [`ty::ReprOptions`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ReprOptions, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::ReprOptions, state: S as s)]
 pub struct ReprOptions {
     pub int: Option<IntegerType>,
     #[value({
@@ -902,7 +900,7 @@ sinto_todo!(rustc_abi, ReprFlags);
 sinto_todo!(rustc_abi, Align);
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
         let variants = self
             .variants()
@@ -913,7 +911,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtD
                 } else {
                     // Structs and unions have a single variant.
                     assert_eq!(variant_idx.index(), 0);
-                    rustc_middle::ty::util::Discr {
+                    ty::util::Discr {
                         val: 0,
                         ty: s.base().tcx.types.isize,
                     }
@@ -931,9 +929,9 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtD
     }
 }
 
-/// Reflects [`rustc_middle::ty::adjustment::PointerCoercion`]
+/// Reflects [`ty::adjustment::PointerCoercion`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::adjustment::PointerCoercion, state: S as gstate)]
+#[args(<S>, from: ty::adjustment::PointerCoercion, state: S as gstate)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum PointerCoercion {
@@ -947,10 +945,10 @@ pub enum PointerCoercion {
 
 sinto_todo!(rustc_middle::ty, ScalarInt);
 
-/// Reflects [`rustc_middle::ty::FnSig`]
+/// Reflects [`ty::FnSig`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::FnSig<'tcx>, state: S as s)]
 pub struct TyFnSig {
     #[value(self.inputs().sinto(s))]
     pub inputs: Vec<Ty>,
@@ -961,13 +959,13 @@ pub struct TyFnSig {
     pub abi: Abi,
 }
 
-/// Reflects [`rustc_middle::ty::PolyFnSig`]
+/// Reflects [`ty::PolyFnSig`]
 pub type PolyFnSig = Binder<TyFnSig>;
 
-/// Reflects [`rustc_middle::ty::TraitRef`]
+/// Reflects [`ty::TraitRef`]
 #[derive_group(Serializers)]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::TraitRef<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TraitRef<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TraitRef {
     pub def_id: DefId,
@@ -976,19 +974,19 @@ pub struct TraitRef {
     pub generic_args: Vec<GenericArg>,
 }
 
-/// Reflects [`rustc_middle::ty::TraitPredicate`]
+/// Reflects [`ty::TraitPredicate`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::TraitPredicate<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TraitPredicate<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[map(*x == rustc_middle::ty::PredicatePolarity::Positive)]
+    #[map(*x == ty::PredicatePolarity::Positive)]
     #[from(polarity)]
     pub is_positive: bool,
 }
 
-/// Reflects [`rustc_middle::ty::OutlivesPredicate`] as a named struct
+/// Reflects [`ty::OutlivesPredicate`] as a named struct
 /// instead of a tuple struct. This is because the script converting
 /// JSONSchema types to OCaml doesn't support tuple structs, and this
 /// is the only tuple struct in the whole AST.
@@ -1001,7 +999,7 @@ pub struct OutlivesPredicate<T> {
 
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>, T, U> SInto<S, OutlivesPredicate<U>>
-    for rustc_middle::ty::OutlivesPredicate<'tcx, T>
+    for ty::OutlivesPredicate<'tcx, T>
 where
     T: SInto<S, U>,
 {
@@ -1013,12 +1011,12 @@ where
     }
 }
 
-/// Reflects [`rustc_middle::ty::RegionOutlivesPredicate`]
+/// Reflects [`ty::RegionOutlivesPredicate`]
 pub type RegionOutlivesPredicate = OutlivesPredicate<Region>;
-/// Reflects [`rustc_middle::ty::TypeOutlivesPredicate`]
+/// Reflects [`ty::TypeOutlivesPredicate`]
 pub type TypeOutlivesPredicate = OutlivesPredicate<Ty>;
 
-/// Reflects [`rustc_middle::ty::Term`]
+/// Reflects [`ty::Term`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Term {
@@ -1027,9 +1025,9 @@ pub enum Term {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for ty::Term<'tcx> {
     fn sinto(&self, s: &S) -> Term {
-        use rustc_middle::ty::TermKind;
+        use ty::TermKind;
         match self.unpack() {
             TermKind::Ty(ty) => Term::Ty(ty.sinto(s)),
             TermKind::Const(c) => Term::Const(c.sinto(s)),
@@ -1058,7 +1056,7 @@ pub struct ProjectionPredicate {
 
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderBinderState<'tcx>> SInto<S, ProjectionPredicate>
-    for rustc_middle::ty::ProjectionPredicate<'tcx>
+    for ty::ProjectionPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
         let tcx = s.base().tcx;
@@ -1075,9 +1073,9 @@ impl<'tcx, S: UnderBinderState<'tcx>> SInto<S, ProjectionPredicate>
     }
 }
 
-/// Reflects [`rustc_middle::ty::ClauseKind`]
+/// Reflects [`ty::ClauseKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: ty::ClauseKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClauseKind {
@@ -1090,7 +1088,7 @@ pub enum ClauseKind {
     ConstEvaluatable(ConstantExpr),
 }
 
-/// Reflects [`rustc_middle::ty::Clause`] and adds a hash-consed predicate identifier.
+/// Reflects [`ty::Clause`] and adds a hash-consed predicate identifier.
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Clause {
@@ -1099,7 +1097,7 @@ pub struct Clause {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
         let kind = self.kind().sinto(s);
         let id = kind.clone().map(PredicateKind::Clause).predicate_id();
@@ -1108,9 +1106,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clau
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
-    for rustc_middle::ty::PolyTraitPredicate<'tcx>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for ty::PolyTraitPredicate<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
         let kind: Binder<_> = self.sinto(s);
         let kind: Binder<ClauseKind> = kind.map(ClauseKind::Trait);
@@ -1119,7 +1115,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
     }
 }
 
-/// Reflects [`rustc_middle::ty::Predicate`] and adds a hash-consed predicate identifier.
+/// Reflects [`ty::Predicate`] and adds a hash-consed predicate identifier.
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Predicate {
@@ -1128,7 +1124,7 @@ pub struct Predicate {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for ty::Predicate<'tcx> {
     fn sinto(&self, s: &S) -> Predicate {
         let kind = self.kind().sinto(s);
         let id = kind.predicate_id();
@@ -1136,9 +1132,9 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::P
     }
 }
 
-/// Reflects [`rustc_middle::ty::BoundVariableKind`]
+/// Reflects [`ty::BoundVariableKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundVariableKind, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundVariableKind, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BoundVariableKind {
@@ -1147,7 +1143,7 @@ pub enum BoundVariableKind {
     Const,
 }
 
-/// Reflects [`rustc_middle::ty::Binder`]
+/// Reflects [`ty::Binder`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Binder<T> {
@@ -1187,9 +1183,9 @@ impl<T> Binder<T> {
     }
 }
 
-/// Reflects [`rustc_middle::ty::GenericPredicates`]
+/// Reflects [`ty::GenericPredicates`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::GenericPredicates<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GenericPredicates {
@@ -1200,8 +1196,7 @@ pub struct GenericPredicates {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>>
-    for rustc_middle::ty::Binder<'tcx, T1>
+impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>> for ty::Binder<'tcx, T1>
 where
     T1: SInto<StateWithBinder<'tcx>, T2>,
 {
@@ -1221,9 +1216,9 @@ where
     }
 }
 
-/// Reflects [`rustc_middle::ty::SubtypePredicate`]
+/// Reflects [`ty::SubtypePredicate`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::SubtypePredicate<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::SubtypePredicate<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SubtypePredicate {
@@ -1232,9 +1227,9 @@ pub struct SubtypePredicate {
     pub b: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::CoercePredicate`]
+/// Reflects [`ty::CoercePredicate`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::CoercePredicate<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::CoercePredicate<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CoercePredicate {
@@ -1242,9 +1237,9 @@ pub struct CoercePredicate {
     pub b: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::AliasRelationDirection`]
+/// Reflects [`ty::AliasRelationDirection`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::AliasRelationDirection, state: S as _tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::AliasRelationDirection, state: S as _tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AliasRelationDirection {
@@ -1252,7 +1247,7 @@ pub enum AliasRelationDirection {
     Subtype,
 }
 
-/// Reflects [`rustc_middle::ty::ClosureArgs`]
+/// Reflects [`ty::ClosureArgs`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: ty::ClosureArgs<ty::TyCtxt<'tcx>>, state: S as s)]
 #[derive(Clone, Debug, JsonSchema)]
@@ -1268,9 +1263,9 @@ pub struct ClosureArgs {
     pub upvar_tys: Vec<Ty>,
 }
 
-/// Reflects [`rustc_middle::ty::ClosureKind`]
+/// Reflects [`ty::ClosureKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClosureKind, state: S as _tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::ClosureKind, state: S as _tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClosureKind {
@@ -1281,9 +1276,9 @@ pub enum ClosureKind {
 
 sinto_todo!(rustc_middle::ty, NormalizesTo<'tcx>);
 
-/// Reflects [`rustc_middle::ty::PredicateKind`]
+/// Reflects [`ty::PredicateKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: ty::PredicateKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PredicateKind {
@@ -1297,7 +1292,7 @@ pub enum PredicateKind {
     NormalizesTo(NormalizesTo),
 }
 
-/// Reflects [`rustc_middle::ty::ImplSubject`]
+/// Reflects [`ty::ImplSubject`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImplSubject {
@@ -1325,7 +1320,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplSubject> for ty::ImplSubject<'
                 let polarity = tcx.impl_polarity(s.owner_id());
                 let trait_pred = TraitPredicate {
                     trait_ref: trait_ref.sinto(s),
-                    is_positive: matches!(polarity, rustc_middle::ty::ImplPolarity::Positive),
+                    is_positive: matches!(polarity, ty::ImplPolarity::Positive),
                 };
                 let required_impl_exprs =
                     solve_item_traits(s, trait_ref.def_id, trait_ref.args, None);
@@ -1370,9 +1365,9 @@ fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-/// Reflects [`rustc_middle::ty::AssocItem`]
+/// Reflects [`ty::AssocItem`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: ty::AssocItem, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AssocItem {
@@ -1389,9 +1384,9 @@ pub struct AssocItem {
     pub opt_rpitit_info: Option<ImplTraitInTraitData>,
 }
 
-/// Reflects [`rustc_middle::ty::ImplTraitInTraitData`]
+/// Reflects [`ty::ImplTraitInTraitData`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _s)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: ty::ImplTraitInTraitData, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImplTraitInTraitData {
@@ -1423,9 +1418,9 @@ pub enum AssocItemContainer {
     },
 }
 
-/// Reflects [`rustc_middle::ty::AssocKind`]
+/// Reflects [`ty::AssocKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::AssocKind, state: S as _tcx)]
+#[args(<S>, from: ty::AssocKind, state: S as _tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AssocKind {

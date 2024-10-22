@@ -6,12 +6,16 @@ use crate::prelude::*;
 use crate::sinto_todo;
 
 #[cfg(feature = "rustc")]
+use rustc_ast::ast;
+#[cfg(feature = "rustc")]
+use rustc_hir as hir;
+#[cfg(feature = "rustc")]
 use rustc_middle::ty;
 
-/// Reflects [`rustc_hir::hir_id::HirId`]
+/// Reflects [`hir::hir_id::HirId`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::hir_id::HirId, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: hir::hir_id::HirId, state: S as gstate)]
 pub struct HirId {
     owner: DefId,
     local_id: usize,
@@ -20,25 +24,25 @@ pub struct HirId {
 // TODO: If not working: See original
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx>> SInto<S, DefId> for rustc_hir::hir_id::OwnerId {
+impl<'tcx, S: BaseState<'tcx>> SInto<S, DefId> for hir::hir_id::OwnerId {
     fn sinto(&self, s: &S) -> DefId {
         self.to_def_id().sinto(s)
     }
 }
 
-/// Reflects [`rustc_ast::ast::LitFloatType`]
+/// Reflects [`ast::LitFloatType`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitFloatType, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: ast::LitFloatType, state: S as gstate)]
 pub enum LitFloatType {
     Suffixed(FloatTy),
     Unsuffixed,
 }
 
-/// Reflects [`rustc_hir::Movability`]
+/// Reflects [`hir::Movability`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'tcx, S>, from: rustc_hir::Movability, state: S as _s)]
+#[args(<'tcx, S>, from: hir::Movability, state: S as _s)]
 pub enum Movability {
     Static,
     Movable,
@@ -47,36 +51,36 @@ pub enum Movability {
 pub type Mutability = bool;
 
 #[cfg(feature = "rustc")]
-impl<S> SInto<S, Mutability> for rustc_hir::Mutability {
+impl<S> SInto<S, Mutability> for hir::Mutability {
     fn sinto(&self, _s: &S) -> Mutability {
         match self {
-            rustc_hir::Mutability::Mut => true,
-            _ => false,
+            Self::Mut => true,
+            Self::Not => false,
         }
     }
 }
 
-/// Reflects [`rustc_hir::def::CtorKind`]
+/// Reflects [`hir::def::CtorKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_hir::def::CtorKind, state: S as _s)]
+#[args(<S>, from: hir::def::CtorKind, state: S as _s)]
 pub enum CtorKind {
     Fn,
     Const,
 }
 
-/// Reflects [`rustc_hir::def::CtorOf`]
+/// Reflects [`hir::def::CtorOf`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_hir::def::CtorOf, state: S as _s)]
+#[args(<S>, from: hir::def::CtorOf, state: S as _s)]
 pub enum CtorOf {
     Struct,
     Variant,
 }
 
-/// Reflects [`rustc_hir::RangeEnd`]
+/// Reflects [`hir::RangeEnd`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::RangeEnd, state: S as _s)]
+#[args(<S>, from: hir::RangeEnd, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum RangeEnd {
@@ -84,9 +88,9 @@ pub enum RangeEnd {
     Excluded,
 }
 
-/// Reflects [`rustc_hir::Safety`]
+/// Reflects [`hir::Safety`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Safety, state: S as _s)]
+#[args(<S>, from: hir::Safety, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Safety {
@@ -94,9 +98,9 @@ pub enum Safety {
     Safe,
 }
 
-/// Reflects [`rustc_hir::ImplicitSelfKind`]
+/// Reflects [`hir::ImplicitSelfKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::ImplicitSelfKind, state: S as _s)]
+#[args(<S>, from: hir::ImplicitSelfKind, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum ImplicitSelfKind {
@@ -107,10 +111,10 @@ pub enum ImplicitSelfKind {
     None,
 }
 
-/// Reflects [`rustc_hir::FnDecl`]
+/// Reflects [`hir::FnDecl`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::FnDecl<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::FnDecl<'tcx>, state: S as tcx)]
 pub struct FnDecl {
     pub inputs: Vec<Ty>,
     pub output: FnRetTy,
@@ -119,20 +123,20 @@ pub struct FnDecl {
     pub lifetime_elision_allowed: bool,
 }
 
-/// Reflects [`rustc_hir::FnSig`]
+/// Reflects [`hir::FnSig`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::FnSig<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::FnSig<'tcx>, state: S as tcx)]
 pub struct FnSig {
     pub header: FnHeader,
     pub decl: FnDecl,
     pub span: Span,
 }
 
-/// Reflects [`rustc_hir::FnHeader`]
+/// Reflects [`hir::FnHeader`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::FnHeader, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::FnHeader, state: S as tcx)]
 pub struct FnHeader {
     pub safety: Safety,
     pub constness: Constness,
@@ -154,8 +158,8 @@ pub struct FnDef<Body: IsBody> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'x: 'tcx, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
-    fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
+impl<'x: 'tcx, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for hir::Ty<'x> {
+    fn sinto(self: &hir::Ty<'x>, s: &S) -> Ty {
         // **Important:**
         // We need a local id here, and we get it from the owner id, which must
         // be local. It is safe to do so, because if we have access to a HIR ty,
@@ -167,9 +171,9 @@ impl<'x: 'tcx, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x
     }
 }
 
-/// Reflects [`rustc_hir::UseKind`]
+/// Reflects [`hir::UseKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::UseKind, state: S as _s)]
+#[args(<S>, from: hir::UseKind, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum UseKind {
@@ -178,9 +182,9 @@ pub enum UseKind {
     ListStem,
 }
 
-/// Reflects [`rustc_hir::IsAuto`]
+/// Reflects [`hir::IsAuto`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::IsAuto, state: S as _s)]
+#[args(<S>, from: hir::IsAuto, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum IsAuto {
@@ -188,9 +192,9 @@ pub enum IsAuto {
     No,
 }
 
-/// Reflects [`rustc_hir::Defaultness`]
+/// Reflects [`hir::Defaultness`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Defaultness, state: S as tcx)]
+#[args(<S>, from: hir::Defaultness, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum Defaultness {
@@ -198,9 +202,9 @@ pub enum Defaultness {
     Final,
 }
 
-/// Reflects [`rustc_hir::ImplPolarity`]
+/// Reflects [`hir::ImplPolarity`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ImplPolarity, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::ImplPolarity, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum ImplPolarity {
@@ -208,9 +212,9 @@ pub enum ImplPolarity {
     Negative(Span),
 }
 
-/// Reflects [`rustc_hir::Constness`]
+/// Reflects [`hir::Constness`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Constness, state: S as _s)]
+#[args(<S>, from: hir::Constness, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum Constness {
@@ -218,9 +222,9 @@ pub enum Constness {
     NotConst,
 }
 
-/// Reflects [`rustc_hir::Generics`]
+/// Reflects [`hir::Generics`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Generics<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::Generics<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Generics<Body: IsBody> {
@@ -233,9 +237,7 @@ pub struct Generics<Body: IsBody> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
-    for rustc_hir::ImplItemRef
-{
+impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>> for hir::ImplItemRef {
     fn sinto(&self, s: &S) -> ImplItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         let impl_item = tcx.hir().impl_item(self.id);
@@ -244,7 +246,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
     }
 }
 
-/// Reflects [`rustc_hir::ParamName`]
+/// Reflects [`hir::ParamName`]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum ParamName {
@@ -253,9 +255,9 @@ pub enum ParamName {
     Error,
 }
 
-/// Reflects [`rustc_hir::LifetimeParamKind`]
+/// Reflects [`hir::LifetimeParamKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::LifetimeParamKind, state: S as _s)]
+#[args(<S>, from: hir::LifetimeParamKind, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum LifetimeParamKind {
@@ -264,10 +266,10 @@ pub enum LifetimeParamKind {
     Error,
 }
 
-/// Reflects [`rustc_hir::AnonConst`]
+/// Reflects [`hir::AnonConst`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::AnonConst, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::AnonConst, state: S as s)]
 pub struct AnonConst<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
@@ -277,29 +279,29 @@ pub struct AnonConst<Body: IsBody> {
     pub body: Body,
 }
 
-/// Reflects [`rustc_hir::ConstArg`]
+/// Reflects [`hir::ConstArg`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArg<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::ConstArg<'tcx>, state: S as s)]
 pub struct ConstArg<Body: IsBody> {
     pub hir_id: HirId,
     pub kind: ConstArgKind<Body>,
     pub is_desugared_from_effects: bool,
 }
 
-/// Reflects [`rustc_hir::ConstArgKind`]
+/// Reflects [`hir::ConstArgKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArgKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::ConstArgKind<'tcx>, state: S as s)]
 pub enum ConstArgKind<Body: IsBody> {
     Path(QPath),
     Anon(AnonConst<Body>),
 }
 
-/// Reflects [`rustc_hir::GenericParamKind`]
+/// Reflects [`hir::GenericParamKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::GenericParamKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::GenericParamKind<'tcx>, state: S as tcx)]
 pub enum GenericParamKind<Body: IsBody> {
     Lifetime {
         kind: LifetimeParamKind,
@@ -323,22 +325,22 @@ pub enum GenericParamKind<Body: IsBody> {
     },
 }
 
-/// Reflects [`rustc_hir::GenericParam`]
+/// Reflects [`hir::GenericParam`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::GenericParam<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::GenericParam<'tcx>, state: S as s)]
 pub struct GenericParam<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map(match x {
-        rustc_hir::ParamName::Plain(loc_ident) =>
+        hir::ParamName::Plain(loc_ident) =>
             ParamName::Plain(LocalIdent {
                 name: loc_ident.as_str().to_string(),
                 id: self.hir_id.sinto(s)
             }),
-        rustc_hir::ParamName::Fresh =>
+        hir::ParamName::Fresh =>
             ParamName::Fresh,
-        rustc_hir::ParamName::Error =>
+        hir::ParamName::Error =>
             ParamName::Error,
     })]
     pub name: ParamName,
@@ -350,10 +352,10 @@ pub struct GenericParam<Body: IsBody> {
     attributes: Vec<Attribute>,
 }
 
-/// Reflects [`rustc_hir::ImplItem`]
+/// Reflects [`hir::ImplItem`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItem<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::ImplItem<'tcx>, state: S as s)]
 pub struct ImplItem<Body: IsBody> {
     pub ident: Ident,
     pub owner_id: DefId,
@@ -367,18 +369,18 @@ pub struct ImplItem<Body: IsBody> {
     pub attributes: ItemAttributes,
 }
 
-/// Reflects [`rustc_hir::ImplItemKind`], inlining the body of the items.
+/// Reflects [`hir::ImplItemKind`], inlining the body of the items.
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::ImplItemKind<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum ImplItemKind<Body: IsBody> {
     Const(Ty, Body),
-    #[custom_arm(rustc_hir::ImplItemKind::Fn(sig, body) => {
+    #[custom_arm(hir::ImplItemKind::Fn(sig, body) => {
                 ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, s))
         },)]
     Fn(FnDef<Body>),
-    #[custom_arm(rustc_hir::ImplItemKind::Type(t) => {
+    #[custom_arm(hir::ImplItemKind::Type(t) => {
         let parent_bounds = {
             let (tcx, owner_id) = (s.base().tcx, s.owner_id());
             let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
@@ -402,9 +404,9 @@ pub enum ImplItemKind<Body: IsBody> {
     },
 }
 
-/// Reflects [`rustc_hir::AssocItemKind`]
+/// Reflects [`hir::AssocItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::AssocItemKind, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::AssocItemKind, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum AssocItemKind {
@@ -413,9 +415,9 @@ pub enum AssocItemKind {
     Type,
 }
 
-/// Reflects [`rustc_hir::Impl`].
+/// Reflects [`hir::Impl`].
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Impl<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::Impl<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Impl<Body: IsBody> {
@@ -452,9 +454,9 @@ pub struct Impl<Body: IsBody> {
     pub parent_bounds: Vec<(Clause, ImplExpr, Span)>,
 }
 
-/// Reflects [`rustc_hir::IsAsync`]
+/// Reflects [`hir::IsAsync`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::IsAsync, state: S as _s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::IsAsync, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum IsAsync {
@@ -462,9 +464,9 @@ pub enum IsAsync {
     NotAsync,
 }
 
-/// Reflects [`rustc_hir::FnRetTy`]
+/// Reflects [`hir::FnRetTy`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::FnRetTy<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::FnRetTy<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FnRetTy {
@@ -472,10 +474,10 @@ pub enum FnRetTy {
     Return(Ty),
 }
 
-/// Reflects [`rustc_hir::VariantData`]
+/// Reflects [`hir::VariantData`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::VariantData<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::VariantData<'tcx>, state: S as tcx)]
 pub enum VariantData {
     Struct {
         fields: Vec<HirFieldDef>,
@@ -486,7 +488,7 @@ pub enum VariantData {
 }
 
 #[cfg(feature = "rustc")]
-impl<S> SInto<S, bool> for rustc_ast::ast::Recovered {
+impl<S> SInto<S, bool> for ast::Recovered {
     fn sinto(&self, _s: &S) -> bool {
         match self {
             Self::Yes(_) => true,
@@ -495,9 +497,9 @@ impl<S> SInto<S, bool> for rustc_ast::ast::Recovered {
     }
 }
 
-/// Reflects [`rustc_hir::FieldDef`]
+/// Reflects [`hir::FieldDef`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::FieldDef<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::FieldDef<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct HirFieldDef {
@@ -511,9 +513,9 @@ pub struct HirFieldDef {
     attributes: Vec<Attribute>,
 }
 
-/// Reflects [`rustc_hir::Variant`]
+/// Reflects [`hir::Variant`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Variant<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::Variant<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Variant<Body: IsBody> {
@@ -538,9 +540,9 @@ pub struct Variant<Body: IsBody> {
     pub attributes: Vec<Attribute>,
 }
 
-/// Reflects [`rustc_hir::UsePath`]
+/// Reflects [`hir::UsePath`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::UsePath<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::UsePath<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct UsePath {
@@ -550,9 +552,9 @@ pub struct UsePath {
     pub segments: Vec<PathSegment>,
     #[value(self.segments.iter().last().and_then(|segment| {
             match s.base().tcx.hir_node_by_def_id(segment.hir_id.owner.def_id) {
-                rustc_hir::Node::Item(rustc_hir::Item {
+                hir::Node::Item(hir::Item {
                     ident,
-                    kind: rustc_hir::ItemKind::Use(_, _),
+                    kind: hir::ItemKind::Use(_, _),
                     ..
                 }) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
                 _ => None,
@@ -561,9 +563,9 @@ pub struct UsePath {
     pub rename: Option<String>,
 }
 
-/// Reflects [`rustc_hir::def::Res`]
+/// Reflects [`hir::def::Res`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::Res, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::def::Res, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum Res {
@@ -584,9 +586,9 @@ pub enum Res {
     Err,
 }
 
-/// Reflects [`rustc_hir::PrimTy`]
+/// Reflects [`hir::PrimTy`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::PrimTy, state: S as s)]
+#[args(<S>, from: hir::PrimTy, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum PrimTy {
@@ -598,9 +600,9 @@ pub enum PrimTy {
     Char,
 }
 
-/// Reflects [`rustc_hir::def::NonMacroAttrKind`]
+/// Reflects [`hir::def::NonMacroAttrKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::def::NonMacroAttrKind, state: S as s)]
+#[args(<S>, from: hir::def::NonMacroAttrKind, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum NonMacroAttrKind {
@@ -610,9 +612,9 @@ pub enum NonMacroAttrKind {
     DeriveHelperCompat,
 }
 
-/// Reflects [`rustc_hir::PathSegment`]
+/// Reflects [`hir::PathSegment`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::PathSegment<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::PathSegment<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct PathSegment {
@@ -624,9 +626,9 @@ pub struct PathSegment {
     pub infer_args: bool,
 }
 
-/// Reflects [`rustc_hir::ItemKind`]
+/// Reflects [`hir::ItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ItemKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::ItemKind<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum ItemKind<Body: IsBody> {
@@ -637,7 +639,7 @@ pub enum ItemKind<Body: IsBody> {
     Static(Ty, Mutability, Body),
     Const(Ty, Generics<Body>, Body),
     #[custom_arm(
-            rustc_hir::ItemKind::Fn(sig, generics, body) => {
+            hir::ItemKind::Fn(sig, generics, body) => {
                 ItemKind::Fn(generics.sinto(s), make_fn_def::<Body, _>(sig, body, s))
             }
         )]
@@ -688,38 +690,38 @@ pub enum ItemKind<Body: IsBody> {
 
 pub type EnumDef<Body> = Vec<Variant<Body>>;
 
-/// Reflects [`rustc_hir::TraitItemKind`]
+/// Reflects [`hir::TraitItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::TraitItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::TraitItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub enum TraitItemKind<Body: IsBody> {
     Const(Ty, Option<Body>),
     #[custom_arm(
-        rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Required(id)) => {
+        hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(id)) => {
             TraitItemKind::RequiredFn(sig.sinto(tcx), id.sinto(tcx))
         }
     )]
-    /// Reflects a required [`rustc_hir::TraitItemKind::Fn`]
+    /// Reflects a required [`hir::TraitItemKind::Fn`]
     RequiredFn(FnSig, Vec<Ident>),
     #[custom_arm(
-        rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Provided(body)) => {
+        hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)) => {
             TraitItemKind::ProvidedFn(sig.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
         }
     )]
-    /// Reflects a provided [`rustc_hir::TraitItemKind::Fn`]
+    /// Reflects a provided [`hir::TraitItemKind::Fn`]
     ProvidedFn(FnSig, FnDef<Body>),
     #[custom_arm(
-        rustc_hir::TraitItemKind::Type(b, ty) => {
+        hir::TraitItemKind::Type(b, ty) => {
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
         }
     )]
     Type(GenericBounds, Option<Ty>),
 }
 
-/// Reflects [`rustc_hir::TraitItem`]
+/// Reflects [`hir::TraitItem`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::TraitItem<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::TraitItem<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct TraitItem<Body: IsBody> {
@@ -735,18 +737,14 @@ pub struct TraitItem<Body: IsBody> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, EnumDef<Body>>
-    for rustc_hir::EnumDef<'tcx>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, EnumDef<Body>> for hir::EnumDef<'tcx> {
     fn sinto(&self, s: &S) -> EnumDef<Body> {
         self.variants.iter().map(|v| v.sinto(s)).collect()
     }
 }
 
 #[cfg(feature = "rustc")]
-impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
-    for rustc_hir::TraitItemRef
-{
+impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>> for hir::TraitItemRef {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
         let s = with_owner_id(s.base(), (), (), self.id.owner_id.to_def_id());
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
@@ -755,9 +753,7 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
 }
 
 #[cfg(feature = "rustc")]
-impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>>
-    for rustc_hir::Mod<'a>
-{
+impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>> for hir::Mod<'a> {
     fn sinto(&self, s: &S) -> Vec<Item<Body>> {
         inline_macro_invocations(self.item_ids.iter().copied(), s)
         // .iter()
@@ -766,9 +762,9 @@ impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>>
     }
 }
 
-/// Reflects [`rustc_hir::ForeignItemKind`]
+/// Reflects [`hir::ForeignItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ForeignItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::ForeignItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub enum ForeignItemKind<Body: IsBody> {
@@ -777,9 +773,9 @@ pub enum ForeignItemKind<Body: IsBody> {
     Type,
 }
 
-/// Reflects [`rustc_hir::ForeignItem`]
+/// Reflects [`hir::ForeignItem`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ForeignItem<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::ForeignItem<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct ForeignItem<Body: IsBody> {
@@ -791,18 +787,16 @@ pub struct ForeignItem<Body: IsBody> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, ForeignItem<Body>>
-    for rustc_hir::ForeignItemRef
-{
+impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, ForeignItem<Body>> for hir::ForeignItemRef {
     fn sinto(&self, s: &S) -> ForeignItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().foreign_item(self.id).sinto(s)
     }
 }
 
-/// Reflects [`rustc_hir::OpaqueTy`]
+/// Reflects [`hir::OpaqueTy`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::OpaqueTy<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: hir::OpaqueTy<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct OpaqueTy<Body: IsBody> {
@@ -812,7 +806,7 @@ pub struct OpaqueTy<Body: IsBody> {
     pub in_trait: bool,
 }
 
-/// Reflects [`rustc_hir::GenericBounds`]
+/// Reflects [`hir::GenericBounds`]
 type GenericBounds = Vec<Clause>;
 
 /// Compute the bounds for the owner registed in the state `s`
@@ -826,7 +820,6 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
         if let Some(oid) = s.owner_id().as_local() {
             let hir_id = tcx.local_def_id_to_hir_id(oid);
             let node = tcx.hir_node(hir_id);
-            use rustc_hir as hir;
             matches!(
                 node,
                 hir::Node::TraitItem(hir::TraitItem {
@@ -859,15 +852,15 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for rustc_hir::GenericBounds<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for hir::GenericBounds<'tcx> {
     fn sinto(&self, s: &S) -> GenericBounds {
         region_bounds_at_current_owner(s)
     }
 }
 
-/// Reflects [`rustc_hir::OpaqueTyOrigin`]
+/// Reflects [`hir::OpaqueTyOrigin`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::OpaqueTyOrigin, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: hir::OpaqueTyOrigin, state: S as tcx)]
 #[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub enum OpaqueTyOrigin {
@@ -876,9 +869,9 @@ pub enum OpaqueTyOrigin {
     TyAlias { in_assoc_ty: bool },
 }
 
-/// Reflects [`rustc_ast::ast::MacroDef`]
+/// Reflects [`ast::MacroDef`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::MacroDef, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: ast::MacroDef, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct MacroDef {
@@ -886,7 +879,7 @@ pub struct MacroDef {
     pub macro_rules: bool,
 }
 
-/// Reflects [`rustc_hir::Item`] (and [`rustc_hir::ItemId`])
+/// Reflects [`hir::Item`] (and [`hir::ItemId`])
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Item<Body: IsBody> {
@@ -900,7 +893,7 @@ pub struct Item<Body: IsBody> {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::Item<'tcx> {
+impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for hir::Item<'tcx> {
     fn sinto(&self, s: &S) -> Item<Body> {
         let name: String = self.ident.name.to_ident_string();
         let s = &with_owner_id(s.base(), (), (), self.owner_id.to_def_id());
@@ -921,7 +914,7 @@ impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir:
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::ItemId {
+impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for hir::ItemId {
     fn sinto(&self, s: &S) -> Item<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().item(*self).sinto(s)
