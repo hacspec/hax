@@ -113,8 +113,8 @@ let rec fold_range_cf
   (start: int_t u)
   (end_: int_t u)
   (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
-  (acc: acc_t {inv acc start})
-  (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
+  (acc: acc_t )
+  (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) }
                   -> tuple:((Core.Ops.Control_flow.t_ControlFlow (unit & acc_t) acc_t))
                     {
                       let acc = match tuple with 
@@ -135,8 +135,8 @@ let rec fold_range_return
   (start: int_t u)
   (end_: int_t u)
   (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
-  (acc: acc_t {inv acc start})
-  (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
+  (acc: acc_t )
+  (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) }
                   -> tuple:((Core.Ops.Control_flow.t_ControlFlow (Core.Ops.Control_flow.t_ControlFlow ret_t (unit & acc_t))) acc_t)
                     ))
 : Tot (Core.Ops.Control_flow.t_ControlFlow ret_t acc_t) (decreases v end_ - v start)
