@@ -1462,7 +1462,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_body body;
+               body = c_expr body;
                params = [];
                safety = Safe;
              }
