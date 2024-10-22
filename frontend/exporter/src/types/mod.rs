@@ -10,7 +10,6 @@ mod new;
 pub(crate) mod serialize_int;
 mod span;
 mod thir;
-mod tokens;
 mod ty;
 
 pub use def_id::*;
@@ -21,5 +20,4 @@ pub use mir_traits::*;
 pub use new::*;
 pub use span::*;
 pub use thir::*;
-pub use tokens::*;
 pub use ty::*;

@@ -869,6 +869,43 @@ pub enum OpaqueTyOrigin {
     TyAlias { in_assoc_ty: bool },
 }
 
+/// Reflects [`rustc_ast::tokenstream::TokenStream`] as a plain
+/// string. If you need to reshape that into Rust tokens or construct,
+/// please use, e.g., `syn`.
+pub type TokenStream = String;
+
+#[cfg(feature = "rustc")]
+impl<'t, S> SInto<S, TokenStream> for rustc_ast::tokenstream::TokenStream {
+    fn sinto(&self, _: &S) -> String {
+        rustc_ast_pretty::pprust::tts_to_string(self)
+    }
+}
+
+/// Reflects [`rustc_ast::token::Delimiter`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::token::Delimiter, state: S as _s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Delimiter {
+    Parenthesis,
+    Brace,
+    Bracket,
+    Invisible,
+}
+
+/// Reflects [`rustc_ast::ast::DelimArgs`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::ast::DelimArgs, state: S as gstate)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DelimArgs {
+    pub dspan: DelimSpan,
+    pub delim: Delimiter,
+    pub tokens: TokenStream,
+}
+
+sinto_todo!(rustc_ast::tokenstream, DelimSpan);
+
 /// Reflects [`ast::MacroDef`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: ast::MacroDef, state: S as tcx)]
