@@ -23,8 +23,8 @@ val iterator_range_all t: t_all (t_Range (Rust_primitives.int_t t)) (Rust_primit
 instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) = 
   { f_Item = Rust_primitives.int_t t;
     f_next = (fun {f_start; f_end} -> 
-       if f_start >=. f_end then ({f_start; f_end}, None)
-       else ({f_start = f_start +. Rust_primitives.mk_int 0; f_end}, Some f_start)
+       if f_start >=. f_end then ({f_start; f_end}, Core.Option.Option_None)
+       else ({f_start = f_start +. Rust_primitives.mk_int 0; f_end}, Core.Option.Option_Some f_start)
     );
     f_contains = (fun x i -> v i < v x.f_end /\ v i >= v x.f_start);
     f_fold = (fun #b r init f ->  if r.f_start >=. r.f_end then init
