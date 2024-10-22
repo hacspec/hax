@@ -1,7 +1,12 @@
 use hax_lib as hax;
 use libcrux::aead::{self, Algorithm};
 
-#[hax::proverif::replace("type $:{Message}.")]
+#[hax::proverif::replace("type $:{Message}.
+const $:{Message}_default_value: $:{Message}.
+letfun $:{Message}_default() =
+       $:{Message}_default_value.
+letfun $:{Message}_err() =
+       let x = construct_fail() in $:{Message}_default_value.")]
 pub struct Message(aead::Tag, Vec<u8>);
 
 #[hax::proverif::replace("type $:{KeyIv}.")]
