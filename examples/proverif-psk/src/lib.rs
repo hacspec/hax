@@ -1,8 +1,10 @@
 use hax_lib as hax;
 use libcrux::aead::{self, Algorithm};
 
+#[hax::proverif::replace("type $:{Message}.")]
 pub struct Message(aead::Tag, Vec<u8>);
 
+#[hax::proverif::replace("type $:{KeyIv}.")]
 pub struct KeyIv(libcrux::aead::Key, libcrux::aead::Iv);
 
 const AEAD_KEY_NONCE: usize = Algorithm::key_size(Algorithm::Chacha20Poly1305)
@@ -37,6 +39,7 @@ impl From<std::array::TryFromSliceError> for Error {
     }
 }
 
+#[hax::pv_constructor] // or cleaner with `proverif::replace()`?
 fn derive_key_iv(ikm: &[u8], info: &[u8]) -> Result<KeyIv, Error> {
     let key_iv_bytes =
         libcrux::hkdf::expand(libcrux::hkdf::Algorithm::Sha256, ikm, info, AEAD_KEY_NONCE)?;
@@ -49,6 +52,7 @@ fn derive_key_iv(ikm: &[u8], info: &[u8]) -> Result<KeyIv, Error> {
     Ok(KeyIv(key, iv))
 }
 
+#[hax::proverif::replace("fun ${serialize_key_iv} ($:{KeyIv}): bitstring.")]
 fn serialize_key_iv(key_iv: &KeyIv) -> Vec<u8> {
     let mut result = Vec::new();
     result.extend_from_slice(key_iv.1 .0.as_ref());
@@ -59,19 +63,22 @@ fn serialize_key_iv(key_iv: &KeyIv) -> Vec<u8> {
     result
 }
 
+
+#[hax::proverif::replace("reduc forall k: ${KeyIv}; ${deserialize_key_iv}(${serialize_key_iv}(k)) = k.")]
 fn deserialize_key_iv(bytes: &[u8]) -> Result<KeyIv, Error> {
     let iv = aead::Iv::new(&bytes[..12])?;
     let key = aead::Key::from_slice(Algorithm::Chacha20Poly1305, &bytes[12..])?;
     Ok(KeyIv(key, iv))
 }
 
-#[hax::proverif::replace("fun $proverif_psk::encrypt (KeyIv, bitstring): Message.")]
+#[hax::proverif::replace("fun ${encrypt} ($:{KeyIv}, bitstring): $:{Message}.")]
 pub fn encrypt(key_iv: &KeyIv, message: &[u8]) -> Result<Message, Error> {
     let (tag, ctxt) =
         libcrux::aead::encrypt_detached(&key_iv.0, message, aead::Iv(key_iv.1 .0), EMPTY_AAD)?;
     Ok(Message(tag, ctxt))
 }
 
+#[hax::proverif::replace("reduc forall m: bitstring, k: $:{KeyIv}; ${decrypt}(k, ${encrypt}(k, m)) = m.")]
 fn decrypt(key_iv: &KeyIv, message: Message) -> Result<Vec<u8>, Error> {
     libcrux::aead::decrypt_detached(
         &key_iv.0,
