@@ -628,7 +628,7 @@ module Make (Options : OPTS) : MAKE = struct
                 ^^ separate_map hardline
                      (fun variant -> fun_and_reduc name variant)
                      variants
-          | Quote quote -> print#quote quote
+          | Quote { quote; _ } -> print#quote quote
           | _ -> empty
 
         method! expr_let : lhs:pat -> rhs:expr -> expr fn =

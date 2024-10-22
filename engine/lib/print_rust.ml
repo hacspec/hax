@@ -592,7 +592,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
             & !"}"
-        | Quote quote -> pquote e.span quote & !";"
+        | Quote { quote; _ } -> pquote e.span quote & !";"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi

@@ -407,7 +407,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
               safety ^^ !^"fn" ^^ space ^^ print#concrete_ident name ^^ generics
               ^^ params
               ^^ iblock braces (print#expr_at Item_Fn_body body)
-          | Quote quote -> print#quote quote
+          | Quote { quote; _ } -> print#quote quote
           | _ -> string "item not implemented"
 
         method generic_param' : generic_param fn =

@@ -999,6 +999,20 @@ module Make (F : Features.T) = struct
     in
     Some { pat; typ; typ_span = Some span; attrs = [] }
 
+  let kind_of_item (item : item) : item_kind =
+    match item.v with
+    | Fn _ -> `Fn
+    | TyAlias _ -> `TyAlias
+    | Type _ -> `Type
+    | IMacroInvokation _ -> `IMacroInvokation
+    | Trait _ -> `Trait
+    | Impl _ -> `Impl
+    | Alias _ -> `Alias
+    | Use _ -> `Use
+    | Quote _ -> `Quote
+    | HaxError _ -> `HaxError
+    | NotImplementedYet -> `NotImplementedYet
+
   let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
     match lhs with
     | LhsLocalVar { var; typ } -> { e = LocalVar var; typ; span }
