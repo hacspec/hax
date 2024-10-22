@@ -1,23 +1,25 @@
 // There's a conflict between `mir::ScalarInt`and `todo::ScalarInt` but it doesn't matter.
 #![allow(ambiguous_glob_reexports)]
 
-mod copied;
 mod def_id;
-mod index;
+mod hir;
 mod mir;
 #[cfg(feature = "rustc")]
 mod mir_traits;
 mod new;
-mod replaced;
 pub(crate) mod serialize_int;
-mod todo;
+mod span;
+mod thir;
+mod tokens;
+mod ty;
 
-pub use copied::*;
 pub use def_id::*;
-pub use index::*;
+pub use hir::*;
 pub use mir::*;
 #[cfg(feature = "rustc")]
 pub use mir_traits::*;
 pub use new::*;
-pub use replaced::*;
-pub use todo::*;
+pub use span::*;
+pub use thir::*;
+pub use tokens::*;
+pub use ty::*;
