@@ -815,7 +815,11 @@ module Make (Options : OPTS) : MAKE = struct
     let preamble items = ""
 
     let filter_data_types items =
-      List.filter ~f:(fun item -> [%matches? Type _] item.v) items
+      List.filter
+        ~f:(fun item ->
+          [%matches? Type _] item.v
+          || [%matches? Quote { origin = { item_kind = `Type; _ }; _ }] item.v)
+        items
 
     let contents items =
       let contents, _ = Print.items NoAuxInfo (filter_data_types items) in
