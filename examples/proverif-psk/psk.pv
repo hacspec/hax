@@ -1,0 +1,39 @@
+free c: channel.
+
+type key [typeConverter].
+
+fun senc(bitstring, key): bitstring.
+reduc forall m: bitstring, k: key; sdec(senc(m,k), k) = m.
+
+fun key_to_bitstring(key): bitstring.
+reduc forall k: key; bitstring_to_key(key_to_bitstring(k)) = k.
+
+event InitiatorFinished(bitstring).
+event ResponderFinished(bitstring). 
+
+free PSK: key [private].
+free SECRET_PAYLOAD: bitstring [private].
+
+query initiator_result: bitstring; event(InitiatorFinished(initiator_result)).
+query responder_result: bitstring; event(ResponderFinished(responder_result)).  
+
+query attacker(PSK).
+query attacker(SECRET_PAYLOAD).
+
+let Initiator(psk: key) =
+    new response_key: key;
+    let initiator_message = senc(key_to_bitstring(response_key), psk) in
+    out(c, initiator_message);
+    in(c, response_message: bitstring);
+    let response = sdec(response_message, response_key) in
+    event InitiatorFinished(response).
+
+let Responder(psk: key, payload: bitstring) =
+    in(c, initiator_message: bitstring);
+    let response_key = sdec(initiator_message, psk) in
+    let response_message = senc(payload, bitstring_to_key(response_key)) in
+    event ResponderFinished(payload);
+    out(c, response_message).
+
+process
+    Initiator(PSK) | Responder(PSK, SECRET_PAYLOAD)

@@ -25,6 +25,8 @@ Initiator(response_key, response):
 The crate does not implement message transport, only the initiator and
 responder protocol logic.
 
+A handwritten ProVerif model of this protocol is included in `psk.pv` for comparison.
+
 ## Extracting into ProVerif
 To obtain a ProVerif model of the protocol logic functions, run
 ```
