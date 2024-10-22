@@ -1465,7 +1465,7 @@ struct
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-    | Quote quote ->
+    | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
             | ItemQuote q -> Some q.fstar_options
