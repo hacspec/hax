@@ -1,6 +1,6 @@
 free c: channel.
 
-type key [typeConverter].
+type key.
 
 fun senc(bitstring, key): bitstring.
 reduc forall m: bitstring, k: key; sdec(senc(m,k), k) = m.

@@ -5,7 +5,7 @@ This crate demonstrates an example of ProVerif extraction using hax.
 The crate provides functions for implementing a simplistic pre-shared-key (PSK) based protocol
 between an initiator and receiver, which is defined as follows:
 ```
-Initiator(psk: AEADKey)): 
+Initiator(psk: AEADKey): 
     let response_key = AEAD.KeyGen()
     let message = AEAD.Encrypt(psk, response_key)
 
@@ -26,6 +26,17 @@ The crate does not implement message transport, only the initiator and
 responder protocol logic.
 
 A handwritten ProVerif model of this protocol is included in `psk.pv` for comparison.
+
+### On the use of `proverif::replace()`
+Since ProVerif operates in a symbolic world, certain operations have
+to be represented abstractly, in in symbolic terms. In this case, we
+give symbolic replacements for serialization and deserialization, as
+well as cryptographic operations such as encryption and
+decryption. They are thus treated as ideal implementations of their
+respective functionality in ProVerif's analysis of the protocol. To
+obtain assurance that these operations are correct and implemented
+securely, one of hax' other backends can be used.
+
 
 ## Extracting into ProVerif
 To obtain a ProVerif model of the protocol logic functions, run
