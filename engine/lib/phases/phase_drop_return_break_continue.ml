@@ -95,18 +95,18 @@ module%inlined_contents Make (F : Features.T) = struct
               let else_ = Option.map ~f:(self#visit_expr in_loop) else_ in
               { e with e = If { cond; then_; else_ }; typ = then_.typ }
           | Return { e; _ }, Some ({ return_type; break_type }, acc_type) ->
-              UA.make_control_flow_expr ~return_type ~span ~break_type ~e
+              UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e
                 ~acc:{ e with typ = acc_type } `Return
           | ( Break { e; acc = Some (_, acc); _ },
               Some ({ return_type; break_type }, _) ) ->
-              UA.make_control_flow_expr ~return_type ~span ~break_type ~e ~acc
+              UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e ~acc
                 `Break
           | ( Continue { acc = Some (_, acc); _ },
               Some ({ return_type; break_type }, _) ) ->
-              UA.make_control_flow_expr ~return_type ~span ~break_type ~acc
+              UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc
                 `Continue
           | _, Some ({ return_type; break_type }, _) ->
-              UA.make_control_flow_expr ~return_type ~span ~break_type ~acc:e
+              UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc:e
                 `Continue
           | _ -> e
         (** The invariant here is that [visit_expr] is called only

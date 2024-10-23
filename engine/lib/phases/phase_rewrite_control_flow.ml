@@ -21,17 +21,17 @@ module Make (F : Features.T) =
         let ctx = Diagnostics.Context.Phase phase_id
       end)
 
-      let has_return =
+      let has_cf =
         object (_self)
           inherit [_] Visitors.reduce as super
           method zero = false
           method plus = ( || )
 
-          method! visit_expr' in_loop e =
+          method! visit_expr' break_continue e =
             match e with
             | Return _ -> true
-            | (Break _ | Continue _) when in_loop -> true
-            | _ -> super#visit_expr' in_loop e
+            | (Break _ | Continue _) when break_continue -> true
+            | _ -> super#visit_expr' break_continue e
         end
 
       let loop_return_type =
@@ -46,19 +46,6 @@ module Make (F : Features.T) =
             | _ -> super#visit_expr' () e
         end
 
-      let loop_has_cf =
-        object (_self)
-          inherit [_] Visitors.reduce as super
-          method zero = false
-          method plus = ( || )
-
-          method! visit_expr' () e =
-            match e with
-            | Return _ | Break _ | Continue _ -> true
-            | Loop _ -> false
-            | _ -> super#visit_expr' () e
-        end
-
       let rewrite_control_flow =
         object (self)
           inherit [_] Visitors.map as super
@@ -68,14 +55,14 @@ module Make (F : Features.T) =
               let return_type, witness = loop_return_type#visit_expr () loop in
 
               let typ =
-                U.make_control_flow_type ~continue_type:loop.typ
+                U.M.ty_control_flow ~continue_type:loop.typ
                   ~break_type:return_type
               in
               let loop = { loop with typ } in
               let span = loop.span in
               let id = U.fresh_local_ident_in [] "ret" in
               let module MS = (val U.M.make span) in
-              let mk_cf_pat = U.make_control_flow_pat ~span ~typ in
+              let mk_cf_pat = U.M.pat_Constructor_CF ~span ~typ in
               let return_expr =
                 let inner_e = MS.expr_LocalVar ~typ:return_type id in
                 match witness with
@@ -96,9 +83,9 @@ module Make (F : Features.T) =
             in
             match e.e with
             (* This is supposed to improve performance but it might actually make it worse in some cases *)
-            | _ when not (has_return#visit_expr true e) -> e
+            | _ when not (has_cf#visit_expr true e) -> e
             | Loop loop ->
-                let return_inside = has_return#visit_expr false loop.body in
+                let return_inside = has_cf#visit_expr false loop.body in
                 let loop_expr =
                   {
                     e with
@@ -138,9 +125,9 @@ module Make (F : Features.T) =
                 let stmts_before, stmt_and_stmts_after =
                   List.split_while stmts ~f:(fun (_, e) ->
                       match e.e with
-                      | (If _ | Match _) when has_return#visit_expr in_loop e ->
+                      | (If _ | Match _) when has_cf#visit_expr in_loop e ->
                           false
-                      | Loop _ when has_return#visit_expr false e -> false
+                      | Loop _ when has_cf#visit_expr false e -> false
                       | Return _ | Break _ | Continue _ -> false
                       | _ -> true)
                 in
