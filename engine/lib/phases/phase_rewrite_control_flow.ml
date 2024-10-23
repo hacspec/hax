@@ -86,10 +86,16 @@ module Make (F : Features.T) =
             | _ when not (has_cf#visit_expr true e) -> e
             | Loop loop ->
                 let return_inside = has_cf#visit_expr false loop.body in
+                let new_body = self#visit_expr true loop.body in
                 let loop_expr =
                   {
                     e with
-                    e = Loop { loop with body = self#visit_expr true loop.body };
+                    e =
+                      Loop
+                        {
+                          loop with
+                          body = { new_body with typ = loop.body.typ };
+                        };
                   }
                 in
                 if return_inside then
@@ -133,12 +139,16 @@ module Make (F : Features.T) =
                 in
                 match stmt_and_stmts_after with
                 | (p, ({ e = Loop loop; _ } as rhs)) :: stmts_after ->
+                    let new_body = self#visit_expr true loop.body in
                     let loop_expr =
                       {
                         rhs with
                         e =
                           Loop
-                            { loop with body = self#visit_expr true loop.body };
+                            {
+                              loop with
+                              body = { new_body with typ = loop.body.typ };
+                            };
                       }
                     in
                     U.make_lets stmts_before

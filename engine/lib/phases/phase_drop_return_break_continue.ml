@@ -105,7 +105,8 @@ module%inlined_contents Make (F : Features.T) = struct
               Some ({ return_type; break_type }, _) ) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc
                 `Continue
-          | _, Some ({ return_type; break_type }, _) ->
+          | _, Some ({ return_type; break_type }, _)
+            when Option.is_some return_type || Option.is_some break_type ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc:e
                 `Continue
           | _ -> e
