@@ -147,12 +147,3 @@ mod s_expect_impls {
         }
     }
 }
-
-macro_rules! s_assert {
-    ($s:ident, $assertion:expr) => {{
-        if !($assertion) {
-            fatal!($s, "assertion failed: {}", stringify!($assertion))
-        }
-    }};
-}
-pub(crate) use s_assert;
