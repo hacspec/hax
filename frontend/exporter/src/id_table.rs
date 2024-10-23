@@ -19,7 +19,7 @@
 use crate::prelude::*;
 use std::{
     hash::{Hash, Hasher},
-    sync::{atomic::Ordering, Arc, LazyLock, Mutex},
+    sync::{atomic::Ordering, Arc, LazyLock, Mutex, MutexGuard},
 };
 
 /// Unique IDs in a ID table.
@@ -183,7 +183,7 @@ impl<T> WithTable<T> {
 
 /// Helper function that makes sure no nested deserializations occur.
 fn full_id_deserialization<T>(f: impl FnOnce() -> T) -> T {
-    let _lock = *DESERIALIZATION_STATE_LOCK.lock().expect("CACHE_MAP_LOCK: only one WithTable deserialization can occur at a time (nesting is forbidden)");
+    let _lock: MutexGuard<_> = DESERIALIZATION_STATE_LOCK.try_lock().expect("CACHE_MAP_LOCK: only one WithTable deserialization can occur at a time (nesting is forbidden)");
     let result = f();
     result
 }
