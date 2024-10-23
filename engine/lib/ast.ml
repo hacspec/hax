@@ -217,6 +217,7 @@ functor
 
     and pat = { p : pat'; span : span; typ : ty }
     and field_pat = { field : global_ident; pat : pat }
+    and cf_kind = BreakOnly | BreakOrReturn
 
     and expr' =
       (* pure fragment *)
@@ -262,7 +263,7 @@ functor
           body : expr;
           kind : loop_kind;
           state : loop_state option;
-          control_flow : bool;
+          control_flow : (cf_kind * F.fold_like_loop) option;
           label : string option;
           witness : F.loop;
         }
@@ -313,23 +314,13 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
-      | WhileLoop of {
-          condition : expr;
-          has_return : bool;
-          witness : F.while_loop;
-        }
-      | ForLoop of {
-          pat : pat;
-          it : expr;
-          has_return : bool;
-          witness : F.for_loop;
-        }
+      | WhileLoop of { condition : expr; witness : F.while_loop }
+      | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
       | ForIndexLoop of {
           start : expr;
           end_ : expr;
           var : local_ident;
           var_typ : ty;
-          has_return : bool;
           witness : F.for_index_loop;
         }
 

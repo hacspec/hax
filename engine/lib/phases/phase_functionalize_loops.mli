@@ -15,6 +15,7 @@ module Make
       include Features.Off.For_loop
       include Features.Off.For_index_loop
       include Features.Off.State_passing_loop
+      include Features.Off.Fold_like_loop
     end
 
     module A = Ast.Make (F)

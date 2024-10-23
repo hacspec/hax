@@ -75,6 +75,7 @@ struct
         let lifetime = reject
         let monadic_action = reject
         let monadic_binding = reject
+        let fold_like_loop = reject
         let block = reject
         let dyn = reject
         let match_guard = reject
@@ -902,7 +903,6 @@ module TransformToInputLanguage =
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
   |> Phases.Simplify_match_return
-  |> Phases.Drop_return_break_continue
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn

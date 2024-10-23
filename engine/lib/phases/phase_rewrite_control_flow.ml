@@ -71,20 +71,6 @@ module Make (F : Features.T) =
                 U.make_control_flow_type ~continue_type:loop.typ
                   ~break_type:return_type
               in
-              let loop =
-                match loop.e with
-                | Loop ({ kind; _ } as loop_info) ->
-                    let kind =
-                      match kind with
-                      | ForLoop for_loop ->
-                          ForLoop { for_loop with has_return = true }
-                      | WhileLoop while_loop ->
-                          WhileLoop { while_loop with has_return = true }
-                      | _ -> kind
-                    in
-                    { loop with e = Loop { loop_info with kind } }
-                | _ -> loop
-              in
               let loop = { loop with typ } in
               let span = loop.span in
               let id = U.fresh_local_ident_in [] "ret" in
@@ -113,19 +99,10 @@ module Make (F : Features.T) =
             | _ when not (has_return#visit_expr true e) -> e
             | Loop loop ->
                 let return_inside = has_return#visit_expr false loop.body in
-                let control_flow =
-                  return_inside || loop_has_cf#visit_expr () loop.body
-                in
                 let loop_expr =
                   {
                     e with
-                    e =
-                      Loop
-                        {
-                          loop with
-                          body = self#visit_expr true loop.body;
-                          control_flow;
-                        };
+                    e = Loop { loop with body = self#visit_expr true loop.body };
                   }
                 in
                 if return_inside then
@@ -174,11 +151,7 @@ module Make (F : Features.T) =
                         rhs with
                         e =
                           Loop
-                            {
-                              loop with
-                              control_flow = true;
-                              body = self#visit_expr true loop.body;
-                            };
+                            { loop with body = self#visit_expr true loop.body };
                       }
                     in
                     U.make_lets stmts_before

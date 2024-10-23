@@ -53,7 +53,7 @@ module Phase = struct
     | TraitsSpecs
     | SimplifyMatchReturn
     | SimplifyHoisting
-    | DropNeedlessReturns
+    | DropReturnBreakContinue
     | TransformHaxLibInline
     | NewtypeAsRefinement
     | DummyA

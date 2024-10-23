@@ -1013,9 +1013,10 @@ module Make (F : Features.T) = struct
       Break e -> (Break (e, acc))
       Continue -> (continue (acc))
   *)
-  let make_control_flow_expr ~(span : span) ~(break_type : ty)
+  let make_control_flow_expr ~(span : span) ~(break_type : ty option)
       ~(return_type : ty option) ~(acc : expr) ?(e : expr = unit_expr span)
       (cf : [ `Return | `Break | `Continue ]) =
+    let break_type = Option.value ~default:unit_typ break_type in
     match cf with
     | `Return ->
         let continue_type = make_tuple_typ [ break_type; acc.typ ] in

@@ -41,6 +41,7 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type quote = Features.Off.quote
              and type state_passing_loop = Features.Off.state_passing_loop
+             and type fold_like_loop = Features.Off.fold_like_loop
              and type dyn = Features.Off.dyn
              and type match_guard = Features.Off.match_guard
              and type trait_item_default = Features.Off.trait_item_default

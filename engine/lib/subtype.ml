@@ -243,7 +243,14 @@ struct
             kind = dloop_kind span kind;
             state = Option.map ~f:(dloop_state span) state;
             label;
-            control_flow;
+            control_flow =
+              Option.map
+                ~f:
+                  ((function
+                     | A.BreakOnly -> B.BreakOnly
+                     | A.BreakOrReturn -> B.BreakOrReturn)
+                  *** S.fold_like_loop span)
+                control_flow;
             witness = S.loop span witness;
           }
     | Break { e; acc; label; witness } ->
@@ -308,29 +315,19 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
-    | WhileLoop { condition; witness; has_return } ->
+    | WhileLoop { condition; witness } ->
         WhileLoop
-          {
-            condition = dexpr condition;
-            has_return;
-            witness = S.while_loop span witness;
-          }
-    | ForLoop { it; pat; has_return; witness } ->
+          { condition = dexpr condition; witness = S.while_loop span witness }
+    | ForLoop { it; pat; witness } ->
         ForLoop
-          {
-            it = dexpr it;
-            pat = dpat pat;
-            has_return;
-            witness = S.for_loop span witness;
-          }
-    | ForIndexLoop { start; end_; var; var_typ; has_return; witness } ->
+          { it = dexpr it; pat = dpat pat; witness = S.for_loop span witness }
+    | ForIndexLoop { start; end_; var; var_typ; witness } ->
         ForIndexLoop
           {
             start = dexpr start;
             end_ = dexpr end_;
             var;
             var_typ = dty span var_typ;
-            has_return;
             witness = S.for_index_loop span witness;
           }
 

@@ -42,6 +42,7 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
+             and type fold_like_loop = Features.Off.fold_like_loop
              and type match_guard = Features.Off.match_guard
              and type trait_item_default = Features.Off.trait_item_default) =
 struct
@@ -1741,11 +1742,8 @@ module TransformToInputLanguage =
   |> Phases.Local_mutation
   |> Phases.Rewrite_control_flow
   |> Phases.Drop_return_break_continue
-  |> Phases.Reject.Continue
-  |> Phases.Reject.EarlyExit
-  |> Phases.Reject.QuestionMark
-  |> Phases.Reject.Break
   |> Phases.Functionalize_loops
+  |> Phases.Reject.Question_mark
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting

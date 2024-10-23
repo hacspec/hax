@@ -16,6 +16,7 @@ struct
     include Features.Off.While_loop
     include Features.Off.For_index_loop
     include Features.Off.State_passing_loop
+    include Features.Off.Fold_like_loop
     include Features.Off.Continue
     include Features.Off.Early_exit
     include Features.Off.Break
@@ -42,18 +43,6 @@ struct
       body : B.expr;
       invariant : (B.pat * B.expr) option;
     }
-
-    let has_cf =
-      object (_self)
-        inherit [_] Visitors.reduce as super
-        method zero = false
-        method plus = ( || )
-
-        method! visit_expr' () e =
-          match e with
-          | Return _ | Break _ | Continue _ -> true
-          | _ -> super#visit_expr' () e
-      end
 
     let extract_loop_invariant (body : B.expr) : body_and_invariant =
       match body.e with
@@ -140,43 +129,48 @@ struct
         Some (ChunksExact { size; slice })
       else None
 
-    let fn_args_of_iterator (has_cf : bool) (has_return : bool) (it : iterator)
-        : (Concrete_ident.name * B.expr list * B.ty) option =
+    let fn_args_of_iterator (cf : A.cf_kind option) (it : iterator) :
+        (Concrete_ident.name * B.expr list * B.ty) option =
       let open Concrete_ident_generated in
       let usize = B.TInt { size = SSize; signedness = Unsigned } in
       match it with
       | Enumerate (ChunksExact { size; slice }) ->
           let fold_op =
-            if has_return then
-              Rust_primitives__hax__folds__fold_enumerated_chunked_slice_return
-            else if has_cf then
-              Rust_primitives__hax__folds__fold_enumerated_chunked_slice_cf
-            else Rust_primitives__hax__folds__fold_enumerated_chunked_slice
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_enumerated_chunked_slice_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_enumerated_chunked_slice_cf
+            | None -> Rust_primitives__hax__folds__fold_enumerated_chunked_slice
           in
           Some (fold_op, [ size; slice ], usize)
       | Enumerate (Slice slice) ->
           let fold_op =
-            if has_return then
-              Rust_primitives__hax__folds__fold_enumerated_slice_return
-            else if has_cf then
-              Rust_primitives__hax__folds__fold_enumerated_slice_cf
-            else Rust_primitives__hax__folds__fold_enumerated_slice
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_enumerated_slice_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_enumerated_slice_cf
+            | None -> Rust_primitives__hax__folds__fold_enumerated_slice
           in
           Some (fold_op, [ slice ], usize)
       | StepBy { n; it = Range { start; end_ } } ->
           let fold_op =
-            if has_return then
-              Rust_primitives__hax__folds__fold_range_step_by_return
-            else if has_cf then
-              Rust_primitives__hax__folds__fold_range_step_by_cf
-            else Rust_primitives__hax__folds__fold_range_step_by
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_range_step_by_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_range_step_by_cf
+            | None -> Rust_primitives__hax__folds__fold_range_step_by
           in
           Some (fold_op, [ start; end_; n ], start.typ)
       | Range { start; end_ } ->
           let fold_op =
-            if has_return then Rust_primitives__hax__folds__fold_range_return
-            else if has_cf then Rust_primitives__hax__folds__fold_range_cf
-            else Rust_primitives__hax__folds__fold_range
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_range_return
+            | Some BreakOnly -> Rust_primitives__hax__folds__fold_range_cf
+            | None -> Rust_primitives__hax__folds__fold_range
           in
           Some (fold_op, [ start; end_ ], start.typ)
       | _ -> None
@@ -191,7 +185,7 @@ struct
       | Loop
           {
             body;
-            kind = ForLoop { it; pat; has_return; _ };
+            kind = ForLoop { it; pat; _ };
             state = Some _ as state;
             control_flow;
             _;
@@ -199,9 +193,9 @@ struct
       | Loop
           {
             body;
-            kind = ForLoop { it; pat; has_return = true as has_return; _ };
+            kind = ForLoop { it; pat; _ };
             state;
-            control_flow;
+            control_flow = Some (BreakOrReturn, _) as control_flow;
             _;
           } ->
           let bpat, init =
@@ -216,11 +210,9 @@ struct
           let it = dexpr it in
           let pat = dpat pat in
           let fn : B.expr = UB.make_closure [ bpat; pat ] body body.span in
+          let cf = Option.map ~f:fst control_flow in
           let f, kind, args =
-            match
-              as_iterator it
-              |> Option.bind ~f:(fn_args_of_iterator control_flow has_return)
-            with
+            match as_iterator it |> Option.bind ~f:(fn_args_of_iterator cf) with
             | Some (f, args, typ) ->
                 (* TODO what happens if there is control flow? *)
                 let invariant : B.expr =
@@ -234,9 +226,11 @@ struct
                 (f, Concrete_ident.Kind.Value, args @ [ invariant; init; fn ])
             | None ->
                 let fold : Concrete_ident.name =
-                  if has_return then Rust_primitives__hax__folds__fold_return
-                  else if control_flow then Rust_primitives__hax__folds__fold_cf
-                  else Core__iter__traits__iterator__Iterator__fold
+                  match cf with
+                  | Some BreakOrReturn ->
+                      Rust_primitives__hax__folds__fold_return
+                  | Some BreakOnly -> Rust_primitives__hax__folds__fold_cf
+                  | None -> Core__iter__traits__iterator__Iterator__fold
                 in
                 (fold, AssociatedItem Value, [ it; init; fn ])
           in
@@ -244,7 +238,7 @@ struct
       | Loop
           {
             body;
-            kind = WhileLoop { condition; has_return; _ };
+            kind = WhileLoop { condition; _ };
             state = Some _ as state;
             control_flow;
             _;
@@ -252,9 +246,9 @@ struct
       | Loop
           {
             body;
-            kind = WhileLoop { condition; has_return = true as has_return; _ };
+            kind = WhileLoop { condition; _ };
             state;
-            control_flow;
+            control_flow = Some (BreakOrReturn, _) as control_flow;
             _;
           } ->
           let bpat, init =
@@ -277,9 +271,10 @@ struct
               ~span:body.span
           in
           let fold_operator : Concrete_ident.name =
-            if has_return then Rust_primitives__hax__while_loop_return
-            else if control_flow then Rust_primitives__hax__while_loop_cf
-            else Rust_primitives__hax__while_loop
+            match control_flow with
+            | Some (BreakOrReturn, _) -> Rust_primitives__hax__while_loop_return
+            | Some (BreakOnly, _) -> Rust_primitives__hax__while_loop_cf
+            | None -> Rust_primitives__hax__while_loop
           in
           UB.call ~kind:(AssociatedItem Value) fold_operator
             [ condition; init; body ] span (dty span expr.typ)

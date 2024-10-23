@@ -84,7 +84,6 @@ module%inlined_contents Make (FA : Features.T) = struct
               end_ = dexpr end_;
               var;
               var_typ = dty span typ;
-              has_return = false;
               witness = Features.On.for_index_loop;
             }
       | [%inline_arms "dloop_kind.*"] -> auto

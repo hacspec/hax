@@ -7,128 +7,157 @@
 
 open! Prelude
 
-module Make (F : Features.T) =
-  Phase_utils.MakeMonomorphicPhase
-    (F)
-    (struct
-      let phase_id = Diagnostics.Phase.DropNeedlessReturns
+module%inlined_contents Make (F : Features.T) = struct
+  open Ast
+  module FA = F
 
-      open Ast.Make (F)
-      module U = Ast_utils.Make (F)
-      module Visitors = Ast_visitors.Make (F)
+  module FB = struct
+    include F
+    include Features.On.Fold_like_loop
+    include Features.Off.Early_exit
+    include Features.Off.Break
+    include Features.Off.Continue
+  end
 
-      module Error = Phase_utils.MakeError (struct
-        let ctx = Diagnostics.Context.Phase phase_id
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.DropReturnBreakContinue
       end)
 
-      type loop_info = { return_type : ty option; break_type : ty }
+  module Implem : ImplemT.T = struct
+    let metadata = metadata
 
-      let has_return =
-        object (_self)
-          inherit [_] Visitors.reduce as super
-          method zero = { return_type = None; break_type = U.unit_typ }
+    module UA = Ast_utils.Make (F)
+    module UB = Ast_utils.Make (FB)
 
-          method plus li1 li2 =
-            {
-              return_type =
-                (match (li1.return_type, li2.return_type) with
-                | Some t, _ | _, Some t -> Some t
-                | _ -> None);
-              break_type =
-                (if [%eq: ty] li1.break_type U.unit_typ then li2.break_type
-                else li1.break_type);
-            }
+    module S = struct
+      include Features.SUBTYPE.Id
+    end
 
-          method! visit_expr' () e =
-            match e with
-            | Return { e; _ } ->
-                { return_type = Some e.typ; break_type = U.unit_typ }
-            | Break { e; _ } -> { return_type = None; break_type = e.typ }
-            (* We should avoid catching returns and breaks of a nested
-               loops as they could have different types. *)
-            | Loop _ -> { return_type = None; break_type = U.unit_typ }
-            | _ -> super#visit_expr' () e
-        end
+    (* break_type is "by default" unit since there always is a (possibly implicit) break type *)
+    type loop_info = { return_type : A.ty option; break_type : A.ty option }
 
-      let visitor =
-        object (self)
-          inherit [_] Visitors.map as _super
+    let has_return =
+      let module Visitors = Ast_visitors.Make (F) in
+      object (self)
+        inherit [_] Visitors.reduce as super
+        method zero = { return_type = None; break_type = None }
 
-          method! visit_expr (in_loop : (loop_info * ty) option) e =
-            match (e, in_loop) with
-            | { e = Return { e; _ }; _ }, None -> e
-            (* we know [e] is on an exit position: the return is
-               thus useless, we can skip it *)
-            | { e = Let { monadic = None; lhs; rhs; body }; _ }, _ ->
-                let body = self#visit_expr in_loop body in
-                {
-                  e with
-                  e = Let { monadic = None; lhs; rhs; body };
-                  typ = body.typ;
-                }
-                (* If a let expression is an exit node, then it's body
-                   is as well *)
-            | { e = Match { scrutinee; arms }; _ }, _ ->
-                let arms = List.map ~f:(self#visit_arm in_loop) arms in
-                let typ =
-                  match arms with
-                  | { arm; _ } :: _ -> arm.body.typ
-                  | [] -> e.typ
-                in
-                { e with e = Match { scrutinee; arms }; typ }
-            | { e = If { cond; then_; else_ }; _ }, _ ->
-                let then_ = self#visit_expr in_loop then_ in
-                let else_ = Option.map ~f:(self#visit_expr in_loop) else_ in
-                { e with e = If { cond; then_; else_ }; typ = then_.typ }
-            | ( { e = Return { e; _ }; span; _ },
-                Some ({ return_type; break_type }, acc_type) ) ->
-                U.make_control_flow_expr ~return_type ~span ~break_type ~e
-                  ~acc:{ e with typ = acc_type } `Return
-            | ( { e = Break { e; acc = Some (_, acc); _ }; span; _ },
-                Some ({ return_type; break_type }, _) ) ->
-                U.make_control_flow_expr ~return_type ~span ~break_type ~e ~acc
-                  `Break
-            | ( { e = Continue { acc = Some (_, acc); _ }; span; _ },
-                Some ({ return_type; break_type }, _) ) ->
-                U.make_control_flow_expr ~return_type ~span ~break_type ~acc
-                  `Continue
-            | { span; _ }, Some ({ return_type; break_type }, _) ->
-                U.make_control_flow_expr ~return_type ~span ~break_type ~acc:e
-                  `Continue
-            | _ -> e
-          (** The invariant here is that [visit_expr] is called only
-              on expressions that are on exit positions. [visit_expr]
-              is first called on root expressions, which are (by
-              definition) exit nodes. Then, [visit_expr] itself makes
-              recursive calls to sub expressions that are themselves
-              in exit nodes. **)
-        end
+        method plus li1 li2 =
+          {
+            return_type = Option.first_some li1.return_type li2.return_type;
+            break_type = Option.first_some li1.break_type li2.break_type;
+          }
 
-      let loop_visitor =
-        object (_self)
-          inherit [_] Visitors.map as super
+        method! visit_expr' () e =
+          match e with
+          | Return { e; _ } -> { return_type = Some e.typ; break_type = None }
+          | Break { e; _ } -> { return_type = None; break_type = Some e.typ }
+          (* We should avoid catching breaks of a nested
+             loops as they could have different types. *)
+          | Loop { body; _ } ->
+              {
+                return_type = (self#visit_expr () body).return_type;
+                break_type = None;
+              }
+          | _ -> super#visit_expr' () e
+      end
 
-          method! visit_expr () e =
-            match e.e with
-            | Loop ({ body; control_flow; _ } as loop) when control_flow ->
-                let acc_type =
-                  match e.typ with
-                  | TApp { ident; args = [ GType _; GType continue_type ] }
-                    when Ast.Global_ident.equal ident
-                           (Ast.Global_ident.of_name Type
-                              Core__ops__control_flow__ControlFlow) ->
-                      continue_type
-                  | _ -> e.typ
-                in
-                let body =
-                  visitor#visit_expr
-                    (Some (has_return#visit_expr () body, acc_type))
-                    body
-                in
-                super#visit_expr () { e with e = Loop { loop with body } }
-            | _ -> super#visit_expr () e
-        end
+    let visitor =
+      let module Visitors = Ast_visitors.Make (F) in
+      object (self)
+        inherit [_] Visitors.map as _super
 
-      let ditems =
-        List.map ~f:(visitor#visit_item None >> loop_visitor#visit_item ())
-    end)
+        method! visit_expr (in_loop : (loop_info * A.ty) option) e =
+          let span = e.span in
+          match (e.e, in_loop) with
+          | Return { e; _ }, None -> e
+          (* we know [e] is on an exit position: the return is
+             thus useless, we can skip it *)
+          | Let { monadic = None; lhs; rhs; body }, _ ->
+              let body = self#visit_expr in_loop body in
+              {
+                e with
+                e = Let { monadic = None; lhs; rhs; body };
+                typ = body.typ;
+              }
+              (* If a let expression is an exit node, then it's body
+                 is as well *)
+          | Match { scrutinee; arms }, _ ->
+              let arms = List.map ~f:(self#visit_arm in_loop) arms in
+              let typ =
+                match arms with { arm; _ } :: _ -> arm.body.typ | [] -> e.typ
+              in
+              { e with e = Match { scrutinee; arms }; typ }
+          | If { cond; then_; else_ }, _ ->
+              let then_ = self#visit_expr in_loop then_ in
+              let else_ = Option.map ~f:(self#visit_expr in_loop) else_ in
+              { e with e = If { cond; then_; else_ }; typ = then_.typ }
+          | Return { e; _ }, Some ({ return_type; break_type }, acc_type) ->
+              UA.make_control_flow_expr ~return_type ~span ~break_type ~e
+                ~acc:{ e with typ = acc_type } `Return
+          | ( Break { e; acc = Some (_, acc); _ },
+              Some ({ return_type; break_type }, _) ) ->
+              UA.make_control_flow_expr ~return_type ~span ~break_type ~e ~acc
+                `Break
+          | ( Continue { acc = Some (_, acc); _ },
+              Some ({ return_type; break_type }, _) ) ->
+              UA.make_control_flow_expr ~return_type ~span ~break_type ~acc
+                `Continue
+          | _, Some ({ return_type; break_type }, _) ->
+              UA.make_control_flow_expr ~return_type ~span ~break_type ~acc:e
+                `Continue
+          | _ -> e
+        (** The invariant here is that [visit_expr] is called only
+                 on expressions that are on exit positions. [visit_expr]
+                 is first called on root expressions, which are (by
+                 definition) exit nodes. Then, [visit_expr] itself makes
+                 recursive calls to sub expressions that are themselves
+                 in exit nodes. **)
+      end
+
+    [%%inline_defs dmutability + dsafety_kind]
+
+    let rec dexpr' (span : span) (expr : A.expr') : B.expr' =
+      match expr with
+      | [%inline_arms "dexpr'.*" - Return - Break - Continue - Loop] -> auto
+      | Return _ | Break _ | Continue _ ->
+          Error.raise { kind = NonTrivialAndMutFnInput (*TODO Correct*); span }
+      | Loop { body; kind; state; label; witness; _ } ->
+          let control_flow_type = has_return#visit_expr () body in
+          let control_flow =
+            match control_flow_type with
+            | { return_type = Some _; _ } ->
+                Some (B.BreakOrReturn, Features.On.fold_like_loop)
+            | { break_type = Some _; _ } ->
+                Some (BreakOnly, Features.On.fold_like_loop)
+            | _ -> None
+          in
+          let acc_type =
+            match body.typ with
+            | TApp { ident; args = [ GType _; GType continue_type ] }
+              when Ast.Global_ident.equal ident
+                     (Ast.Global_ident.of_name Type
+                        Core__ops__control_flow__ControlFlow) ->
+                continue_type
+            | _ -> body.typ
+          in
+          let body =
+            visitor#visit_expr (Some (control_flow_type, acc_type)) body
+            |> dexpr
+          in
+          let kind = dloop_kind span kind in
+          let state = Option.map ~f:(dloop_state span) state in
+          Loop { body; control_flow; kind; state; label; witness }
+      [@@inline_ands bindings_of dexpr - dexpr']
+
+    [%%inline_defs "Item.*" - ditems]
+
+    let ditems (items : A.item list) : B.item list =
+      List.concat_map items ~f:(visitor#visit_item None >> ditem)
+  end
+
+  include Implem
+end
+[@@add "subtype.ml"]

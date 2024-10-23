@@ -259,7 +259,7 @@ struct
             span = expr.span;
             typ = e.typ;
           }
-      | Loop { body; kind; state; label; witness; control_flow } ->
+      | Loop { body; kind; state; label; witness; _ } ->
           let variables_to_output = s.expr_level in
           (* [adapt]: should we reorder shadowings? *)
           let observable_mutations, adapt =
@@ -326,7 +326,8 @@ struct
           let typ = List.map ~f:snd observable_mutations |> UB.make_tuple_typ in
           let loop : B.expr =
             {
-              e = Loop { body; kind; state; label; witness; control_flow };
+              e =
+                Loop { body; kind; state; label; witness; control_flow = None };
               typ;
               span;
             }
