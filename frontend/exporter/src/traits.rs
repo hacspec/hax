@@ -176,24 +176,40 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 /// in the current context.
 #[cfg(feature = "rustc")]
 #[tracing::instrument(level = "trace", skip(s), ret)]
-pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
+pub fn solve_item_required_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     def_id: RDefId,
     generics: ty::GenericArgsRef<'tcx>,
 ) -> Vec<ImplExpr> {
+    let predicates = required_predicates(s.base().tcx, def_id);
+    solve_item_traits_inner(s, generics, predicates)
+}
+
+/// Solve the trait obligations for implementing a trait (or for trait associated type bounds) in
+/// the current context.
+#[cfg(feature = "rustc")]
+#[tracing::instrument(level = "trace", skip(s), ret)]
+pub fn solve_item_implied_traits<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    def_id: RDefId,
+    generics: ty::GenericArgsRef<'tcx>,
+) -> Vec<ImplExpr> {
+    let predicates = implied_predicates(s.base().tcx, def_id);
+    solve_item_traits_inner(s, generics, predicates)
+}
+
+/// Apply the given generics to the provided clauses and resolve the trait references in the
+/// current context.
+#[cfg(feature = "rustc")]
+fn solve_item_traits_inner<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    generics: ty::GenericArgsRef<'tcx>,
+    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+) -> Vec<ImplExpr> {
     let tcx = s.base().tcx;
     let param_env = s.param_env();
 
-    // We can't use `required_predicates` alone because this is called to resolve trait implied
-    // predicates too.
-    // TODO: stop doing that
-    let predicates: Vec<_> = match tcx.def_kind(def_id) {
-        rustc_hir::def::DefKind::Trait => implied_predicates(tcx, def_id).collect(),
-        _ => required_predicates(tcx, def_id).collect(),
-    };
-
     predicates
-        .into_iter()
         .filter_map(|clause| clause.as_trait_clause())
         .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
         // Substitute the item generics

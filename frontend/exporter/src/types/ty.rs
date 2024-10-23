@@ -792,7 +792,7 @@ pub enum TyKind {
         ty::TyKind::Adt(adt_def, generics) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = generics.sinto(state);
-            let trait_refs = solve_item_traits(state, adt_def.did(), generics);
+            let trait_refs = solve_item_required_traits(state, adt_def.did(), generics);
             TyKind::Adt { def_id, generic_args, trait_refs }
         },
     )]
@@ -1322,7 +1322,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplSubject> for ty::ImplSubject<'
                     trait_ref: trait_ref.sinto(s),
                     is_positive: matches!(polarity, ty::ImplPolarity::Positive),
                 };
-                let required_impl_exprs = solve_item_traits(s, trait_ref.def_id, trait_ref.args);
+                let required_impl_exprs =
+                    solve_item_implied_traits(s, trait_ref.def_id, trait_ref.args);
                 ImplSubject::Trait {
                     trait_pred,
                     required_impl_exprs,

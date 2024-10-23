@@ -433,7 +433,7 @@ mod rustc {
 
                         // Solve the trait obligations
                         let parent_def_id = tcx.parent(ucv.def);
-                        let trait_refs = solve_item_traits(s, parent_def_id, ucv.args);
+                        let trait_refs = solve_item_required_traits(s, parent_def_id, ucv.args);
 
                         // Convert
                         let id = ucv.def.sinto(s);
