@@ -118,7 +118,7 @@ mod heterogeneous_map {
     }
 
     impl<Key: Hash + Eq + PartialEq, Value> HeterogeneousMap<Key, Value> {
-        pub(super) fn insert<T>(&mut self, key: Id, vKeyue: Arc<T>)
+        pub(super) fn insert<T>(&mut self, key: Key, value: Arc<T>)
         where
             T: SupportedType<Value>,
         {
