@@ -751,7 +751,11 @@ module Make (Options : OPTS) : MAKE = struct
   end
 
   let filter_crate_functions (items : AST.item list) =
-    List.filter ~f:(fun item -> [%matches? Fn _] item.v) items
+    List.filter
+      ~f:(fun item ->
+        [%matches? Fn _] item.v
+        || [%matches? Quote { origin = { item_kind = `Fn; _ }; _ }] item.v)
+      items
 
   let is_process_read : attrs -> bool =
     Attr_payloads.payloads
