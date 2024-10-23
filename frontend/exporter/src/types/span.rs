@@ -105,49 +105,6 @@ pub struct Span {
     // expn_backtrace: Vec<ExpnData>,
 }
 
-/// We need to define manual `impl`s of `Span`: we want to skip the
-/// field `rust_span_data`. The derive macros from `bincode` don't
-/// allow that, see https://github.com/bincode-org/bincode/issues/452.
-const _: () = {
-    impl bincode::Encode for Span {
-        fn encode<E: bincode::enc::Encoder>(
-            &self,
-            encoder: &mut E,
-        ) -> core::result::Result<(), bincode::error::EncodeError> {
-            bincode::Encode::encode(&self.lo, encoder)?;
-            bincode::Encode::encode(&self.hi, encoder)?;
-            bincode::Encode::encode(&self.filename, encoder)?;
-            Ok(())
-        }
-    }
-
-    impl bincode::Decode for Span {
-        fn decode<D: bincode::de::Decoder>(
-            decoder: &mut D,
-        ) -> core::result::Result<Self, bincode::error::DecodeError> {
-            Ok(Self {
-                lo: bincode::Decode::decode(decoder)?,
-                hi: bincode::Decode::decode(decoder)?,
-                filename: bincode::Decode::decode(decoder)?,
-                rust_span_data: None,
-            })
-        }
-    }
-
-    impl<'de> bincode::BorrowDecode<'de> for Span {
-        fn borrow_decode<D: bincode::de::BorrowDecoder<'de>>(
-            decoder: &mut D,
-        ) -> core::result::Result<Self, bincode::error::DecodeError> {
-            Ok(Self {
-                lo: bincode::BorrowDecode::borrow_decode(decoder)?,
-                hi: bincode::BorrowDecode::borrow_decode(decoder)?,
-                filename: bincode::BorrowDecode::borrow_decode(decoder)?,
-                rust_span_data: None,
-            })
-        }
-    }
-};
-
 const _: () = {
     // `rust_span_data` is a metadata that should *not* be taken into
     // account while hashing or comparing

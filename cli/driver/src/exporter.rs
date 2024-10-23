@@ -134,6 +134,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
         hax_frontend_exporter::ImplInfos,
     )>,
     Vec<hax_frontend_exporter::Item<Body>>,
+    hax_frontend_exporter::id_table::Table,
 ) {
     use hax_frontend_exporter::WithGlobalCacheExt;
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
@@ -154,8 +155,15 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
             .filter_map(|per_item_cache| per_item_cache.def_id.clone())
             .collect()
     });
+    let cache_map = state.with_global_cache(|cache| cache.id_table_session.table().clone());
 
-    (exported_spans, exported_def_ids, impl_infos, result)
+    (
+        exported_spans,
+        exported_def_ids,
+        impl_infos,
+        result,
+        cache_map,
+    )
 }
 
 /// Collect a map from spans to macro calls
@@ -260,7 +268,7 @@ impl Callbacks for ExtractionCallbacks {
             with_kind_type!(
                 self.body_types.clone(),
                 <Body>|| {
-                    let (spans, def_ids, impl_infos, items) =
+                    let (spans, def_ids, impl_infos, items, cache_map) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
                     let files: HashSet<PathBuf> = HashSet::from_iter(
                         items
@@ -279,7 +287,7 @@ impl Callbacks for ExtractionCallbacks {
                             .collect(),
                         def_ids,
                     };
-                    haxmeta.write(&mut file);
+                    haxmeta.write(&mut file, cache_map);
                 }
             );
 

@@ -126,6 +126,8 @@ mod types {
         pub spans: HashMap<rustc_span::Span, Span>,
         /// Per-item cache.
         pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+        /// A ID table session, providing fresh IDs.
+        pub id_table_session: id_table::Session,
     }
 
     /// Per-item cache
