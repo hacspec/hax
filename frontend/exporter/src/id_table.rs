@@ -188,7 +188,11 @@ fn full_id_deserialization<T>(f: impl FnOnce() -> T) -> T {
     result
 }
 
-/// The deserializer of `WithTable<T>` is special. First, we need to continuously
+/// The deserializer of `WithTable<T>` is special. We first decode the
+/// table in order: each `(Id, Value)` pair of the table populates the
+/// global table state found in `DESERIALIZATION_STATE`. Only then we
+/// can decode the value itself, knowing `DESERIALIZATION_STATE` is
+/// complete.
 impl<'de, T: Deserialize<'de>> serde::Deserialize<'de> for WithTable<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
