@@ -49,11 +49,22 @@ pub enum Value {
     Ty(Arc<TyKind>),
 }
 
+impl SupportedType<Value> for TyKind {
+    fn to_types(value: Arc<Self>) -> Value {
+        Value::Ty(value)
+    }
+    fn from_types(t: &Value) -> Option<Arc<Self>> {
+        match t {
+            Value::Ty(value) => Some(value.clone()),
+        }
+    }
+}
+
 /// A node is a bundle of an ID with a value.
 #[derive(Deserialize, Serialize, Debug, JsonSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(into = "serde_repr::NodeRepr<T>")]
 #[serde(try_from = "serde_repr::NodeRepr<T>")]
-pub struct Node<T: 'static + SupportedType> {
+pub struct Node<T: 'static + SupportedType<Value>> {
     id: Id,
     value: Arc<T>,
 }
@@ -61,7 +72,7 @@ pub struct Node<T: 'static + SupportedType> {
 /// Hax relies on hashes being deterministic for predicates
 /// ids. Identifiers are not deterministic: we implement hash for
 /// `Node` manually, discarding the field `id`.
-impl<T: SupportedType + Hash> Hash for Node<T> {
+impl<T: SupportedType<Value> + Hash> Hash for Node<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.value.as_ref().hash(state);
     }
@@ -69,7 +80,7 @@ impl<T: SupportedType + Hash> Hash for Node<T> {
 
 /// Manual implementation of `Clone` that doesn't require a `Clone`
 /// bound on `T`.
-impl<T: SupportedType> Clone for Node<T> {
+impl<T: SupportedType<Value>> Clone for Node<T> {
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
@@ -85,38 +96,59 @@ impl<T: SupportedType> Clone for Node<T> {
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 #[serde(into = "serde_repr::SortedIdValuePairs")]
 #[serde(from = "serde_repr::SortedIdValuePairs")]
-pub struct Table(HashMap<Id, Value>);
+pub struct Table(HeterogeneousMap<Id, Value>);
 
-impl Table {
-    pub(super) fn insert<T>(&mut self, cache_id: Id, value: Arc<T>)
-    where
-        T: SupportedType,
-    {
-        self.0.insert(cache_id, T::to_types(value));
-    }
-    pub(super) fn get<T>(&self, cache_id: &Id) -> Option<Option<Arc<T>>>
-    where
-        T: SupportedType,
-    {
-        self.0.get(cache_id).map(T::from_types)
-    }
-}
-impl SupportedType for TyKind {
-    fn to_types(value: Arc<Self>) -> Value {
-        Value::Ty(value)
-    }
-    fn from_types(t: &Value) -> Option<Arc<Self>> {
-        match t {
-            Value::Ty(value) => Some(value.clone()),
+mod heterogeneous_map {
+    //! This module provides an heterogenous map that can store types
+    //! that implement the trait `SupportedType`.
+
+    use std::collections::HashMap;
+    use std::hash::Hash;
+    use std::sync::Arc;
+    #[derive(Clone, Debug)]
+    /// An heterogenous map is a map from `Key` to `Value`. It provide
+    /// the methods `insert` and `get` for any type `T` that
+    /// implements `SupportedType<Value>`.
+    pub struct HeterogeneousMap<Key, Value>(HashMap<Key, Value>);
+
+    impl<Id, Value> Default for HeterogeneousMap<Id, Value> {
+        fn default() -> Self {
+            Self(HashMap::default())
         }
     }
-}
 
-/// A value encodable in the enum `Value`
-pub trait SupportedType: std::fmt::Debug {
-    fn to_types(value: Arc<Self>) -> Value;
-    fn from_types(t: &Value) -> Option<Arc<Self>>;
+    impl<Key: Hash + Eq + PartialEq, Value> HeterogeneousMap<Key, Value> {
+        pub(super) fn insert<T>(&mut self, key: Id, vKeyue: Arc<T>)
+        where
+            T: SupportedType<Value>,
+        {
+            self.insert_raw_value(key, T::to_types(value));
+        }
+        pub(super) fn insert_raw_value(&mut self, key: Key, value: Value) {
+            self.0.insert(key, value);
+        }
+        pub(super) fn from_iter(it: impl Iterator<Item = (Key, Value)>) -> Self {
+            Self(HashMap::from_iter(it))
+        }
+        pub(super) fn into_iter(self) -> impl Iterator<Item = (Key, Value)> {
+            self.0.into_iter()
+        }
+        pub(super) fn get<T>(&self, key: &Key) -> Option<Option<Arc<T>>>
+        where
+            T: SupportedType<Value>,
+        {
+            self.0.get(key).map(T::from_types)
+        }
+    }
+
+    /// A type that can be mapped to `Value` and optionally
+    /// reconstructed back.
+    pub trait SupportedType<Value>: std::fmt::Debug {
+        fn to_types(value: Arc<Self>) -> Value;
+        fn from_types(t: &Value) -> Option<Arc<Self>>;
+    }
 }
+use heterogeneous_map::*;
 
 impl Session {
     fn fresh_id(&mut self) -> Id {
@@ -126,11 +158,11 @@ impl Session {
     }
 }
 
-impl<T: Sync + Send + Clone + 'static + SupportedType> Node<T> {
+impl<T: Sync + Send + Clone + 'static + SupportedType<Value>> Node<T> {
     pub fn new(value: T, session: &mut Session) -> Self {
         let id = session.fresh_id();
         let kind = Arc::new(value);
-        session.table.insert(id.clone(), kind.clone());
+        session.table.0.insert(id.clone(), kind.clone());
         Self { id, value: kind }
     }
     pub fn inner(&self) -> &Arc<T> {
@@ -304,7 +336,7 @@ mod serde_repr {
     pub(super) struct Pair(Id, Value);
     pub(super) type SortedIdValuePairs = Vec<Pair>;
 
-    impl<T: SupportedType> Into<NodeRepr<T>> for Node<T> {
+    impl<T: SupportedType<Value>> Into<NodeRepr<T>> for Node<T> {
         fn into(self) -> NodeRepr<T> {
             let value = if serialize_use_id() {
                 None
@@ -316,17 +348,19 @@ mod serde_repr {
         }
     }
 
-    impl<T: 'static + SupportedType> TryFrom<NodeRepr<T>> for Node<T> {
+    impl<T: 'static + SupportedType<Value>> TryFrom<NodeRepr<T>> for Node<T> {
         type Error = serde::de::value::Error;
 
         fn try_from(cached: NodeRepr<T>) -> Result<Self, Self::Error> {
             use serde::de::Error;
-            let map = DESERIALIZATION_STATE.lock().unwrap();
+            let table = DESERIALIZATION_STATE.lock().unwrap();
             let id = cached.cache_id;
             let kind = if let Some(kind) = cached.value {
                 kind
             } else {
-                map.get(&id)
+                table
+                    .0
+                    .get(&id)
                     .ok_or_else(|| {
                         Self::Error::custom(&format!(
                             "Stateful deserialization failed for id {:?}: not found in cache",
@@ -354,7 +388,7 @@ mod serde_repr {
                 .lock()
                 .unwrap()
                 .0
-                .insert(id.clone(), v.clone());
+                .insert_raw_value(id.clone(), v.clone());
             Ok(Pair(id, v))
         }
     }
@@ -369,7 +403,9 @@ mod serde_repr {
 
     impl From<SortedIdValuePairs> for Table {
         fn from(t: SortedIdValuePairs) -> Self {
-            Self(HashMap::from_iter(t.into_iter().map(|Pair(x, y)| (x, y))))
+            Self(HeterogeneousMap::from_iter(
+                t.into_iter().map(|Pair(x, y)| (x, y)),
+            ))
         }
     }
 }
