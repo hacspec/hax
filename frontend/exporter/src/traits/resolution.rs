@@ -7,7 +7,9 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::*;
+use rustc_trait_selection::traits::ImplSource;
 
 use crate::{self_predicate, traits::utils::erase_and_norm};
 
@@ -344,8 +346,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
         let erased_tref = erase_and_norm(self.tcx, self.param_env, *tref);
 
         let tcx = self.tcx;
-        let impl_source =
-            copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, erased_tref));
+        let impl_source = shallow_resolve_trait_ref(tcx, self.param_env, erased_tref);
         let nested;
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
@@ -434,84 +435,61 @@ impl<'tcx> PredicateSearcher<'tcx> {
     }
 }
 
-mod copy_paste_from_rustc {
+/// Attempts to resolve an obligation to an `ImplSource`. The result is a shallow `ImplSource`
+/// resolution, meaning that we do not resolve all nested obligations on the impl. Note that type
+/// check should guarantee to us that all nested obligations *could be* resolved if we wanted to.
+///
+/// This expects that `trait_ref` is fully normalized.
+///
+/// This is based on `rustc_traits::codegen::codegen_select_candidate` in rustc.
+pub fn shallow_resolve_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    trait_ref: PolyTraitRef<'tcx>,
+) -> Result<ImplSource<'tcx, ()>, CodegenObligationError> {
     use rustc_infer::infer::TyCtxtInferExt;
     use rustc_middle::traits::CodegenObligationError;
-    use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-    use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+    use rustc_middle::ty::TypeVisitableExt;
     use rustc_trait_selection::traits::{
-        Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-        Unimplemented,
+        Obligation, ObligationCause, ObligationCtxt, SelectionContext, Unimplemented,
+    };
+    // Do the initial selection for the obligation. This yields the
+    // shallow result we are looking for -- that is, what specific impl.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let mut selcx = SelectionContext::new(&infcx);
+
+    let obligation_cause = ObligationCause::dummy();
+    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
+
+    let selection = match selcx.poly_select(&obligation) {
+        Ok(Some(selection)) => selection,
+        Ok(None) => return Err(CodegenObligationError::Ambiguity),
+        Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        Err(_) => return Err(CodegenObligationError::FulfillmentError),
     };
 
-    /// Attempts to resolve an obligation to an `ImplSource`. The result is
-    /// a shallow `ImplSource` resolution, meaning that we do not
-    /// (necessarily) resolve all nested obligations on the impl. Note
-    /// that type check should guarantee to us that all nested
-    /// obligations *could be* resolved if we wanted to.
-    ///
-    /// This also expects that `trait_ref` is fully normalized.
-    pub fn codegen_select_candidate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-    ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        // Do the initial selection for the obligation. This yields the
-        // shallow result we are looking for -- that is, what specific impl.
-        let infcx = tcx.infer_ctxt().ignoring_regions().build();
-        let mut selcx = SelectionContext::new(&infcx);
+    // Currently, we use a fulfillment context to completely resolve
+    // all nested obligations. This is because they can inform the
+    // inference of the impl's type parameters.
+    // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
+    let ocx = ObligationCtxt::new(&infcx);
+    let impl_source = selection.map(|obligation| {
+        ocx.register_obligation(obligation.clone());
+        ()
+    });
 
-        let obligation_cause = ObligationCause::dummy();
-        let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
-
-        let selection = match selcx.poly_select(&obligation) {
-            Ok(Some(selection)) => selection,
-            Ok(None) => return Err(CodegenObligationError::Ambiguity),
-            Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
-            Err(e) => {
-                panic!(
-                    "Encountered error `{:?}` selecting `{:?}` during codegen",
-                    e, trait_ref
-                )
-            }
-        };
-
-        // Currently, we use a fulfillment context to completely resolve
-        // all nested obligations. This is because they can inform the
-        // inference of the impl's type parameters.
-        // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
-        let ocx = ObligationCtxt::new(&infcx);
-        let impl_source = selection.map(|obligation| {
-            ocx.register_obligation(obligation.clone());
-            obligation
-        });
-
-        // In principle, we only need to do this so long as `impl_source`
-        // contains unbound type parameters. It could be a slight
-        // optimization to stop iterating early.
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            // `rustc_monomorphize::collector` assumes there are no type errors.
-            // Cycle errors are the only post-monomorphization errors possible; emit them now so
-            // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
-            for err in errors {
-                if let ScrubbedTraitError::Cycle(cycle) = err {
-                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
-                }
-            }
-            return Err(CodegenObligationError::FulfillmentError);
-        }
-
-        let impl_source = infcx.resolve_vars_if_possible(impl_source);
-        let impl_source = infcx.tcx.erase_regions(impl_source);
-
-        if impl_source.has_infer() {
-            // Unused lifetimes on an impl get replaced with inference vars, but never resolved,
-            // causing the return value of a query to contain inference vars. We do not have a concept
-            // for this and will in fact ICE in stable hashing of the return value. So bail out instead.
-            infcx.tcx.dcx().has_errors().unwrap();
-            return Err(CodegenObligationError::FulfillmentError);
-        }
-
-        Ok(impl_source)
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        return Err(CodegenObligationError::FulfillmentError);
     }
+
+    let impl_source = infcx.resolve_vars_if_possible(impl_source);
+    let impl_source = tcx.erase_regions(impl_source);
+
+    if impl_source.has_infer() {
+        // Unused lifetimes on an impl get replaced with inference vars, but never resolved.
+        return Err(CodegenObligationError::FulfillmentError);
+    }
+
+    Ok(impl_source)
 }
