@@ -1,12 +1,6 @@
 use hax_lib as hax;
 use libcrux::aead::{self, Algorithm};
 
-#[hax::opaque_type]
-pub struct Message(aead::Tag, Vec<u8>);
-
-#[hax::opaque_type]
-pub struct KeyIv(libcrux::aead::Key, libcrux::aead::Iv);
-
 const AEAD_KEY_NONCE: usize = Algorithm::key_size(Algorithm::Chacha20Poly1305)
     + Algorithm::nonce_size(Algorithm::Chacha20Poly1305);
 
@@ -15,6 +9,7 @@ const AEAD_KEY_LENGTH: usize = Algorithm::key_size(Algorithm::Chacha20Poly1305);
 const EMPTY_AAD: &[u8; 0] = b"";
 const RESPONSE_KEY_CONTEXT: &[u8; 12] = b"response-key";
 
+/* Type definitions */
 #[derive(Debug)]
 pub enum Error {
     CryptoError,
@@ -39,20 +34,14 @@ impl From<std::array::TryFromSliceError> for Error {
     }
 }
 
+#[hax::opaque_type]
+pub struct Message(aead::Tag, Vec<u8>);
+
+#[hax::opaque_type]
+pub struct KeyIv(libcrux::aead::Key, libcrux::aead::Iv);
+
+/* Wire formats */
 #[hax::pv_constructor]
-fn derive_key_iv(ikm: &[u8], info: &[u8]) -> Result<KeyIv, Error> {
-    let key_iv_bytes =
-        libcrux::hkdf::expand(libcrux::hkdf::Algorithm::Sha256, ikm, info, AEAD_KEY_NONCE)?;
-
-    let (key_bytes, iv_bytes) = key_iv_bytes.split_at(AEAD_KEY_LENGTH);
-    let key =
-        libcrux::aead::Key::from_slice(libcrux::aead::Algorithm::Chacha20Poly1305, key_bytes)?;
-
-    let iv = libcrux::aead::Iv(iv_bytes.try_into()?);
-    Ok(KeyIv(key, iv))
-}
-
-#[hax::proverif::replace("fun ${serialize_key_iv} ($:{KeyIv}): bitstring.")]
 fn serialize_key_iv(key_iv: &KeyIv) -> Vec<u8> {
     let mut result = Vec::new();
     result.extend_from_slice(key_iv.1 .0.as_ref());
@@ -69,6 +58,20 @@ fn serialize_key_iv(key_iv: &KeyIv) -> Vec<u8> {
 fn deserialize_key_iv(bytes: &[u8]) -> Result<KeyIv, Error> {
     let iv = aead::Iv::new(&bytes[..12])?;
     let key = aead::Key::from_slice(Algorithm::Chacha20Poly1305, &bytes[12..])?;
+    Ok(KeyIv(key, iv))
+}
+
+/* Cryptographic functions */
+#[hax::pv_constructor]
+fn derive_key_iv(ikm: &[u8], info: &[u8]) -> Result<KeyIv, Error> {
+    let key_iv_bytes =
+        libcrux::hkdf::expand(libcrux::hkdf::Algorithm::Sha256, ikm, info, AEAD_KEY_NONCE)?;
+
+    let (key_bytes, iv_bytes) = key_iv_bytes.split_at(AEAD_KEY_LENGTH);
+    let key =
+        libcrux::aead::Key::from_slice(libcrux::aead::Algorithm::Chacha20Poly1305, key_bytes)?;
+
+    let iv = libcrux::aead::Iv(iv_bytes.try_into()?);
     Ok(KeyIv(key, iv))
 }
 
@@ -93,6 +96,7 @@ fn decrypt(key_iv: &KeyIv, message: Message) -> Result<Vec<u8>, Error> {
     .map_err(|_| Error::CryptoError)
 }
 
+/* Protocol */
 pub fn initiate(ikm: &[u8], psk: &KeyIv) -> Result<(Message, KeyIv), Error> {
     let response_key_iv = derive_key_iv(ikm, RESPONSE_KEY_CONTEXT)?;
 
