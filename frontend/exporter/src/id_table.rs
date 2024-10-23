@@ -17,7 +17,10 @@
 /// deserialization. This modules provides an API that hides this
 /// global state.
 use crate::prelude::*;
-use std::sync::{atomic::Ordering, Arc, LazyLock, Mutex};
+use std::{
+    hash::{Hash, Hasher},
+    sync::{atomic::Ordering, Arc, LazyLock, Mutex},
+};
 
 /// Unique IDs in a ID table.
 #[derive_group(Serializers)]
@@ -47,12 +50,21 @@ pub enum Value {
 }
 
 /// A node is a bundle of an ID with a value.
-#[derive(Deserialize, Serialize, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Deserialize, Serialize, Debug, JsonSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(into = "serde_repr::NodeRepr<T>")]
 #[serde(try_from = "serde_repr::NodeRepr<T>")]
 pub struct Node<T: 'static + SupportedType> {
     id: Id,
     value: Arc<T>,
+}
+
+/// Hax relies on hashes being deterministic for predicates
+/// ids. Identifiers are not deterministic: we implement hash for
+/// `Node` manually, discarding the field `id`.
+impl<T: SupportedType + Hash> Hash for Node<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.as_ref().hash(state);
+    }
 }
 
 /// Manual implementation of `Clone` that doesn't require a `Clone`
