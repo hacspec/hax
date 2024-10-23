@@ -37,11 +37,11 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
 #[cfg(feature = "rustc")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
-        if let Some(def_id) = s.with_item_cache(*self, |cache, _| cache.def_id.clone()) {
+        if let Some(def_id) = s.with_item_cache(*self, |cache| cache.def_id.clone()) {
             return def_id;
         }
         let def_id = translate_def_id(s, *self);
-        s.with_item_cache(*self, |cache, _| cache.def_id = Some(def_id.clone()));
+        s.with_item_cache(*self, |cache| cache.def_id = Some(def_id.clone()));
         def_id
     }
 }
@@ -1793,12 +1793,14 @@ pub type Ty = id_table::Node<TyKind>;
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
-        if let Some(ty) = s.with_cache(|cache, _| cache.tys.get(self).cloned()) {
+        if let Some(ty) = s.with_cache(|cache| cache.tys.get(self).cloned()) {
             return ty;
         }
         let ty_kind: TyKind = self.kind().sinto(s);
-        s.with_cache(|cache, seed| {
-            let ty = id_table::Node::new(ty_kind, seed);
+        s.with_global_cache(|cache| {
+            let table_session = &mut cache.id_table_session;
+            let cache = cache.per_item.entry(s.owner_id()).or_default();
+            let ty = id_table::Node::new(ty_kind, table_session);
             cache.tys.insert(*self, ty.clone());
             ty
         })

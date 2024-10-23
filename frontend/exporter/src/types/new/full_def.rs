@@ -33,7 +33,7 @@ pub struct FullDef {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
     fn sinto(&self, s: &S) -> Arc<FullDef> {
-        if let Some(full_def) = s.with_item_cache(*self, |cache, _| cache.full_def.clone()) {
+        if let Some(full_def) = s.with_item_cache(*self, |cache| cache.full_def.clone()) {
             return full_def;
         }
         let tcx = s.base().tcx;
@@ -65,7 +65,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
             kind,
         };
         let full_def: Arc<FullDef> = Arc::new(full_def);
-        s.with_item_cache(*self, |cache, _| cache.full_def = Some(full_def.clone()));
+        s.with_item_cache(*self, |cache| cache.full_def = Some(full_def.clone()));
         full_def
     }
 }

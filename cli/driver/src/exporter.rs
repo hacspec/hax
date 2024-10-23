@@ -140,7 +140,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
     state.base.macro_infos = Rc::new(macro_calls);
     for (def_id, thir) in precompute_local_thir_bodies(tcx) {
-        state.with_item_cache(def_id, |caches, _| caches.thir = Some(thir));
+        state.with_item_cache(def_id, |caches| caches.thir = Some(thir));
     }
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);

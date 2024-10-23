@@ -152,10 +152,10 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    if let Some(impl_expr) = s.with_cache(|cache, _| cache.impl_exprs.get(&trait_ref).cloned()) {
+    if let Some(impl_expr) = s.with_cache(|cache| cache.impl_exprs.get(&trait_ref).cloned()) {
         return impl_expr;
     }
-    let resolved = s.with_cache(|cache, _| {
+    let resolved = s.with_cache(|cache| {
         cache
             .predicate_searcher
             .get_or_insert_with(|| PredicateSearcher::new_for_owner(s.base().tcx, s.owner_id()))
@@ -165,7 +165,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),
     };
-    s.with_cache(|cache, _| cache.impl_exprs.insert(trait_ref, impl_expr.clone()));
+    s.with_cache(|cache| cache.impl_exprs.insert(trait_ref, impl_expr.clone()));
     impl_expr
 }
 
