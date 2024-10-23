@@ -12,3 +12,6 @@ description = "Dummy crate containing all the Rust names the hax engine should b
 [dependencies]
 hax-lib-protocol = {path = "../../hax-lib-protocol"}
 hax-lib = {path = "../../hax-lib"}
+
+[package.metadata.release]
+release = false
