@@ -172,50 +172,40 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     impl_expr
 }
 
-/// Solve the trait obligations for a specific item use (for example, a method call, an ADT, etc.).
-///
-/// [predicates]: optional predicates, in case we want to solve custom predicates (instead of the
-/// ones returned by [TyCtxt::predicates_defined_on].
+/// Solve the trait obligations for a specific item use (for example, a method call, an ADT, etc.)
+/// in the current context.
 #[cfg(feature = "rustc")]
 #[tracing::instrument(level = "trace", skip(s), ret)]
 pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     def_id: RDefId,
     generics: ty::GenericArgsRef<'tcx>,
-    predicates_of: Option<RDefId>,
 ) -> Vec<ImplExpr> {
     let tcx = s.base().tcx;
     let param_env = s.param_env();
 
-    let mut impl_exprs = Vec::new();
-
-    let predicates_of = predicates_of.unwrap_or(def_id);
     // We can't use `required_predicates` alone because this is called to resolve trait implied
     // predicates too.
     // TODO: stop doing that
-    let predicates: Vec<_> = match tcx.def_kind(predicates_of) {
-        rustc_hir::def::DefKind::Trait => implied_predicates(tcx, predicates_of).collect(),
-        _ => required_predicates(tcx, predicates_of).collect(),
+    let predicates: Vec<_> = match tcx.def_kind(def_id) {
+        rustc_hir::def::DefKind::Trait => implied_predicates(tcx, def_id).collect(),
+        _ => required_predicates(tcx, def_id).collect(),
     };
 
-    for pred in predicates {
-        // Explore only the trait predicates
-        if let Some(trait_clause) = pred.as_trait_clause() {
-            let poly_trait_ref = trait_clause.map_bound(|clause| clause.trait_ref);
-            // Apply the substitution
-            let poly_trait_ref =
-                rustc_middle::ty::EarlyBinder::bind(poly_trait_ref).instantiate(tcx, generics);
-            // Warning: this erases regions. We don't really have a way to normalize without
-            // erasing regions, but this may cause problems in trait solving if there are trait
-            // impls that include `'static` lifetimes.
-            let poly_trait_ref = tcx
-                .try_normalize_erasing_regions(param_env, poly_trait_ref)
-                .unwrap_or(poly_trait_ref);
-            let impl_expr = solve_trait(s, poly_trait_ref);
-            impl_exprs.push(impl_expr);
-        }
-    }
-    impl_exprs
+    predicates
+        .into_iter()
+        .filter_map(|clause| clause.as_trait_clause())
+        .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+        // Substitute the item generics
+        .map(|trait_ref| ty::EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
+        // We unfortunately don't have a way to normalize without erasing regions.
+        .map(|trait_ref| {
+            tcx.try_normalize_erasing_regions(param_env, trait_ref)
+                .unwrap_or(trait_ref)
+        })
+        // Resolve
+        .map(|trait_ref| solve_trait(s, trait_ref))
+        .collect()
 }
 
 /// Retrieve the `Self: Trait` clause for a trait associated item.

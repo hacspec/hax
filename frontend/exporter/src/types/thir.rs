@@ -589,7 +589,7 @@ pub enum ExprKind {
                     Some((impl_expr, assoc_generics))
                 })();
                 generic_args = translated_generics;
-                bounds_impls = solve_item_traits(gstate, *def_id, generics, None);
+                bounds_impls = solve_item_traits(gstate, *def_id, generics);
                 Expr {
                     contents,
                     span: e.span.sinto(gstate),
