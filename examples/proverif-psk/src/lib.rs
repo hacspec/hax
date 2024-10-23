@@ -1,15 +1,10 @@
 use hax_lib as hax;
 use libcrux::aead::{self, Algorithm};
 
-#[hax::proverif::replace("type $:{Message}.
-const $:{Message}_default_value: $:{Message}.
-letfun $:{Message}_default() =
-       $:{Message}_default_value.
-letfun $:{Message}_err() =
-       let x = construct_fail() in $:{Message}_default_value.")]
+#[hax::opaque_type]
 pub struct Message(aead::Tag, Vec<u8>);
 
-#[hax::proverif::replace("type $:{KeyIv}.")]
+#[hax::opaque_type]
 pub struct KeyIv(libcrux::aead::Key, libcrux::aead::Iv);
 
 const AEAD_KEY_NONCE: usize = Algorithm::key_size(Algorithm::Chacha20Poly1305)
@@ -44,7 +39,7 @@ impl From<std::array::TryFromSliceError> for Error {
     }
 }
 
-#[hax::pv_constructor] // or cleaner with `proverif::replace()`?
+#[hax::pv_constructor]
 fn derive_key_iv(ikm: &[u8], info: &[u8]) -> Result<KeyIv, Error> {
     let key_iv_bytes =
         libcrux::hkdf::expand(libcrux::hkdf::Algorithm::Sha256, ikm, info, AEAD_KEY_NONCE)?;
@@ -68,8 +63,9 @@ fn serialize_key_iv(key_iv: &KeyIv) -> Vec<u8> {
     result
 }
 
-
-#[hax::proverif::replace("reduc forall k: ${KeyIv}; ${deserialize_key_iv}(${serialize_key_iv}(k)) = k.")]
+#[hax::proverif::replace(
+    "reduc forall k: $:{KeyIv}; ${deserialize_key_iv}(${serialize_key_iv}(k)) = k."
+)]
 fn deserialize_key_iv(bytes: &[u8]) -> Result<KeyIv, Error> {
     let iv = aead::Iv::new(&bytes[..12])?;
     let key = aead::Key::from_slice(Algorithm::Chacha20Poly1305, &bytes[12..])?;
@@ -83,7 +79,9 @@ pub fn encrypt(key_iv: &KeyIv, message: &[u8]) -> Result<Message, Error> {
     Ok(Message(tag, ctxt))
 }
 
-#[hax::proverif::replace("reduc forall m: bitstring, k: $:{KeyIv}; ${decrypt}(k, ${encrypt}(k, m)) = m.")]
+#[hax::proverif::replace(
+    "reduc forall m: bitstring, k: $:{KeyIv}; ${decrypt}(k, ${encrypt}(k, m)) = m."
+)]
 fn decrypt(key_iv: &KeyIv, message: Message) -> Result<Vec<u8>, Error> {
     libcrux::aead::decrypt_detached(
         &key_iv.0,

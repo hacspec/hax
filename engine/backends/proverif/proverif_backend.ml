@@ -603,23 +603,30 @@ module Make (Options : OPTS) : MAKE = struct
                   (string "let x = construct_fail() in "
                   ^^ print#default_value type_name_doc)
               in
-
-              if is_struct then
-                let struct_constructor = List.hd variants in
-                match struct_constructor with
-                | None -> empty
-                | Some constructor ->
-                    type_line ^^ hardline ^^ to_bitstring_converter_line
-                    ^^ hardline ^^ from_bitstring_converter_line ^^ hardline
-                    ^^ default_line ^^ hardline ^^ err_line ^^ hardline
-                    ^^ fun_and_reduc name constructor
-              else
+              let default_lines =
                 type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
                 ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
                 ^^ hardline ^^ err_line ^^ hardline
-                ^^ separate_map hardline
-                     (fun variant -> fun_and_reduc name variant)
-                     variants
+              in
+              let destructor_lines =
+                if is_struct then
+                  let struct_constructor = List.hd variants in
+                  match struct_constructor with
+                  | None -> empty
+                  | Some constructor -> fun_and_reduc name constructor
+                else
+                  separate_map hardline
+                    (fun variant -> fun_and_reduc name variant)
+                    variants
+              in
+              if
+                Attrs.find_unique_attr item.attrs
+                  ~f:
+                    ([%eq: Types.ha_payload] OpaqueType
+                    >> Fn.flip Option.some_if ())
+                |> Option.is_some
+              then default_lines
+              else default_lines ^^ destructor_lines
           | Quote { quote; _ } -> print#quote quote
           | _ -> empty
 
