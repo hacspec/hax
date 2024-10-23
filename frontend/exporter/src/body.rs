@@ -22,7 +22,7 @@ mod module {
         rustc_middle::thir::ExprId,
     ) {
         let tcx = s.base().tcx;
-        s.with_item_cache(did.to_def_id(), |caches| {
+        s.with_item_cache(did.to_def_id(), |caches, _| {
             let msg = || fatal!(s[tcx.def_span(did)], "THIR not found for {:?}", did);
             caches.thir.as_ref().unwrap_or_else(msg).clone()
         })

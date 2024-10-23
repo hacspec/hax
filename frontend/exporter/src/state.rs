@@ -126,6 +126,8 @@ mod types {
         pub spans: HashMap<rustc_span::Span, Span>,
         /// Per-item cache.
         pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+        /// A ID table session, providing fresh IDs.
+        pub id_table_session: id_table::Session,
     }
 
     /// Per-item cache
@@ -319,8 +321,17 @@ pub trait WithGlobalCacheExt<'tcx>: BaseState<'tcx> {
     }
     /// Access the cache for a given item. You must not call `sinto` within this function as this
     /// will likely result in `BorrowMut` panics.
-    fn with_item_cache<T>(&self, def_id: RDefId, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
-        self.with_global_cache(|cache| f(cache.per_item.entry(def_id).or_default()))
+    fn with_item_cache<T>(
+        &self,
+        def_id: RDefId,
+        f: impl FnOnce(&mut ItemCache<'tcx>, &mut id_table::Session) -> T,
+    ) -> T {
+        self.with_global_cache(|cache| {
+            f(
+                cache.per_item.entry(def_id).or_default(),
+                &mut cache.id_table_session,
+            )
+        })
     }
 }
 impl<'tcx, S: BaseState<'tcx>> WithGlobalCacheExt<'tcx> for S {}
@@ -328,7 +339,10 @@ impl<'tcx, S: BaseState<'tcx>> WithGlobalCacheExt<'tcx> for S {}
 pub trait WithItemCacheExt<'tcx>: UnderOwnerState<'tcx> {
     /// Access the cache for the current item. You must not call `sinto` within this function as
     /// this will likely result in `BorrowMut` panics.
-    fn with_cache<T>(&self, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+    fn with_cache<T>(
+        &self,
+        f: impl FnOnce(&mut ItemCache<'tcx>, &mut id_table::Session) -> T,
+    ) -> T {
         self.with_item_cache(self.owner_id(), f)
     }
 }

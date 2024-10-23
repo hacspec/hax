@@ -49,6 +49,7 @@ cfg_feature_rustc! {
 
 mod body;
 mod constant_utils;
+pub mod id_table;
 mod types;
 
 mod index_vec;

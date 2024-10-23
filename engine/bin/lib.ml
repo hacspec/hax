@@ -140,10 +140,51 @@ let run (options : Types.engine_options) : Types.output =
     debug_json = None;
   }
 
+(** Shallow parses a `id_table::Node<T>` (or a raw `T`) JSON *)
+let parse_id_table_node (json : Yojson.Safe.t) :
+    (int64 * Yojson.Safe.t) list option * Yojson.Safe.t =
+  let expect_assoc = function
+    | `Assoc alist -> Some (List.Assoc.find ~equal:[%eq: string] alist)
+    | _ -> None
+  in
+  let expect_uint64 = function
+    | `Intlit str -> Some (Int64.of_string str)
+    | `Int id -> Some (Int.to_int64 id)
+    | _ -> None
+  in
+  (let* assoc = expect_assoc json in
+   let* table = assoc "table" in
+   let* value = assoc "value" in
+   let table =
+     match table with
+     | `List json_list -> json_list
+     | _ -> failwith "parse_cached: `map` is supposed to be a list"
+   in
+   let table =
+     List.map
+       ~f:(function
+         | `List [ id; `Assoc [ (_, contents) ] ] ->
+             let id =
+               expect_uint64 id
+               |> Option.value_exn ~message:"parse_cached: id: expected int64"
+             in
+             (id, contents)
+         | _ -> failwith "parse_cached: expected a list of size two")
+       table
+   in
+   Some (Some table, value))
+  |> Option.value ~default:(None, json)
+
 (** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
 let main () =
   let options =
-    Hax_io.read_json () |> Option.value_exn |> Types.parse_engine_options
+    let table, json =
+      Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
+    in
+    table |> Option.value ~default:[]
+    |> List.iter ~f:(fun (id, json) ->
+           Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
+    Types.parse_engine_options json
   in
   Printexc.record_backtrace true;
   let result =

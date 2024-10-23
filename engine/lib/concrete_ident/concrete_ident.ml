@@ -266,7 +266,7 @@ module View = struct
   open Utils
 
   let simple_ty_to_string ~(namespace : Imported.def_id) :
-      Types.ty -> string option =
+      Types.node_for__ty_kind -> string option =
     let escape =
       let re = Re.Pcre.regexp "_((?:e_)*)of_" in
       let f group = "_e_" ^ Re.Group.get group 1 ^ "of_" in
@@ -284,8 +284,8 @@ module View = struct
       last.data |> Imported.of_def_path_item |> string_of_def_path_item
       |> Option.map ~f:escape
     in
-    let arity0 (ty : Types.ty) =
-      match ty.Types.kind with
+    let arity0 (ty : Types.node_for__ty_kind) =
+      match ty.Types.value with
       | Bool -> Some "bool"
       | Char -> Some "char"
       | Str -> Some "str"
@@ -310,8 +310,8 @@ module View = struct
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
-    let rec arity1 (ty : Types.ty) =
-      match ty.kind with
+    let rec arity1 (ty : Types.node_for__ty_kind) =
+      match ty.value with
       | Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
       | Adt { def_id; generic_args = [ Type arg ]; _ } ->

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
@@ -38,11 +37,11 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
 #[cfg(feature = "rustc")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
-        if let Some(def_id) = s.with_item_cache(*self, |cache| cache.def_id.clone()) {
+        if let Some(def_id) = s.with_item_cache(*self, |cache, _| cache.def_id.clone()) {
             return def_id;
         }
         let def_id = translate_def_id(s, *self);
-        s.with_item_cache(*self, |cache| cache.def_id = Some(def_id.clone()));
+        s.with_item_cache(*self, |cache, _| cache.def_id = Some(def_id.clone()));
         def_id
     }
 }
@@ -909,49 +908,6 @@ pub struct Span {
     pub rust_span_data: Option<()>,
     // expn_backtrace: Vec<ExpnData>,
 }
-
-/// We need to define manual `impl`s of `Span`: we want to skip the
-/// field `rust_span_data`. The derive macros from `bincode` don't
-/// allow that, see https://github.com/bincode-org/bincode/issues/452.
-const _: () = {
-    impl bincode::Encode for Span {
-        fn encode<E: bincode::enc::Encoder>(
-            &self,
-            encoder: &mut E,
-        ) -> core::result::Result<(), bincode::error::EncodeError> {
-            bincode::Encode::encode(&self.lo, encoder)?;
-            bincode::Encode::encode(&self.hi, encoder)?;
-            bincode::Encode::encode(&self.filename, encoder)?;
-            Ok(())
-        }
-    }
-
-    impl bincode::Decode for Span {
-        fn decode<D: bincode::de::Decoder>(
-            decoder: &mut D,
-        ) -> core::result::Result<Self, bincode::error::DecodeError> {
-            Ok(Self {
-                lo: bincode::Decode::decode(decoder)?,
-                hi: bincode::Decode::decode(decoder)?,
-                filename: bincode::Decode::decode(decoder)?,
-                rust_span_data: None,
-            })
-        }
-    }
-
-    impl<'de> bincode::BorrowDecode<'de> for Span {
-        fn borrow_decode<D: bincode::de::BorrowDecoder<'de>>(
-            decoder: &mut D,
-        ) -> core::result::Result<Self, bincode::error::DecodeError> {
-            Ok(Self {
-                lo: bincode::BorrowDecode::borrow_decode(decoder)?,
-                hi: bincode::BorrowDecode::borrow_decode(decoder)?,
-                filename: bincode::BorrowDecode::borrow_decode(decoder)?,
-                rust_span_data: None,
-            })
-        }
-    }
-};
 
 const _: () = {
     // `rust_span_data` is a metadata that should *not* be taken into
@@ -1832,29 +1788,20 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<
 }
 
 /// Reflects [`rustc_middle::ty::Ty`]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Ty {
-    pub kind: Arc<TyKind>,
-}
-
-impl Ty {
-    pub fn kind(&self) -> &TyKind {
-        self.kind.as_ref()
-    }
-}
+pub type Ty = id_table::Node<TyKind>;
 
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
-        if let Some(ty) = s.with_cache(|cache| cache.tys.get(self).cloned()) {
+        if let Some(ty) = s.with_cache(|cache, _| cache.tys.get(self).cloned()) {
             return ty;
         }
-        let ty = Ty {
-            kind: Arc::new(self.kind().sinto(s)),
-        };
-        s.with_cache(|cache| cache.tys.insert(*self, ty.clone()));
-        ty
+        let ty_kind: TyKind = self.kind().sinto(s);
+        s.with_cache(|cache, seed| {
+            let ty = id_table::Node::new(ty_kind, seed);
+            cache.tys.insert(*self, ty.clone());
+            ty
+        })
     }
 }
 

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::process;
 
 mod engine_debug_webapp;
+use hax_frontend_exporter::id_table;
 
 /// Return a toolchain argument to pass to `cargo`: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure `rustup` is available
@@ -199,6 +200,7 @@ impl HaxMessage {
 /// Runs `hax-engine`
 fn run_engine(
     haxmeta: HaxMeta<hax_frontend_exporter::ThirBody>,
+    id_table: id_table::Table,
     working_dir: PathBuf,
     manifest_dir: PathBuf,
     backend: &BackendOptions<()>,
@@ -246,7 +248,9 @@ fn run_engine(
             };
         }
 
-        send!(&engine_options);
+        id_table::WithTable::run(id_table, engine_options, |with_table| {
+            send!(with_table);
+        });
 
         let out_dir = backend.output_dir.clone().unwrap_or({
             let relative_path: PathBuf = [
@@ -466,26 +470,39 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
             output_file,
             kind,
             include_extra,
+            use_ids,
             ..
         } => {
             with_kind_type!(kind, <Body>|| {
                 for EmitHaxMetaMessage { path, .. } in haxmeta_files {
-                    let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
+                    let (haxmeta, id_table): (HaxMeta<Body>, _) = HaxMeta::read(fs::File::open(&path).unwrap());
                     let dest = output_file.open_or_stdout();
+
                     (if include_extra {
-                        serde_json::to_writer(
-                            dest,
-                            &WithDefIds {
-                                def_ids: haxmeta.def_ids,
-                                impl_infos: haxmeta.impl_infos,
-                                items: haxmeta.items,
-                                comments: haxmeta.comments,
-                            },
-                        )
+                        let data = WithDefIds {
+                            def_ids: haxmeta.def_ids,
+                            impl_infos: haxmeta.impl_infos,
+                            items: haxmeta.items,
+                            comments: haxmeta.comments,
+                        };
+                        if use_ids {
+                            id_table::WithTable::run(id_table, data, |with_table| {
+                                serde_json::to_writer(dest, with_table)
+                            })
+                        } else {
+                            serde_json::to_writer(dest, &data)
+                        }
                     } else {
-                        serde_json::to_writer(dest, &haxmeta.items)
+                        if use_ids {
+                            id_table::WithTable::run(id_table, haxmeta.items, |with_table| {
+                                serde_json::to_writer(dest, with_table)
+                            })
+                        } else {
+                            serde_json::to_writer(dest, &haxmeta.items)
+                        }
                     })
                         .unwrap()
+
                 }
             });
             false
@@ -508,11 +525,13 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                 path,
             } in haxmeta_files
             {
-                let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
+                let (haxmeta, id_table): (HaxMeta<Body>, _) =
+                    HaxMeta::read(fs::File::open(&path).unwrap());
 
                 error = error
                     || run_engine(
                         haxmeta,
+                        id_table,
                         working_dir,
                         manifest_dir,
                         &backend,
