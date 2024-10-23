@@ -115,7 +115,12 @@ pub enum FullDefKind {
         #[value({
             use ty::Upcast;
             let tcx = s.base().tcx;
-            let pred: ty::TraitPredicate = ty::TraitRef::identity(tcx, s.owner_id()).upcast(tcx);
+            let pred: ty::TraitPredicate =
+                crate::traits::self_predicate(tcx, s.owner_id())
+                    .unwrap()
+                    .no_bound_vars()
+                    .unwrap()
+                    .upcast(tcx);
             pred.sinto(s)
         })]
         self_predicate: TraitPredicate,

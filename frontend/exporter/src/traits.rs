@@ -5,10 +5,14 @@ mod resolution;
 #[cfg(feature = "rustc")]
 mod utils;
 #[cfg(feature = "rustc")]
-pub use utils::erase_and_norm;
+pub use utils::{erase_and_norm, implied_predicates, required_predicates, self_predicate};
 
 #[cfg(feature = "rustc")]
 pub use resolution::PredicateSearcher;
+#[cfg(feature = "rustc")]
+use rustc_middle::ty;
+#[cfg(feature = "rustc")]
+use rustc_span::def_id::DefId as RDefId;
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: resolution::PathChunk<'tcx>, state: S as s)]
@@ -31,7 +35,7 @@ pub enum ImplExprPathChunk {
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
-        /// The index of this predicate in the list returned by `tcx.item_bounds`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
     Parent {
@@ -39,7 +43,7 @@ pub enum ImplExprPathChunk {
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
-        /// The index of this predicate in the list returned by `tcx.predicates_of`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
 }
@@ -66,8 +70,7 @@ pub enum ImplExprAtom {
         })]
         predicate_id: PredicateId,
         /// The nth (non-self) predicate found for this item. We use predicates from
-        /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
-        /// type, we also append the predicates from `explicit_item_bounds` to this list.
+        /// `required_predicates` starting from the parentmost item.
         index: usize,
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
@@ -177,23 +180,25 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 #[tracing::instrument(level = "trace", skip(s), ret)]
 pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
-    def_id: rustc_hir::def_id::DefId,
-    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
-    predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
+    def_id: RDefId,
+    generics: ty::GenericArgsRef<'tcx>,
+    predicates_of: Option<RDefId>,
 ) -> Vec<ImplExpr> {
     let tcx = s.base().tcx;
     let param_env = s.param_env();
 
     let mut impl_exprs = Vec::new();
 
-    // Lookup the predicates and iter through them: we want to solve all the
-    // trait requirements.
-    // IMPORTANT: we use [TyCtxt::predicates_defined_on] and not [TyCtxt::predicated_of]
-    let predicates = match predicates {
-        None => tcx.predicates_defined_on(def_id),
-        Some(preds) => preds,
+    let predicates_of = predicates_of.unwrap_or(def_id);
+    // We can't use `required_predicates` alone because this is called to resolve trait implied
+    // predicates too.
+    // TODO: stop doing that
+    let predicates: Vec<_> = match tcx.def_kind(predicates_of) {
+        rustc_hir::def::DefKind::Trait => implied_predicates(tcx, predicates_of).collect(),
+        _ => required_predicates(tcx, predicates_of).collect(),
     };
-    for (pred, _) in predicates.predicates {
+
+    for pred in predicates {
         // Explore only the trait predicates
         if let Some(trait_clause) = pred.as_trait_clause() {
             let poly_trait_ref = trait_clause.map_bound(|clause| clause.trait_ref);
@@ -220,18 +225,16 @@ pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
     assoc: &rustc_middle::ty::AssocItem,
     generics: rustc_middle::ty::GenericArgsRef<'tcx>,
 ) -> Option<ImplExpr> {
+    use rustc_middle::ty::EarlyBinder;
     let tcx = s.base().tcx;
 
-    // Retrieve the trait
     let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
+    // The "self" predicate in the context of the trait.
+    let self_pred = self_predicate(tcx, tr_def_id).unwrap();
+    // Substitute to be in the context of the current item.
+    let generics = generics.truncate_to(tcx, tcx.generics_of(tr_def_id));
+    let self_pred = EarlyBinder::bind(self_pred).instantiate(tcx, generics);
 
-    // Create the reference to the trait
-    use rustc_middle::ty::TraitRef;
-    let tr_generics = tcx.generics_of(tr_def_id);
-    let generics = generics.truncate_to(tcx, tr_generics);
-    let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
-    let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
-
-    // Solve
-    Some(solve_trait(s, tr_ref))
+    // Resolve
+    Some(solve_trait(s, self_pred))
 }

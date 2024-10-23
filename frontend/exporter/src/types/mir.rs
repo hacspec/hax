@@ -978,15 +978,14 @@ pub enum AggregateKind {
         let closure = generics.as_closure();
         let sig = closure.sig().sinto(s);
 
-        // Solve the trait obligations. Note that we solve the parent
+        // Solve the predicates from the parent (i.e., the function which calls the closure).
         let tcx = s.base().tcx;
         let parent_generics = closure.parent_args();
         let generics = tcx.mk_args(parent_generics);
-        // Retrieve the predicates from the parent (i.e., the function which calls
-        // the closure).
-        let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
+        // TODO: does this handle nested closures?
+        let parent = tcx.generics_of(rust_id).parent.unwrap();
+        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(parent));
 
-        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),

@@ -10,6 +10,8 @@ use rustc_middle::ty::*;
 
 use crate::traits::utils::erase_and_norm;
 
+use super::utils::{implied_predicates, required_predicates};
+
 #[derive(Debug, Clone)]
 pub enum PathChunk<'tcx> {
     AssocItem {
@@ -26,13 +28,13 @@ pub enum PathChunk<'tcx> {
         impl_exprs: Vec<ImplExpr<'tcx>>,
         /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The index of this predicate in the list returned by `tcx.item_bounds`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
     Parent {
         /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The index of this predicate in the list returned by `tcx.predicates_of`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
 }
@@ -49,9 +51,7 @@ pub enum ImplExprAtom<'tcx> {
     LocalBound {
         predicate: Predicate<'tcx>,
         /// The nth (non-self) predicate found for this item. We use predicates from
-        /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an
-        /// opaque type, we also append the predicates from `explicit_item_bounds` to this
-        /// list.
+        /// `required_predicates` starting from the parentmost item.
         index: usize,
         r#trait: PolyTraitRef<'tcx>,
         path: Path<'tcx>,
@@ -92,8 +92,7 @@ pub enum BoundPredicateOrigin {
     /// don't add it for trait implementations, should we?).
     SelfPred,
     /// The nth (non-self) predicate found for this item. We use predicates from
-    /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
-    /// type, we also append the predicates from `explicit_item_bounds` to this list.
+    /// `required_predicates` starting from the parentmost item.
     Item(usize),
 }
 
@@ -132,12 +131,10 @@ fn parents_trait_predicates<'tcx>(
     pred: PolyTraitPredicate<'tcx>,
 ) -> Vec<PolyTraitPredicate<'tcx>> {
     let self_trait_ref = pred.to_poly_trait_ref();
-    tcx.predicates_of(pred.def_id())
-        .predicates
-        .iter()
+    implied_predicates(tcx, pred.def_id())
         // Substitute with the `self` args so that the clause makes sense in the
         // outside context.
-        .map(|(clause, _span)| clause.instantiate_supertrait(tcx, self_trait_ref))
+        .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
         .filter_map(|pred| pred.as_trait_clause())
         .collect()
 }
@@ -245,13 +242,11 @@ impl<'tcx> PredicateSearcher<'tcx> {
             return Ok(());
         };
 
-        // The bounds that the associated type must validate.
-        let item_bounds = tcx
-            // TODO: `item_bounds` can contain parent traits, we don't want them
-            .item_bounds(alias_ty.def_id)
-            .instantiate(tcx, alias_ty.args)
-            .iter()
+        // The bounds that hold on the associated type.
+        let item_bounds = implied_predicates(tcx, alias_ty.def_id)
             .filter_map(|pred| pred.as_trait_clause())
+            // Substitute the item generics
+            .map(|pred| EarlyBinder::bind(pred).instantiate(tcx, alias_ty.args))
             .enumerate();
 
         // Resolve predicates required to mention the item.
@@ -404,10 +399,8 @@ impl<'tcx> PredicateSearcher<'tcx> {
         warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         let tcx = self.tcx;
-        tcx.predicates_defined_on(def_id)
-            .predicates
-            .into_iter()
-            .filter_map(|(pred, _)| pred.as_trait_clause())
+        required_predicates(tcx, def_id)
+            .filter_map(|clause| clause.as_trait_clause())
             .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
             // Substitute the item generics
             .map(|trait_ref| EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
