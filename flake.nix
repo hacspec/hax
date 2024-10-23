@@ -56,6 +56,7 @@
             cat "${hax-env-file}" | xargs -I{} echo "export {}"
           fi
         '';
+        ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
@@ -73,7 +74,7 @@
               #!${pkgs.stdenv.shell}
               ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
             '';
-            inherit rustc;
+            inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
@@ -162,11 +163,11 @@
           };
           packages = [
             ocamlformat
-            pkgs.ocamlPackages.ocaml-lsp
-            pkgs.ocamlPackages.ocamlformat-rpc-lib
-            pkgs.ocamlPackages.ocaml-print-intf
-            pkgs.ocamlPackages.odoc
-            pkgs.ocamlPackages.utop
+            ocamlPackages.ocaml-lsp
+            ocamlPackages.ocamlformat-rpc-lib
+            ocamlPackages.ocaml-print-intf
+            ocamlPackages.odoc
+            ocamlPackages.utop
 
             pkgs.just
             pkgs.cargo-expand

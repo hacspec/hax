@@ -195,21 +195,21 @@ module Raw = struct
     | PWild -> !"_"
     | PAscription { typ; pat; _ } ->
         !"pat_ascription!(" & ppat pat & !" as " & pty e.span typ & !")"
-    | PConstruct { name; args; is_record; _ } ->
-        pglobal_ident e.span name
+    | PConstruct { constructor; fields; is_record; _ } ->
+        pglobal_ident e.span constructor
         &
-        if List.is_empty args then !""
+        if List.is_empty fields then !""
         else if is_record then
           !"{"
           & concat ~sep:!", "
               (List.map
                  ~f:(fun { field; pat } ->
                    !(last_of_global_ident field e.span) & !":" & ppat pat)
-                 args)
+                 fields)
           & !"}"
         else
           !"("
-          & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) args)
+          & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
           & !")"
     | POr { subpats } -> concat ~sep:!" | " (List.map ~f:ppat subpats)
     | PArray { args } -> !"[" & concat ~sep:!"," (List.map ~f:ppat args) & !"]"
@@ -344,7 +344,7 @@ module Raw = struct
         | None -> main)
     | Break { e; _ } -> !"(break (" & pexpr e & !"))"
     | Continue { e = None; _ } -> !"continue"
-    | Continue { e = Some (_, e); _ } ->
+    | Continue { e = Some (e, _); _ } ->
         !"state_passing_continue!(" & pexpr e & !")"
     | Return { e; _ } -> !"(return " & pexpr e & !")"
     | QuestionMark { e; _ } -> !"(" & pexpr e & !")?"
@@ -576,7 +576,7 @@ module Raw = struct
         | Impl { generics; self_ty; of_trait; items; parent_bounds = _; safety }
           ->
             let trait =
-              pglobal_ident e.span (fst of_trait)
+              pglobal_ident e.span (`Concrete (fst of_trait))
               & !"<"
               & concat ~sep:!","
                   (List.map ~f:(pgeneric_value e.span) (snd of_trait))
@@ -592,7 +592,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
             & !"}"
-        | Quote quote -> pquote e.span quote & !";"
+        | Quote { quote; _ } -> pquote e.span quote & !";"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi
@@ -661,37 +661,82 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   if String.equal rf "no" then x
   else try rustfmt_annotated' x with RetokenizationFailure -> x
 
-let pitem : item -> AnnotatedString.Output.t =
-  Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
+module type T = sig
+  val pitem : item -> AnnotatedString.Output.t
+  val pitems : item list -> AnnotatedString.Output.t
+  val pitem_str : item -> string
+  val pexpr_str : expr -> string
+  val pty_str : ty -> string
+end
 
-let pitems : item list -> AnnotatedString.Output.t =
-  List.concat_map ~f:Raw.pitem
-  >> rustfmt_annotated >> AnnotatedString.Output.convert
+module Traditional : T = struct
+  let pitem : item -> AnnotatedString.Output.t =
+    Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
 
-let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
+  let pitems : item list -> AnnotatedString.Output.t =
+    List.concat_map ~f:Raw.pitem
+    >> rustfmt_annotated >> AnnotatedString.Output.convert
 
-let pty_str (e : ty) : string =
-  let e = Raw.pty (Span.dummy ()) e in
-  let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
-  let ( & ) = AnnotatedString.( & ) in
-  let prefix = "type TypeWrapper = " in
-  let suffix = ";" in
-  let item = !prefix & e & !suffix in
-  rustfmt_annotated item |> AnnotatedString.Output.convert
-  |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
-  |> String.chop_suffix_if_exists ~suffix
-  |> String.chop_prefix_if_exists ~prefix
-  |> Stdlib.String.trim
+  let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
 
-let pexpr_str (e : expr) : string =
-  let e = Raw.pexpr e in
-  let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
-  let ( & ) = AnnotatedString.( & ) in
-  let prefix = "fn expr_wrapper() {" in
-  let suffix = "}" in
-  let item = !prefix & e & !suffix in
-  rustfmt_annotated item |> AnnotatedString.Output.convert
-  |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
-  |> String.chop_suffix_if_exists ~suffix
-  |> String.chop_prefix_if_exists ~prefix
-  |> Stdlib.String.trim
+  let pexpr_str (e : expr) : string =
+    let e = Raw.pexpr e in
+    let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
+    let ( & ) = AnnotatedString.( & ) in
+    let prefix = "fn expr_wrapper() {" in
+    let suffix = "}" in
+    let item = !prefix & e & !suffix in
+    rustfmt_annotated item |> AnnotatedString.Output.convert
+    |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
+    |> String.chop_suffix_if_exists ~suffix
+    |> String.chop_prefix_if_exists ~prefix
+    |> Stdlib.String.trim
+
+  let pty_str (e : ty) : string =
+    let e = Raw.pty (Span.dummy ()) e in
+    let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
+    let ( & ) = AnnotatedString.( & ) in
+    let prefix = "type TypeWrapper = " in
+    let suffix = ";" in
+    let item = !prefix & e & !suffix in
+    rustfmt_annotated item |> AnnotatedString.Output.convert
+    |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
+    |> String.chop_suffix_if_exists ~suffix
+    |> String.chop_prefix_if_exists ~prefix
+    |> Stdlib.String.trim
+end
+
+(* module Experimental : T = struct *)
+(*   module GenericRustPrinter = Generic_rust_printer.Make (Features.Full) *)
+
+(*   let pitem : item -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.item () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
+
+(*   let pitems : item list -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.items () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
+
+(*   let pexpr : expr -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.expr () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
+
+(*   let pitem_str : item -> string = *)
+(*     GenericRustPrinter.item () >> Generic_printer_api.AnnotatedString.to_string *)
+
+(*   let pexpr_str : expr -> string = *)
+(*     GenericRustPrinter.expr () >> Generic_printer_api.AnnotatedString.to_string *)
+
+(*   let pty_str : ty -> string = *)
+(*     GenericRustPrinter.ty () >> Generic_printer_api.AnnotatedString.to_string *)
+(* end *)
+
+let experimental =
+  Sys.getenv "HAX_ENGINE_EXPERIMENTAL_RUST_PRINTER" |> Option.is_some
+
+include
+  (val if experimental then failwith "todo" (*module Experimental : T*)
+       else (module Traditional : T))

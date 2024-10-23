@@ -52,7 +52,7 @@ module%inlined_contents Make (F : Features.T) = struct
                             arm =
                               {
                                 arm_pat =
-                                  { p = PConstruct { args = [ arg ]; _ }; _ };
+                                  { p = PConstruct { fields = [ arg ]; _ }; _ };
                                 _;
                               };
                             _;
@@ -166,6 +166,7 @@ module%inlined_contents Make (F : Features.T) = struct
         let before, after =
           let map_fst = List.map ~f:fst in
           try
+            let replace = Attrs.late_skip item.attrs in
             Attrs.associated_items Attr_payloads.AssocRole.ItemQuote item.attrs
             |> List.map ~f:(fun assoc_item ->
                    let e : A.expr =
@@ -181,7 +182,6 @@ module%inlined_contents Make (F : Features.T) = struct
                             (* ^ (UA.LiftToFullAst.expr e |> Print_rust.pexpr_str) *)
                             ^ [%show: A.expr] e)
                    in
-                   let v : B.item' = Quote quote in
                    let span = e.span in
                    let position, attr =
                      Attrs.find_unique_attr assoc_item.attrs ~f:(function
@@ -191,6 +191,21 @@ module%inlined_contents Make (F : Features.T) = struct
                             Error.assertion_failure assoc_item.span
                               "Malformed `Quote` item: could not find a \
                                ItemQuote payload")
+                   in
+                   let v : B.item' =
+                     let origin : item_quote_origin =
+                       {
+                         item_kind = UA.kind_of_item item;
+                         item_ident = item.ident;
+                         position =
+                           (if replace then `Replace
+                           else
+                             match position with
+                             | After -> `After
+                             | Before -> `Before);
+                       }
+                     in
+                     Quote { quote; origin }
                    in
                    let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
                    (B.{ v; span; ident = item.ident; attrs }, position))

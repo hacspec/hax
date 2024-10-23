@@ -71,7 +71,7 @@ module Make (F : Features.T) = struct
           ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
-            @ v#visit_global_ident () (fst of_trait)
+            @ v#visit_concrete_ident () (fst of_trait)
             @ concat_map (v#visit_generic_value ()) (snd of_trait)
             @ concat_map (v#visit_impl_item ()) items
             @ concat_map

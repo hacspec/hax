@@ -121,13 +121,13 @@ struct
     | PWild -> PWild
     | PAscription { typ; typ_span; pat } ->
         PAscription { typ = dty span typ; pat = dpat pat; typ_span }
-    | PConstruct { name; args; is_record; is_struct } ->
+    | PConstruct { constructor; is_record; is_struct; fields } ->
         PConstruct
           {
-            name;
-            args = List.map ~f:(dfield_pat span) args;
+            constructor;
             is_record;
             is_struct;
+            fields = List.map ~f:(dfield_pat span) fields;
           }
     | POr { subpats } -> POr { subpats = List.map ~f:dpat subpats }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
@@ -264,7 +264,7 @@ struct
     | Continue { e; label; witness = w1, w2 } ->
         Continue
           {
-            e = Option.map ~f:(S.state_passing_loop span *** dexpr) e;
+            e = Option.map ~f:(dexpr *** S.state_passing_loop span) e;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }
@@ -532,7 +532,7 @@ struct
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
-      | Quote quote -> Quote (dquote span quote)
+      | Quote { quote; origin } -> Quote { quote = dquote span quote; origin }
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
 
