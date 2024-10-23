@@ -133,12 +133,8 @@ impl<T: Sync + Send + Clone + 'static + SupportedType> Node<T> {
         session.table.insert(id.clone(), kind.clone());
         Self { id, value: kind }
     }
-    pub fn inner(&self) -> Arc<T> {
-        self.value.clone()
-    }
-
-    pub fn kind(&self) -> &T {
-        self.value.as_ref()
+    pub fn inner(&self) -> &Arc<T> {
+        &self.value
     }
 }
 

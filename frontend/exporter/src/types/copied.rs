@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
@@ -1788,7 +1789,22 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<
 }
 
 /// Reflects [`rustc_middle::ty::Ty`]
-pub type Ty = id_table::Node<TyKind>;
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(transparent)]
+pub struct Ty {
+    pub(crate) kind: id_table::Node<TyKind>,
+}
+
+impl Ty {
+    pub fn inner(&self) -> &Arc<TyKind> {
+        self.kind.inner()
+    }
+
+    pub fn kind(&self) -> &TyKind {
+        self.inner().as_ref()
+    }
+}
 
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
@@ -1800,7 +1816,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx>
         s.with_global_cache(|cache| {
             let table_session = &mut cache.id_table_session;
             let cache = cache.per_item.entry(s.owner_id()).or_default();
-            let ty = id_table::Node::new(ty_kind, table_session);
+            let kind = id_table::Node::new(ty_kind, table_session);
+            let ty = Ty { kind };
             cache.tys.insert(*self, ty.clone());
             ty
         })
