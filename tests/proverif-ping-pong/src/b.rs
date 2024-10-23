@@ -1,4 +1,4 @@
-use hax_lib_protocol::state_machine::*;
+use hax_lib_protocol::{state_machine::*, ProtocolError, ProtocolResult};
 
 use crate::Message;
 
