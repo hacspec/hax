@@ -34,7 +34,7 @@ use rustc_span::def_id::DefId;
 pub fn required_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> impl Iterator<Item = Clause<'tcx>> {
+) -> impl Iterator<Item = Clause<'tcx>> + DoubleEndedIterator {
     use DefKind::*;
     match tcx.def_kind(def_id) {
         AssocConst
@@ -81,7 +81,7 @@ pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<PolyTrai
 pub fn implied_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> impl Iterator<Item = Clause<'tcx>> {
+) -> impl Iterator<Item = Clause<'tcx>> + DoubleEndedIterator {
     use DefKind::*;
     match tcx.def_kind(def_id) {
         // We consider all predicates on traits to be outputs
@@ -100,36 +100,6 @@ pub fn implied_predicates<'tcx>(
         _ => vec![],
     }
     .into_iter()
-}
-
-/// Accumulates the `required_predicates` of this item and its parents, starting from the parents.
-/// Also returns the special `Self` clause separately.
-pub fn predicates_of_or_above<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> (
-    Vec<PolyTraitPredicate<'tcx>>,
-    Option<PolyTraitPredicate<'tcx>>,
-) {
-    use DefKind::*;
-    let def_kind = tcx.def_kind(def_id);
-
-    let (mut predicates, self_pred) = match def_kind {
-        // These inherit some predicates from their parent.
-        AssocTy | AssocFn | AssocConst | Closure => {
-            let parent = tcx.parent(def_id);
-            predicates_of_or_above(tcx, parent)
-        }
-        _ => {
-            let self_pred = self_predicate(tcx, def_id).map(|clause| clause.upcast(tcx));
-            (vec![], self_pred)
-        }
-    };
-
-    predicates
-        .extend(required_predicates(tcx, def_id).filter_map(|clause| clause.as_trait_clause()));
-
-    (predicates, self_pred)
 }
 
 /// Erase all regions. Largely copied from `tcx.erase_regions`.

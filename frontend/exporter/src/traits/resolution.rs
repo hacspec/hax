@@ -5,10 +5,11 @@
 use itertools::Itertools;
 use std::collections::{hash_map::Entry, HashMap};
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::*;
 
-use crate::traits::utils::erase_and_norm;
+use crate::{self_predicate, traits::utils::erase_and_norm};
 
 use super::utils::{implied_predicates, required_predicates};
 
@@ -102,27 +103,50 @@ pub struct AnnotatedTraitPred<'tcx> {
     pub clause: PolyTraitPredicate<'tcx>,
 }
 
-/// The predicates to use as a starting point for resolving trait references within this
-/// item. This is just like `TyCtxt::predicates_of`, but in the case of a trait or impl
-/// item or closures, also includes the predicates defined on the parents.
+/// The predicates to use as a starting point for resolving trait references within this item. This
+/// includes the "self" predicate if applicable and the `required_predicates` of this item and all
+/// its parents, numbered starting from the parents.
 fn initial_search_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    did: rustc_span::def_id::DefId,
+    def_id: rustc_span::def_id::DefId,
 ) -> Vec<AnnotatedTraitPred<'tcx>> {
-    let (predicates, self_pred) = super::utils::predicates_of_or_above(tcx, did);
-    let predicates = predicates
-        .into_iter()
-        .enumerate()
-        .map(|(i, clause)| AnnotatedTraitPred {
-            origin: BoundPredicateOrigin::Item(i),
-            clause,
-        });
-    let self_pred = self_pred.map(|clause| AnnotatedTraitPred {
-        origin: BoundPredicateOrigin::SelfPred,
-        clause,
-    });
+    fn acc_predicates<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        def_id: rustc_span::def_id::DefId,
+        predicates: &mut Vec<AnnotatedTraitPred<'tcx>>,
+        pred_id: &mut usize,
+    ) {
+        use DefKind::*;
+        match tcx.def_kind(def_id) {
+            // These inherit some predicates from their parent.
+            AssocTy | AssocFn | AssocConst | Closure => {
+                let parent = tcx.parent(def_id);
+                acc_predicates(tcx, parent, predicates, pred_id);
+            }
+            Trait => {
+                let self_pred = self_predicate(tcx, def_id).unwrap().upcast(tcx);
+                predicates.push(AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::SelfPred,
+                    clause: self_pred,
+                })
+            }
+            _ => {}
+        }
+        predicates.extend(required_predicates(tcx, def_id).filter_map(|clause| {
+            clause.as_trait_clause().map(|clause| {
+                let id = *pred_id;
+                *pred_id += 1;
+                AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::Item(id),
+                    clause,
+                }
+            })
+        }));
+    }
 
-    self_pred.into_iter().chain(predicates).collect()
+    let mut predicates = vec![];
+    acc_predicates(tcx, def_id, &mut predicates, &mut 0);
+    predicates
 }
 
 #[tracing::instrument(level = "trace", skip(tcx))]
