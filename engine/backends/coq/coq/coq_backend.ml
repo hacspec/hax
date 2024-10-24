@@ -12,8 +12,14 @@ include
       include On.Monadic_binding
       include On.Macro
       include On.Construct_base
-      include On.Trait_item_default
-    end)
+      (* include On.Trait_item_default *)
+      (* include On.Loop *)
+      (* include On.For_loop *)
+      (* include On.While_loop *)
+      (* include On.For_index_loop *)
+      (* include On.State_passing_loop *)
+      (* include On.Fold_like_loop *)
+end)
     (struct
       let backend = Diagnostics.Backend.Coq
     end)
@@ -45,7 +51,7 @@ module SubtypeToInputLanguage
              and type fold_like_loop = Features.Off.fold_like_loop
              and type dyn = Features.Off.dyn
              and type match_guard = Features.Off.match_guard
-             (* and type trait_item_default = Features.Off.trait_item_default *)
+             and type trait_item_default = Features.Off.trait_item_default
              and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
@@ -60,7 +66,12 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
-        include Features.SUBTYPE.On.Trait_item_default
+        (* include Features.SUBTYPE.On.Trait_item_default *)
+        (* include Features.SUBTYPE.On.Loop *)
+        (* include Features.SUBTYPE.On.For_loop *)
+        (* include Features.SUBTYPE.On.While_loop *)
+        (* include Features.SUBTYPE.On.For_index_loop *)
+        (* include Features.SUBTYPE.On.State_passing_loop *)
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -96,7 +107,9 @@ let hardcoded_coq_headers =
    Import List.ListNotations.\n\
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n\
-   Require Import String.\n"
+   Require Import String.\n\
+   From RecordUpdate Require Import RecordSet.\n\
+   Import RecordSetNotations.\n"
 
 module Make
     (Default : sig
@@ -117,12 +130,12 @@ struct
 
   module CoqNotation = struct
     let definition_struct keyword n name generics params typ body =
-      keyword ^^ space ^^ name ^^ (if is_document_empty generics then empty else space ^^ generics) ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":=" ^^ nest n (
+      keyword ^^ space ^^ name ^^ generics ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":=" ^^ nest n (
         break 1 ^^ body
       ) ^^ dot
 
     let proof_struct keyword name generics params statement =
-      keyword ^^ space ^^ name ^^ (if is_document_empty generics then empty else space ^^ generics) ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ nest 2 ( break 1 ^^ statement ^^ dot ) ^^ break 1 ^^ string "Proof" ^^ dot ^^ space ^^ string "Admitted" ^^ dot
+      keyword ^^ space ^^ name ^^ generics ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ nest 2 ( break 1 ^^ statement ^^ dot ) ^^ break 1 ^^ string "Proof" ^^ dot ^^ space ^^ string "Admitted" ^^ dot
 
     let definition = definition_struct (string "Definition") 2
     let fixpoint = definition_struct (string "Fixpoint") 2
@@ -213,13 +226,19 @@ struct
         )
 
       method expr'_Construct_inductive ~super:_ ~constructor ~is_record
-          ~is_struct ~fields ~base:_ =
+          ~is_struct ~fields ~base =
         if is_struct
         then
           if is_record
           then
             (* Struct *)
-            string "Build_t_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
+            Option.value ~default:(
+              string "Build_t_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p) ) fields
+            ) (
+              Option.map ~f:(fun b ->
+                  b#p
+                  ^^ concat_map (fun (ident, exp) -> space ^^ string "<|" ^^ space ^^ ident#p ^^ space ^^ !^":=" ^^ space ^^ parens(exp#p) ^^ space ^^ string "|>" ) fields ^^ space) base
+            )
           else
             (* Tuple struct *)
             string "Build_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
@@ -258,8 +277,10 @@ struct
       method expr'_Literal ~super:_ x2 = x2#p
       method expr'_LocalVar ~super:_ x2 = x2#p
 
-      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_ ~label:_ ~witness:_ =
-        default_document_for "expr'_Loop"
+      method expr'_Loop ~super:_ ~body ~kind ~state  ~control_flow:_ ~label:_ ~witness:_ =
+        kind#p ^^ space ^^ (Option.value ~default:(string "default") (Option.map ~f:(fun x -> x#p) state)) ^^ space ^^ string "of" ^^ space ^^ parens(nest 2 (
+            break 1 ^^ body#p
+          ))
 
       method expr'_MacroInvokation ~super:_ ~macro:_ ~args:_ ~witness:_ =
         default_document_for "expr'_MacroInvokation"
@@ -286,14 +307,14 @@ struct
       method generic_constraint_GCLifetime _x1 _x2 =
         default_document_for "generic_constraint_GCLifetime"
 
-      method generic_constraint_GCProjection _x1 =
-        default_document_for "generic_constraint_GCProjection"
+      method generic_constraint_GCProjection x1 =
+        string "`" ^^ braces (x1#p)
 
       method generic_constraint_GCType x1 =
-        x1#p
+        string "`" ^^ braces (x1#p)
 
       method generic_param ~ident ~span:_ ~attrs:_ ~kind =
-        ident#p ^^ space ^^ colon ^^ space ^^ kind#p
+        string "`" ^^ braces (ident#p ^^ space ^^ colon ^^ space ^^ kind#p)
 
       method generic_param_kind_GPConst ~typ =
         typ#p
@@ -310,19 +331,12 @@ struct
       method generic_value_GLifetime ~lt:_ ~witness:_ =
         default_document_for "generic_value_GLifetime"
 
-      method generic_value_GType x1 = x1#p
+      method generic_value_GType x1 = parens(x1#p)
 
       method generics ~params ~constraints =
-        let params_document = separate_map space (fun x -> string "`" ^^ braces (x#p) ) (List.filter ~f:(fun x -> not (is_document_empty x#p)) params) in
-        let constraints_document = separate_map space (fun x -> string "`" ^^ braces (x#p)) (List.filter ~f:(fun x -> not (is_document_empty x#p)) constraints) in
-        match List.length params, List.length constraints with
-        | 0, 0 -> empty
-        | _, 0 ->
-          params_document
-        | 0, _ ->
-          constraints_document
-        | _, _ ->
-          params_document ^^ space ^^ constraints_document
+        let params_document = concat_map (fun x -> space ^^ x#p ) params in
+        let constraints_document = concat_map (fun x -> space ^^ x#p) constraints in
+        params_document ^^ constraints_document
 
       method guard ~guard:_ ~span:_ = default_document_for "guard"
 
@@ -358,7 +372,7 @@ struct
       (* TODO: include names and do something about numbered names of instance *)
 
       method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ =
-        ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
+        ii_ident#p (* ^^ ii_generics#p *) ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
       method impl_item'_IIFn ~body ~params =
         if List.length params == 0
@@ -450,11 +464,17 @@ struct
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\"" ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
 
       method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_ ~arguments =
-        CoqNotation.record (name#p) (generics#p) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments) ^^ break 1 ))
+        CoqNotation.record (name#p) (generics#p) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p ^^ semi) arguments) ^^ break 1 ))
         ^^ break 1
         ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon ^^ !^"clear implicits" ^^ dot ^^ break 1
-        ^^ !^"Arguments" ^^ space ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot
-        ^^ !^"Arguments" ^^ space ^^ !^"Build_" ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot
+        ^^ !^"Arguments" ^^ space ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot ^^ break 1
+        ^^ !^"Arguments" ^^ space ^^ !^"Build_" ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot ^^ break 1
+        ^^ !^"#[export]" ^^ space ^^ CoqNotation.instance
+          (string "settable" ^^ string "_" ^^ name#p)
+          (generics#p)
+          []
+          (!^"Settable" ^^ space ^^ !^"_")
+          (string "settable!" ^^ space ^^ parens(!^"@" ^^ !^"Build_" ^^ name#p ^^ generics#p) ^^ space ^^ string "<" ^^ separate_map (semi ^^ space) (fun (ident, typ, attr) -> ident#p) arguments ^^ string ">")
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
         CoqNotation.inductive (name#p) (generics#p) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
@@ -525,8 +545,8 @@ struct
           ~witness:_ =
         default_document_for "loop_kind_ForIndexLoop"
 
-      method loop_kind_ForLoop ~pat:_ ~it:_ ~witness:_ =
-        default_document_for "loop_kind_ForLoop"
+      method loop_kind_ForLoop ~pat ~it ~witness:_ =
+        it#p ^^ space ^^ string "inP?" ^^ space ^^ pat#p
 
       method loop_kind_UnconditionalLoop =
         default_document_for "loop_kind_UnconditionalLoop"
@@ -534,8 +554,8 @@ struct
       method loop_kind_WhileLoop ~condition:_ ~witness:_ =
         default_document_for "loop_kind_WhileLoop"
 
-      method loop_state ~init:_ ~bpat:_ ~witness:_ =
-        default_document_for "loop_state"
+      method loop_state ~init ~bpat ~witness:_ =
+        parens(init#p ^^ space ^^ !^"state" ^^ space ^^ bpat#p)
 
       method modul _x1 = default_document_for "modul"
 
@@ -567,8 +587,8 @@ struct
       method pat'_PWild = string "_"
       method printer_name = "Coq printer"
 
-      method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
-        default_document_for "projection_predicate"
+      method projection_predicate ~impl:_ ~assoc_item ~typ =
+        string "_" (* TODO: name of impl#p *)  ^^ dot ^^ parens(assoc_item#p) ^^ space ^^ string "=" ^^ space ^^ typ#p
 
       method safety_kind_Safe = default_document_for "safety_kind_Safe"
       method safety_kind_Unsafe _x1 = default_document_for "safety_kind_Unsafe"
@@ -585,12 +605,35 @@ struct
       method trait_goal ~trait ~args =
         trait#p ^^ concat_map (fun x -> space ^^ x#p) args
 
-      method trait_item ~ti_span:_ ~ti_generics:_ ~ti_v ~ti_ident
+      method trait_item ~ti_span:_ ~ti_generics ~ti_v ~ti_ident
           ~ti_attrs:_ =
-        ti_ident#p ^^ space ^^ colon ^^ space ^^ ti_v#p ^^ semi
+        let (_, params, constraints) = ti_generics#v in
+        let generic_params = concat_map (fun x -> space ^^ x#p) params in
+        let filter_constraints = (function
+            | GCProjection {impl = {goal = {trait; _}; _}; _} ->
+              true
+            | GCType {goal = {trait; args = [GType (TAssociatedType {item; _})]}; _} ->
+              Concrete_ident.(item == ti_ident#v)
+            | _ -> true) in
+        let generic_constraints_other = concat_map (fun x -> space ^^ (self#entrypoint_generic_constraint x)) (List.filter ~f:filter_constraints (List.map ~f:(fun x -> x#v) constraints)) in
+        let generic_constraints_self = concat_map (fun x -> break 1 ^^ string "_" ^^ space ^^ string "::" ^^ space ^^ (self#entrypoint_generic_constraint x) ^^ semi) (List.filter ~f:(fun x -> not (filter_constraints x)) (List.map ~f:(fun x -> x#v) constraints)) in
+          ti_ident#p ^^ generic_params ^^ generic_constraints_other ^^ space ^^
+            (match ti_v#v with
+              | TIDefault _ -> string ":="
+              | _ -> colon)
+          ^^ space ^^ ti_v#p ^^ semi
+          ^^ generic_constraints_self
 
-      method trait_item'_TIDefault ~params:_ ~body:_ ~witness:_ =
-        default_document_for "trait_item'_TIDefault"
+      method trait_item'_TIDefault ~params ~body ~witness:_ =
+        (if List.is_empty params
+         then
+           empty
+        else
+          string "fun" ^^ space ^^ separate_map space (fun x -> x#p) params ^^ space ^^ string "=>") ^^
+        nest 2 (
+          break 1 ^^ body#p
+        )
+        (* default_document_for "trait_item'_TIDefault" *)
 
       method trait_item'_TIFn x1 = x1#p
       method trait_item'_TIType x1 =
@@ -605,7 +648,7 @@ struct
         then string "unit"
         else
           parens( separate_map star (fun x -> self#entrypoint_ty x) types )
-      method ty_TArray ~typ ~length = string "t_Array" ^^ space ^^ typ#p ^^ space ^^ parens(length#p)
+      method ty_TArray ~typ ~length = string "t_Array" ^^ space ^^ parens(typ#p) ^^ space ^^ parens(length#p)
       method ty_TArrow x1 x2 = concat_map (fun x -> x#p ^^ space ^^ string "->" ^^ space) x1 ^^ x2#p
 
       method ty_TAssociatedType ~impl:_ ~item =
@@ -1801,7 +1844,7 @@ module TransformToInputLanguage =
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
   |> Phases.Reject.Dyn
-  (* |> Phases.Reject.Trait_item_default *)
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]
