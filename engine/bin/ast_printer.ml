@@ -1,12 +1,10 @@
 open Hax_engine
 open Utils
 open Base
-
 open Ast
 
 module Make
-    (F : Features.T)
-    (Default : sig
+    (F : Features.T) (Default : sig
       val default : string -> string
     end) =
 struct
@@ -15,7 +13,9 @@ struct
   module Base = Generic_printer.Make (F)
   open PPrint
 
-  let default_string_for s = "/*" ^ "TODO: please implement the method `" ^ s ^ "`" ^ "*/"
+  let default_string_for s =
+    "/*" ^ "TODO: please implement the method `" ^ s ^ "`" ^ "*/"
+
   let default_document_for = default_string_for >> string
   let any_number_of x = parens x ^^ string "*"
   let option_of x = parens x ^^ string "?"
@@ -42,11 +42,9 @@ struct
     ^^ string "\""
 
   let features l =
-    string "/*" ^^ space
-    ^^ string "features:" ^^ space
+    string "/*" ^^ space ^^ string "features:" ^^ space
     ^^ separate_map (space ^^ comma ^^ space) (fun x -> string x) l
-    ^^ space ^^ string "*/"
-    ^^ space
+    ^^ space ^^ string "*/" ^^ space
 
   (* let code_parens x = string "1;31m" ^ parens ( x ^^ string "\x1b[1;31m" ) ^^ string "\x1b[0m" *)
 
@@ -88,13 +86,20 @@ struct
       method expr ~e ~span:_ ~typ:_ = e#p
 
       method expr'_AddressOf ~super:_ ~mut ~e:_ ~witness:_ =
-        either_of [
-          symbol_str "&" ^^ space ^^ string "expr" ^^ space ^^ symbol_str "as" ^^ space ^^ symbol_str "&const _";
-          features [ "mutable_pointer" ] ^^ symbol_str "&mut" ^^ space ^^ string "expr" ^^ symbol_str "as" ^^ space ^^ symbol_str "&mut _";
-        ]
+        either_of
+          [
+            symbol_str "&" ^^ space ^^ string "expr" ^^ space ^^ symbol_str "as"
+            ^^ space ^^ symbol_str "&const _";
+            features [ "mutable_pointer" ]
+            ^^ symbol_str "&mut" ^^ space ^^ string "expr" ^^ symbol_str "as"
+            ^^ space ^^ symbol_str "&mut _";
+          ]
 
-      method _do_not_override_expr'_App ~super ~f ~args ~generic_args ~bounds_impls ~trait =
-        string "expr" ^^ space ^^ symbol_parens ( any_number_of (string "expr" ^^ space ^^ symbol_comma) )
+      method _do_not_override_expr'_App ~super ~f ~args ~generic_args
+          ~bounds_impls ~trait =
+        string "expr" ^^ space
+        ^^ symbol_parens
+             (any_number_of (string "expr" ^^ space ^^ symbol_comma))
 
       method expr'_App_application ~super:_ ~f:_ ~args:_ ~generics:_ =
         default_document_for "expr'_App_application"
@@ -119,10 +124,13 @@ struct
         ^^ symbol_braces (string "expr")
 
       method expr'_Borrow ~super:_ ~kind:_ ~e:_ ~witness:_ =
-        features [ "reference" ] ^^ symbol_str "&" ^^ space ^^ option_of ( symbol_str "mut" ) ^^ space ^^ string "expr"
+        features [ "reference" ] ^^ symbol_str "&" ^^ space
+        ^^ option_of (symbol_str "mut")
+        ^^ space ^^ string "expr"
 
       method expr'_Break ~super:_ ~e:_ ~acc:_ ~label:_ ~witness:_ =
-        features [ "break"; "loop" ] ^^ symbol_str "break" ^^ space ^^ string "expr"
+        features [ "break"; "loop" ]
+        ^^ symbol_str "break" ^^ space ^^ string "expr"
 
       method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
         symbol_str "|" ^^ space ^^ string "param" ^^ space ^^ symbol_str "|"
@@ -130,12 +138,25 @@ struct
 
       method expr'_Construct_inductive ~super:_ ~constructor:_ ~is_record:_
           ~is_struct:_ ~fields:_ ~base:_ =
-        either_of [
-          string "ident" ^^ symbol_parens ( any_number_of ( string "expr" ^^ space ^^ symbol_comma ) );
-          string "ident" ^^ symbol_braces ( any_number_of ( string "ident" ^^ space ^^ symbol_colon ^^ string "expr" ^^ space ^^ symbol_semi ) );
-          features ["construct_base"] ^^ string "ident" ^^ symbol_braces ( any_number_of ( string "ident" ^^ space ^^ symbol_colon ^^ string "expr" ^^ space ^^ symbol_semi ) ^^ space ^^ symbol_str ".." ^^ space ^^ string "base" );
-        ]
-        (* string "constructor" ^^ space ^^ any_number_of (string "expr") *)
+        either_of
+          [
+            string "ident"
+            ^^ symbol_parens
+                 (any_number_of (string "expr" ^^ space ^^ symbol_comma));
+            string "ident"
+            ^^ symbol_braces
+                 (any_number_of
+                    (string "ident" ^^ space ^^ symbol_colon ^^ string "expr"
+                   ^^ space ^^ symbol_semi));
+            features [ "construct_base" ]
+            ^^ string "ident"
+            ^^ symbol_braces
+                 (any_number_of
+                    (string "ident" ^^ space ^^ symbol_colon ^^ string "expr"
+                   ^^ space ^^ symbol_semi)
+                 ^^ space ^^ symbol_str ".." ^^ space ^^ string "base");
+          ]
+      (* string "constructor" ^^ space ^^ any_number_of (string "expr") *)
 
       method expr'_Construct_tuple ~super:_ ~components:_ =
         default_document_for "expr'_Construct_tuple"
@@ -161,29 +182,52 @@ struct
              (symbol_str "else" ^^ space ^^ symbol_braces (string "expr"))
 
       method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
-        either_of [
-          symbol_str "let" ^^ space ^^ string "pat" ^^ space
-          ^^ option_of ( symbol_colon ^^ space ^^ string "ty" )
-          ^^ space ^^ symbol_str ":=" ^^ space ^^ string "expr" ^^ space
-          ^^ symbol_semi ^^ space ^^ string "expr";
-          features ["monadic_binding"] ^^ string "monadic_binding" ^^ space ^^ symbol_str "<" ^^ space ^^ string "monad" ^^ space ^^ symbol_str ">" ^^ space ^^ symbol_parens (
-            symbol_str "|" ^^ space ^^ string "pat" ^^ space ^^ symbol_str "|" ^^ space ^^ string "expr"
-            ^^ symbol_comma
-            ^^ string "expr";
-          )
-        ]
+        either_of
+          [
+            symbol_str "let" ^^ space ^^ string "pat" ^^ space
+            ^^ option_of (symbol_colon ^^ space ^^ string "ty")
+            ^^ space ^^ symbol_str ":=" ^^ space ^^ string "expr" ^^ space
+            ^^ symbol_semi ^^ space ^^ string "expr";
+            features [ "monadic_binding" ]
+            ^^ string "monadic_binding" ^^ space ^^ symbol_str "<" ^^ space
+            ^^ string "monad" ^^ space ^^ symbol_str ">" ^^ space
+            ^^ symbol_parens
+                 (symbol_str "|" ^^ space ^^ string "pat" ^^ space
+                ^^ symbol_str "|" ^^ space ^^ string "expr" ^^ symbol_comma
+                ^^ string "expr");
+          ]
 
       method expr'_Literal ~super:_ _x2 = string "literal"
       method expr'_LocalVar ~super:_ _x2 = string "local_var"
 
-      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_ ~label:_ ~witness:_ =
+      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_
+          ~label:_ ~witness:_ =
         (* Type of loop *)
-        either_of [
-          features [ "loop" ] ^^ symbol_str "loop" ^^ space ^^ symbol_braces( string "expr" );
-          features [ "loop"; "while_loop" ] ^^ symbol_str "while" ^^ space ^^ symbol_parens( string "expr" ) ^^ space ^^ symbol_braces( string "expr" );
-          features [ "loop"; "for_loop" ] ^^ symbol_str "for" ^^ space ^^ symbol_parens( string "pat" ^^ space ^^ symbol_str "in" ^^ space ^^ string "expr" ) ^^ space ^^ symbol_braces ( string "expr" );
-          features [ "loop"; "for_index_loop" ] ^^ symbol_str "for" ^^ space ^^ symbol_parens( symbol_str "let" ^^ space ^^ string "ident" ^^ space ^^ symbol_str "in" ^^ space ^^ string "expr" ^^ space ^^ symbol_str ".." ^^ space ^^ string "expr" ) ^^ space ^^ symbol_braces ( string "expr" );
-        ]
+        either_of
+          [
+            features [ "loop" ] ^^ symbol_str "loop" ^^ space
+            ^^ symbol_braces (string "expr");
+            features [ "loop"; "while_loop" ]
+            ^^ symbol_str "while" ^^ space
+            ^^ symbol_parens (string "expr")
+            ^^ space
+            ^^ symbol_braces (string "expr");
+            features [ "loop"; "for_loop" ]
+            ^^ symbol_str "for" ^^ space
+            ^^ symbol_parens
+                 (string "pat" ^^ space ^^ symbol_str "in" ^^ space
+                ^^ string "expr")
+            ^^ space
+            ^^ symbol_braces (string "expr");
+            features [ "loop"; "for_index_loop" ]
+            ^^ symbol_str "for" ^^ space
+            ^^ symbol_parens
+                 (symbol_str "let" ^^ space ^^ string "ident" ^^ space
+                ^^ symbol_str "in" ^^ space ^^ string "expr" ^^ space
+                ^^ symbol_str ".." ^^ space ^^ string "expr")
+            ^^ space
+            ^^ symbol_braces (string "expr");
+          ]
 
       method expr'_MacroInvokation ~super:_ ~macro:_ ~args:_ ~witness:_ =
         string "macro_name" ^^ space ^^ symbol_str "!" ^^ space
@@ -207,7 +251,8 @@ struct
       method expr'_Quote ~super:_ _x2 = default_document_for "expr'_Quote"
 
       method expr'_Return ~super:_ ~e:_ ~witness:_ =
-        features [ "early_exit" ] ^^ symbol_str "return" ^^ space ^^ string "expr"
+        features [ "early_exit" ] ^^ symbol_str "return" ^^ space
+        ^^ string "expr"
 
       method cf_kind_BreakOrReturn =
         default_document_for "cf_kind_BreakOrReturn"
@@ -431,7 +476,7 @@ struct
         default_document_for "pat'_PConstruct_tuple"
 
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
-        features ["reference"] ^^ symbol_str "&" ^^ space ^^ string "pat"
+        features [ "reference" ] ^^ symbol_str "&" ^^ space ^^ string "pat"
 
       method pat'_PWild = symbol_str "_"
 
@@ -469,7 +514,8 @@ struct
       method trait_item'_TIType _x1 = default_document_for "trait_item'_TIType"
 
       method ty_TApp_application ~typ:_ ~generics:_ =
-        any_number_of (string "ty" ^^ space ^^ symbol_comma) (* TODO uses top level implementation ? *)
+        any_number_of (string "ty" ^^ space ^^ symbol_comma)
+      (* TODO uses top level implementation ? *)
 
       method ty_TApp_tuple ~types:_ = default_document_for "ty_TApp_tuple"
 
@@ -486,7 +532,9 @@ struct
 
       method ty_TBool = symbol_str "bool"
       method ty_TChar = symbol_str "char"
-      method ty_TDyn ~witness:_ ~goals:_ = features ["dyn"] ^^ any_number_of (string "goal")
+
+      method ty_TDyn ~witness:_ ~goals:_ =
+        features [ "dyn" ] ^^ any_number_of (string "goal")
 
       method ty_TFloat _x1 =
         either_of [ symbol_str "f16"; symbol_str "f32"; symbol_str "f64" ]
@@ -515,9 +563,11 @@ struct
           ]
 
       method ty_TRef ~witness:_ ~region:_ ~typ:_ ~mut:_ =
-        either_of [
+        either_of
+          [
             features [ "reference" ] ^^ symbol_str "*" ^^ space ^^ string "expr";
-            features [ "reference"; "mutable_reference" ] ^^ symbol_str "*mut" ^^ space ^^ string "expr";
+            features [ "reference"; "mutable_reference" ]
+            ^^ symbol_str "*mut" ^^ space ^^ string "expr";
           ]
 
       method ty_TSlice ~witness:_ ~ty:_ =
@@ -537,7 +587,6 @@ struct
 
       (* END GENERATED *)
     end
-
 end
 
 module HaxCFG = struct
@@ -548,17 +597,17 @@ module HaxCFG = struct
         let default x = x
       end)
 
-  module MyAstGenerator = Ast_utils.ASTGenerator
-
+  module MyAstGenerator = Ast_utils.ASTGenerator (Features.Full)
   module AST = Ast.Make (Features.Full)
   open AST
 
   let print_ast (_ : unit) =
     let my_printer = new MyPrinter.printer in
 
-    (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
-
-    let (my_literals, my_tys, my_pats, my_exprs, my_items) : (literal list * ty list * pat list * expr list * item list) = MyAstGenerator.generate_full_ast in
+    let (my_literals, my_tys, my_pats, my_exprs, my_items)
+          : literal list * ty list * pat list * expr list * item list =
+      MyAstGenerator.generate_full_ast ()
+    in
 
     let literal_string =
       "\n\n```ebnf\nliteral ::=\n"
@@ -619,7 +668,8 @@ module HaxCFG = struct
       ^ "\n```"
     in
 
-    "# Hax CFG" ^ literal_string ^ ty_string ^ pat_string ^ expr_string ^ item_string;
+    "# Hax CFG" ^ literal_string ^ ty_string ^ pat_string ^ expr_string
+    ^ item_string
 end
 
 let main =
@@ -633,5 +683,5 @@ let main =
   (*   Types.parse_engine_options json *)
   (* in *)
   Concrete_ident.ImplInfoStore.init
-    (Concrete_ident_generated.impl_infos (* @ options.impl_infos *));
+    Concrete_ident_generated.impl_infos (* @ options.impl_infos *);
   print_endline (HaxCFG.print_ast ())
