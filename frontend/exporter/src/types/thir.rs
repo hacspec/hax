@@ -764,7 +764,7 @@ pub enum ExprKind {
         borrow_kind: BorrowKind,
         arg: Expr,
     },
-    AddressOf {
+    RawBorrow {
         mutability: Mutability,
         arg: Expr,
     },

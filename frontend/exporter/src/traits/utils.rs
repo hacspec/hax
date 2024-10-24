@@ -30,6 +30,26 @@ use rustc_hir::def::DefKind;
 use rustc_middle::ty::*;
 use rustc_span::def_id::DefId;
 
+/// Returns a list of type predicates for the definition with ID `def_id`, including inferred
+/// lifetime constraints. This is the basic list of predicates we use for essentially all items.
+pub fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> GenericPredicates<'_> {
+    let mut result = tcx.explicit_predicates_of(def_id);
+    let inferred_outlives = tcx.inferred_outlives_of(def_id);
+    if !inferred_outlives.is_empty() {
+        let inferred_outlives_iter = inferred_outlives
+            .iter()
+            .map(|(clause, span)| ((*clause).upcast(tcx), *span));
+        result.predicates = tcx.arena.alloc_from_iter(
+            result
+                .predicates
+                .into_iter()
+                .copied()
+                .chain(inferred_outlives_iter),
+        );
+    }
+    result
+}
+
 /// The predicates that must hold to mention this item.
 pub fn required_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -51,14 +71,14 @@ pub fn required_predicates<'tcx>(
         | TraitAlias
         | TyAlias
         | Union => Some(
-            tcx.predicates_defined_on(def_id)
+            predicates_defined_on(tcx, def_id)
                 .predicates
                 .iter()
                 .map(|(clause, _span)| *clause),
         ),
         // We consider all predicates on traits to be outputs
         Trait => None,
-        // `predicates_defined_on ICEs on other def kinds.
+        // `predicates_defined_on` ICEs on other def kinds.
         _ => None,
     }
     .into_iter()
@@ -85,8 +105,7 @@ pub fn implied_predicates<'tcx>(
     use DefKind::*;
     match tcx.def_kind(def_id) {
         // We consider all predicates on traits to be outputs
-        Trait => tcx
-            .predicates_defined_on(def_id)
+        Trait => predicates_defined_on(tcx, def_id)
             .predicates
             .iter()
             .map(|(clause, _span)| *clause)

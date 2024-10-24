@@ -1,3 +1,4 @@
+#![feature(rustc_private)]
 use annotate_snippets::{Level, Renderer};
 use clap::Parser;
 use colored::Colorize;

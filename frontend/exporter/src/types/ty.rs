@@ -772,7 +772,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx>
 
 /// Reflects [`ty::TyKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TyKind<'tcx>, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::TyKind<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TyKind {
@@ -783,15 +783,24 @@ pub enum TyKind {
     Float(FloatTy),
 
     #[custom_arm(
-        ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
-        ty::TyKind::FnDef(def, generics) => {
-            let tcx = state.base().tcx;
-            arrow_of_sig(&tcx.fn_sig(*def).instantiate(tcx, generics), state)
+        ty::TyKind::FnPtr(tys, header) => {
+            let sig = tys.map_bound(|tys| ty::FnSig {
+                inputs_and_output: tys.inputs_and_output,
+                c_variadic: header.c_variadic,
+                safety: header.safety,
+                abi: header.abi,
+            });
+            TyKind::Arrow(Box::new(sig.sinto(s)))
         },
-        FROM_TYPE::Closure (_defid, generics) => {
+        ty::TyKind::FnDef(def, generics) => {
+            let tcx = s.base().tcx;
+            let sig = tcx.fn_sig(*def).instantiate(tcx, generics);
+            TyKind::Arrow(Box::new(sig.sinto(s)))
+        },
+        ty::TyKind::Closure (_def_id, generics) => {
             let sig = generics.as_closure().sig();
-            let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
-            arrow_of_sig(&sig, state)
+            let sig = s.base().tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
+            TyKind::Arrow(Box::new(sig.sinto(s)))
         },
     )]
     /// Reflects [`ty::TyKind::FnPtr`], [`ty::TyKind::FnDef`] and [`ty::TyKind::Closure`]
@@ -799,9 +808,9 @@ pub enum TyKind {
 
     #[custom_arm(
         ty::TyKind::Adt(adt_def, generics) => {
-            let def_id = adt_def.did().sinto(state);
-            let generic_args: Vec<GenericArg> = generics.sinto(state);
-            let trait_refs = solve_item_required_traits(state, adt_def.did(), generics);
+            let def_id = adt_def.did().sinto(s);
+            let generic_args: Vec<GenericArg> = generics.sinto(s);
+            let trait_refs = solve_item_required_traits(s, adt_def.did(), generics);
             TyKind::Adt { def_id, generic_args, trait_refs }
         },
     )]
@@ -815,7 +824,7 @@ pub enum TyKind {
     },
     Foreign(DefId),
     Str,
-    Array(Box<Ty>, #[map(Box::new(x.sinto(state)))] Box<ConstantExpr>),
+    Array(Box<Ty>, #[map(Box::new(x.sinto(s)))] Box<ConstantExpr>),
     Slice(Box<Ty>),
     RawPtr(Box<Ty>, Mutability),
     Ref(Region, Box<Ty>, Mutability),
@@ -825,7 +834,7 @@ pub enum TyKind {
     Tuple(Vec<Ty>),
     #[custom_arm(
         ty::TyKind::Alias(alias_kind, alias_ty) => {
-            Alias::from(state, alias_kind, alias_ty)
+            Alias::from(s, alias_kind, alias_ty)
         },
     )]
     Alias(Alias),
@@ -949,6 +958,7 @@ pub enum PointerCoercion {
     ClosureFnPointer(Safety),
     MutToConstPointer,
     ArrayToPointer,
+    DynStar,
     Unsize,
 }
 
@@ -1292,7 +1302,7 @@ sinto_todo!(rustc_middle::ty, NormalizesTo<'tcx>);
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PredicateKind {
     Clause(ClauseKind),
-    ObjectSafe(DefId),
+    DynCompatible(DefId),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(ConstantExpr, ConstantExpr),

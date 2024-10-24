@@ -440,9 +440,7 @@ pub struct Impl<Body: IsBody> {
         let trait_did = tcx.trait_id_of_impl(owner_id);
         if let Some(trait_did) = trait_did {
             tcx.explicit_super_predicates_of(trait_did)
-                .predicates
-                .iter()
-                .copied()
+                .iter_identity_copied()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
@@ -665,7 +663,6 @@ pub enum ItemKind<Body: IsBody> {
         Ty,
         Generics<Body>,
     ),
-    OpaqueTy(OpaqueTy<Body>),
     Enum(
         EnumDef<Body>,
         Generics<Body>,
@@ -768,7 +765,7 @@ impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>>
 #[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub enum ForeignItemKind<Body: IsBody> {
-    Fn(FnDecl, Vec<Ident>, Generics<Body>, Safety),
+    Fn(FnSig, Vec<Ident>, Generics<Body>),
     Static(Ty, Mutability, Safety),
     Type,
 }
@@ -803,7 +800,6 @@ pub struct OpaqueTy<Body: IsBody> {
     pub generics: Generics<Body>,
     pub bounds: GenericBounds,
     pub origin: OpaqueTyOrigin,
-    pub in_trait: bool,
 }
 
 /// Reflects [`hir::GenericBounds`]
@@ -825,10 +821,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
                 hir::Node::TraitItem(hir::TraitItem {
                     kind: hir::TraitItemKind::Type(..),
                     ..
-                }) | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
-                    ..
-                })
+                }) | hir::Node::OpaqueTy(..),
             )
         } else {
             false
@@ -841,7 +834,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
             .iter()
             .collect()
     } else {
-        tcx.predicates_defined_on(s.owner_id())
+        predicates_defined_on(tcx, s.owner_id())
             .predicates
             .iter()
             .map(|(x, _span)| x)
@@ -864,9 +857,16 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for hir::GenericBou
 #[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub enum OpaqueTyOrigin {
-    FnReturn(GlobalIdent),
-    AsyncFn(GlobalIdent),
-    TyAlias { in_assoc_ty: bool },
+    FnReturn {
+        parent: GlobalIdent,
+    },
+    AsyncFn {
+        parent: GlobalIdent,
+    },
+    TyAlias {
+        parent: GlobalIdent,
+        in_assoc_ty: bool,
+    },
 }
 
 /// Reflects [`rustc_ast::tokenstream::TokenStream`] as a plain

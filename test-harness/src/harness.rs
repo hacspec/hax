@@ -1,3 +1,4 @@
+#![feature(rustc_private)]
 mod command_hax_ext;
 use command_hax_ext::*;
 use serde_json::{Map, Value};

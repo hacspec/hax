@@ -644,7 +644,7 @@ end) : EXPR = struct
           let e' = c_expr arg in
           let kind = c_borrow_kind e.span kind in
           Borrow { kind; e = e'; witness = W.reference }
-      | AddressOf { arg; mutability = mut } ->
+      | RawBorrow { arg; mutability = mut } ->
           let e = c_expr arg in
           AddressOf
             {
@@ -1763,7 +1763,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
     | Union _ ->
         unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-    | OpaqueTy _ | TraitAlias _ ->
+    | TraitAlias _ ->
         mk NotImplementedYet
 
 let import_item ~drop_body (item : Thir.item) :

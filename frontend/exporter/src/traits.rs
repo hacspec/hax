@@ -5,7 +5,9 @@ mod resolution;
 #[cfg(feature = "rustc")]
 mod utils;
 #[cfg(feature = "rustc")]
-pub use utils::{erase_and_norm, implied_predicates, required_predicates, self_predicate};
+pub use utils::{
+    erase_and_norm, implied_predicates, predicates_defined_on, required_predicates, self_predicate,
+};
 
 #[cfg(feature = "rustc")]
 pub use resolution::PredicateSearcher;

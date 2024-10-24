@@ -13,14 +13,6 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(
-    sig: &ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> TyKind {
-    TyKind::Arrow(Box::new(sig.sinto(s)))
-}
-
-#[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_target::abi::VariantIdx,
