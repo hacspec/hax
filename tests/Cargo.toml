@@ -35,5 +35,6 @@ members = [
         "guards",
         "cyclic-modules",
         "unsafe",
+        "constructor-as-closure",
 ]
 resolver = "2"
