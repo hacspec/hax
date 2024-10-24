@@ -258,7 +258,8 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         .collect()
 }
 
-pub fn closest_parent_type(
+/// Gets the closest ancestor of `id` that is the id of a type.
+pub fn get_closest_parent_type(
     tcx: &ty::TyCtxt,
     id: rustc_span::def_id::DefId,
 ) -> rustc_span::def_id::DefId {
@@ -266,6 +267,6 @@ pub fn closest_parent_type(
         rustc_hir::def::DefKind::Union
         | rustc_hir::def::DefKind::Struct
         | rustc_hir::def::DefKind::Enum => id,
-        _ => closest_parent_type(tcx, tcx.parent(id)),
+        _ => get_closest_parent_type(tcx, tcx.parent(id)),
     }
 }

@@ -190,7 +190,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
                     return cexpr.into();
                 }
                 thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, _generics) => {
+                    rustc_middle::ty::TyKind::FnDef(def_id, _generics) => {
                         /* TODO: translate generics
                         let tcx = s.base().tcx;
                         let sig = &tcx.fn_sig(*def).instantiate(tcx, generics);
@@ -202,13 +202,10 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
                         params.map(|i| tcx.erase_late_bound_regions(i)).collect();
                         */
                         let tcx = s.base().tcx;
-                        let id: DefId = def.clone().sinto(s);
-                        let rustc_id = (&id).into();
-                        let constructor = if tcx.is_constructor(rustc_id) {
+                        let constructor = if tcx.is_constructor(*def_id) {
                             let adt_def =
-                                tcx.adt_def(rustc_utils::closest_parent_type(&tcx, rustc_id));
-                            let variant_id = tcx.parent(rustc_id);
-                            let variant_index = adt_def.variant_index_with_id(variant_id);
+                                tcx.adt_def(rustc_utils::get_closest_parent_type(&tcx, *def_id));
+                            let variant_index = adt_def.variant_index_with_id(tcx.parent(*def_id));
                             Some(rustc_utils::get_variant_information(
                                 &adt_def,
                                 variant_index,
@@ -219,7 +216,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
                         };
                         return Expr {
                             contents: Box::new(ExprKind::GlobalName {
-                                id: def.sinto(s),
+                                id: def_id.sinto(s),
                                 constructor,
                             }),
                             span: self.span.sinto(s),
