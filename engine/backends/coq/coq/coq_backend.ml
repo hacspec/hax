@@ -542,7 +542,7 @@ module ASTGenerator = struct
   module AST = Ast.Make (Features.Full)
   open AST
 
-  type ast_types =
+  type ast_type =
     | CONCRETE_IDENT
     | LITERAL
     | TY
@@ -554,7 +554,7 @@ module ASTGenerator = struct
     | IMPL_EXPR
     | ITEM
 
-  let rec generate_helper (t : ast_types) (indexes : int list) : Yojson.Safe.t * int list =
+  let rec generate_helper (t : ast_type) (indexes : int list) : Yojson.Safe.t * int list =
     let i, indexes = List.hd_exn indexes, Option.value ~default:[] (List.tl indexes) in
     let cases: (unit -> Yojson.Safe.t * int list) list =
       (match t with
@@ -999,189 +999,261 @@ module ASTGenerator = struct
       )  in
     List.nth_exn cases i ()
 
-  let generate (t : ast_types) (indexes : int list) : Yojson.Safe.t =
+  let generate (t : ast_type) (indexes : int list) : Yojson.Safe.t =
     fst (generate_helper t indexes)
 
+  (* AST depth:
+     0 is constants (no recursion),
+     1 is the flat AST with each AST elements present,
+     inf is all possible expressions *)
+  let rec generate_depth depth (pre : int list) (t : ast_type) : (int list) list =
+    List.map ~f:(fun l -> pre @ l)
+      (match t with
+       (* TODO: Base dummy values *)
+       | CONCRETE_IDENT -> [[0]]
+       | GLOBAL_IDENT -> generate_depth_list_helper depth [0] [CONCRETE_IDENT]
+       | LOCAL_IDENT -> [[0]]
+       | IMPL_EXPR -> [[0;0]]
+       | GENERICS -> [[0]]
+
+       (* Fully defined AST elements *)
+       | LITERAL ->
+         [
+           (* String *)
+           [0];
+           (* Char *)
+           [1];
+           (* Int *)
+           [2];
+           (* Float *)
+           [3];
+           (* Bool *)
+           [4]
+         ]
+       | TY ->
+         [
+           (* TBool *)
+           [0];
+           (* TChar *)
+           [1];
+           (* TInt *)
+           [2];
+           (* TFloat *)
+           [3];
+           (* TStr *)
+           [4];
+         ] @
+         (* TApp *)
+         generate_depth_list_helper depth [5] [GLOBAL_IDENT] (* TODO: Any number of extra ty args? *)
+         @
+         (* TArray *)
+         generate_depth_list_helper (depth-1) [6] [TY; EXPR]
+         @
+         (* TSlice *)
+         generate_depth_list_helper (depth-1) [7] [TY]
+         @
+         [
+           (* TRawPointer *)
+           [8]
+         ]
+         @
+         (* TRef *)
+         generate_depth_list_helper (depth-1) [9] [TY]
+         @
+         (* TParam *)
+         generate_depth_list_helper depth [10] [LOCAL_IDENT]
+         @
+         (* TArrow *)
+         generate_depth_list_helper (depth-1) [11] [TY]
+         @
+         (* TAssociatedType *)
+         generate_depth_list_helper (depth-1) [12] [IMPL_EXPR; CONCRETE_IDENT ]
+         @
+         (* TOpaque *)
+         generate_depth_list_helper (depth-1) [13] [CONCRETE_IDENT]
+         @
+         [
+           (* TDyn *)
+           [14]
+         ]
+       | PAT ->
+         List.map ~f:(fun x -> x @ [0] (* TODO: Append correct type, instead of dummy / guessing *)) (
+           [
+             (* PWild *)
+             [0];
+           ]
+           @
+           (* PAscription *)
+           generate_depth_list_helper (depth-1) [1] [TY; PAT]
+           @
+           (* PConstruct *)
+           generate_depth_list_helper depth [2] [GLOBAL_IDENT]
+           @
+           (* POr *)
+           generate_depth_list_helper (depth-1) [3] [PAT; PAT]
+           @
+           [
+             (* PArray *)
+             [4];
+           ]
+           @
+           (* PDeref *)
+           generate_depth_list_helper (depth-1) [5] [PAT]
+           @
+           (* PConstant *)
+           generate_depth_list_helper depth [6] [LITERAL]
+           @
+           (* PBinding *)
+           generate_depth_list_helper (depth-1) [7] [LOCAL_IDENT; TY]
+         )
+       | EXPR ->
+         List.map ~f:(fun x -> x @ [0] (* TODO: Append correct type, instead of dummy / guessing *))
+           (
+             (* If *)
+             generate_depth_list_helper (depth-1) [0] [EXPR; EXPR] (*; expr3 *)
+             @
+             (* App *)
+             generate_depth_list_helper (depth-1) [1] [EXPR; EXPR]
+             @
+             (* Literal *)
+             generate_depth_list_helper depth [2] [LITERAL]
+             @
+             [
+               (* Array *)
+               [3];
+             ]
+             @
+             (* Construct *)
+             generate_depth_list_helper (depth-1) [4] [GLOBAL_IDENT]
+             @
+             (* Match *)
+             generate_depth_list_helper (depth-1) [5] [EXPR]
+             @
+             (* Let *)
+             generate_depth_list_helper (depth-1) [6] [PAT; EXPR; EXPR]
+             @
+             (* Block *)
+             generate_depth_list_helper (depth-1) [7] [EXPR]
+             @
+             (* LocalVar *)
+             generate_depth_list_helper (depth-1) [8] [LOCAL_IDENT]
+             @
+             (* GlobalVar *)
+             generate_depth_list_helper (depth-1) [9] [GLOBAL_IDENT]
+             @
+             (* Ascription *)
+             generate_depth_list_helper (depth-1) [10] [EXPR; TY]
+             @
+             (* MacroInvokation *)
+             generate_depth_list_helper (depth-1) [11] [GLOBAL_IDENT]
+             @
+             (* Assign *)
+             generate_depth_list_helper (depth-1) [12] [LOCAL_IDENT; EXPR; TY]
+             @
+             (* Loop *)
+             generate_depth_list_helper (depth-1) [13] [EXPR]
+             @
+             (* Break *)
+             generate_depth_list_helper (depth-1) [14] [EXPR]
+             @
+             (* Return *)
+             generate_depth_list_helper (depth-1) [15] [EXPR]
+             @
+             (* QuestionMark *)
+             generate_depth_list_helper (depth-1) [16] [EXPR; TY]
+             @
+             [
+               (* Continue *)
+               [17];
+             ]
+             @
+             (* Borrow *)
+             generate_depth_list_helper (depth-1) [18] [EXPR]
+             @
+             (* AddressOf *)
+             generate_depth_list_helper (depth-1) [19] [EXPR]
+             @
+             (* Closure *)
+             generate_depth_list_helper (depth-1) [20] [EXPR]
+           )
+       | ITEM ->
+         List.concat_map ~f:(fun x -> generate_depth_list_helper depth x [CONCRETE_IDENT]) (
+           (* Fn *)
+           generate_depth_list_helper (depth-1) [0] [CONCRETE_IDENT; GENERICS; EXPR]
+           @
+           (* TYAlias *)
+           generate_depth_list_helper (depth-1) [1] [CONCRETE_IDENT; GENERICS; TY]
+           @
+           (* TYpe *)
+           generate_depth_list_helper (depth-1) [2] [CONCRETE_IDENT; GENERICS]
+           @
+           (* TYpe *)
+           generate_depth_list_helper (depth-1) [3] [CONCRETE_IDENT; GENERICS]
+           @
+           (* IMacroInvokation *)
+           generate_depth_list_helper depth [4] [CONCRETE_IDENT]
+           @
+           (* Trait *)
+           generate_depth_list_helper (depth-1) [5] [CONCRETE_IDENT; GENERICS]
+           @
+           (* Impl *)
+           generate_depth_list_helper (depth-1) [6] [GENERICS; TY; GLOBAL_IDENT]
+           @
+           (* Alias *)
+           generate_depth_list_helper (depth-1) [7] [CONCRETE_IDENT; CONCRETE_IDENT]
+           @
+           [
+             (* Use *)
+             [8];
+           ]
+         )
+      )
+  and generate_depth_list depth (pre : int list) (t : ast_type list) : (int list) list =
+    match t with
+    | [] -> []
+    | [x] -> generate_depth depth pre x
+    | (x :: xs) ->
+      List.concat_map ~f:(fun pre -> generate_depth_list depth pre xs) (generate_depth depth pre x)
+  and generate_depth_list_helper depth (pre : int list) (t : ast_type list) : (int list) list =
+    if depth >= 0
+    then generate_depth_list depth pre t
+    else []
+
+  let rec flatten (l : (int list) list) : (int list) list =
+    match l with
+    | ((x :: xs) :: (y :: ys) :: ls) ->
+      (if x == y then [] else [(x :: xs)]) @ flatten ((y :: ys) :: ls)
+    | _ -> l
+
   let generate_literals =
-    let literal_args = [
-      (* String *)
-      [0];
-      (* Char *)
-      [1];
-      (* Int *)
-      [2];
-      (* Float *)
-      [3];
-      (* Bool *)
-      [4]
-    ] in
+    let literal_args = flatten (generate_depth 0 [] LITERAL) in
     List.map ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x)) literal_args
 
-  let generate_tys ~ty ~expr : ty list =
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let local_ident_args = [0] in
-    let impl_expr_args = [0;0] in
-
-    (* TODO: BFS generator *)
-    let ty_args = [
-      (* TBool *)
-      [0];
-      (* TChar *)
-      [1];
-      (* TInt *)
-      [2];
-      (* TFloat *)
-      [3];
-      (* TStr *)
-      [4];
-      (* TApp *)
-      [5] @ global_ident_args;
-      (* TArray *)
-      [6] @ ty @ expr;
-      (* TSlice *)
-      [7] @ ty;
-      (* TRawPointer *)
-      [8];
-      (* TRef *)
-      [9] @ ty;
-      (* TParam *)
-      [10] @ local_ident_args;
-      (* TArrow *)
-      [11] @ ty;
-      (* TAssociatedType *)
-      [12] @ impl_expr_args @ concrete_ident_args ;
-      (* TOpaque *)
-      [13] @ concrete_ident_args;
-      (* TDyn *)
-      [14];
-    ] in
-
+  let generate_tys : ty list =
+    let ty_args = flatten (generate_depth 1 [] TY) in
     List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args
 
-  let generate_pats ~ty ~ty1 ~literal ~pat1 ~pat2 =
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let local_ident_args = [0] in
-
-    let pat_args = List.map ~f:(fun x -> x @ ty) [
-        (* PWild *)
-        [0];
-        (* PAscription *)
-        [1] @ ty1 @ pat1;
-        (* PConstruct *)
-        [2] @ global_ident_args;
-        (* POr *)
-        [3] @ pat1 @ pat2;
-        (* PArray *)
-        [4];
-        (* PDeref *)
-        [5] @ pat1;
-        (* PConstant *)
-        [6] @ literal;
-        (* PBinding *)
-        [7] @ local_ident_args @ ty1;
-      ] in
+  let generate_pats =
+    let pat_args = flatten (generate_depth 1 [] PAT) in
     List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
 
-  let generate_expr ~expr_ty ~literal ~ty ~expr0 ~expr1 ~expr2 ~pat =
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let local_ident_args = [0] in
-
-    let expr_args =
-      List.map ~f:(fun x -> x @ expr_ty)
-        [
-          (* If *)
-          [0] @ expr1 @ expr2 (* @ expr3 *) ;
-          (* App *)
-          [1] @ expr1 @ expr2;
-          (* Literal *)
-          [2] @ literal;
-          (* Array *)
-          [3];
-          (* Construct *)
-          [4] @ global_ident_args;
-          (* Match *)
-          [5] @ expr1;
-          (* Let *)
-          [6] @ pat @ expr1 @ expr2;
-          (* Block *)
-          [7] @ expr1;
-          (* LocalVar *)
-          [8] @ local_ident_args;
-          (* GlobalVar *)
-          [9] @ global_ident_args;
-          (* Ascription *)
-          [10] @ expr1 @ ty;
-          (* MacroInvokation *)
-          [11] @ global_ident_args;
-          (* Assign *)
-          [12] @ local_ident_args @ expr1 @ ty;
-          (* Loop *)
-          [13] @ expr1;
-          (* Break *)
-          [14] @ expr1;
-          (* Return *)
-          [15] @ expr1;
-          (* QuestionMark *)
-          [16] @ expr1 @ ty;
-          (* Continue *)
-          [17];
-          (* Borrow *)
-          [18] @ expr1;
-          (* AddressOf *)
-          [19] @ expr1;
-          (* Closure *)
-          [20] @ expr1;
-        ]
-    in
+  let generate_expr =
+    let expr_args = flatten (generate_depth 1 [] EXPR) in
     List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
 
-  let generate_items ~expr ~ty =
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let generics_args = [0] in
-
-    let item_args = List.map ~f:(fun x -> x @ concrete_ident_args) [
-        (* Fn *)
-        [0] @ concrete_ident_args @ generics_args @ expr;
-        (* TyAlias *)
-        [1] @ concrete_ident_args @ generics_args @ ty;
-        (* Type *)
-        [2] @ concrete_ident_args @ generics_args;
-        (* Type *)
-        [3] @ concrete_ident_args @ generics_args;
-        (* IMacroInvokation *)
-        [4] @ concrete_ident_args;
-        (* Trait *)
-        [5] @ concrete_ident_args @ generics_args;
-        (* Impl *)
-        [6] @ generics_args @ ty @ global_ident_args;
-        (* Alias *)
-        [7] @ concrete_ident_args @ concrete_ident_args;
-        (* Use *)
-        [8];
-      ]
-    in
+  let generate_items =
+    let item_args = flatten (generate_depth 1 [] ITEM) in
     List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args
 
   let generate_full_ast : (literal list * ty list * pat list * expr list * item list) =
     (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
     (** bfs with no recursion, elements seen before are replaced with 0 depth (constant) elements **)
 
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let local_ident_args = [0] in
-    let generics_args = [0] in
-    let impl_expr_args = [0;0] in
-
     let my_literals = generate_literals in
-     (* TODO: generate random / dummy elements for ty, literal, pat and expr arguments *)
-    let my_tys   = generate_tys ~ty:[0] ~expr:[2;0;0] in
-    let my_pats  = generate_pats ~ty:[0] ~ty1:[0] ~literal:[0] ~pat1:[0;0] ~pat2:[0;0] in
-    let my_exprs = generate_expr ~expr_ty:[0] ~literal:[0] ~ty:[0] ~expr0:[2;0;0] ~expr1:[2;0;0] ~expr2:[2;0;0] ~pat:[0;0] in
-    let my_items = generate_items ~expr:[2;0;0] ~ty:[0] in
+    let my_tys   = generate_tys in
+    let my_pats  = generate_pats in
+    let my_exprs = generate_expr in
+    let my_items = generate_items in
     (my_literals, my_tys, my_pats, my_exprs, my_items)
 end
 
@@ -1269,7 +1341,7 @@ module HaxCFG = struct
         {
           path = "ast_spec.md";
           contents =
-            "# Hax CFG" ^ literal_string ^ expr_string ^ ty_string ^ pat_string ^ item_string;
+            "# Hax CFG" ^ literal_string ^ ty_string ^ pat_string ^ expr_string ^ item_string;
           sourcemap = None;
         };
     ]
