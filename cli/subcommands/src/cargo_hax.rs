@@ -124,6 +124,53 @@ fn find_hax_engine(message_format: MessageFormat) -> process::Command {
         })
 }
 
+const AST_PRINTER_BINARY_NAME: &str = "hax-ast-printer";
+const AST_PRINTER_BINARY_NOT_FOUND: &str = "The binary [hax-ast-printer] was not found in your [PATH].";
+
+/// Dynamically looks for binary [AST_PRINTER_BINARY_NAME].  First, we
+/// check whether [HAX_AST_PRINTER_BINARY] is set, and use that if it
+/// is. Then, we try to find [AST_PRINTER_BINARY_NAME] in PATH. If not
+/// found, detect whether nodejs is available, download the JS-compiled
+/// ast_printer and use it.
+#[allow(unused_variables, unreachable_code)]
+fn find_hax_ast_printer(message_format: MessageFormat) -> process::Command {
+    use which::which;
+
+    std::env::var("HAX_AST_PRINTER_BINARY")
+        .ok()
+        .map(process::Command::new)
+        .or_else(|| which(AST_PRINTER_BINARY_NAME).ok().map(process::Command::new))
+        .or_else(|| {
+            which("node").ok().and_then(|_| {
+                if let Ok(true) = inquire::Confirm::new(&format!(
+                    "{} Should I try to download it from GitHub?",
+                    AST_PRINTER_BINARY_NOT_FOUND,
+                ))
+                .with_default(true)
+                .prompt()
+                {
+                    let cmd = process::Command::new("node");
+                    let ast_printer_js_path: String =
+                        panic!("TODO: Downloading from GitHub is not supported yet.");
+                    cmd.arg(ast_printer_js_path);
+                    Some(cmd)
+                } else {
+                    None
+                }
+            })
+        })
+        .unwrap_or_else(|| {
+            fn is_opam_setup_correctly() -> bool {
+                std::env::var("OPAM_SWITCH_PREFIX").is_ok()
+            }
+            HaxMessage::AstPrinterNotFound {
+                is_opam_setup_correctly: is_opam_setup_correctly(),
+            }
+            .report(message_format, None);
+            std::process::exit(2);
+        })
+}
+
 use hax_types::diagnostics::message::HaxMessage;
 use hax_types::diagnostics::report::ReportCtx;
 
@@ -193,6 +240,19 @@ impl HaxMessage {
                     backend
                 );
                 eprintln!("{}", renderer.render(Level::Warning.title(&title)));
+            }
+            Self::AstPrinterNotFound {
+                is_opam_setup_correctly,
+            } => {
+                use colored::Colorize;
+                let message = format!("hax: {}\n{}\n\n{} {}\n",
+                                      &AST_PRINTER_BINARY_NOT_FOUND,
+                                      "Please make sure the ast_printer is installed and is in PATH!",
+                                      "Hint: With OPAM, `eval $(opam env)` is necessary for OPAM binaries to be in PATH: make sure to run `eval $(opam env)` before running `cargo hax`.".bright_black(),
+                                      format!("(diagnostics: {})", if is_opam_setup_correctly { "opam seems okay ✓" } else {"opam seems not okay ❌"}).bright_black()
+                );
+                let message = Level::Error.title(&message);
+                eprintln!("{}", renderer.render(message))
             }
         }
     }
@@ -540,6 +600,22 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                     );
             }
             error
+        },
+        Command::GenerateAST => {
+            let mut engine_subprocess = find_hax_ast_printer(options.message_format)
+                // .stdin(std::process::Stdio::piped())
+                // .stdout(std::process::Stdio::piped())
+                .spawn()
+                .inspect_err(|e| {
+                    if let std::io::ErrorKind::NotFound = e.kind() {
+                        panic!(
+                            "The binary [{}] was not found in your [PATH].",
+                            ENGINE_BINARY_NAME
+                        )
+                    }
+                })
+                .unwrap();
+            true
         }
     }
 }
