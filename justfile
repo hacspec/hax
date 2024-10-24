@@ -73,6 +73,27 @@ test-review: (_ensure_command_in_path "cargo-insta" "Insta (https://insta.rs)")
       | sd '[-](\d+)' '#$1\t is labeled `marked-unimplemented`, but was not found in the code' \
       | sd '[+](\d+)' '#$1\t is *not* labeled `marked-unimplemented` or is closed'
 
+# Check that the licenses of every crate and every package are compliant with `deny.toml`
+check-licenses:
+  #!/usr/bin/env bash
+  just _ensure_command_in_path cargo-deny "cargo-deny (https://embarkstudios.github.io/cargo-deny/)"
+  just _ensure_command_in_path toml2json "toml2json (https://github.com/woodruffw/toml2json)"
+  echo "> Check licenses for Rust"
+  cargo deny check licenses
+  cd engine
+  echo "> Check licenses for OCaml"
+  # initialize opam if needed
+  opam env >& /dev/null || opam init --no
+  # pin package `hax-engine` if needed
+  opam list --required-by=hax-engine --column=name,license: -s >& /dev/null || opam pin . --yes
+  # Check that every pacakge matches licenses of `deny.toml`
+  if opam list --required-by=hax-engine --column=name,license: -s \
+     | grep -Pvi $(toml2json ../deny.toml| jq '.licenses.allow | join("|")'); then
+     echo "Some licenses were non compliant to our policy (see `deny.toml`)"
+  else
+    echo "licenses ok"
+  fi
+
 _ensure_command_in_path BINARY NAME:
   #!/usr/bin/env bash
   command -v {{BINARY}} &> /dev/null || {
