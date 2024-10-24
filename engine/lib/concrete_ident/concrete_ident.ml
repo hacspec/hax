@@ -346,8 +346,9 @@ module View = struct
         path
     in
     let sep = "__" in
-    let subst = String.substr_replace_all ~pattern:sep ~with_:(sep ^ "_") >>
-      String.substr_replace_all ~pattern:"___" ~with_:("")
+    let subst =
+      String.substr_replace_all ~pattern:sep ~with_:(sep ^ "_")
+      >> String.substr_replace_all ~pattern:"___" ~with_:""
     in
     let fake_path, real_path =
       (* Detects paths of nested items *)
@@ -504,10 +505,12 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
       match kind with
       | Constructor { is_struct = false } ->
           ( List.drop_last_exn path,
-            Option.value_exn type_name ^ "_" ^ definition, "t_" ^ List.last_exn path ^ "_" )
+            Option.value_exn type_name ^ "_" ^ definition,
+            "t_" ^ List.last_exn path ^ "_" )
       | Field when List.last path |> [%equal: string option] type_name ->
           (List.drop_last_exn path, definition, "t_" ^ List.last_exn path ^ "_")
-      | AssociatedItem _ -> (List.drop_last_exn path, definition, "t_" ^ List.last_exn path ^ "_" )
+      | AssociatedItem _ ->
+          (List.drop_last_exn path, definition, "t_" ^ List.last_exn path ^ "_")
       | _ -> (path, definition, "")
     in
     let definition = extra ^ rename_definition path definition kind type_name in
