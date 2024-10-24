@@ -99,6 +99,29 @@ type literal =
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
+type item_kind =
+  [ `Fn
+  | `TyAlias
+  | `Type
+  | `IMacroInvokation
+  | `Trait
+  | `Impl
+  | `Alias
+  | `Use
+  | `Quote
+  | `HaxError
+  | `NotImplementedYet ]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** Describes the (shallow) kind of an item. *)
+
+type item_quote_origin = {
+  item_kind : item_kind;
+  item_ident : concrete_ident;
+  position : [ `Before | `After | `Replace ];
+}
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** From where does a quote item comes from? *)
+
 module Make =
 functor
   (F : Features.T)
@@ -434,7 +457,7 @@ functor
           is_external : bool;
           rename : string option;
         }
-      | Quote of quote
+      | Quote of { quote : quote; origin : item_quote_origin }
       | HaxError of string
       | NotImplementedYet
 
