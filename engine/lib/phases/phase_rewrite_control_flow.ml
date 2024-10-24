@@ -55,8 +55,7 @@ module Make (F : Features.T) =
               let return_type, witness = loop_return_type#visit_expr () loop in
 
               let typ =
-                U.M.ty_control_flow ~continue_type:loop.typ
-                  ~break_type:return_type
+                U.M.ty_cf ~continue_type:loop.typ ~break_type:return_type
               in
               let loop = { loop with typ } in
               let span = loop.span in

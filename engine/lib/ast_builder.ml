@@ -23,23 +23,26 @@ module Make (F : Features.T) = struct
       | [ ty ] -> ty
       | types -> ty_tuple types
 
-    let ty_control_flow ~(continue_type : ty) ~(break_type : ty) : ty =
+    (** This gives the type of a value in the `ControlFlow` enum *)
+    let ty_cf ~(continue_type : ty) ~(break_type : ty) : ty =
       TApp
         {
           ident = Global_ident.of_name Type Core__ops__control_flow__ControlFlow;
           args = [ GType break_type; GType continue_type ];
         }
 
+    (** This gives the type of a value encoded in the `ControlFlow` enum.
+       In case a `return_type` is provided the encoding is nested:
+       `return v` is `Break (Break v)` 
+       `break v` is `Break (Continue (v, acc))` *)
     let ty_cf_return ~(acc_type : ty) ~(break_type : ty)
         ~(return_type : ty option) : ty =
       let break_type = ty_tuple [ break_type; acc_type ] in
       match return_type with
       | Some ret_ty ->
-          let break_type =
-            ty_control_flow ~break_type:ret_ty ~continue_type:break_type
-          in
-          ty_control_flow ~break_type ~continue_type:acc_type
-      | None -> ty_control_flow ~break_type ~continue_type:acc_type
+          let break_type = ty_cf ~break_type:ret_ty ~continue_type:break_type in
+          ty_cf ~break_type ~continue_type:acc_type
+      | None -> ty_cf ~break_type ~continue_type:acc_type
   end
 
   include NoSpan
@@ -137,7 +140,7 @@ module Make (F : Features.T) = struct
     let expr'_Constructor_CF ~(span : span) ~(break_type : ty)
         ?(continue_type : ty = ty_unit) (cf : [ `Break | `Continue ]) (e : expr)
         =
-      let typ = NoSpan.ty_control_flow ~continue_type ~break_type in
+      let typ = NoSpan.ty_cf ~continue_type ~break_type in
       match cf with
       | `Break ->
           call_Constructor Core__ops__control_flow__ControlFlow__Break false
@@ -146,7 +149,7 @@ module Make (F : Features.T) = struct
           call_Constructor Core__ops__control_flow__ControlFlow__Continue false
             [ e ] span typ
 
-    (* We use the following encoding of return, break and continue in the `ControlFlow` enum:
+    (** We use the following encoding of return, break and continue in the `ControlFlow` enum:
        Return e -> Break (Break e)
        Break e -> Break ((Continue(e, acc)))
        Continue -> Continue(acc)
@@ -183,8 +186,7 @@ module Make (F : Features.T) = struct
             let tuple_type = NoSpan.ty_tuple [ break_type; acc.typ ] in
             match return_type with
             | Some ret_typ ->
-                NoSpan.ty_control_flow ~break_type:ret_typ
-                  ~continue_type:tuple_type
+                NoSpan.ty_cf ~break_type:ret_typ ~continue_type:tuple_type
             | None -> tuple_type
           in
           expr'_Constructor_CF ~span ~break_type ~continue_type:acc.typ

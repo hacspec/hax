@@ -217,6 +217,12 @@ functor
 
     and pat = { p : pat'; span : span; typ : ty }
     and field_pat = { field : global_ident; pat : pat }
+
+    (* This marker describes what control flow is present in a loop.
+       It is added by phase `DropReturnBreakContinue` and the
+       information is used in `FunctionalizeLoops`. We need it because
+       we replace the control flow nodes of the AST by some encoding
+       in the `ControlFlow` enum. *)
     and cf_kind = BreakOnly | BreakOrReturn
 
     and expr' =

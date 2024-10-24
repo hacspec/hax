@@ -1,4 +1,4 @@
-(* This phase removes `return`s in exit position. Inside loops,
+(** This phase removes `return`s in exit position. Inside loops,
    it replaces `return`, `break` and `continue` (in exit position)
    by their encoding in the `ControlFlow` enum. It replaces another
    expression in exit position by an equivalent `continue`.
@@ -124,7 +124,8 @@ module%inlined_contents Make (F : Features.T) = struct
       match expr with
       | [%inline_arms "dexpr'.*" - Return - Break - Continue - Loop] -> auto
       | Return _ | Break _ | Continue _ ->
-          Error.raise { kind = NonTrivialAndMutFnInput (*TODO Correct*); span }
+          Error.assertion_failure span
+            "Return/Break/Continue are expected to be gone as this point"
       | Loop { body; kind; state; label; witness; _ } ->
           let control_flow_type = has_return#visit_expr () body in
           let control_flow =
