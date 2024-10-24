@@ -176,6 +176,7 @@
             pkgs.openssl.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
+            pkgs.toml2json
             rustfmt
             rustc
 
