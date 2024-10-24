@@ -356,6 +356,10 @@ pub enum Command<E: Extension> {
     #[clap(name = "into")]
     Backend(BackendOptions<E>),
 
+    /// Generate AST and print it as an EBNF formula
+    #[clap(name = "generate-ast")]
+    GenerateAST,
+
     /// Export directly as a JSON file
     JSON {
         /// Path to the output JSON file, "-" denotes stdout.
