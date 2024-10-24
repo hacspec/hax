@@ -124,7 +124,8 @@ fn find_hax_engine(message_format: MessageFormat) -> process::Command {
 }
 
 const AST_PRINTER_BINARY_NAME: &str = "hax-ast-printer";
-const AST_PRINTER_BINARY_NOT_FOUND: &str = "The binary [hax-ast-printer] was not found in your [PATH].";
+const AST_PRINTER_BINARY_NOT_FOUND: &str =
+    "The binary [hax-ast-printer] was not found in your [PATH].";
 
 /// Dynamically looks for binary [AST_PRINTER_BINARY_NAME].  First, we
 /// check whether [HAX_AST_PRINTER_BINARY] is set, and use that if it
@@ -138,7 +139,11 @@ fn find_hax_ast_printer(message_format: MessageFormat) -> process::Command {
     std::env::var("HAX_AST_PRINTER_BINARY")
         .ok()
         .map(process::Command::new)
-        .or_else(|| which(AST_PRINTER_BINARY_NAME).ok().map(process::Command::new))
+        .or_else(|| {
+            which(AST_PRINTER_BINARY_NAME)
+                .ok()
+                .map(process::Command::new)
+        })
         .or_else(|| {
             which("node").ok().and_then(|_| {
                 if let Ok(true) = inquire::Confirm::new(&format!(
@@ -599,11 +604,11 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                     );
             }
             error
-        },
+        }
         Command::GenerateAST => {
-            let mut engine_subprocess = find_hax_ast_printer(options.message_format)
-                // .stdin(std::process::Stdio::piped())
-                // .stdout(std::process::Stdio::piped())
+            let mut generate_ast_subprocess = find_hax_ast_printer(options.message_format)
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
                 .spawn()
                 .inspect_err(|e| {
                     if let std::io::ErrorKind::NotFound = e.kind() {
@@ -614,6 +619,11 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                     }
                 })
                 .unwrap();
+
+            let stdout = std::io::BufReader::new(generate_ast_subprocess.stdout.take().unwrap());
+            for msg in stdout.lines() {
+                println!("{:?}", msg);
+            }
             true
         }
     }
