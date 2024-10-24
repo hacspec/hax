@@ -872,7 +872,9 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   let lib_contents =
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
   in
-  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None } in
+  let lib_file =
+    Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None }
+  in
   [ lib_file ]
 
 open Phase_utils
