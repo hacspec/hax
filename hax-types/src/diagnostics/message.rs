@@ -23,6 +23,9 @@ pub enum HaxMessage {
     WarnExperimentalBackend {
         backend: Backend<()>,
     } = 4,
+    AstPrinterNotFound {
+        is_opam_setup_correctly: bool,
+    } = 5,
 }
 
 impl HaxMessage {
