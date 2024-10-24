@@ -5,6 +5,7 @@ default:
 	OTHERFLAGS="--lax" make -C sha256
 	make -C barrett
 	make -C kyber_compress
+	make -C proverif-psk
 
 clean:
 	make -C limited-order-book clean
