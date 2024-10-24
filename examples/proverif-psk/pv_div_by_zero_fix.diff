@@ -1,0 +1,13 @@
+diff proverif2.05/src/display.ml proverif2.05/src/display.ml
+index c43785ec..2763d907 100644
+--- proverif/src/display.ml
++++ proverif/src/display.ml
+@@ -49,7 +49,7 @@ let dynamic_display str =
+   then display_whitespace (!record_cursor_line - size);
+   (* If we cannot determine the number of columns, we just assume that the statistics
+      will fit on one line (the statistics will not be active by default) *)
+-  let lines = if columns = -1 then 0 else ((max (!record_cursor_line) size) - 1) / columns in
++  let lines = if columns <= 0 then 0 else ((max (!record_cursor_line) size) - 1) / columns in
+   (* Go to the beginning of the line *)
+   print_string "\r";
+   if lines > 0 then

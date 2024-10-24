@@ -184,7 +184,7 @@
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
-          fstar = pkgs.mkShell {
+          examples = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
             shellHook = ''
@@ -192,7 +192,7 @@
               export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
               export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
             '';
-            packages = packages ++ [fstar];
+            packages = packages ++ [fstar pkgs.proverif];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
