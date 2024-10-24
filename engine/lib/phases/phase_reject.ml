@@ -41,6 +41,26 @@ end
 
 module _ (FA : Features.T) : Phase_utils.PHASE = Continue (FA)
 
+module Question_mark (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Question_mark
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let question_mark = reject
+        let metadata = make_metadata QuestionMark
+      end)
+end
+
+module _ (FA : Features.T) : Phase_utils.PHASE = Question_mark (FA)
+
 module RawOrMutPointer (FA : Features.T) = struct
   module FB = struct
     include FA

@@ -3,7 +3,8 @@ open! Prelude
 module%inlined_contents Make
     (F : Features.T
            with type continue = Features.Off.continue
-            and type early_exit = Features.Off.early_exit) =
+            and type early_exit = Features.Off.early_exit
+            and type break = Features.Off.break) =
 struct
   open Ast
   module FA = F
@@ -15,6 +16,10 @@ struct
     include Features.Off.While_loop
     include Features.Off.For_index_loop
     include Features.Off.State_passing_loop
+    include Features.Off.Fold_like_loop
+    include Features.Off.Continue
+    include Features.Off.Early_exit
+    include Features.Off.Break
   end
 
   include
@@ -28,6 +33,7 @@ struct
 
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
+    module Visitors = Ast_visitors.Make (F)
 
     module S = struct
       include Features.SUBTYPE.Id
@@ -76,7 +82,7 @@ struct
       | StepBy of { n : B.expr; it : iterator }
     [@@deriving show]
 
-    let rec as_iterator' (e : B.expr) : iterator option =
+    let rec as_iterator (e : B.expr) : iterator option =
       match e.e with
       | Construct
           {
@@ -92,12 +98,6 @@ struct
              && Concrete_ident.eq_name Core__ops__range__Range__end end_field ->
           Some (Range { start; end_ })
       | _ -> meth_as_iterator e
-
-    and as_iterator (e : B.expr) : iterator option =
-      let result = as_iterator' e in
-      (* UB.Debug.expr ~label:"as_iterator" e; *)
-      (* " = " ^ [%show: iterator option] result |> Stdio.prerr_endline; *)
-      result
 
     and meth_as_iterator (e : B.expr) : iterator option =
       let* f, args =
@@ -129,29 +129,50 @@ struct
         Some (ChunksExact { size; slice })
       else None
 
-    let fn_args_of_iterator (it : iterator) :
+    let fn_args_of_iterator (cf : A.cf_kind option) (it : iterator) :
         (Concrete_ident.name * B.expr list * B.ty) option =
       let open Concrete_ident_generated in
       let usize = B.TInt { size = SSize; signedness = Unsigned } in
       match it with
       | Enumerate (ChunksExact { size; slice }) ->
-          Some
-            ( Rust_primitives__hax__folds__fold_enumerated_chunked_slice,
-              [ size; slice ],
-              usize )
+          let fold_op =
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_enumerated_chunked_slice_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_enumerated_chunked_slice_cf
+            | None -> Rust_primitives__hax__folds__fold_enumerated_chunked_slice
+          in
+          Some (fold_op, [ size; slice ], usize)
       | Enumerate (Slice slice) ->
-          Some
-            ( Rust_primitives__hax__folds__fold_enumerated_slice,
-              [ slice ],
-              usize )
+          let fold_op =
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_enumerated_slice_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_enumerated_slice_cf
+            | None -> Rust_primitives__hax__folds__fold_enumerated_slice
+          in
+          Some (fold_op, [ slice ], usize)
       | StepBy { n; it = Range { start; end_ } } ->
-          Some
-            ( Rust_primitives__hax__folds__fold_range_step_by,
-              [ start; end_; n ],
-              start.typ )
+          let fold_op =
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_range_step_by_return
+            | Some BreakOnly ->
+                Rust_primitives__hax__folds__fold_range_step_by_cf
+            | None -> Rust_primitives__hax__folds__fold_range_step_by
+          in
+          Some (fold_op, [ start; end_; n ], start.typ)
       | Range { start; end_ } ->
-          Some
-            (Rust_primitives__hax__folds__fold_range, [ start; end_ ], start.typ)
+          let fold_op =
+            match cf with
+            | Some BreakOrReturn ->
+                Rust_primitives__hax__folds__fold_range_return
+            | Some BreakOnly -> Rust_primitives__hax__folds__fold_range_cf
+            | None -> Rust_primitives__hax__folds__fold_range
+          in
+          Some (fold_op, [ start; end_ ], start.typ)
       | _ -> None
 
     [%%inline_defs dmutability + dsafety_kind]
@@ -165,19 +186,35 @@ struct
           {
             body;
             kind = ForLoop { it; pat; _ };
-            state = Some { init; bpat; _ };
+            state = Some _ as state;
+            control_flow;
+            _;
+          }
+      | Loop
+          {
+            body;
+            kind = ForLoop { it; pat; _ };
+            state;
+            control_flow = Some (BreakOrReturn, _) as control_flow;
             _;
           } ->
+          let bpat, init =
+            match state with
+            | Some { bpat; init; _ } -> (dpat bpat, dexpr init)
+            | None ->
+                let unit = UB.unit_expr span in
+                (M.pat_PWild ~span ~typ:unit.typ, unit)
+          in
           let body = dexpr body in
           let { body; invariant } = extract_loop_invariant body in
           let it = dexpr it in
           let pat = dpat pat in
-          let bpat = dpat bpat in
           let fn : B.expr = UB.make_closure [ bpat; pat ] body body.span in
-          let init = dexpr init in
+          let cf = Option.map ~f:fst control_flow in
           let f, kind, args =
-            match as_iterator it |> Option.bind ~f:fn_args_of_iterator with
+            match as_iterator it |> Option.bind ~f:(fn_args_of_iterator cf) with
             | Some (f, args, typ) ->
+                (* TODO what happens if there is control flow? *)
                 let invariant : B.expr =
                   let default =
                     let pat = MS.pat_PWild ~typ in
@@ -188,22 +225,41 @@ struct
                 in
                 (f, Concrete_ident.Kind.Value, args @ [ invariant; init; fn ])
             | None ->
-                ( Core__iter__traits__iterator__Iterator__fold,
-                  AssociatedItem Value,
-                  [ it; init; fn ] )
+                let fold : Concrete_ident.name =
+                  match cf with
+                  | Some BreakOrReturn ->
+                      Rust_primitives__hax__folds__fold_return
+                  | Some BreakOnly -> Rust_primitives__hax__folds__fold_cf
+                  | None -> Core__iter__traits__iterator__Iterator__fold
+                in
+                (fold, AssociatedItem Value, [ it; init; fn ])
           in
           UB.call ~kind f args span (dty span expr.typ)
       | Loop
           {
             body;
             kind = WhileLoop { condition; _ };
-            state = Some { init; bpat; _ };
+            state = Some _ as state;
+            control_flow;
+            _;
+          }
+      | Loop
+          {
+            body;
+            kind = WhileLoop { condition; _ };
+            state;
+            control_flow = Some (BreakOrReturn, _) as control_flow;
             _;
           } ->
+          let bpat, init =
+            match state with
+            | Some { bpat; init; _ } -> (dpat bpat, dexpr init)
+            | None ->
+                let unit = UB.unit_expr span in
+                (M.pat_PWild ~span ~typ:unit.typ, unit)
+          in
           let body = dexpr body in
           let condition = dexpr condition in
-          let bpat = dpat bpat in
-          let init = dexpr init in
           let condition : B.expr =
             M.expr_Closure ~params:[ bpat ] ~body:condition ~captures:[]
               ~span:condition.span
@@ -214,19 +270,19 @@ struct
               ~typ:(TArrow ([ bpat.typ ], body.typ))
               ~span:body.span
           in
-          UB.call ~kind:(AssociatedItem Value) Rust_primitives__hax__while_loop
+          let fold_operator : Concrete_ident.name =
+            match control_flow with
+            | Some (BreakOrReturn, _) -> Rust_primitives__hax__while_loop_return
+            | Some (BreakOnly, _) -> Rust_primitives__hax__while_loop_cf
+            | None -> Rust_primitives__hax__while_loop
+          in
+          UB.call ~kind:(AssociatedItem Value) fold_operator
             [ condition; init; body ] span (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~issue_id:405 ~details:"Loop without mutation"
             span
       | Loop _ ->
           Error.unimplemented ~issue_id:933 ~details:"Unhandled loop kind" span
-      | Break _ ->
-          Error.unimplemented ~issue_id:15
-            ~details:
-              "For now, the AST node [Break] is feature gated only by [loop], \
-               there is nothing for having loops but no breaks."
-            span
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .

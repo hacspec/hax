@@ -315,7 +315,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let mut trait_refs = solve_item_traits(s, def_id, generics, None);
+    let mut trait_refs = solve_item_required_traits(s, def_id, generics);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -397,7 +397,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
                 let container_trait_refs =
-                    solve_item_traits(s, container_def_id, container_generics, None);
+                    solve_item_required_traits(s, container_def_id, container_generics);
                 trait_refs.extend(container_trait_refs);
                 (generics.sinto(s), Option::None)
             }
@@ -950,7 +950,7 @@ pub enum AggregateKind {
     Tuple,
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
-        let trait_refs = solve_item_traits(s, *def_id, generics, None);
+        let trait_refs = solve_item_required_traits(s, *def_id, generics);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
@@ -978,15 +978,14 @@ pub enum AggregateKind {
         let closure = generics.as_closure();
         let sig = closure.sig().sinto(s);
 
-        // Solve the trait obligations. Note that we solve the parent
+        // Solve the predicates from the parent (i.e., the function which calls the closure).
         let tcx = s.base().tcx;
         let parent_generics = closure.parent_args();
         let generics = tcx.mk_args(parent_generics);
-        // Retrieve the predicates from the parent (i.e., the function which calls
-        // the closure).
-        let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
+        // TODO: does this handle nested closures?
+        let parent = tcx.generics_of(rust_id).parent.unwrap();
+        let trait_refs = solve_item_required_traits(s, parent, generics);
 
-        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
