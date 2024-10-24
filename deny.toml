@@ -1,0 +1,13 @@
+[licenses]
+unused-allowed-license = "allow"
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "Unicode-DFS-2016",
+    "MPL-2.0",
+    # Licences used in the OCaml dependencies in the engine
+    "BSD-3-Clause",
+    "LGPL-2.1",
+    "LGPL-2.0",
+    "ISC",
+]
