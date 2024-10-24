@@ -111,6 +111,9 @@ pub struct ConstantFieldExpr {
 /// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
 
+// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
+pub type ConstantKind = ConstantExpr;
+
 #[cfg(feature = "rustc")]
 pub use self::rustc::*;
 #[cfg(feature = "rustc")]

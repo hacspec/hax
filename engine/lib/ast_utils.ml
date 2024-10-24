@@ -707,7 +707,7 @@ module Make (F : Features.T) = struct
   (* TODO: Those tuple1 things are wrong! Tuples of size one exists in Rust! e.g. `(123,)` *)
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
-    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ]; _ } ->
+    | PConstruct { constructor = `TupleType 1; fields = [ { pat; _ } ]; _ } ->
         remove_tuple1_pat pat
     | _ -> p
 
@@ -748,7 +748,7 @@ module Make (F : Features.T) = struct
         pat_is_expr p e
     | PBinding { subpat = None; var = pv; _ }, LocalVar ev ->
         [%eq: local_ident] pv ev
-    | ( PConstruct { name = pn; args = pargs; _ },
+    | ( PConstruct { constructor = pn; fields = pargs; _ },
         Construct { constructor = en; fields = eargs; base = None; _ } )
       when [%eq: global_ident] pn en -> (
         match List.zip pargs eargs with
@@ -824,10 +824,10 @@ module Make (F : Features.T) = struct
           p =
             PConstruct
               {
-                name = `TupleCons len;
-                args = tuple;
+                constructor = `TupleCons len;
                 is_record = false;
                 is_struct = true;
+                fields = tuple;
               };
           typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
@@ -998,6 +998,20 @@ module Make (F : Features.T) = struct
       { p = PBinding { mut; mode; var; typ; subpat }; span; typ }
     in
     Some { pat; typ; typ_span = Some span; attrs = [] }
+
+  let kind_of_item (item : item) : item_kind =
+    match item.v with
+    | Fn _ -> `Fn
+    | TyAlias _ -> `TyAlias
+    | Type _ -> `Type
+    | IMacroInvokation _ -> `IMacroInvokation
+    | Trait _ -> `Trait
+    | Impl _ -> `Impl
+    | Alias _ -> `Alias
+    | Use _ -> `Use
+    | Quote _ -> `Quote
+    | HaxError _ -> `HaxError
+    | NotImplementedYet -> `NotImplementedYet
 
   let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
     match lhs with

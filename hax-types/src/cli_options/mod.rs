@@ -378,6 +378,13 @@ pub enum Command<E: Extension> {
         )]
         kind: Vec<ExportBodyKind>,
 
+        /// By default, `cargo hax json` outputs a JSON where every
+        /// piece of information is inlined. This however creates very
+        /// large JSON files. This flag enables the use of unique IDs
+        /// and outputs a map from IDs to actual objects.
+        #[arg(long)]
+        use_ids: bool,
+
         /// Whether to include extra informations about `DefId`s.
         #[arg(short = 'E', long = "include-extra", default_value = "false")]
         include_extra: bool,

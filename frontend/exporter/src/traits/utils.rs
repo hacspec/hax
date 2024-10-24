@@ -53,19 +53,8 @@ pub fn predicates_of_or_above<'tcx>(
         _ => {}
     }
 
-    // Add some extra predicates that aren't in `predicates_defined_on`.
+    // Add the extra `Self: Trait` predicate.
     match def_kind {
-        OpaqueTy => {
-            // An opaque type (e.g. `impl Trait`) provides predicates by itself: we need to
-            // account for them.
-            // TODO: is this still useful? The test that used to require this doesn't anymore.
-            predicates.extend(
-                tcx.explicit_item_bounds(did)
-                    .skip_binder() // Skips an `EarlyBinder`, likely for GATs
-                    .iter()
-                    .filter_map(|(clause, _span)| clause.as_trait_clause()),
-            )
-        }
         Trait => {
             // Add the special `Self: Trait` clause.
             // Copied from the code of `tcx.predicates_of()`.

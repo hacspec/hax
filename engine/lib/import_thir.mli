@@ -1,4 +1,4 @@
-val import_ty : Types.span -> Types.ty -> Ast.Rust.ty
+val import_ty : Types.span -> Types.node_for__ty_kind -> Ast.Rust.ty
 val import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal
 
 val import_clause :

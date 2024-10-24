@@ -10,6 +10,7 @@ module Thir = struct
   type generic_param = generic_param_for__decorated_for__expr_kind
   type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
   type trait_item = trait_item_for__decorated_for__expr_kind
+  type ty = node_for__ty_kind
 end
 
 open! Prelude
@@ -385,7 +386,7 @@ end) : EXPR = struct
     in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
-      match (ty.kind, expr, List.drop_last stmts, List.last stmts) with
+      match (ty.value, expr, List.drop_last stmts, List.last stmts) with
       | ( Thir.Never,
           None,
           Some stmts,
@@ -881,9 +882,9 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ pat.span ]
                   "Pattern match on union types: not supported"
           in
-          let name = def_id (Constructor { is_struct }) info.variant in
-          let args = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct { name; args; is_record; is_struct }
+          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let fields = List.map ~f:(c_field_pat info) subpatterns in
+          PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
           (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
@@ -981,7 +982,7 @@ end) : EXPR = struct
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
-    match ty.kind with
+    match ty.value with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
@@ -1279,7 +1280,7 @@ include struct
     let is_core_item = false
   end)
 
-  let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
+  let import_ty : Types.span -> Types.node_for__ty_kind -> Ast.Rust.ty = c_ty
 
   let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref
@@ -1380,12 +1381,12 @@ let cast_of_enum typ_name generics typ thir_span
             {
               is_record = variant.is_record;
               is_struct = false;
-              args =
+              fields =
                 List.map
                   ~f:(fun (cid, typ, _) ->
                     { field = `Concrete cid; pat = { p = PWild; typ; span } })
                   variant.arguments;
-              name = `Concrete variant.name;
+              constructor = `Concrete variant.name;
             }
         in
         let pat = { p = pat; typ = self; span } in
@@ -1463,7 +1464,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_body body;
+               body = c_expr body;
                params = [];
                safety = Safe;
              }
@@ -1675,7 +1676,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                generics = c_generics generics;
                self_ty = c_ty item.span self_ty;
                of_trait =
-                 ( def_id Trait of_trait.def_id,
+                 ( Concrete_ident.of_def_id Trait of_trait.def_id,
                    List.map ~f:(c_generic_value item.span) of_trait.generic_args
                  );
                items =

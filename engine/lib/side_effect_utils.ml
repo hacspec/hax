@@ -271,17 +271,17 @@ struct
                 no_lbs
                   {
                     SideEffects.zero with
-                    continue = Some (Option.map ~f:(fun (_, e) -> e.typ) e');
+                    continue = Some (Option.map ~f:(fun (e, _) -> e.typ) e');
                   }
               in
               match e' with
-              | Some (witness', e') ->
+              | Some (e', witness') ->
                   HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                       ( {
                           e with
                           e =
                             Continue
-                              { acc = Some (witness', e'); label; witness };
+                              { acc = Some (e', witness'); label; witness };
                         },
                         m#plus ceffect effects ))
               | None -> (e, ceffect))

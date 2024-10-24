@@ -30,19 +30,26 @@ pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
     pub comments: Vec<(hax_frontend_exporter::Span, String)>,
 }
 
+use hax_frontend_exporter::id_table;
+
 impl<Body: hax_frontend_exporter::IsBody> HaxMeta<Body>
 where
-    Body: bincode::Encode + bincode::Decode,
+    Body: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
-    pub fn write(self, write: &mut impl std::io::Write) {
+    #[tracing::instrument(level = "trace", skip(self, write, id_table))]
+    pub fn write(self, write: &mut impl std::io::Write, id_table: id_table::Table) {
         let mut write = zstd::stream::write::Encoder::new(write, 0).unwrap();
-        bincode::encode_into_std_write(self, &mut write, bincode::config::standard()).unwrap();
-        write.finish().unwrap();
+
+        id_table::WithTable::run(id_table, self, |with_table| {
+            serde_brief::to_writer(with_table, &mut write).unwrap();
+            write.finish().unwrap();
+        })
     }
-    pub fn read(reader: impl std::io::Read) -> Self {
+    #[tracing::instrument(level = "trace", skip(reader))]
+    pub fn read(reader: impl std::io::Read) -> (Self, id_table::Table) {
         let reader = zstd::stream::read::Decoder::new(reader).unwrap();
         let reader = std::io::BufReader::new(reader);
-        bincode::decode_from_reader(reader, bincode::config::standard()).unwrap()
+        id_table::WithTable::destruct(serde_brief::from_reader(reader).unwrap())
     }
 }
 

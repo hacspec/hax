@@ -131,10 +131,10 @@ struct
                                                                     p =
                                                                       PConstruct
                                                                         {
-                                                                          name =
+                                                                          constructor =
                                                                             `Concrete
                                                                               none_ctor;
-                                                                          args =
+                                                                          fields =
                                                                             [];
                                                                           _;
                                                                         };
@@ -180,10 +180,10 @@ struct
                                                                     p =
                                                                       PConstruct
                                                                         {
-                                                                          name =
+                                                                          constructor =
                                                                             `Concrete
                                                                               some_ctor;
-                                                                          args =
+                                                                          fields =
                                                                             [
                                                                               {
                                                                                 pat;

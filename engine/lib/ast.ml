@@ -99,6 +99,29 @@ type literal =
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
+type item_kind =
+  [ `Fn
+  | `TyAlias
+  | `Type
+  | `IMacroInvokation
+  | `Trait
+  | `Impl
+  | `Alias
+  | `Use
+  | `Quote
+  | `HaxError
+  | `NotImplementedYet ]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** Describes the (shallow) kind of an item. *)
+
+type item_quote_origin = {
+  item_kind : item_kind;
+  item_ident : concrete_ident;
+  position : [ `Before | `After | `Replace ];
+}
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** From where does a quote item comes from? *)
+
 module Make =
 functor
   (F : Features.T)
@@ -196,10 +219,10 @@ functor
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
-          name : global_ident;
-          args : field_pat list;
+          constructor : global_ident;
           is_record : bool; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
+          fields : field_pat list;
         }
       (* An or-pattern, e.g. `p | q`.
          Invariant: `List.length subpats >= 2`. *)
@@ -276,7 +299,7 @@ functor
       (* ControlFlow *)
       | Break of {
           e : expr;
-          acc : (F.state_passing_loop * expr) option;
+          acc : (expr * F.state_passing_loop) option;
           label : string option;
           witness : F.break * F.loop;
         }
@@ -286,7 +309,7 @@ functor
       coercion is applied on the (potential) error payload of
       `e`. Coercion should be made explicit within `e`. *)
       | Continue of {
-          acc : (F.state_passing_loop * expr) option;
+          acc : (expr * F.state_passing_loop) option;
           label : string option;
           witness : F.continue * F.loop;
         }
@@ -434,7 +457,7 @@ functor
       | Impl of {
           generics : generics;
           self_ty : ty;
-          of_trait : global_ident * generic_value list;
+          of_trait : concrete_ident * generic_value list;
           items : impl_item list;
           parent_bounds : (impl_expr * impl_ident) list;
           safety : safety_kind;
@@ -447,7 +470,7 @@ functor
           is_external : bool;
           rename : string option;
         }
-      | Quote of quote
+      | Quote of { quote : quote; origin : item_quote_origin }
       | HaxError of string
       | NotImplementedYet
 
