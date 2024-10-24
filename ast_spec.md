@@ -10,31 +10,6 @@ literal ::=
 ```
 
 ```ebnf
-expr ::=
-| "if" expr "{" expr "}" ("else" "{" expr "}")?
-| expr "(" (expr ",")* ")"
-| literal
-| ("[" (expr ",")* "]" | "[" expr ";" int "]")
-| (ident"(" (expr ",")* ")" | ident"{" (ident ":"expr ";")* "}" | /* features: construct_base */ ident"{" (ident ":"expr ";")* ".." base "}")
-| "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
-| ("let" pat (":" ty)? ":=" expr ";" expr | /* features: monadic_binding */ monadic_binding "<" monad ">" "(" "|" pat "|" expr","expr ")")
-| /* features: block */ modifiers "{" expr "}"
-| local_var
-| global_var
-| expr "as" ty
-| macro_name "!" "(" macro_args ")"
-| lhs "=" expr
-| (/* features: loop */ "loop" "{" expr "}" | /* features: loop , while_loop */ "while" "(" expr ")" "{" expr "}" | /* features: loop , for_loop */ "for" "(" pat "in" expr ")" "{" expr "}" | /* features: loop , for_index_loop */ "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}")
-| /* features: break , loop */ "break" expr
-| /* features: early_exit */ "return" expr
-| /* features: question_mark */ expr "?"
-| /* features: continue , loop */ "continue"
-| /* features: reference */ "&" ("mut")? expr
-| ("&" expr "as" "&const _" | /* features: mutable_pointer */ "&mut" expr"as" "&mut _")
-| "|" param "|" expr
-```
-
-```ebnf
 ty ::=
 | "bool"
 | "char"
@@ -63,6 +38,31 @@ pat ::=
 | /* features: reference */ "&" pat
 | literal
 | /*TODO: please implement the method `pat'_PBinding`*/
+```
+
+```ebnf
+expr ::=
+| "if" expr "{" expr "}" ("else" "{" expr "}")?
+| expr "(" (expr ",")* ")"
+| literal
+| ("[" (expr ",")* "]" | "[" expr ";" int "]")
+| (ident"(" (expr ",")* ")" | ident"{" (ident ":"expr ";")* "}" | /* features: construct_base */ ident"{" (ident ":"expr ";")* ".." base "}")
+| "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
+| ("let" pat (":" ty)? ":=" expr ";" expr | /* features: monadic_binding */ monadic_binding "<" monad ">" "(" "|" pat "|" expr","expr ")")
+| /* features: block */ modifiers "{" expr "}"
+| local_var
+| global_var
+| expr "as" ty
+| macro_name "!" "(" macro_args ")"
+| lhs "=" expr
+| (/* features: loop */ "loop" "{" expr "}" | /* features: loop , while_loop */ "while" "(" expr ")" "{" expr "}" | /* features: loop , for_loop */ "for" "(" pat "in" expr ")" "{" expr "}" | /* features: loop , for_index_loop */ "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}")
+| /* features: break , loop */ "break" expr
+| /* features: early_exit */ "return" expr
+| /* features: question_mark */ expr "?"
+| /* features: continue , loop */ "continue"
+| /* features: reference */ "&" ("mut")? expr
+| ("&" expr "as" "&const _" | /* features: mutable_pointer */ "&mut" expr"as" "&mut _")
+| "|" param "|" expr
 ```
 
 ```ebnf
