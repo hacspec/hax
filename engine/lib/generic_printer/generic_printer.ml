@@ -546,6 +546,7 @@ module Make (F : Features.T) = struct
 
       method _do_not_override_item'_Type ~super ~name ~generics ~variants
           ~is_struct =
+        let (generics, _, _) = generics#v in
         if is_struct then
           match variants with
           | [ variant ] ->
