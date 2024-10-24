@@ -52,7 +52,7 @@ module%inlined_contents Make (F : Features.T) = struct
                             arm =
                               {
                                 arm_pat =
-                                  { p = PConstruct { args = [ arg ]; _ }; _ };
+                                  { p = PConstruct { fields = [ arg ]; _ }; _ };
                                 _;
                               };
                             _;

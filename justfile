@@ -35,6 +35,14 @@ expand *FLAGS:
     | ocamlformat --impl - \
     | just _pager
 
+# Show the OCaml module `Generated_generic_printer_base`
+@show-generated-printer-ml:
+  just _ensure_command_in_path ocamlformat ocamlformat
+  cd engine && dune describe pp lib/generated_generic_printer_base.ml \
+    | ocamlformat --impl - \
+    | just _pager
+
+
 # Format all the code
 fmt:
   cargo fmt

@@ -443,10 +443,7 @@ fn drop_generics(type_path: syn::TypePath) -> syn::TypePath {
 /// and we don't want a whole crate only for that helper.
 ///
 /// This proc macro defines some groups of derive clauses that
-/// we reuse all the time. This is particularly interesting for
-/// serializers and deserializers: today we use `bincode` and
-/// `serde`, but maybe we will want to move to something else
-/// in the future.
+/// we reuse all the time.
 #[proc_macro_attribute]
 pub fn derive_group(
     attr: proc_macro::TokenStream,
@@ -460,7 +457,6 @@ pub fn derive_group(
         .map(|group| match group {
             "Serializers" => quote! {
                 #[derive(::serde::Serialize, ::serde::Deserialize)]
-                #[derive(::bincode::Encode, ::bincode::Decode)]
             },
             _ => {
                 errors.push(quote! {

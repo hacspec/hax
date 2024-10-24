@@ -1,463 +1,639 @@
 open! Prelude
 open! Ast
+open! PPrint
+module LazyDoc = Generated_generic_printer_base.LazyDoc
+open LazyDoc
 
-module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
-  open Generic_printer_base
-  open Generic_printer_base.Make (F)
+module Annotation = struct
+  type loc = { line : int; col : int } [@@deriving show, yojson, eq]
+  type t = loc * span [@@deriving show, yojson, eq]
 
-  module Class = struct
-    module U = Ast_utils.Make (F)
-    open! AST
-    open PPrint
+  let compare ((a, _) : t) ((b, _) : t) : int =
+    let line = Int.compare a.line b.line in
+    if Int.equal line 0 then Int.compare a.col b.col else line
 
-    let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
+  (** Converts a list of annotation and a string to a list of annotated string *)
+  let split_with_string (s : string) (annots : t list) =
+    let lines_position =
+      String.to_list s
+      |> List.filter_mapi ~f:(fun i ch ->
+             match ch with '\n' -> Some i | _ -> None)
+      |> List.to_array |> Array.get
+    in
+    let annots = List.sort ~compare annots in
+    let init = ({ line = 0; col = 0 }, None) in
+    let slices =
+      List.folding_map
+        ~f:(fun (start, start_span) (end_, end_span) ->
+          let span = Option.value ~default:end_span start_span in
+          ((end_, Some end_span), (span, start, end_)))
+        ~init annots
+    in
+    List.map slices ~f:(fun (span, start, end_) ->
+        let pos = lines_position start.line + start.col in
+        let len = lines_position end_.line + end_.col - pos in
+        (span, String.sub s ~pos ~len))
 
-    class print =
-      object (print)
-        inherit print_base as super
-        method printer_name = "Generic"
+  let to_mapping ((loc, span) : t) : Sourcemaps.Source_maps.mapping option =
+    let real_path (x : Types.file_name) =
+      match x with
+      | Real (LocalPath p) | Real (Remapped { local_path = Some p; _ }) ->
+          Some p
+      | _ -> None
+    in
+    let loc_to_loc ({ line; col } : loc) : Sourcemaps.Location.t =
+      { line; col }
+    in
+    let to_loc ({ col; line } : Types.loc) : loc =
+      { col = Int.of_string col; line = Int.of_string line - 1 }
+    in
+    let* span =
+      Span.to_thir span
+      |> List.find ~f:(fun (s : Types.span) ->
+             real_path s.filename |> Option.is_some)
+    in
+    let* src_filename = real_path span.filename in
+    let src_start = to_loc span.lo |> loc_to_loc in
+    let src_end = to_loc span.hi |> loc_to_loc in
+    let dst_start = loc_to_loc loc in
+    Some
+      Sourcemaps.Source_maps.
+        {
+          src = { start = src_start; end_ = Some src_end };
+          gen = { start = dst_start; end_ = None };
+          source = src_filename;
+          name = None;
+        }
+end
 
-        method par_state : ast_position -> par_state =
-          function
-          | Lhs_LhsArrayAccessor | Ty_Tuple | Ty_TSlice | Ty_TArray_length
-          | Expr_If_cond | Expr_If_then | Expr_If_else | Expr_Array
-          | Expr_Assign | Expr_Closure_param | Expr_Closure_body
-          | Expr_Ascription_e | Expr_Let_lhs | Expr_Let_rhs | Expr_Let_body
-          | Expr_App_arg | Expr_ConstructTuple | Pat_ConstructTuple | Pat_PArray
-          | Pat_Ascription_pat | Param_pat | Item_Fn_body | GenericParam_GPConst
-            ->
-              AlreadyPar
-          | _ -> NeedsPar
+module AnnotatedString = struct
+  type t = string * Annotation.t list [@@deriving show, yojson, eq]
 
-        method namespace_of_concrete_ident
-            : concrete_ident -> string * string list =
-          fun i -> View.to_namespace i
+  let to_string = fst
 
-        method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
-          fun id ->
-            let id = View.to_view id in
-            let chunks =
-              if under_current_ns then [ id.definition ]
-              else id.crate :: (id.path @ [ id.definition ])
-            in
-            separate_map (colon ^^ colon) utf8string chunks
+  let to_spanned_strings ((s, annots) : t) : (Ast.span * string) list =
+    Annotation.split_with_string s annots
 
-        method name_of_concrete_ident : concrete_ident fn =
-          View.to_definition_name >> utf8string
+  let to_sourcemap : t -> Types.source_map =
+    snd >> List.filter_map ~f:Annotation.to_mapping >> Sourcemaps.Source_maps.mk
+    >> fun ({
+              mappings;
+              sourceRoot;
+              sources;
+              sourcesContent;
+              names;
+              version;
+              file;
+            } :
+             Sourcemaps.Source_maps.t) ->
+    Types.
+      { mappings; sourceRoot; sources; sourcesContent; names; version; file }
+end
 
-        method mutability : 'a. 'a mutability fn = fun _ -> empty
+(** Helper class that brings imperative span  *)
+class span_helper :
+  object
+    method span_data : Annotation.t list
+    (** Get the span annotation accumulated while printing *)
 
-        method primitive_ident : primitive_ident fn =
-          function
-          | Deref -> string "deref"
-          | Cast -> string "cast"
-          | LogicalOp And -> string "and"
-          | LogicalOp Or -> string "or"
+    method with_span : span:span -> (unit -> document) -> document
+    (** Runs the printer `f` under a node of span `span` *)
 
-        method local_ident : local_ident fn = View.local_ident >> utf8string
+    method current_span : span
+    (** Get the current span *)
+  end =
+  object (self)
+    val mutable current_span = Span.default
+    val mutable span_data : Annotation.t list = []
+    method span_data = span_data
+    method current_span = current_span
 
-        method literal : literal_ctx -> literal fn =
-          (* TODO : escape *)
-          fun _ctx -> function
-            | String s -> utf8string s |> dquotes
-            | Char c -> char c |> bquotes
-            | Int { value; negative; _ } ->
-                string value |> precede (if negative then minus else empty)
-            | Float { value; kind; negative } ->
-                string value
-                |> precede (if negative then minus else empty)
-                |> terminate (string (show_float_kind kind))
-            | Bool b -> OCaml.bool b
+    method with_span ~(span : span) (f : unit -> document) : document =
+      let prev_span = current_span in
+      current_span <- span;
+      let doc = f () |> self#spanned_doc |> custom in
+      current_span <- prev_span;
+      doc
 
-        method generic_value : generic_value fn =
-          function
-          | GLifetime _ -> string "Lifetime"
-          | GType ty -> print#ty_at GenericValue_GType ty
-          | GConst expr -> print#expr_at GenericValue_GConst expr
+    method private spanned_doc (doc : document) : custom =
+      let span = current_span in
+      object
+        method requirement : requirement = requirement doc
 
-        method lhs : lhs fn =
-          function
-          | LhsLocalVar { var; _ } -> print#local_ident var
-          | LhsArbitraryExpr { e; _ } -> print#expr_at Lhs_LhsArbitraryExpr e
-          | LhsFieldAccessor { e; field; _ } ->
-              print#lhs e |> parens
-              |> terminate (dot ^^ print#global_ident_projector field)
-          | LhsArrayAccessor { e; index; _ } ->
-              print#lhs e |> parens
-              |> terminate (print#expr_at Lhs_LhsArrayAccessor index |> brackets)
+        method pretty : output -> state -> int -> bool -> unit =
+          fun o s i b ->
+            span_data <- ({ line = s.line; col = s.column }, span) :: span_data;
+            pretty o s i b doc
 
-        method ty_bool : document = string "bool"
-        method ty_char : document = string "char"
-        method ty_str : document = string "str"
-
-        method ty_int : int_kind fn =
-          fun { size; signedness } ->
-            let signedness = match signedness with Signed -> "i" | _ -> "u" in
-            let size =
-              match int_of_size size with
-              | Some n -> OCaml.int n
-              | None -> string "size"
-            in
-            string signedness ^^ size
-
-        method ty_float : float_kind fn = show_float_kind >> string
-
-        method generic_values : generic_value list fn =
-          function
-          | [] -> empty
-          | values -> separate_map comma print#generic_value values |> angles
-
-        method ty_app : concrete_ident -> generic_value list fn =
-          fun f args -> print#concrete_ident f ^^ print#generic_values args
-
-        method ty_tuple : int -> ty list fn =
-          fun _n ->
-            separate_map (comma ^^ break 1) (print#ty_at Ty_Tuple)
-            >> iblock parens
-
-        method! ty : par_state -> ty fn =
-          fun ctx ty ->
-            match ty with
-            | TBool -> string "bool"
-            | TChar -> string "char"
-            | TInt kind -> print#ty_int kind
-            | TFloat kind -> print#ty_float kind
-            | TStr -> string "String"
-            | TArrow (inputs, output) ->
-                separate_map (string "->") (print#ty_at Ty_TArrow)
-                  (inputs @ [ output ])
-                |> parens
-                |> precede (string "arrow!")
-            | TRef { typ; mut; _ } ->
-                ampersand ^^ print#mutability mut ^^ print#ty_at Ty_TRef typ
-            | TParam i -> print#local_ident i
-            | TSlice { ty; _ } -> print#ty_at Ty_TSlice ty |> brackets
-            | TRawPointer _ -> string "raw_pointer!()"
-            | TArray { typ; length } ->
-                print#ty_at Ty_TArray_length typ
-                ^/^ semi
-                ^/^ print#expr_at Ty_TArray_length length
-                |> brackets
-            | TAssociatedType _ -> string "assoc_type!()"
-            | TOpaque _ -> string "opaque_type!()"
-            | TApp _ -> super#ty ctx ty
-            | TDyn _ -> empty (* TODO *)
-
-        method! expr' : par_state -> expr' fn =
-          fun ctx e ->
-            let wrap_parens =
-              group
-              >>
-              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
-            in
-            match e with
-            | If { cond; then_; else_ } ->
-                let if_then =
-                  (string "if" ^//^ nest 2 (print#expr_at Expr_If_cond cond))
-                  ^/^ string "then"
-                  ^//^ (print#expr_at Expr_If_then then_ |> braces |> nest 1)
-                in
-                (match else_ with
-                | None -> if_then
-                | Some else_ ->
-                    if_then ^^ break 1 ^^ string "else" ^^ space
-                    ^^ (print#expr_at Expr_If_else else_ |> iblock braces))
-                |> wrap_parens
-            | Match { scrutinee; arms } ->
-                let header =
-                  string "match" ^^ space
-                  ^^ (print#expr_at Expr_Match_scrutinee scrutinee
-                     |> terminate space |> iblock Fn.id)
-                  |> group
-                in
-                let arms =
-                  separate_map hardline
-                    (print#arm >> group >> nest 2
-                    >> precede (bar ^^ space)
-                    >> group)
-                    arms
-                in
-                header ^^ iblock braces arms
-            | Let { monadic; lhs; rhs; body } ->
-                (Option.map
-                   ~f:(fun monad -> print#expr_monadic_let ~monad)
-                   monadic
-                |> Option.value ~default:print#expr_let)
-                  ~lhs ~rhs body
-                |> wrap_parens
-            | Literal l -> print#literal Expr l
-            | Block { e; safety_mode; _ } -> (
-                let e = lbrace ^/^ nest 2 (print#expr ctx e) ^/^ rbrace in
-                match safety_mode with
-                | Safe -> e
-                | Unsafe _ -> !^"unsafe " ^^ e)
-            | Array l ->
-                separate_map comma (print#expr_at Expr_Array) l
-                |> group |> brackets
-            | LocalVar i -> print#local_ident i
-            | GlobalVar (`Concrete i) -> print#concrete_ident i
-            | GlobalVar (`Primitive p) -> print#primitive_ident p
-            | GlobalVar (`TupleCons 0) -> print#expr_construct_tuple []
-            | GlobalVar
-                (`TupleType _ | `TupleField _ | `Projector _ | `TupleCons _) ->
-                print#assertion_failure "GlobalVar"
-            | Assign { lhs; e; _ } ->
-                group (print#lhs lhs)
-                ^^ space ^^ equals
-                ^/^ group (print#expr_at Expr_Assign e)
-                ^^ semi
-            | Loop _ -> string "todo loop;"
-            | Break _ -> string "todo break;"
-            | Return _ -> string "todo return;"
-            | Continue _ -> string "todo continue;"
-            | QuestionMark { e; _ } ->
-                print#expr_at Expr_QuestionMark e |> terminate qmark
-            | Borrow { kind; e; _ } ->
-                string (match kind with Mut _ -> "&mut " | _ -> "&")
-                ^^ print#expr_at Expr_Borrow e
-            | AddressOf _ -> string "todo address of;"
-            | Closure { params; body; _ } ->
-                separate_map comma (print#pat_at Expr_Closure_param) params
-                |> group |> enclose bar bar
-                |> terminate (print#expr_at Expr_Closure_body body |> group)
-                |> wrap_parens
-            | Ascription { e; typ } ->
-                print#expr_at Expr_Ascription_e e
-                ^^ string "as"
-                ^/^ print#ty_at Expr_Ascription_typ typ
-                |> wrap_parens
-            | MacroInvokation _ -> print#assertion_failure "MacroInvokation"
-            | EffectAction _ -> print#assertion_failure "EffectAction"
-            | Quote quote -> print#quote quote
-            | App _ | Construct _ -> super#expr' ctx e
-
-        method quote { contents; _ } =
-          List.map
-            ~f:(function
-              | `Verbatim code -> string code
-              | `Expr e -> print#expr_at Expr_Quote e
-              | `Pat p -> print#pat_at Expr_Quote p
-              | `Typ p -> print#ty_at Expr_Quote p)
-            contents
-          |> concat
-
-        method expr_monadic_let
-            : monad:supported_monads * F.monadic_binding ->
-              lhs:pat ->
-              rhs:expr ->
-              expr fn =
-          fun ~monad:_ ~lhs ~rhs body -> print#expr_let ~lhs ~rhs body
-
-        method expr_let : lhs:pat -> rhs:expr -> expr fn =
-          fun ~lhs ~rhs body ->
-            string "let"
-            ^/^ iblock Fn.id (print#pat_at Expr_Let_lhs lhs)
-            ^/^ equals
-            ^/^ iblock Fn.id (print#expr_at Expr_Let_rhs rhs)
-            ^^ semi
-            ^/^ (print#expr_at Expr_Let_body body |> group)
-
-        method tuple_projection : size:int -> nth:int -> expr fn =
-          fun ~size:_ ~nth e ->
-            print#expr_at Expr_TupleProjection e
-            |> terminate (dot ^^ OCaml.int nth)
-
-        method field_projection : concrete_ident -> expr fn =
-          fun i e ->
-            print#expr_at Expr_FieldProjection e
-            |> terminate (dot ^^ print#name_of_concrete_ident i)
-
-        method expr_app : expr -> expr list -> generic_value list fn =
-          fun f args _generic_args ->
-            let args =
-              separate_map
-                (comma ^^ break 1)
-                (print#expr_at Expr_App_arg >> group)
-                args
-            in
-            let f = print#expr_at Expr_App_f f |> group in
-            f ^^ iblock parens args
-
-        method doc_construct_tuple : document list fn =
-          separate (comma ^^ break 1) >> iblock parens
-
-        method expr_construct_tuple : expr list fn =
-          List.map ~f:(print#expr_at Expr_ConstructTuple)
-          >> print#doc_construct_tuple
-
-        method pat_construct_tuple : pat list fn =
-          List.map ~f:(print#pat_at Pat_ConstructTuple)
-          >> print#doc_construct_tuple
-
-        method global_ident_projector : global_ident fn =
-          function
-          | `Projector (`Concrete i) | `Concrete i -> print#concrete_ident i
-          | _ ->
-              print#assertion_failure "global_ident_projector: not a projector"
-
-        method doc_construct_inductive
-            : is_record:bool ->
-              is_struct:bool ->
-              constructor:concrete_ident ->
-              base:document option ->
-              (global_ident * document) list fn =
-          fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
-            if is_record then
-              print#concrete_ident constructor
-              ^^ space
-              ^^ iblock parens
-                   (separate_map (break 0)
-                      (fun (field, body) ->
-                        (print#global_ident_projector field
-                        |> terminate comma |> group)
-                        ^^ colon ^^ space ^^ iblock Fn.id body)
-                      args)
-            else
-              print#concrete_ident constructor
-              ^^ space
-              ^^ iblock parens (separate_map (break 0) snd args)
-
-        method expr_construct_inductive
-            : is_record:bool ->
-              is_struct:bool ->
-              constructor:concrete_ident ->
-              base:(expr * F.construct_base) option ->
-              (global_ident * expr) list fn =
-          fun ~is_record ~is_struct ~constructor ~base ->
-            let base =
-              Option.map
-                ~f:(fst >> print#expr_at Expr_ConcreteInductive_base)
-                base
-            in
-            List.map ~f:(print#expr_at Expr_ConcreteInductive_field |> map_snd)
-            >> print#doc_construct_inductive ~is_record ~is_struct ~constructor
-                 ~base
-
-        method attr : attr fn = fun _ -> empty
-
-        method! pat' : par_state -> pat' fn =
-          fun ctx ->
-            let wrap_parens =
-              group
-              >>
-              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
-            in
-            function
-            | PWild -> underscore
-            | PAscription { typ; typ_span; pat } ->
-                print#pat_ascription ~typ ~typ_span pat |> wrap_parens
-            | PBinding { mut; mode; var; typ = _; subpat } -> (
-                let p =
-                  (match mode with ByRef _ -> string "&" | _ -> empty)
-                  ^^ (match mut with Mutable _ -> string "mut " | _ -> empty)
-                  ^^ print#local_ident var
-                in
-                match subpat with
-                | Some (subpat, _) ->
-                    p ^^ space ^^ at ^^ space
-                    ^^ print#pat_at Pat_PBinding_subpat subpat
-                    |> wrap_parens
-                | None -> p)
-            | PArray { args } ->
-                separate_map (break 0)
-                  (print#pat_at Pat_PArray >> terminate comma >> group)
-                  args
-                |> iblock brackets
-            | PDeref { subpat; _ } ->
-                ampersand ^^ print#pat_at Pat_PDeref subpat
-            | (PConstruct _ | PConstant _) as pat -> super#pat' ctx pat
-            | POr { subpats } ->
-                separate_map (bar ^^ break 1) (print#pat_at Pat_Or) subpats
-
-        method pat_ascription : typ:ty -> typ_span:span -> pat fn =
-          fun ~typ ~typ_span pat ->
-            print#pat_at Pat_Ascription_pat pat
-            ^^ colon
-            ^^ print#with_span ~span:typ_span (fun () ->
-                   print#ty_at Pat_Ascription_typ typ)
-
-        method expr_unwrapped : par_state -> expr fn =
-          fun ctx { e; _ } -> print#expr' ctx e
-
-        method param : param fn =
-          fun { pat; typ; typ_span; attrs } ->
-            let typ =
-              match typ_span with
-              | Some span ->
-                  print#with_span ~span (fun _ -> print#ty_at Param_typ typ)
-              | None -> print#ty_at Param_typ typ
-            in
-            print#attrs attrs ^^ print#pat_at Param_pat pat ^^ space ^^ colon
-            ^^ space ^^ typ
-
-        method item' : item' fn =
-          function
-          | Fn { name; generics; body; params; safety } ->
-              let params =
-                iblock parens
-                  (separate_map (comma ^^ break 1) print#param params)
-              in
-              let generics = print#generic_params generics.params in
-              let safety =
-                optional Base.Fn.id
-                  (match safety with
-                  | Safe -> None
-                  | Unsafe _ -> Some !^"unsafe ")
-              in
-              safety ^^ !^"fn" ^^ space ^^ print#concrete_ident name ^^ generics
-              ^^ params
-              ^^ iblock braces (print#expr_at Item_Fn_body body)
-          | Quote { quote; _ } -> print#quote quote
-          | _ -> string "item not implemented"
-
-        method generic_param' : generic_param fn =
-          fun { ident; attrs; kind; _ } ->
-            let suffix =
-              match kind with
-              | GPLifetime _ -> space ^^ colon ^^ space ^^ string "'unk"
-              | GPType -> empty
-              | GPConst { typ } ->
-                  space ^^ colon ^^ space
-                  ^^ print#ty_at GenericParam_GPConst typ
-            in
-            let prefix =
-              match kind with
-              | GPConst _ -> string "const" ^^ space
-              | _ -> empty
-            in
-            let ident =
-              let name =
-                if String.(ident.name = "_") then "Anonymous" else ident.name
-              in
-              { ident with name }
-            in
-            prefix ^^ print#attrs attrs ^^ print#local_ident ident ^^ suffix
-
-        method generic_params : generic_param list fn =
-          separate_map comma print#generic_param >> group >> angles
-
-        (*Option.map ~f:(...) guard |> Option.value ~default:empty*)
-        method arm' : arm' fn =
-          fun { arm_pat; body; guard } ->
-            let pat = print#pat_at Arm_pat arm_pat |> group in
-            let body = print#expr_at Arm_body body in
-            let guard =
-              Option.map
-                ~f:(fun { guard = IfLet { lhs; rhs; _ }; _ } ->
-                  string " if let " ^^ print#pat_at Arm_pat lhs ^^ string " = "
-                  ^^ print#expr_at Arm_body rhs)
-                guard
-              |> Option.value ~default:empty
-            in
-            pat ^^ guard ^^ string " => " ^^ body ^^ comma
+        method compact : output -> unit = fun o -> compact o doc
       end
   end
 
-  include Class
+module Make (F : Features.T) = struct
+  module AST = Ast.Make (F)
+  open Ast.Make (F)
+  module Gen = Generated_generic_printer_base.Make (F)
 
-  include Api (struct
-    type aux_info = unit
+  type printer = (unit -> Annotation.t list, PPrint.document) Gen.object_type
+  type finalized_printer = (unit, string * Annotation.t list) Gen.object_type
 
-    let new_print () = (new Class.print :> print_object)
-  end)
+  let finalize (new_printer : unit -> printer) : finalized_printer =
+    Gen.map (fun apply ->
+        let printer = new_printer () in
+        let doc = apply printer in
+        let buf = Buffer.create 0 in
+        PPrint.ToBuffer.pretty 1.0 80 buf doc;
+        (Buffer.contents buf, printer#get_span_data ()))
+
+  class virtual base =
+    object (self)
+      inherit Gen.base as super
+      inherit span_helper
+      val mutable current_namespace : (string * string list) option = None
+
+      method private catch_exn (handle : string -> document)
+          (f : unit -> document) : document =
+        self#catch_exn'
+          (fun context kind ->
+            Diagnostics.pretty_print_context_kind context kind |> handle)
+          f
+
+      method private catch_exn'
+          (handle : Diagnostics.Context.t -> Diagnostics.kind -> document)
+          (f : unit -> document) : document =
+        try f ()
+        with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+          handle context kind
+
+      (** {2:specialize-expr Printer settings} *)
+
+      method virtual printer_name : string
+      (** Mark a path as unreachable *)
+
+      val concrete_ident_view : (module Concrete_ident.VIEW_API) =
+        (module Concrete_ident.DefaultViewAPI)
+      (** The concrete ident view to be used *)
+
+      (** {2:specialize-expr Utility functions} *)
+
+      method assertion_failure : 'any. string -> 'any =
+        fun details ->
+          let span = Span.to_thir self#current_span in
+          let kind = Types.AssertionFailure { details } in
+          let ctx = Diagnostics.Context.GenericPrinter self#printer_name in
+          Diagnostics.SpanFreeError.raise ~span ctx kind
+      (** An assertion failed *)
+
+      method unreachable : 'any. unit -> 'any =
+        self#assertion_failure "Unreachable"
+      (** Mark a path as unreachable *)
+
+      method local_ident (id : local_ident) : document =
+        let module View = (val concrete_ident_view) in
+        View.local_ident
+          (match String.chop_prefix ~prefix:"impl " id.name with
+          | Some _ ->
+              let name = "impl_" ^ Int.to_string ([%hash: string] id.name) in
+              { id with name }
+          | _ -> id)
+        |> string
+      (** {2:specialize-expr Printers for special types} *)
+
+      method concrete_ident ~local (id : Concrete_ident.view) : document =
+        string
+          (if local then id.definition
+          else
+            String.concat ~sep:self#module_path_separator
+              (id.crate :: (id.path @ [ id.definition ])))
+      (** [concrete_ident ~local id] prints a name without path if
+      [local] is true, otherwise it prints the full path, separated by
+      `module_path_separator`. *)
+
+      method quote (quote : quote) : document =
+        List.map
+          ~f:(function
+            | `Verbatim code -> string code
+            | `Expr e -> self#print_expr AstPosition_Quote e
+            | `Pat p -> self#print_pat AstPosition_Quote p
+            | `Typ p -> self#print_ty AstPosition_Quote p)
+          quote.contents
+        |> concat
+
+      (** {2:specialize-expr Specialized printers for [expr]} *)
+
+      method virtual expr'_App_constant
+          : super:expr ->
+            constant:concrete_ident lazy_doc ->
+            generics:generic_value lazy_doc list ->
+            document
+      (** [expr'_App_constant ~super ~constant ~generics] prints the
+      constant [e] with generics [generics]. [super] is the
+      unspecialized [expr]. *)
+
+      method virtual expr'_App_application
+          : super:expr ->
+            f:expr lazy_doc ->
+            args:expr lazy_doc list ->
+            generics:generic_value lazy_doc list ->
+            document
+      (** [expr'_App_application ~super ~f ~args ~generics] prints the
+      function application [e<...generics>(...args)]. [super] is the
+      unspecialized [expr]. *)
+
+      method virtual expr'_App_tuple_projection
+          : super:expr -> size:int -> nth:int -> e:expr lazy_doc -> document
+      (** [expr'_App_tuple_projection ~super ~size ~nth ~e] prints
+      the projection of the [nth] component of the tuple [e] of
+      size [size]. [super] is the unspecialized [expr]. *)
+
+      method virtual expr'_App_field_projection
+          : super:expr ->
+            field:concrete_ident lazy_doc ->
+            e:expr lazy_doc ->
+            document
+      (** [expr'_App_field_projection ~super ~field ~e] prints the
+      projection of the field [field] in the expression [e]. [super]
+      is the unspecialized [expr]. *)
+
+      method virtual expr'_Construct_inductive
+          : super:expr ->
+            constructor:concrete_ident lazy_doc ->
+            is_record:bool ->
+            is_struct:bool ->
+            fields:(concrete_ident lazy_doc * expr lazy_doc) list ->
+            base:(expr lazy_doc * F.construct_base) lazy_doc option ->
+            document
+      (** [expr'_Construct_inductive ~super ~is_record ~is_struct
+      ~constructor ~base ~fields] prints the construction of an
+      inductive with base [base] and fields [fields]. [super] is the
+      unspecialized [expr]. TODO doc is_record is_struct *)
+
+      method virtual expr'_Construct_tuple
+          : super:expr -> components:expr lazy_doc list -> document
+
+      method virtual expr'_GlobalVar_concrete
+          : super:expr -> concrete_ident lazy_doc -> document
+
+      method virtual expr'_GlobalVar_primitive
+          : super:expr -> primitive_ident -> document
+
+      (** {2:specialize-pat Specialized printers for [pat]} *)
+
+      method virtual pat'_PConstruct_inductive
+          : super:pat ->
+            constructor:concrete_ident lazy_doc ->
+            is_record:bool ->
+            is_struct:bool ->
+            fields:(concrete_ident lazy_doc * pat lazy_doc) list ->
+            document
+
+      method virtual pat'_PConstruct_tuple
+          : super:pat -> components:pat lazy_doc list -> document
+
+      (** {2:specialize-lhs Specialized printers for [lhs]} *)
+
+      method virtual lhs_LhsFieldAccessor_field
+          : e:lhs lazy_doc ->
+            typ:ty lazy_doc ->
+            field:concrete_ident lazy_doc ->
+            witness:F.nontrivial_lhs ->
+            document
+
+      method virtual lhs_LhsFieldAccessor_tuple
+          : e:lhs lazy_doc ->
+            typ:ty lazy_doc ->
+            nth:int ->
+            size:int ->
+            witness:F.nontrivial_lhs ->
+            document
+
+      (** {2:specialize-ty Specialized printers for [ty]} *)
+
+      method virtual ty_TApp_tuple : types:ty list -> document
+      (** [ty_TApp_tuple ~types] prints a tuple type with
+      compounds types [types]. *)
+
+      method virtual ty_TApp_application
+          : typ:concrete_ident lazy_doc ->
+            generics:generic_value lazy_doc list ->
+            document
+      (** [ty_TApp_application ~typ ~generics] prints the type
+      [typ<...generics>]. *)
+
+      (** {2:specialize-ty Specialized printers for [item]} *)
+
+      method virtual item'_Type_struct
+          : super:item ->
+            name:concrete_ident lazy_doc ->
+            generics:generics lazy_doc ->
+            tuple_struct:bool ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attr list lazy_doc) list ->
+            document
+      (** [item'_Type_struct ~super ~name ~generics ~tuple_struct ~arguments] prints the struct definition [struct name<generics> arguments]. `tuple_struct` says whether we are dealing with a tuple struct
+            (e.g. [struct Foo(T1, T2)]) or a named struct
+            (e.g. [struct Foo {field: T1, other: T2}])? *)
+
+      method virtual item'_Type_enum
+          : super:item ->
+            name:concrete_ident lazy_doc ->
+            generics:generics lazy_doc ->
+            variants:variant lazy_doc list ->
+            document
+      (** [item'_Type_enum ~super ~name ~generics ~variants] prints
+      the enum type [enum name<generics> { ... }]. *)
+
+      method virtual item'_Enum_Variant
+          : name:concrete_ident lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+            is_record:bool ->
+            attrs:attrs lazy_doc ->
+            document
+      (** [item'_Enum_Variant] prints a variant of an enum. *)
+
+      (** {2:common-nodes Printers for common nodes} *)
+
+      method virtual common_array : document list -> document
+      (** [common_array values] is a default for printing array-like nodes: array patterns, array expressions. *)
+
+      (** {2:defaults Default printers} **)
+
+      method module_path_separator = "::"
+      (** [module_path_separator] is the default separator for
+      paths. `::` by default *)
+
+      method pat'_PArray ~super:_ ~args =
+        List.map ~f:(fun arg -> arg#p) args |> self#common_array
+
+      method expr'_Array ~super:_ args =
+        List.map ~f:(fun arg -> arg#p) args |> self#common_array
+
+      method pat'_POr ~super:_ ~subpats =
+        List.map ~f:(fun subpat -> subpat#p) subpats
+        |> separate (break 1 ^^ char '|' ^^ space)
+
+      (**/**)
+      (* This section is about defining or overriding
+         `_do_not_override_` methods. This is internal logic, whence this
+         is excluded from documentation (with the nice and user friendly
+         `(**/**)` ocamldoc syntax) *)
+
+      method _do_not_override_lhs_LhsFieldAccessor ~e ~typ ~field ~witness =
+        let field =
+          match field with
+          | `Projector field -> field
+          | _ ->
+              self#assertion_failure
+              @@ "LhsFieldAccessor: field not a [`Projector] "
+        in
+        match field with
+        | `TupleField (nth, size) ->
+            self#lhs_LhsFieldAccessor_tuple ~e ~typ ~nth ~size ~witness
+        | `Concrete field ->
+            let field : concrete_ident lazy_doc =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_lhs_LhsFieldAccessor_field field
+            in
+            self#lhs_LhsFieldAccessor_field ~e ~typ ~field ~witness
+
+      method _do_not_override_expr'_App ~super ~f ~args ~generic_args
+          ~bounds_impls ~trait =
+        let _ = (super, f, args, generic_args, bounds_impls, trait) in
+        match f#v with
+        | { e = GlobalVar i; _ } -> (
+            let expect_one_arg where =
+              match args with
+              | [ arg ] -> arg
+              | _ -> self#assertion_failure @@ "Expected one arg at " ^ where
+            in
+            match i with
+            | `Concrete _ | `Primitive _ -> (
+                match (args, i) with
+                | [], `Concrete i ->
+                    let constant =
+                      self#_do_not_override_lazy_of_concrete_ident
+                        AstPos_expr'_App_f i
+                    in
+                    self#expr'_App_constant ~super ~constant
+                      ~generics:generic_args
+                | [], _ -> self#assertion_failure "Primitive app of arity 0"
+                | _ ->
+                    self#expr'_App_application ~super ~f ~args
+                      ~generics:generic_args)
+            | `TupleType _ | `TupleCons _ | `TupleField _ ->
+                self#assertion_failure "App: unexpected tuple"
+            | `Projector (`TupleField (nth, size)) ->
+                let e = expect_one_arg "projector tuple field" in
+                self#expr'_App_tuple_projection ~super ~size ~nth ~e
+            | `Projector (`Concrete field) ->
+                let e = expect_one_arg "projector concrete" in
+                let field =
+                  self#_do_not_override_lazy_of_concrete_ident
+                    AstPos_expr'_App_f field
+                in
+                self#expr'_App_field_projection ~super ~field ~e)
+        | _ -> self#assertion_failure "Primitive app of arity 0"
+
+      method _do_not_override_expr'_Construct ~super ~constructor ~is_record
+          ~is_struct ~fields ~base =
+        match constructor with
+        | `Concrete constructor ->
+            let constructor =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_expr'_Construct_constructor constructor
+            in
+            let fields =
+              List.map
+                ~f:(fun field ->
+                  let name, expr = field#v in
+                  let name =
+                    match name with
+                    | `Concrete name -> name
+                    | _ ->
+                        self#assertion_failure
+                          "expr'.Construct: field: non-`Concrete"
+                  in
+                  ( self#_do_not_override_lazy_of_concrete_ident
+                      AstPos_expr'_Construct_fields name,
+                    expr ))
+                fields
+            in
+            self#expr'_Construct_inductive ~super ~constructor ~is_record
+              ~is_struct ~fields ~base
+        | `TupleCons _ ->
+            let components = List.map ~f:(fun field -> snd field#v) fields in
+            self#expr'_Construct_tuple ~super ~components
+        | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
+            self#assertion_failure "Construct unexpected constructors"
+
+      method _do_not_override_expr'_GlobalVar ~super global_ident =
+        match global_ident with
+        | `Concrete concrete ->
+            let concrete =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_expr'_GlobalVar_x0 concrete
+            in
+            self#expr'_GlobalVar_concrete ~super concrete
+        | `Primitive primitive ->
+            self#expr'_GlobalVar_primitive ~super primitive
+        | _ ->
+            self#assertion_failure
+            @@ "GlobalVar: expected a concrete or primitive global ident, got:"
+            ^ [%show: global_ident] global_ident
+
+      method _do_not_override_pat'_PConstruct ~super ~constructor ~is_record
+          ~is_struct ~fields =
+        match constructor with
+        | `Concrete constructor ->
+            let constructor =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_pat'_PConstruct_constructor constructor
+            in
+            let fields =
+              List.map
+                ~f:(fun field ->
+                  let { field; pat } = field#v in
+                  let field =
+                    match field with
+                    | `Concrete field -> field
+                    | _ ->
+                        self#assertion_failure
+                          "expr'.Construct: field: non-`Concrete"
+                  in
+                  let pat =
+                    self#_do_not_override_lazy_of_pat AstPos_field_pat__pat pat
+                  in
+                  ( self#_do_not_override_lazy_of_concrete_ident
+                      AstPos_pat'_PConstruct_fields field,
+                    pat ))
+                fields
+            in
+            self#pat'_PConstruct_inductive ~super ~constructor ~is_record
+              ~is_struct ~fields
+        | `TupleCons _ ->
+            let components =
+              List.map
+                ~f:(fun field ->
+                  self#_do_not_override_lazy_of_pat AstPos_field_pat__pat
+                    field#v.pat)
+                fields
+            in
+            self#pat'_PConstruct_tuple ~super ~components
+        | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
+            self#assertion_failure "Construct unexpected constructors"
+
+      method _do_not_override_ty_TApp ~ident ~args =
+        match ident with
+        | `Concrete ident ->
+            let typ =
+              self#_do_not_override_lazy_of_concrete_ident AstPos_ty_TApp_args
+                ident
+            in
+            self#ty_TApp_application ~typ ~generics:args |> group
+        | `Primitive _ | `TupleCons _ | `TupleField _ | `Projector _ ->
+            self#assertion_failure "TApp not concrete"
+        | `TupleType size ->
+            let types =
+              List.filter_map
+                ~f:(fun garg ->
+                  match garg#v with GType t -> Some t | _ -> None)
+                args
+            in
+            if [%equal: int] (List.length args) size |> not then
+              self#assertion_failure "malformed [ty.TApp] tuple";
+            self#ty_TApp_tuple ~types
+
+      method _do_not_override_item'_Type ~super ~name ~generics ~variants
+          ~is_struct =
+        if is_struct then
+          match variants with
+          | [ variant ] ->
+              let variant_arguments =
+                List.map
+                  ~f:(fun (ident, typ, attrs) ->
+                    ( self#_do_not_override_lazy_of_concrete_ident
+                        AstPos_variant__arguments ident,
+                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
+                        typ,
+                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
+                        attrs ))
+                  variant#v.arguments
+              in
+              self#item'_Type_struct ~super ~name ~generics
+                ~tuple_struct:(not variant#v.is_record)
+                ~arguments:variant_arguments
+          | _ -> self#unreachable ()
+        else self#item'_Type_enum ~super ~name ~generics ~variants
+
+      method _do_not_override_variant
+          : name:concrete_ident lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+            is_record:bool ->
+            attrs:attrs lazy_doc ->
+            document =
+        self#item'_Enum_Variant
+
+      method _do_not_override_lazy_of_local_ident ast_position
+          (id : local_ident) =
+        lazy_doc (fun (id : local_ident) -> self#local_ident id) ast_position id
+
+      method _do_not_override_lazy_of_concrete_ident ast_position
+          (id : concrete_ident) : concrete_ident lazy_doc =
+        lazy_doc
+          (fun (id : concrete_ident) ->
+            let module View = (val concrete_ident_view) in
+            let id = View.to_view id in
+            let ns_crate, ns_path =
+              Option.value ~default:("", []) current_namespace
+            in
+            let local =
+              String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path
+            in
+            self#concrete_ident ~local id)
+          ast_position id
+
+      method _do_not_override_lazy_of_quote ast_position (value : quote)
+          : quote lazy_doc =
+        lazy_doc (fun (value : quote) -> self#quote value) ast_position value
+
+      method! _do_not_override_lazy_of_item ast_position (value : item)
+          : item lazy_doc =
+        let module View = (val concrete_ident_view) in
+        current_namespace <- View.to_namespace value.ident |> Option.some;
+        super#_do_not_override_lazy_of_item ast_position value
+
+      method _do_not_override_lazy_of_generics ast_position (value : generics)
+          : (generics lazy_doc
+            * generic_param lazy_doc list
+            * generic_constraint lazy_doc list)
+            lazy_doc =
+        let params =
+          List.map
+            ~f:(fun x ->
+              self#_do_not_override_lazy_of_generic_param
+                AstPos_generics__params x)
+            value.params
+        in
+        let constraints =
+          List.map
+            ~f:(fun x ->
+              self#_do_not_override_lazy_of_generic_constraint
+                AstPos_generics__constraints x)
+            value.constraints
+        in
+        lazy_doc
+          (fun (lazy_doc, _, _) -> lazy_doc#p)
+          ast_position
+          ( lazy_doc
+              (fun (value : generics) ->
+                self#wrap_generics ast_position value
+                  (self#generics ~params ~constraints))
+              ast_position value,
+            params,
+            constraints )
+
+      (**/**)
+    end
 end

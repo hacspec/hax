@@ -219,10 +219,10 @@ functor
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
-          name : global_ident;
-          args : field_pat list;
+          constructor : global_ident;
           is_record : bool; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
+          fields : field_pat list;
         }
       (* An or-pattern, e.g. `p | q`.
          Invariant: `List.length subpats >= 2`. *)
@@ -296,7 +296,7 @@ functor
       coercion is applied on the (potential) error payload of
       `e`. Coercion should be made explicit within `e`. *)
       | Continue of {
-          e : (F.state_passing_loop * expr) option;
+          e : (expr * F.state_passing_loop) option;
           label : string option;
           witness : F.continue * F.loop;
         }
@@ -444,7 +444,7 @@ functor
       | Impl of {
           generics : generics;
           self_ty : ty;
-          of_trait : global_ident * generic_value list;
+          of_trait : concrete_ident * generic_value list;
           items : impl_item list;
           parent_bounds : (impl_expr * impl_ident) list;
           safety : safety_kind;

@@ -134,9 +134,9 @@ end
 module Make (Options : OPTS) : MAKE = struct
   module Print = struct
     module GenericPrint =
-      Generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
+      Deprecated_generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
 
-    open Generic_printer_base.Make (InputLanguage)
+    open Deprecated_generic_printer_base.Make (InputLanguage)
     open PPrint
 
     let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
@@ -234,8 +234,8 @@ module Make (Options : OPTS) : MAKE = struct
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
-          | { p = PConstruct { name; _ } }
-            when Global_ident.eq_name Core__result__Result__Err name ->
+          | { p = PConstruct { constructor; _ } }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
               print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
@@ -256,7 +256,8 @@ module Make (Options : OPTS) : MAKE = struct
 
         method typed_wildcard = print#wildcard ^^ string ": bitstring"
 
-        method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+        method tuple_elem_pat'
+            : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -269,14 +270,15 @@ module Make (Options : OPTS) : MAKE = struct
                 p ^^ colon ^^ space ^^ print#ty ctx typ
             | p -> print#pat' ctx p
 
-        method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+        method tuple_elem_pat
+            : Deprecated_generic_printer_base.par_state -> pat fn =
           fun ctx { p; span; _ } ->
             print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
 
         method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
 
         (* Overridden methods *)
-        method! pat' : Generic_printer_base.par_state -> pat' fn =
+        method! pat' : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -286,16 +288,18 @@ module Make (Options : OPTS) : MAKE = struct
             fun pat ->
               match pat with
               | PConstant { lit } -> string "=" ^^ print#literal Pat lit
-              | PConstruct { name; args }
-                when Global_ident.eq_name Core__option__Option__None name ->
+              | PConstruct { constructor; fields }
+                when Global_ident.eq_name Core__option__Option__None constructor
+                ->
                   string "None()"
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* The `Some` constructor in ProVerif expects a
                  bitstring argument, so we use the appropriate
                  `_to_bitstring` type converter on the inner
                  expression. *)
-                when Global_ident.eq_name Core__option__Option__Some name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__option__Option__Some constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
@@ -312,21 +316,23 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* We replace applications of the `Ok` constructor
                  with their contents. *)
-                when Global_ident.eq_name Core__result__Result__Ok name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__result__Result__Ok constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
                   let inner_field_doc = print#pat ctx inner_field.pat in
                   inner_field_doc
-              | PConstruct { name; args } -> (
+              | PConstruct { constructor; fields } -> (
                   match
-                    translate_known_name name ~dict:library_constructor_patterns
+                    translate_known_name constructor
+                      ~dict:library_constructor_patterns
                   with
-                  | Some (_, translation) -> translation args
+                  | Some (_, translation) -> translation fields
                   | None -> super#pat' ctx pat)
               | PWild ->
                   print#typed_wildcard
@@ -336,7 +342,8 @@ module Make (Options : OPTS) : MAKE = struct
         method! ty_bool = string "bool"
         method! ty_int _ = string "nat"
 
-        method! pat_at : Generic_printer_base.ast_position -> pat fn =
+        method! pat_at : Deprecated_generic_printer_base.ast_position -> pat fn
+            =
           fun pos pat ->
             match pat with
             | { p = PWild } -> (
@@ -366,7 +373,7 @@ module Make (Options : OPTS) : MAKE = struct
           in
           f ^^ iblock parens args
 
-        method! expr' : Generic_printer_base.par_state -> expr' fn =
+        method! expr' : Deprecated_generic_printer_base.par_state -> expr' fn =
           fun ctx e ->
             let wrap_parens =
               group
@@ -719,7 +726,7 @@ module Make (Options : OPTS) : MAKE = struct
                   | _ -> super#expr ctx e (*This cannot happen*))
               | _ -> super#expr ctx e)
 
-        method! ty : Generic_printer_base.par_state -> ty fn =
+        method! ty : Deprecated_generic_printer_base.par_state -> ty fn =
           fun ctx ty ->
             match ty with
             | TBool -> print#ty_bool
@@ -865,7 +872,7 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   let lib_contents =
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
   in
-  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
+  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None } in
   [ lib_file ]
 
 open Phase_utils

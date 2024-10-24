@@ -33,6 +33,7 @@ let _main =
     |>
     match Sys.get_argv () with
     | [| _; "visitors" |] -> Codegen_visitor.mk
+    | [| _; "printer" |] -> Codegen_printer.mk
     | [| _; "ast_builder" |] -> Codegen_ast_builder.mk
     | [| _; "ast_destruct" |] -> Codegen_ast_destruct.mk
     | [| _; "json" |] ->
