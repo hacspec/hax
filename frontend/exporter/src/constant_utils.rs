@@ -62,6 +62,7 @@ pub enum ConstantExprKind {
         id: GlobalIdent,
         generics: Vec<GenericArg>,
         trait_refs: Vec<ImplExpr>,
+        variant_information: Option<VariantInformations>,
     },
     /// A trait constant
     ///
@@ -181,7 +182,11 @@ mod rustc {
                     id,
                     generics: _,
                     trait_refs: _,
-                } => ExprKind::GlobalName { id },
+                    variant_information,
+                } => ExprKind::GlobalName {
+                    id,
+                    constructor: variant_information,
+                },
                 Borrow(e) => ExprKind::Borrow {
                     borrow_kind: BorrowKind::Shared,
                     arg: e.into(),
@@ -288,6 +293,7 @@ mod rustc {
                         id: did.sinto(s),
                         generics: Vec::new(),
                         trait_refs: Vec::new(),
+                        variant_information: None,
                     },
                     GlobalAlloc::Memory(alloc) => {
                         let values = alloc.inner().get_bytes_unchecked(
@@ -442,6 +448,7 @@ mod rustc {
                             id,
                             generics,
                             trait_refs,
+                            variant_information: None,
                         }
                     }
                 } else {
@@ -452,6 +459,7 @@ mod rustc {
                         id,
                         generics: vec![],
                         trait_refs: vec![],
+                        variant_information: None,
                     }
                 };
                 let cv = kind.decorate(ty.sinto(s), span.sinto(s));

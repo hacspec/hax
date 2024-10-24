@@ -201,8 +201,27 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
                         let params: Vec<rustc_middle::ty::Ty> =
                         params.map(|i| tcx.erase_late_bound_regions(i)).collect();
                         */
+                        let tcx = s.base().tcx;
+                        let id: DefId = def.clone().sinto(s);
+                        let rustc_id = (&id).into();
+                        let constructor = if tcx.is_constructor(rustc_id) {
+                            let adt_def =
+                                tcx.adt_def(rustc_utils::closest_parent_type(&tcx, rustc_id));
+                            let variant_id = tcx.parent(rustc_id);
+                            let variant_index = adt_def.variant_index_with_id(variant_id);
+                            Some(rustc_utils::get_variant_information(
+                                &adt_def,
+                                variant_index,
+                                s,
+                            ))
+                        } else {
+                            None
+                        };
                         return Expr {
-                            contents: Box::new(ExprKind::GlobalName { id: def.sinto(s) }),
+                            contents: Box::new(ExprKind::GlobalName {
+                                id: def.sinto(s),
+                                constructor,
+                            }),
                             span: self.span.sinto(s),
                             ty: ty.sinto(s),
                             hir_id,
@@ -577,7 +596,8 @@ pub enum ExprKind {
                 let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
                 let hir_id = hir_id.map(|hir_id| hir_id.index());
                 let contents = Box::new(ExprKind::GlobalName {
-                    id: def_id.sinto(gstate)
+                    id: def_id.sinto(gstate),
+                    constructor: None
                 });
                 let mut translated_generics = generics.sinto(gstate);
                 let tcx = gstate.base().tcx;
@@ -755,6 +775,7 @@ pub enum ExprKind {
     #[disable_mapping]
     GlobalName {
         id: GlobalIdent,
+        constructor: Option<VariantInformations>,
     },
     UpvarRef {
         closure_def_id: DefId,

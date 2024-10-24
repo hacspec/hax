@@ -518,7 +518,7 @@ end) : EXPR = struct
           let f =
             let f = c_expr fun' in
             match (trait, fun'.contents) with
-            | Some _, GlobalName { id } ->
+            | Some _, GlobalName { id; _ } ->
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
@@ -638,7 +638,15 @@ end) : EXPR = struct
               trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
-      | GlobalName { id } -> GlobalVar (def_id Value id)
+      | GlobalName { id; constructor } ->
+          let kind =
+            match constructor with
+            | Some { kind = Struct _; _ } ->
+                Concrete_ident.Kind.Constructor { is_struct = true }
+            | Some _ -> Concrete_ident.Kind.Constructor { is_struct = false }
+            | None -> Concrete_ident.Kind.Value
+          in
+          GlobalVar (def_id kind id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
@@ -824,7 +832,8 @@ end) : EXPR = struct
           Array { fields = List.map ~f:constant_expr_to_expr fields }
       | Tuple { fields } ->
           Tuple { fields = List.map ~f:constant_expr_to_expr fields }
-      | GlobalName { id; _ } -> GlobalName { id }
+      | GlobalName { id; variant_information; _ } ->
+          GlobalName { id; constructor = variant_information }
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
