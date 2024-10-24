@@ -186,7 +186,7 @@ mod rustc {
                     borrow_kind: BorrowKind::Shared,
                     arg: e.into(),
                 },
-                MutPtr(e) => ExprKind::AddressOf {
+                MutPtr(e) => ExprKind::RawBorrow {
                     mutability: true,
                     arg: e.into(),
                 },
@@ -462,7 +462,7 @@ mod rustc {
     impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
         fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
             let (ty, evaluated) = self
-                .eval(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
+                .eval_valtree(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
                 .ok()?;
             let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(ty, evaluated));
             (&evaluated != self).then_some(evaluated)

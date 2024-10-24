@@ -195,7 +195,7 @@
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
-            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
         };
       }

@@ -348,7 +348,7 @@ impl ImplInfos {
                 .impl_trait_ref(did)
                 .map(|trait_ref| trait_ref.instantiate_identity())
                 .sinto(s),
-            clauses: tcx.predicates_defined_on(did).predicates.sinto(s),
+            clauses: predicates_defined_on(tcx, did).predicates.sinto(s),
         }
     }
 }
