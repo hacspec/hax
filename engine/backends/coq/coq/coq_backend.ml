@@ -131,7 +131,7 @@ struct
       method expr'_Borrow ~super:_ ~kind:_ ~e:_ ~witness:_ =
         features [ "reference" ] ^^ symbol_str "&" ^^ space ^^ option_of ( symbol_str "mut" ) ^^ space ^^ string "expr"
 
-      method expr'_Break ~super:_ ~e:_ ~label:_ ~witness:_ =
+      method expr'_Break ~super:_ ~e:_ ~acc:_ ~label:_ ~witness:_ =
         features [ "break"; "loop" ] ^^ symbol_str "break" ^^ space ^^ string "expr"
 
       method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
@@ -150,14 +150,18 @@ struct
       method expr'_Construct_tuple ~super:_ ~components:_ =
         default_document_for "expr'_Construct_tuple"
 
-      method expr'_Continue ~super:_ ~e:_ ~label:_ ~witness:_ =
+      method expr'_Continue ~super:_ ~acc:_ ~label:_ ~witness:_ =
         features [ "continue"; "loop" ] ^^ symbol_str "continue"
 
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
         features [ "monadic_action" ]
         ^^ default_document_for "expr'_EffectAction"
 
-      method expr'_GlobalVar ~super:_ _x2 = string "global_var"
+      method expr'_GlobalVar_concrete ~super:_ _x2 =
+        default_document_for "expr'_GlobalVar_concrete"
+
+      method expr'_GlobalVar_primitive ~super:_ _x2 =
+        default_document_for "expr'_GlobalVar_primitive"
 
       method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
         symbol_str "if" ^^ space ^^ string "expr" ^^ space
@@ -182,7 +186,7 @@ struct
       method expr'_Literal ~super:_ _x2 = string "literal"
       method expr'_LocalVar ~super:_ _x2 = string "local_var"
 
-      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~label:_ ~witness:_ =
+      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_ ~label:_ ~witness:_ =
         (* Type of loop *)
         either_of [
           features [ "loop" ] ^^ symbol_str "loop" ^^ space ^^ symbol_braces( string "expr" );
@@ -215,6 +219,10 @@ struct
       method expr'_Return ~super:_ ~e:_ ~witness:_ =
         features [ "early_exit" ] ^^ symbol_str "return" ^^ space ^^ string "expr"
 
+      method cf_kind_BreakOrReturn =
+        default_document_for "cf_kind_BreakOrReturn"
+
+      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
       method field_pat ~field:_ ~pat:_ = default_document_for "field_pat"
 
       method generic_constraint_GCLifetime _x1 _x2 =
@@ -235,7 +243,7 @@ struct
       method generic_param_kind_GPLifetime ~witness:_ =
         default_document_for "generic_param_kind_GPLifetime"
 
-      method generic_param_kind_GPType ~default:_ =
+      method generic_param_kind_GPType =
         default_document_for "generic_param_kind_GPType"
 
       method generic_value_GConst _x1 =
@@ -335,7 +343,7 @@ struct
       method item'_NotImplementedYet =
         default_document_for "item'_NotImplementedYet"
 
-      method item'_Quote ~super:_ _x2 =
+      method item'_Quote ~super:_ ~quote:_ ~origin:_ =
         features [ "quote" ] ^^ default_document_for "item'_Quote"
 
       method item'_Trait ~super:_ ~name:_ ~generics:_ ~items:_ ~safety:_ =
@@ -527,8 +535,16 @@ struct
 
       method ty_TStr = symbol_str "str"
 
-      method variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
-        default_document_for "variant"
+      method item'_Enum_Variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
+        default_document_for "item'_Enum_Variant"
+
+      method item'_Type_enum ~super:_ ~name:_ ~generics:_ ~variants:_ =
+        default_document_for "item'_Type_enum"
+
+      method item'_Type_struct ~super:_ ~name:_ ~generics:_ ~tuple_struct:_
+          ~arguments:_ =
+        default_document_for "item'_Type_struct"
+
       (* END GENERATED *)
     end
 
@@ -542,7 +558,7 @@ module HaxCFG = struct
         let default x = x
       end)
 
-  module MyAstGenerator = ASTGenerator
+  module MyAstGenerator = Ast_utils.ASTGenerator
 
   module AST = Ast.Make (Features.Full)
   open AST
@@ -624,7 +640,7 @@ module HaxCFG = struct
     ]
 end
 
-let translate _ _bo _ = HaxCFG.print_ast ()
+let translate _ () ~bundles:_ _ = HaxCFG.print_ast ()
 
 open Phase_utils
 
