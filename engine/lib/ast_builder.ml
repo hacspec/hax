@@ -71,11 +71,11 @@ module Make (F : Features.T) = struct
             p =
               PConstruct
                 {
-                  name =
+                  constructor =
                     Global_ident.of_name
                       (Constructor { is_struct = false })
                       Core__ops__control_flow__ControlFlow__Break;
-                  args =
+                  fields =
                     [
                       {
                         field =
@@ -95,11 +95,11 @@ module Make (F : Features.T) = struct
             p =
               PConstruct
                 {
-                  name =
+                  constructor =
                     Global_ident.of_name
                       (Constructor { is_struct = false })
                       Core__ops__control_flow__ControlFlow__Continue;
-                  args =
+                  fields =
                     [
                       {
                         field =

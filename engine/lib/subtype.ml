@@ -257,7 +257,7 @@ struct
         Break
           {
             e = dexpr e;
-            acc = Option.map ~f:(S.state_passing_loop span *** dexpr) acc;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.break span *** S.loop span) witness;
           }
@@ -273,7 +273,7 @@ struct
     | Continue { acc; label; witness = w1, w2 } ->
         Continue
           {
-            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) e;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }

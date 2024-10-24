@@ -244,7 +244,7 @@ struct
               Break
                 {
                   e = dexpr_same e;
-                  acc = Some (w, local_vars_expr);
+                  acc = Some (local_vars_expr, w);
                   label;
                   witness;
                 };
@@ -255,7 +255,7 @@ struct
           let w = Features.On.state_passing_loop in
           let e = local_vars_expr in
           {
-            e = Continue { acc = Some (w, e); label; witness };
+            e = Continue { acc = Some (e, w); label; witness };
             span = expr.span;
             typ = e.typ;
           }

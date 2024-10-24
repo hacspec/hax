@@ -97,11 +97,11 @@ module%inlined_contents Make (F : Features.T) = struct
           | Return { e; _ }, Some ({ return_type; break_type }, acc_type) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e
                 ~acc:{ e with typ = acc_type } `Return
-          | ( Break { e; acc = Some (_, acc); _ },
+          | ( Break { e; acc = Some (acc, _); _ },
               Some ({ return_type; break_type }, _) ) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e ~acc
                 `Break
-          | ( Continue { acc = Some (_, acc); _ },
+          | ( Continue { acc = Some (acc, _); _ },
               Some ({ return_type; break_type }, _) ) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc
                 `Continue
