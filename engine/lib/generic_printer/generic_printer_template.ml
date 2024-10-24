@@ -71,7 +71,7 @@ struct
       method expr'_Borrow ~super:_ ~kind:_ ~e:_ ~witness:_ =
         default_document_for "expr'_Borrow"
 
-      method expr'_Break ~super:_ ~e:_ ~label:_ ~witness:_ =
+      method expr'_Break ~super:_ ~e:_ ~acc:_ ~label:_ ~witness:_ =
         default_document_for "expr'_Break"
 
       method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
@@ -84,7 +84,7 @@ struct
       method expr'_Construct_tuple ~super:_ ~components:_ =
         default_document_for "expr'_Construct_tuple"
 
-      method expr'_Continue ~super:_ ~e:_ ~label:_ ~witness:_ =
+      method expr'_Continue ~super:_ ~acc:_ ~label:_ ~witness:_ =
         default_document_for "expr'_Continue"
 
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
@@ -105,7 +105,8 @@ struct
       method expr'_Literal ~super:_ _x2 = default_document_for "expr'_Literal"
       method expr'_LocalVar ~super:_ _x2 = default_document_for "expr'_LocalVar"
 
-      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~label:_ ~witness:_ =
+      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_
+          ~label:_ ~witness:_ =
         default_document_for "expr'_Loop"
 
       method expr'_MacroInvokation ~super:_ ~macro:_ ~args:_ ~witness:_ =
@@ -122,6 +123,10 @@ struct
       method expr'_Return ~super:_ ~e:_ ~witness:_ =
         default_document_for "expr'_Return"
 
+      method cf_kind_BreakOrReturn =
+        default_document_for "cf_kind_BreakOrReturn"
+
+      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
       method field_pat ~field:_ ~pat:_ = default_document_for "field_pat"
 
       method generic_constraint_GCLifetime _x1 _x2 =
@@ -219,7 +224,8 @@ struct
       method item'_NotImplementedYet =
         default_document_for "item'_NotImplementedYet"
 
-      method item'_Quote ~super:_ _x2 = default_document_for "item'_Quote"
+      method item'_Quote ~super:_ ~quote:_ ~origin:_ =
+        default_document_for "item'_Quote"
 
       method item'_Trait ~super:_ ~name:_ ~generics:_ ~items:_ ~safety:_ =
         default_document_for "item'_Trait"

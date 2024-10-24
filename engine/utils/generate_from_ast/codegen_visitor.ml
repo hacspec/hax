@@ -233,6 +233,7 @@ let is_allowed_opaque name =
       "quote";
       "float_kind";
       "int_kind";
+      "item_quote_origin";
     ]
   in
   List.mem ~equal:String.equal allowlist name

@@ -343,8 +343,8 @@ module Raw = struct
         | Some { init; _ } -> !"(" & main & !")(" & pexpr init & !")"
         | None -> main)
     | Break { e; _ } -> !"(break (" & pexpr e & !"))"
-    | Continue { e = None; _ } -> !"continue"
-    | Continue { e = Some (e, _); _ } ->
+    | Continue { acc = None; _ } -> !"continue"
+    | Continue { acc = Some (e, _); _ } ->
         !"state_passing_continue!(" & pexpr e & !")"
     | Return { e; _ } -> !"(return " & pexpr e & !")"
     | QuestionMark { e; _ } -> !"(" & pexpr e & !")?"
@@ -592,7 +592,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
             & !"}"
-        | Quote quote -> pquote e.span quote & !";"
+        | Quote { quote; _ } -> pquote e.span quote & !";"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi

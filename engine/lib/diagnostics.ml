@@ -12,6 +12,8 @@ module Phase = struct
       | NotInBackendLang of Backend.t
       | ArbitraryLhs
       | Continue
+      | Break
+      | QuestionMark
       | RawOrMutPointer
       | EarlyExit
       | AsPattern
@@ -51,7 +53,7 @@ module Phase = struct
     | TraitsSpecs
     | SimplifyMatchReturn
     | SimplifyHoisting
-    | DropNeedlessReturns
+    | DropReturnBreakContinue
     | TransformHaxLibInline
     | NewtypeAsRefinement
     | DummyA

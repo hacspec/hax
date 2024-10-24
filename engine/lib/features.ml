@@ -4,6 +4,7 @@ loop,
   for_index_loop,
   while_loop,
   state_passing_loop,
+  fold_like_loop,
   continue,
   break,
   mutable_variable,
@@ -40,6 +41,7 @@ module Rust = struct
   include Off.Monadic_action
   include Off.Monadic_binding
   include Off.State_passing_loop
+  include Off.Fold_like_loop
   include Off.Quote
 end
 

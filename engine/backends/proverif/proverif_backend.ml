@@ -75,6 +75,7 @@ struct
         let lifetime = reject
         let monadic_action = reject
         let monadic_binding = reject
+        let fold_like_loop = reject
         let block = reject
         let dyn = reject
         let match_guard = reject
@@ -635,7 +636,7 @@ module Make (Options : OPTS) : MAKE = struct
                 ^^ separate_map hardline
                      (fun variant -> fun_and_reduc name variant)
                      variants
-          | Quote quote -> print#quote quote
+          | Quote { quote; _ } -> print#quote quote
           | _ -> empty
 
         method! expr_let : lhs:pat -> rhs:expr -> expr fn =
@@ -912,7 +913,6 @@ module TransformToInputLanguage =
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
   |> Phases.Simplify_match_return
-  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn

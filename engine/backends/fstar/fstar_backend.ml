@@ -42,6 +42,7 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
+             and type fold_like_loop = Features.Off.fold_like_loop
              and type match_guard = Features.Off.match_guard
              and type trait_item_default = Features.Off.trait_item_default) =
 struct
@@ -1465,7 +1466,7 @@ struct
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-    | Quote quote ->
+    | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
             | ItemQuote q -> Some q.fstar_options
@@ -1750,13 +1751,11 @@ module TransformToInputLanguage =
   |> Side_effect_utils.Hoist
   |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
-  |> Phases.Rewrite_control_flow
-  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
-  |> Phases.Reject.Continue
-  |> Phases.Cf_into_monads
-  |> Phases.Reject.EarlyExit
+  |> Phases.Rewrite_control_flow
+  |> Phases.Drop_return_break_continue
   |> Phases.Functionalize_loops
+  |> Phases.Reject.Question_mark
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
