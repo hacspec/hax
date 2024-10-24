@@ -393,6 +393,8 @@ module Make (F : Features.T) = struct
     in
     let mut_rec_bundles =
       let mod_graph_cycles = ModGraph.of_items items |> ModGraph.cycles in
+      (* `Use` items shouldn't be bundled as they have no dependencies
+          and they have dummy names. *)
       let non_use_items =
         List.filter
           ~f:(fun item -> match item.v with Use _ -> false | _ -> true)
