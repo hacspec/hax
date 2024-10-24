@@ -47,5 +47,10 @@ in
         sed -i "s/make -C limited-order-book/HAX_VANILLA_RUSTC=never make -C limited-order-book/g" Makefile
         make
       '';
-      buildInputs = [hax hax-env fstar jq proverif];
+      buildInputs = [
+        hax hax-env fstar jq
+        (proverif.overrideDerivation (_: {
+          patches = [ ./proverif-psk/pv_div_by_zero_fix.diff ];
+        }))
+      ];
     })
