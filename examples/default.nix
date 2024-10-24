@@ -16,8 +16,8 @@
       src = craneLib.path ./..;
       filter = path: type:
         # We include only certain files. FStar files under the example
-        # directory are listed out.
-        (   matches ".*(Makefile|.*[.](rs|toml|lock|diff|fsti?))$" path
+        # directory are listed out. Same for proverif (*.pvl) files.
+        (   matches ".*(Makefile|.*[.](rs|toml|lock|diff|fsti?|pvl))$" path
         && !matches ".*examples/.*[.]fsti?$" path
         ) || ("directory" == type);
     };

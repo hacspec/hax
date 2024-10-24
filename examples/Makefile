@@ -13,3 +13,4 @@ clean:
 	make -C sha256             clean
 	make -C barrett            clean
 	make -C kyber_compress     clean
+	make -C proverif-psk       clean

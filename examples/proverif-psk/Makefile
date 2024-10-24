@@ -1,8 +1,9 @@
-check: proofs/proverif/extraction/analysis.pv ./proofs/proverif/extraction/lib.pvl
+check: ./proofs/proverif/extraction/lib.pvl
 	timeout 30 proverif -lib ./proofs/proverif/extraction/lib.pvl ./proofs/proverif/extraction/analysis.pv
+	proverif -lib ./proofs/proverif/extraction/lib.pvl ./proofs/proverif/extraction/analysis.pv
 
-proofs/proverif/extraction/%:
+proofs/proverif/extraction/lib.pvl:
 	cargo hax into pro-verif
 
 clean:
-	rm -f proofs/fstar/extraction/*
+	rm -f proofs/fstar/extraction/lib.pvl
