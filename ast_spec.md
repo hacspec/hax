@@ -51,7 +51,7 @@ expr ::=
 | ("let" pat (":" ty)? ":=" expr ";" expr | /* features: monadic_binding */ monadic_binding "<" monad ">" "(" "|" pat "|" expr","expr ")")
 | /* features: block */ modifiers "{" expr "}"
 | local_var
-| global_var
+| /*TODO: please implement the method `expr'_GlobalVar_concrete`*/
 | expr "as" ty
 | macro_name "!" "(" macro_args ")"
 | lhs "=" expr
