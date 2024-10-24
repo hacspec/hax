@@ -27,6 +27,7 @@ let is_hidden_method =
       "pat'_PConstruct";
       "expr'_GlobalVar";
       "variant";
+      "item'_Type";
     ]
   in
   List.mem ~equal:[%eq: string] list

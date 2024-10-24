@@ -281,10 +281,10 @@ module Make (F : Features.T) = struct
 
       method virtual pat'_PConstruct_inductive
           : super:pat ->
-            constructor:concrete_ident lazy_doc ->
+            constructor:global_ident lazy_doc ->
             is_record:bool ->
             is_struct:bool ->
-            fields:(concrete_ident lazy_doc * pat lazy_doc) list ->
+            fields:(global_ident lazy_doc * pat lazy_doc) list ->
             document
 
       method virtual pat'_PConstruct_tuple
@@ -435,37 +435,45 @@ module Make (F : Features.T) = struct
                 self#expr'_App_field_projection ~super ~field ~e)
         | _ -> self#assertion_failure "Primitive app of arity 0"
 
-      method _do_not_override_expr'_Construct ~super ~constructor ~is_record
+      method _do_not_override_expr'_Construct ~super:_ ~constructor ~is_record
           ~is_struct ~fields ~base =
-        match constructor with
-        | `Concrete constructor ->
-            let constructor =
-              self#_do_not_override_lazy_of_concrete_ident
-                AstPos_expr'_Construct_constructor constructor
-            in
-            let fields =
-              List.map
-                ~f:(fun field ->
-                  let name, expr = field#v in
-                  let name =
-                    match name with
-                    | `Concrete name -> name
-                    | _ ->
-                        self#assertion_failure
-                          "expr'.Construct: field: non-`Concrete"
-                  in
-                  ( self#_do_not_override_lazy_of_concrete_ident
-                      AstPos_expr'_Construct_fields name,
-                    expr ))
-                fields
-            in
-            self#expr'_Construct_inductive ~super ~constructor ~is_record
-              ~is_struct ~fields ~base
-        | `TupleCons _ ->
-            let components = List.map ~f:(fun field -> snd field#v) fields in
-            self#expr'_Construct_tuple ~super ~components
-        | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
-            self#assertion_failure "Construct unexpected constructors"
+        let fields_or_empty add_space =
+          if List.is_empty fields then empty
+          else
+            add_space
+            ^^ parens
+                 (separate_map (comma ^^ space) (fun x -> (snd x#v)#p) fields)
+        in
+        match (constructor, fields, base) with
+        | `TupleCons 0, [], _ -> string "tt"
+        | `TupleCons 1, [ e ], _ ->
+            let _, e' = e#v in
+            string "(* tuple_cons 1 *)" ^^ e'#p
+        | `TupleCons _, _, None -> fields_or_empty empty
+        | _, _, _ ->
+            if is_record && is_struct then
+              match base with
+              | Some x ->
+                  string "Build_" ^^ x#p ^^ fields_or_empty space
+              | None ->
+                  string "Build_t_"
+                  ^^ (self#_do_not_override_lazy_of_global_ident
+                        Generated_generic_printer_base
+                        .AstPos_pat'_PConstruct_constructor constructor)
+                       #p ^^ fields_or_empty space
+            else if not is_record then
+              if is_struct then
+                string "Build_t_"
+                ^^ (self#_do_not_override_lazy_of_global_ident
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_constructor constructor)
+                     #p ^^ fields_or_empty space
+              else
+                (self#_do_not_override_lazy_of_global_ident
+                   Generated_generic_printer_base
+                   .AstPos_pat'_PConstruct_constructor constructor)
+                  #p ^^ fields_or_empty space
+            else string "(* TODO: Record? *)"
 
       method _do_not_override_expr'_GlobalVar ~super global_ident =
         match global_ident with
@@ -477,6 +485,7 @@ module Make (F : Features.T) = struct
             self#expr'_GlobalVar_concrete ~super concrete
         | `Primitive primitive ->
             self#expr'_GlobalVar_primitive ~super primitive
+        | `TupleCons 0 -> string "tt"
         | _ ->
             self#assertion_failure
             @@ "GlobalVar: expected a concrete or primitive global ident, got:"
@@ -484,44 +493,41 @@ module Make (F : Features.T) = struct
 
       method _do_not_override_pat'_PConstruct ~super ~constructor ~is_record
           ~is_struct ~fields =
-        match constructor with
-        | `Concrete constructor ->
-            let constructor =
-              self#_do_not_override_lazy_of_concrete_ident
-                AstPos_pat'_PConstruct_constructor constructor
-            in
-            let fields =
-              List.map
-                ~f:(fun field ->
-                  let { field; pat } = field#v in
-                  let field =
-                    match field with
-                    | `Concrete field -> field
-                    | _ ->
-                        self#assertion_failure
-                          "expr'.Construct: field: non-`Concrete"
-                  in
-                  let pat =
-                    self#_do_not_override_lazy_of_pat AstPos_field_pat__pat pat
-                  in
-                  ( self#_do_not_override_lazy_of_concrete_ident
-                      AstPos_pat'_PConstruct_fields field,
-                    pat ))
-                fields
-            in
-            self#pat'_PConstruct_inductive ~super ~constructor ~is_record
-              ~is_struct ~fields
-        | `TupleCons _ ->
-            let components =
-              List.map
-                ~f:(fun field ->
-                  self#_do_not_override_lazy_of_pat AstPos_field_pat__pat
-                    field#v.pat)
-                fields
-            in
-            self#pat'_PConstruct_tuple ~super ~components
-        | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
-            self#assertion_failure "Construct unexpected constructors"
+        match (constructor, fields) with
+        | `TupleCons 0, [] -> string "'tt (* const unit *)" (* Unit pat *)
+        | `TupleCons 1, [ p ] -> p#p
+        | `TupleCons _n, _ ->
+            parens (separate_map (comma ^^ space) (fun x -> x#p) fields)
+        | _, _ ->
+            if is_record then
+              (self#_do_not_override_lazy_of_global_ident
+                 Generated_generic_printer_base
+                 .AstPos_pat'_PConstruct_constructor constructor)
+                #p ^^ space
+              ^^ parens (separate_map (comma ^^ space) (fun x -> x#p) fields)
+            else
+              self#pat'_PConstruct_inductive ~super
+                ~constructor:
+                  (self#_do_not_override_lazy_of_global_ident
+                     Generated_generic_printer_base
+                     .AstPos_pat'_PConstruct_constructor constructor)
+                ~is_record ~is_struct
+                ~fields:
+                  (List.map
+                     ~f:(fun field ->
+                       let { field; pat } = field#v in
+                       let pat =
+                         self#_do_not_override_lazy_of_pat
+                           Generated_generic_printer_base
+                           .AstPos_pat'_PConstruct_fields pat
+                       in
+                       let field =
+                         self#_do_not_override_lazy_of_global_ident
+                           Generated_generic_printer_base
+                           .AstPos_pat'_PConstruct_fields field
+                       in
+                       (field, pat))
+                     fields)
 
       method _do_not_override_ty_TApp ~ident ~args =
         match ident with
@@ -546,6 +552,7 @@ module Make (F : Features.T) = struct
 
       method _do_not_override_item'_Type ~super ~name ~generics ~variants
           ~is_struct =
+        let generics, _, _ = generics#v in
         if is_struct then
           match variants with
           | [ variant ] ->
@@ -592,6 +599,37 @@ module Make (F : Features.T) = struct
               String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path
             in
             self#concrete_ident ~local id)
+          ast_position id
+
+      method _do_not_override_lazy_of_global_ident ast_position
+          (id : global_ident) : global_ident lazy_doc =
+        lazy_doc
+          (fun (id : global_ident) ->
+            match id with
+            | `Concrete cid ->
+                (self#_do_not_override_lazy_of_concrete_ident ast_position cid)
+                  #p
+            | `Primitive _prim_id -> string "(*TODO*) prim_id"
+            | `TupleType 0 -> string "unit"
+            (* | `TupleCons n when n <= 1 -> *)
+            (*   Error.assertion_failure span *)
+            (*     ("Got a [TupleCons " ^ string_of_int n ^ "]") *)
+            (* | `TupleType n when n <= 14 -> *)
+            (*   F.lid [ "FStar"; "Pervasives"; "tuple" ^ string_of_int n ] *)
+            (* | `TupleCons n when n <= 14 -> *)
+            (*   F.lid [ "FStar"; "Pervasives"; "Mktuple" ^ string_of_int n ] *)
+            (* | `TupleType n | `TupleCons n -> *)
+            (*   let reason = "F* doesn't support tuple of size greater than 14" in *)
+            (*   Error.raise *)
+            (*     { *)
+            (*       kind = UnsupportedTupleSize { tuple_size = Int64.of_int n; reason }; *)
+            (*       span; *)
+            (*     } *)
+            (* | `TupleField _ | `Projector _ -> *)
+            (*   Error.assertion_failure span *)
+            (*     ("pglobal_ident: expected to be handled somewhere else: " *)
+            (*      ^ show_global_ident id) *)
+            | _ -> string "(* TODO *) error global ident type?")
           ast_position id
 
       method _do_not_override_lazy_of_quote ast_position (value : quote)
