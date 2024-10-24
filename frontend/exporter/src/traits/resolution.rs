@@ -5,10 +5,15 @@
 use itertools::Itertools;
 use std::collections::{hash_map::Entry, HashMap};
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::*;
+use rustc_trait_selection::traits::ImplSource;
 
-use crate::traits::utils::erase_and_norm;
+use crate::{self_predicate, traits::utils::erase_and_norm};
+
+use super::utils::{implied_predicates, required_predicates};
 
 #[derive(Debug, Clone)]
 pub enum PathChunk<'tcx> {
@@ -26,13 +31,13 @@ pub enum PathChunk<'tcx> {
         impl_exprs: Vec<ImplExpr<'tcx>>,
         /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The index of this predicate in the list returned by `tcx.item_bounds`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
     Parent {
         /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The index of this predicate in the list returned by `tcx.predicates_of`.
+        /// The index of this predicate in the list returned by `implied_predicates`.
         index: usize,
     },
 }
@@ -49,9 +54,7 @@ pub enum ImplExprAtom<'tcx> {
     LocalBound {
         predicate: Predicate<'tcx>,
         /// The nth (non-self) predicate found for this item. We use predicates from
-        /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an
-        /// opaque type, we also append the predicates from `explicit_item_bounds` to this
-        /// list.
+        /// `required_predicates` starting from the parentmost item.
         index: usize,
         r#trait: PolyTraitRef<'tcx>,
         path: Path<'tcx>,
@@ -92,8 +95,7 @@ pub enum BoundPredicateOrigin {
     /// don't add it for trait implementations, should we?).
     SelfPred,
     /// The nth (non-self) predicate found for this item. We use predicates from
-    /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
-    /// type, we also append the predicates from `explicit_item_bounds` to this list.
+    /// `required_predicates` starting from the parentmost item.
     Item(usize),
 }
 
@@ -103,27 +105,50 @@ pub struct AnnotatedTraitPred<'tcx> {
     pub clause: PolyTraitPredicate<'tcx>,
 }
 
-/// The predicates to use as a starting point for resolving trait references within this
-/// item. This is just like `TyCtxt::predicates_of`, but in the case of a trait or impl
-/// item or closures, also includes the predicates defined on the parents.
+/// The predicates to use as a starting point for resolving trait references within this item. This
+/// includes the "self" predicate if applicable and the `required_predicates` of this item and all
+/// its parents, numbered starting from the parents.
 fn initial_search_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    did: rustc_span::def_id::DefId,
+    def_id: rustc_span::def_id::DefId,
 ) -> Vec<AnnotatedTraitPred<'tcx>> {
-    let (predicates, self_pred) = super::utils::predicates_of_or_above(tcx, did);
-    let predicates = predicates
-        .into_iter()
-        .enumerate()
-        .map(|(i, clause)| AnnotatedTraitPred {
-            origin: BoundPredicateOrigin::Item(i),
-            clause,
-        });
-    let self_pred = self_pred.map(|clause| AnnotatedTraitPred {
-        origin: BoundPredicateOrigin::SelfPred,
-        clause,
-    });
+    fn acc_predicates<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        def_id: rustc_span::def_id::DefId,
+        predicates: &mut Vec<AnnotatedTraitPred<'tcx>>,
+        pred_id: &mut usize,
+    ) {
+        use DefKind::*;
+        match tcx.def_kind(def_id) {
+            // These inherit some predicates from their parent.
+            AssocTy | AssocFn | AssocConst | Closure => {
+                let parent = tcx.parent(def_id);
+                acc_predicates(tcx, parent, predicates, pred_id);
+            }
+            Trait => {
+                let self_pred = self_predicate(tcx, def_id).unwrap().upcast(tcx);
+                predicates.push(AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::SelfPred,
+                    clause: self_pred,
+                })
+            }
+            _ => {}
+        }
+        predicates.extend(required_predicates(tcx, def_id).filter_map(|clause| {
+            clause.as_trait_clause().map(|clause| {
+                let id = *pred_id;
+                *pred_id += 1;
+                AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::Item(id),
+                    clause,
+                }
+            })
+        }));
+    }
 
-    self_pred.into_iter().chain(predicates).collect()
+    let mut predicates = vec![];
+    acc_predicates(tcx, def_id, &mut predicates, &mut 0);
+    predicates
 }
 
 #[tracing::instrument(level = "trace", skip(tcx))]
@@ -132,12 +157,10 @@ fn parents_trait_predicates<'tcx>(
     pred: PolyTraitPredicate<'tcx>,
 ) -> Vec<PolyTraitPredicate<'tcx>> {
     let self_trait_ref = pred.to_poly_trait_ref();
-    tcx.predicates_of(pred.def_id())
-        .predicates
-        .iter()
+    implied_predicates(tcx, pred.def_id())
         // Substitute with the `self` args so that the clause makes sense in the
         // outside context.
-        .map(|(clause, _span)| clause.instantiate_supertrait(tcx, self_trait_ref))
+        .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
         .filter_map(|pred| pred.as_trait_clause())
         .collect()
 }
@@ -245,24 +268,16 @@ impl<'tcx> PredicateSearcher<'tcx> {
             return Ok(());
         };
 
-        // The bounds that the associated type must validate.
-        let item_bounds = tcx
-            // TODO: `item_bounds` can contain parent traits, we don't want them
-            .item_bounds(alias_ty.def_id)
-            .instantiate(tcx, alias_ty.args)
-            .iter()
+        // The bounds that hold on the associated type.
+        let item_bounds = implied_predicates(tcx, alias_ty.def_id)
             .filter_map(|pred| pred.as_trait_clause())
+            // Substitute the item generics
+            .map(|pred| EarlyBinder::bind(pred).instantiate(tcx, alias_ty.args))
             .enumerate();
 
         // Resolve predicates required to mention the item.
-        let nested_impl_exprs: Vec<_> = tcx
-            .predicates_defined_on(alias_ty.def_id)
-            .predicates
-            .iter()
-            .filter_map(|(clause, _span)| clause.as_trait_clause())
-            .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
-            .map(|trait_ref| self.resolve(&trait_ref, warn))
-            .collect::<Result<_, _>>()?;
+        let nested_impl_exprs =
+            self.resolve_item_predicates(alias_ty.def_id, alias_ty.args, warn)?;
 
         // Add all the bounds on the corresponding associated item.
         self.extend(item_bounds.map(|(index, pred)| {
@@ -331,43 +346,60 @@ impl<'tcx> PredicateSearcher<'tcx> {
         let erased_tref = erase_and_norm(self.tcx, self.param_env, *tref);
 
         let tcx = self.tcx;
-        let impl_source =
-            copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, erased_tref));
+        let impl_source = shallow_resolve_trait_ref(tcx, self.param_env, erased_tref);
+        let nested;
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
                 ..
-            })) => ImplExprAtom::Concrete {
-                def_id: impl_def_id,
-                generics,
-            },
-            Ok(ImplSource::Param(_)) => match self
-                .resolve_local(erased_tref.upcast(self.tcx), warn)?
-            {
-                Some(candidate) => {
-                    let path = candidate.path;
-                    let r#trait = candidate.origin.clause.to_poly_trait_ref();
-                    match candidate.origin.origin {
-                        BoundPredicateOrigin::SelfPred => ImplExprAtom::SelfImpl { r#trait, path },
-                        BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
-                            predicate: candidate.origin.clause.upcast(tcx),
-                            index,
-                            r#trait,
-                            path,
-                        },
+            })) => {
+                // Resolve the predicates required by the impl.
+                nested = self.resolve_item_predicates(impl_def_id, generics, warn)?;
+                ImplExprAtom::Concrete {
+                    def_id: impl_def_id,
+                    generics,
+                }
+            }
+            Ok(ImplSource::Param(_)) => {
+                // Mentioning a local clause requires no extra predicates to hold.
+                nested = vec![];
+                match self.resolve_local(erased_tref.upcast(self.tcx), warn)? {
+                    Some(candidate) => {
+                        let path = candidate.path;
+                        let r#trait = candidate.origin.clause.to_poly_trait_ref();
+                        match candidate.origin.origin {
+                            BoundPredicateOrigin::SelfPred => {
+                                ImplExprAtom::SelfImpl { r#trait, path }
+                            }
+                            BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
+                                predicate: candidate.origin.clause.upcast(tcx),
+                                index,
+                                r#trait,
+                                path,
+                            },
+                        }
+                    }
+                    None => {
+                        let msg = format!(
+                            "Could not find a clause for `{tref:?}` in the item parameters"
+                        );
+                        warn(&msg);
+                        ImplExprAtom::Error(msg)
                     }
                 }
-                None => {
-                    let msg =
-                        format!("Could not find a clause for `{tref:?}` in the item parameters");
-                    warn(&msg);
-                    ImplExprAtom::Error(msg)
-                }
-            },
-            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
-            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
+            }
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => {
+                nested = vec![];
+                ImplExprAtom::Dyn
+            }
+            Ok(ImplSource::Builtin(_, _)) => {
+                // Builtin impls currently don't need nested predicates.
+                nested = vec![];
+                ImplExprAtom::Builtin { r#trait: *tref }
+            }
             Err(e) => {
+                nested = vec![];
                 let msg = format!(
                     "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
                 );
@@ -376,117 +408,88 @@ impl<'tcx> PredicateSearcher<'tcx> {
             }
         };
 
-        let nested = match &impl_source {
-            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
-                // The nested obligations of depth 1 correspond (we hope) to the predicates on the
-                // relevant impl that need to be satisfied.
-                nested
-                    .iter()
-                    .filter(|obligation| obligation.recursion_depth == 1)
-                    .filter_map(|obligation| {
-                        obligation.predicate.as_trait_clause().map(|trait_ref| {
-                            self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn)
-                        })
-                    })
-                    .collect::<Result<_, _>>()?
-            }
-            // Nested obligations can happen e.g. for GATs. We ignore these as we resolve local
-            // clauses ourselves.
-            Ok(ImplSource::Param(_)) => vec![],
-            // We ignore the contained obligations here. For example for `(): Send`, the
-            // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
-            // might be important obligations here in other cases; we'll have to see if that comes
-            // up.
-            Ok(ImplSource::Builtin(..)) => vec![],
-            Err(_) => vec![],
-        };
-
         Ok(ImplExpr {
             r#impl: atom,
             args: nested,
             r#trait: *tref,
         })
     }
+
+    /// Resolve the predicates required by the given item.
+    pub fn resolve_item_predicates(
+        &mut self,
+        def_id: DefId,
+        generics: GenericArgsRef<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<Vec<ImplExpr<'tcx>>, String> {
+        let tcx = self.tcx;
+        required_predicates(tcx, def_id)
+            .filter_map(|clause| clause.as_trait_clause())
+            .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+            // Substitute the item generics
+            .map(|trait_ref| EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
+            // Resolve
+            .map(|trait_ref| self.resolve(&trait_ref, warn))
+            .collect()
+    }
 }
 
-mod copy_paste_from_rustc {
+/// Attempts to resolve an obligation to an `ImplSource`. The result is a shallow `ImplSource`
+/// resolution, meaning that we do not resolve all nested obligations on the impl. Note that type
+/// check should guarantee to us that all nested obligations *could be* resolved if we wanted to.
+///
+/// This expects that `trait_ref` is fully normalized.
+///
+/// This is based on `rustc_traits::codegen::codegen_select_candidate` in rustc.
+pub fn shallow_resolve_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    trait_ref: PolyTraitRef<'tcx>,
+) -> Result<ImplSource<'tcx, ()>, CodegenObligationError> {
     use rustc_infer::infer::TyCtxtInferExt;
     use rustc_middle::traits::CodegenObligationError;
-    use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-    use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+    use rustc_middle::ty::TypeVisitableExt;
     use rustc_trait_selection::traits::{
-        Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-        Unimplemented,
+        Obligation, ObligationCause, ObligationCtxt, SelectionContext, Unimplemented,
+    };
+    // Do the initial selection for the obligation. This yields the
+    // shallow result we are looking for -- that is, what specific impl.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let mut selcx = SelectionContext::new(&infcx);
+
+    let obligation_cause = ObligationCause::dummy();
+    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
+
+    let selection = match selcx.poly_select(&obligation) {
+        Ok(Some(selection)) => selection,
+        Ok(None) => return Err(CodegenObligationError::Ambiguity),
+        Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        Err(_) => return Err(CodegenObligationError::FulfillmentError),
     };
 
-    /// Attempts to resolve an obligation to an `ImplSource`. The result is
-    /// a shallow `ImplSource` resolution, meaning that we do not
-    /// (necessarily) resolve all nested obligations on the impl. Note
-    /// that type check should guarantee to us that all nested
-    /// obligations *could be* resolved if we wanted to.
-    ///
-    /// This also expects that `trait_ref` is fully normalized.
-    pub fn codegen_select_candidate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-    ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        // Do the initial selection for the obligation. This yields the
-        // shallow result we are looking for -- that is, what specific impl.
-        let infcx = tcx.infer_ctxt().ignoring_regions().build();
-        let mut selcx = SelectionContext::new(&infcx);
+    // Currently, we use a fulfillment context to completely resolve
+    // all nested obligations. This is because they can inform the
+    // inference of the impl's type parameters.
+    // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
+    let ocx = ObligationCtxt::new(&infcx);
+    let impl_source = selection.map(|obligation| {
+        ocx.register_obligation(obligation.clone());
+        ()
+    });
 
-        let obligation_cause = ObligationCause::dummy();
-        let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
-
-        let selection = match selcx.poly_select(&obligation) {
-            Ok(Some(selection)) => selection,
-            Ok(None) => return Err(CodegenObligationError::Ambiguity),
-            Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
-            Err(e) => {
-                panic!(
-                    "Encountered error `{:?}` selecting `{:?}` during codegen",
-                    e, trait_ref
-                )
-            }
-        };
-
-        // Currently, we use a fulfillment context to completely resolve
-        // all nested obligations. This is because they can inform the
-        // inference of the impl's type parameters.
-        // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
-        let ocx = ObligationCtxt::new(&infcx);
-        let impl_source = selection.map(|obligation| {
-            ocx.register_obligation(obligation.clone());
-            obligation
-        });
-
-        // In principle, we only need to do this so long as `impl_source`
-        // contains unbound type parameters. It could be a slight
-        // optimization to stop iterating early.
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            // `rustc_monomorphize::collector` assumes there are no type errors.
-            // Cycle errors are the only post-monomorphization errors possible; emit them now so
-            // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
-            for err in errors {
-                if let ScrubbedTraitError::Cycle(cycle) = err {
-                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
-                }
-            }
-            return Err(CodegenObligationError::FulfillmentError);
-        }
-
-        let impl_source = infcx.resolve_vars_if_possible(impl_source);
-        let impl_source = infcx.tcx.erase_regions(impl_source);
-
-        if impl_source.has_infer() {
-            // Unused lifetimes on an impl get replaced with inference vars, but never resolved,
-            // causing the return value of a query to contain inference vars. We do not have a concept
-            // for this and will in fact ICE in stable hashing of the return value. So bail out instead.
-            infcx.tcx.dcx().has_errors().unwrap();
-            return Err(CodegenObligationError::FulfillmentError);
-        }
-
-        Ok(impl_source)
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        return Err(CodegenObligationError::FulfillmentError);
     }
+
+    let impl_source = infcx.resolve_vars_if_possible(impl_source);
+    let impl_source = tcx.erase_regions(impl_source);
+
+    if impl_source.has_infer() {
+        // Unused lifetimes on an impl get replaced with inference vars, but never resolved.
+        return Err(CodegenObligationError::FulfillmentError);
+    }
+
+    Ok(impl_source)
 }
