@@ -399,7 +399,8 @@ pub fn interface(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
 
     quote! {
         #(#attrs)* #vis #sig { todo!() }
-    }.into()
+    }
+    .into()
 }
 
 mod kw {
