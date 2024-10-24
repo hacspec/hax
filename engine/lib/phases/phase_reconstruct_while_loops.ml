@@ -95,6 +95,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop expr.span witness;
+                  control_flow = None;
                 };
             span = expr.span;
             typ = UB.unit_typ;

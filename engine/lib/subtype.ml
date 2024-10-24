@@ -236,19 +236,28 @@ struct
             e = dexpr e;
             witness = S.mutable_variable span witness;
           }
-    | Loop { body; kind; state; label; witness } ->
+    | Loop { body; kind; state; label; witness; control_flow } ->
         Loop
           {
             body = dexpr body;
             kind = dloop_kind span kind;
             state = Option.map ~f:(dloop_state span) state;
             label;
+            control_flow =
+              Option.map
+                ~f:
+                  ((function
+                     | A.BreakOnly -> B.BreakOnly
+                     | A.BreakOrReturn -> B.BreakOrReturn)
+                  *** S.fold_like_loop span)
+                control_flow;
             witness = S.loop span witness;
           }
-    | Break { e; label; witness } ->
+    | Break { e; acc; label; witness } ->
         Break
           {
             e = dexpr e;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.break span *** S.loop span) witness;
           }
@@ -261,10 +270,10 @@ struct
             return_typ = dty span return_typ;
             witness = S.question_mark span witness;
           }
-    | Continue { e; label; witness = w1, w2 } ->
+    | Continue { acc; label; witness = w1, w2 } ->
         Continue
           {
-            e = Option.map ~f:(dexpr *** S.state_passing_loop span) e;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }

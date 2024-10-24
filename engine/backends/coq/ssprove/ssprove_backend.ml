@@ -18,6 +18,7 @@ include
       include On.While_loop
       include On.For_index_loop
       include On.State_passing_loop
+      include On.Fold_like_loop
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -63,6 +64,7 @@ struct
         include Features.SUBTYPE.On.While_loop
         include Features.SUBTYPE.On.For_index_loop
         include Features.SUBTYPE.On.State_passing_loop
+        include Features.SUBTYPE.On.Fold_like_loop
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -1123,6 +1125,7 @@ struct
                         };
                     label;
                     witness;
+                    control_flow = None;
                   };
               typ = e.typ;
               span = e.span;
