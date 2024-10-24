@@ -3,84 +3,16 @@ open Utils
 open Base
 open Coq_ast
 
+open Ast
+
 include
   Backend.Make
-    (struct
-      open Features
-      include Off
-      include On.Slice
-      include On.Monadic_binding
-      include On.Macro
-      include On.Construct_base
-    end)
+    (Features.Full)
     (struct
       let backend = Diagnostics.Backend.Coq
     end)
 
-module SubtypeToInputLanguage
-    (FA : Features.T
-            with type mutable_reference = Features.Off.mutable_reference
-             and type continue = Features.Off.continue
-             and type break = Features.Off.break
-             and type mutable_reference = Features.Off.mutable_reference
-             and type mutable_pointer = Features.Off.mutable_pointer
-             and type mutable_variable = Features.Off.mutable_variable
-             and type reference = Features.Off.reference
-             and type raw_pointer = Features.Off.raw_pointer
-             and type early_exit = Features.Off.early_exit
-             and type question_mark = Features.Off.question_mark
-             and type as_pattern = Features.Off.as_pattern
-             and type lifetime = Features.Off.lifetime
-             and type monadic_action = Features.Off.monadic_action
-             and type arbitrary_lhs = Features.Off.arbitrary_lhs
-             and type nontrivial_lhs = Features.Off.nontrivial_lhs
-             and type loop = Features.Off.loop
-             and type block = Features.Off.block
-             and type for_loop = Features.Off.for_loop
-             and type while_loop = Features.Off.while_loop
-             and type for_index_loop = Features.Off.for_index_loop
-             and type quote = Features.Off.quote
-             and type state_passing_loop = Features.Off.state_passing_loop
-             and type fold_like_loop = Features.Off.fold_like_loop
-             and type dyn = Features.Off.dyn
-             and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default
-             and type unsafe = Features.Off.unsafe) =
-struct
-  module FB = InputLanguage
-
-  include
-    Subtype.Make (FA) (FB)
-      (struct
-        module A = FA
-        module B = FB
-        include Features.SUBTYPE.Id
-        include Features.SUBTYPE.On.Monadic_binding
-        include Features.SUBTYPE.On.Construct_base
-        include Features.SUBTYPE.On.Slice
-        include Features.SUBTYPE.On.Macro
-      end)
-
-  let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
-end
-
 module BackendOptions = Backend.UnitBackendOptions
-module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
-
-module CoqLibrary : Library = struct
-  module Notation = struct
-    let int_repr (x : string) (i : string) : string =
-      "(@repr" ^ " " ^ "WORDSIZE" ^ x ^ " " ^ i ^ ")"
-
-    let type_str : string = "Type"
-    let bool_str : string = "bool"
-    let unit_str : string = "unit"
-  end
-end
-
-module C = Coq (CoqLibrary)
-open Ast
 
 module Make
     (F : Features.T)
@@ -606,14 +538,7 @@ end
 (* ppx_deriving_random, metaquote *)
 (* [%expr 1 + [%e some_expr_node]] *)
 
-module HaxCFG = struct
-  module MyPrinter =
-    Make
-      (Features.Full)
-      (struct
-        let default x = x
-      end)
-
+module ASTGenerator = struct
   module AST = Ast.Make (Features.Full)
   open AST
 
@@ -1077,17 +1002,7 @@ module HaxCFG = struct
   let generate (t : ast_types) (indexes : int list) : Yojson.Safe.t =
     fst (generate_helper t indexes)
 
-  let print_ast (_ : unit) =
-    let my_printer = new MyPrinter.printer in
-
-    (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
-
-    let concrete_ident_args = [0] in
-    let global_ident_args = [0] @ concrete_ident_args in
-    let local_ident_args = [0] in
-    let generics_args = [0] in
-    let impl_expr_args = [0;0] in
-
+  let generate_literals =
     let literal_args = [
       (* String *)
       [0];
@@ -1100,22 +1015,16 @@ module HaxCFG = struct
       (* Bool *)
       [4]
     ] in
-    let my_literals = List.map ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x)) literal_args in
-    let literal_string =
-      "\n\n```ebnf\nliteral ::=\n"
-      ^ String.concat ~sep:"\n"
-          (List.map
-             ~f:(fun literal ->
-               let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf
-                 (my_printer#entrypoint_literal literal);
-               "| " ^ Buffer.contents buf)
-             my_literals)
-      ^ "\n```"
-    in
+    List.map ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x)) literal_args
+
+  let generate_tys ~ty ~expr : ty list =
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let local_ident_args = [0] in
+    let impl_expr_args = [0;0] in
 
     (* TODO: BFS generator *)
-    let ty_args ~ty ~expr = [
+    let ty_args = [
       (* TBool *)
       [0];
       (* TChar *)
@@ -1147,22 +1056,15 @@ module HaxCFG = struct
       (* TDyn *)
       [14];
     ] in
-    let ty_args = ty_args ~ty:[0] ~expr:[2;0;0] (* TODO: generate random elements in ty and expr *) in
 
-    let my_tys = List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args in
-    let ty_string =
-      "\n\n```ebnf\nty ::=\n"
-      ^ String.concat ~sep:"\n"
-          (List.map
-             ~f:(fun ty ->
-               let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_ty ty);
-               "| " ^ Buffer.contents buf)
-             my_tys)
-      ^ "\n```"
-    in
+    List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args
 
-    let pat_args ~ty ~ty1 ~literal ~pat1 ~pat2 =  List.map ~f:(fun x -> x @ ty) [
+  let generate_pats ~ty ~ty1 ~literal ~pat1 ~pat2 =
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let local_ident_args = [0] in
+
+    let pat_args = List.map ~f:(fun x -> x @ ty) [
         (* PWild *)
         [0];
         (* PAscription *)
@@ -1180,24 +1082,14 @@ module HaxCFG = struct
         (* PBinding *)
         [7] @ local_ident_args @ ty1;
       ] in
-    let pat_args = pat_args ~ty:[0] ~ty1:[0] ~literal:(List.nth_exn literal_args 0) ~pat1:[0;0] ~pat2:[0;0] in
+    List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
 
-    let my_pats =
-      List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
-    in
-    let pat_string =
-      "\n\n```ebnf\npat ::=\n"
-      ^ String.concat ~sep:"\n"
-          (List.map
-             ~f:(fun pat ->
-               let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_pat pat);
-               "| " ^ Buffer.contents buf)
-             my_pats)
-      ^ "\n```"
-    in
+  let generate_expr ~expr_ty ~literal ~ty ~expr0 ~expr1 ~expr2 ~pat =
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let local_ident_args = [0] in
 
-    let expr_args ~expr_ty ~literal ~ty ~expr0 ~expr1 ~expr2 ~pat =
+    let expr_args =
       List.map ~f:(fun x -> x @ expr_ty)
         [
           (* If *)
@@ -1244,19 +1136,108 @@ module HaxCFG = struct
           [20] @ expr1;
         ]
     in
-    let expr_args =
-      expr_args
-        ~expr_ty:[0]
-        ~literal:(List.nth_exn literal_args 0)
-        ~ty:[0]
-        ~expr0:[2;0;0]
-        ~expr1:[2;0;0]
-        ~expr2:[2;0;0]
-        ~pat:[0;0]
-    in
+    List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
 
-    let my_exprs =
-      List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
+  let generate_items ~expr ~ty =
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let generics_args = [0] in
+
+    let item_args = List.map ~f:(fun x -> x @ concrete_ident_args) [
+        (* Fn *)
+        [0] @ concrete_ident_args @ generics_args @ expr;
+        (* TyAlias *)
+        [1] @ concrete_ident_args @ generics_args @ ty;
+        (* Type *)
+        [2] @ concrete_ident_args @ generics_args;
+        (* Type *)
+        [3] @ concrete_ident_args @ generics_args;
+        (* IMacroInvokation *)
+        [4] @ concrete_ident_args;
+        (* Trait *)
+        [5] @ concrete_ident_args @ generics_args;
+        (* Impl *)
+        [6] @ generics_args @ ty @ global_ident_args;
+        (* Alias *)
+        [7] @ concrete_ident_args @ concrete_ident_args;
+        (* Use *)
+        [8];
+      ]
+    in
+    List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args
+
+  let generate_full_ast : (literal list * ty list * pat list * expr list * item list) =
+    (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
+    (** bfs with no recursion, elements seen before are replaced with 0 depth (constant) elements **)
+
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let local_ident_args = [0] in
+    let generics_args = [0] in
+    let impl_expr_args = [0;0] in
+
+    let my_literals = generate_literals in
+     (* TODO: generate random / dummy elements for ty, literal, pat and expr arguments *)
+    let my_tys   = generate_tys ~ty:[0] ~expr:[2;0;0] in
+    let my_pats  = generate_pats ~ty:[0] ~ty1:[0] ~literal:[0] ~pat1:[0;0] ~pat2:[0;0] in
+    let my_exprs = generate_expr ~expr_ty:[0] ~literal:[0] ~ty:[0] ~expr0:[2;0;0] ~expr1:[2;0;0] ~expr2:[2;0;0] ~pat:[0;0] in
+    let my_items = generate_items ~expr:[2;0;0] ~ty:[0] in
+    (my_literals, my_tys, my_pats, my_exprs, my_items)
+end
+
+module HaxCFG = struct
+  module MyPrinter =
+    Make
+      (Features.Full)
+      (struct
+        let default x = x
+      end)
+
+  module MyAstGenerator = ASTGenerator
+
+  module AST = Ast.Make (Features.Full)
+  open AST
+
+  let print_ast (_ : unit) =
+    let my_printer = new MyPrinter.printer in
+
+    (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
+
+    let (my_literals, my_tys, my_pats, my_exprs, my_items) : (literal list * ty list * pat list * expr list * item list) = MyAstGenerator.generate_full_ast in
+
+    let literal_string =
+      "\n\n```ebnf\nliteral ::=\n"
+      ^ String.concat ~sep:"\n"
+          (List.map
+             ~f:(fun literal ->
+               let buf = Buffer.create 0 in
+               PPrint.ToBuffer.pretty 1.0 80 buf
+                 (my_printer#entrypoint_literal literal);
+               "| " ^ Buffer.contents buf)
+             my_literals)
+      ^ "\n```"
+    in
+    let ty_string =
+      "\n\n```ebnf\nty ::=\n"
+      ^ String.concat ~sep:"\n"
+          (List.map
+             ~f:(fun ty ->
+               let buf = Buffer.create 0 in
+               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_ty ty);
+               "| " ^ Buffer.contents buf)
+             my_tys)
+      ^ "\n```"
+    in
+    let pat_string =
+      "\n\n```ebnf\npat ::=\n"
+      ^ String.concat ~sep:"\n"
+          (List.map
+             ~f:(fun pat ->
+               let buf = Buffer.create 0 in
+               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_pat pat);
+               "| " ^ Buffer.contents buf)
+             my_pats)
+      ^ "\n```"
     in
     let expr_string =
       "\n\n```ebnf\nexpr ::=\n"
@@ -1270,29 +1251,6 @@ module HaxCFG = struct
              my_exprs)
       ^ "\n```"
     in
-
-    let item_args = List.map ~f:(fun x -> x @ concrete_ident_args) [
-        (* Fn *)
-        [0] @ concrete_ident_args @ generics_args @ List.nth_exn expr_args 2;
-        (* TyAlias *)
-        [1] @ concrete_ident_args @ generics_args @ List.nth_exn ty_args 0;
-        (* Type *)
-        [2] @ concrete_ident_args @ generics_args;
-        (* Type *)
-        [3] @ concrete_ident_args @ generics_args;
-        (* IMacroInvokation *)
-        [4] @ concrete_ident_args;
-        (* Trait *)
-        [5] @ concrete_ident_args @ generics_args;
-        (* Impl *)
-        [6] @ generics_args @ List.nth_exn ty_args 0 @ global_ident_args;
-        (* Alias *)
-        [7] @ concrete_ident_args @ concrete_ident_args;
-        (* Use *)
-        [8];
-      ]
-    in
-    let my_items : item list = List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args in
     let item_string =
       "\n\n```ebnf\nitem ::=\n"
       ^ String.concat ~sep:"\n"
@@ -1311,8 +1269,7 @@ module HaxCFG = struct
         {
           path = "ast_spec.md";
           contents =
-            "# Hax CFG" ^ literal_string ^ expr_string ^ ty_string ^ pat_string
-            ^ item_string;
+            "# Hax CFG" ^ literal_string ^ expr_string ^ ty_string ^ pat_string ^ item_string;
           sourcemap = None;
         };
     ]
@@ -1328,6 +1285,5 @@ module TransformToInputLanguage =
   ]
   [@ocamlformat "disable"]
 
-let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) :
-  AST.item list =
+let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) : _ list =
   []
