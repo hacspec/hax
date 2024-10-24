@@ -98,6 +98,31 @@ let mk_i128  x = mk_int #i128_inttype x
 let mk_usize x = mk_int #usize_inttype x
 let mk_isize  x = mk_int #isize_inttype x
 
+let from_uint8 (x:FStar.UInt8.t) : u8  = x
+let from_int8 (x:FStar.Int8.t) : i8  = x
+let from_uint16 (x:FStar.UInt16.t) : u16  = x
+let from_int16 (x:FStar.Int16.t) : i16  = x
+let from_uint32 (x:FStar.UInt32.t) : u32  = x
+let from_int32 (x:FStar.Int32.t) : i32  = x
+let from_uint64 (x:FStar.UInt64.t) : u64  = x
+let from_int64 (x:FStar.Int64.t) : i64  = x
+let from_uint128 (x:FStar.UInt128.t) : u128  = x
+let from_int128 (x:FStar.Int128.t) : i128  = x
+let from_usize (x:FStar.UInt32.t) : usize  = mk_usize (FStar.UInt32.v x)
+let from_isize (x:FStar.Int32.t) : isize  = mk_isize (FStar.Int32.v x)
+
+let to_uint8 (x:u8) : FStar.UInt8.t = x
+let to_int8 (x:i8) : FStar.Int8.t  = x
+let to_uint16 (x:u16) : FStar.UInt16.t  = x
+let to_int16 (x:i16) : FStar.Int16.t  = x
+let to_uint32 (x:u32) : FStar.UInt32.t  = x
+let to_int32 (x:i32) : FStar.Int32.t  = x
+let to_uint64 (x:u64) : FStar.UInt64.t  = x
+let to_int64 (x:i64) : FStar.Int64.t  = x
+let to_uint128 (x:u128) : FStar.UInt128.t  = x
+let to_int128 (x:i128) : FStar.Int128.t  = x
+
+
 [@(strict_on_arguments [0])]
 val mk_int_equiv_lemma #t (n:range_t t) :
     Lemma (
