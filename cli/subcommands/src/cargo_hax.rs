@@ -623,7 +623,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
 
             let stdout = std::io::BufReader::new(generate_ast_subprocess.stdout.take().unwrap());
             for msg in stdout.lines() {
-                println!("{:?}", msg);
+                println!("{}", msg.unwrap());
             }
             true
         }
