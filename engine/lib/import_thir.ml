@@ -10,6 +10,7 @@ module Thir = struct
   type generic_param = generic_param_for__decorated_for__expr_kind
   type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
   type trait_item = trait_item_for__decorated_for__expr_kind
+  type ty = node_for__ty_kind
 end
 
 open! Prelude
@@ -385,7 +386,7 @@ end) : EXPR = struct
     in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
-      match (ty.kind, expr, List.drop_last stmts, List.last stmts) with
+      match (ty.value, expr, List.drop_last stmts, List.last stmts) with
       | ( Thir.Never,
           None,
           Some stmts,
@@ -980,7 +981,7 @@ end) : EXPR = struct
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
-    match ty.kind with
+    match ty.value with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
@@ -1278,7 +1279,7 @@ include struct
     let is_core_item = false
   end)
 
-  let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
+  let import_ty : Types.span -> Types.node_for__ty_kind -> Ast.Rust.ty = c_ty
 
   let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref

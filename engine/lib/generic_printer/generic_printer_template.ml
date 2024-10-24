@@ -219,7 +219,8 @@ struct
       method item'_NotImplementedYet =
         default_document_for "item'_NotImplementedYet"
 
-      method item'_Quote ~super:_ _x2 = default_document_for "item'_Quote"
+      method item'_Quote ~super:_ ~quote:_ ~origin:_ =
+        default_document_for "item'_Quote"
 
       method item'_Trait ~super:_ ~name:_ ~generics:_ ~items:_ ~safety:_ =
         default_document_for "item'_Trait"

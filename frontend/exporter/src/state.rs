@@ -126,6 +126,8 @@ mod types {
         pub spans: HashMap<rustc_span::Span, Span>,
         /// Per-item cache.
         pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+        /// A ID table session, providing fresh IDs.
+        pub id_table_session: id_table::Session,
     }
 
     /// Per-item cache
@@ -342,7 +344,10 @@ impl ImplInfos {
         Self {
             generics: tcx.generics_of(did).sinto(s),
             typ: tcx.type_of(did).instantiate_identity().sinto(s),
-            trait_ref: tcx.impl_trait_ref(did).sinto(s),
+            trait_ref: tcx
+                .impl_trait_ref(did)
+                .map(|trait_ref| trait_ref.instantiate_identity())
+                .sinto(s),
             clauses: tcx.predicates_defined_on(did).predicates.sinto(s),
         }
     }

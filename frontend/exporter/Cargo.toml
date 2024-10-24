@@ -23,7 +23,6 @@ tracing.workspace = true
 paste = "1.0.11"
 extension-traits = "1.0.1"
 lazy_static = "1.4.0"
-bincode.workspace = true
 
 [features]
 default = ["rustc"]
