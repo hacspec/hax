@@ -85,6 +85,19 @@ let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 [@(strict_on_arguments [0])]
 val mk_int (#t:inttype) (n:range_t t) : int_t t
 
+let mk_u8 x = mk_int #u8_inttype x
+let mk_i8  x = mk_int #i8_inttype x
+let mk_u16  x = mk_int #u16_inttype x
+let mk_i16  x = mk_int #i16_inttype x
+let mk_u32 x = mk_int #u32_inttype x
+let mk_i32  x = mk_int #i32_inttype x
+let mk_u64 x = mk_int #u64_inttype x
+let mk_i64  x = mk_int #i64_inttype x
+let mk_u128 x = mk_int #u128_inttype x
+let mk_i128  x = mk_int #i128_inttype x
+let mk_usize x = mk_int #usize_inttype x
+let mk_isize  x = mk_int #isize_inttype x
+
 [@(strict_on_arguments [0])]
 val mk_int_equiv_lemma #t (n:range_t t) :
     Lemma (
