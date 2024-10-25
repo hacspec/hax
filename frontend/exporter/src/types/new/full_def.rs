@@ -54,7 +54,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
         let full_def = FullDef {
             def_id: self.sinto(s),
             parent: tcx.opt_parent(def_id).sinto(s),
-            span: tcx.def_span(def_id).sinto(s),
+            span: get_def_span(tcx, def_id, def_kind).sinto(s),
             source_span: source_span.sinto(s),
             source_text,
             attributes: get_def_attrs(tcx, def_id, def_kind).sinto(s),
@@ -396,6 +396,21 @@ impl FullDef {
     }
 }
 
+/// Gets the attributes of the definition.
+#[cfg(feature = "rustc")]
+fn get_def_span<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: RDefId,
+    def_kind: RDefKind,
+) -> rustc_span::Span {
+    use RDefKind::*;
+    match def_kind {
+        // These kinds cause `def_span` to panic.
+        ForeignMod => rustc_span::DUMMY_SP,
+        _ => tcx.def_span(def_id),
+    }
+}
+
 /// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
 /// meaningful visibility.
 #[cfg(feature = "rustc")]
@@ -451,7 +466,7 @@ fn get_def_attrs<'tcx>(
     use RDefKind::*;
     match def_kind {
         // These kinds cause `get_attrs_unchecked` to panic.
-        ConstParam | LifetimeParam | TyParam => &[],
+        ConstParam | LifetimeParam | TyParam | ForeignMod => &[],
         _ => tcx.get_attrs_unchecked(def_id),
     }
 }
