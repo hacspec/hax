@@ -85,18 +85,18 @@ let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 [@(strict_on_arguments [0])]
 val mk_int (#t:inttype) (n:range_t t) : int_t t
 
-let mk_u8 x = mk_int #u8_inttype x
-let mk_i8  x = mk_int #i8_inttype x
-let mk_u16  x = mk_int #u16_inttype x
-let mk_i16  x = mk_int #i16_inttype x
-let mk_u32 x = mk_int #u32_inttype x
-let mk_i32  x = mk_int #i32_inttype x
-let mk_u64 x = mk_int #u64_inttype x
-let mk_i64  x = mk_int #i64_inttype x
-let mk_u128 x = mk_int #u128_inttype x
-let mk_i128  x = mk_int #i128_inttype x
-let mk_usize x = mk_int #usize_inttype x
-let mk_isize  x = mk_int #isize_inttype x
+let mk_u8 x = FStar.UInt8.uint_to_t x
+let mk_i8  x = FStar.Int8.int_to_t x
+let mk_u16  x = FStar.UInt16.uint_to_t x
+let mk_i16  x = FStar.Int16.int_to_t x
+let mk_u32 x = FStar.UInt32.uint_to_t x
+let mk_i32  x = FStar.Int32.int_to_t x
+let mk_u64 x = FStar.UInt64.uint_to_t x
+let mk_i64  x = FStar.Int64.int_to_t x
+let mk_u128 x = FStar.UInt128.uint_to_t x
+let mk_i128  x = FStar.Int128.int_to_t x
+let mk_usize x = FStar.UInt32.uint_to_t x
+let mk_isize  x = FStar.Int32.int_to_t x
 
 let from_uint8 (x:FStar.UInt8.t) : u8  = x
 let from_int8 (x:FStar.Int8.t) : i8  = x
@@ -108,8 +108,8 @@ let from_uint64 (x:FStar.UInt64.t) : u64  = x
 let from_int64 (x:FStar.Int64.t) : i64  = x
 let from_uint128 (x:FStar.UInt128.t) : u128  = x
 let from_int128 (x:FStar.Int128.t) : i128  = x
-let from_usize (x:FStar.UInt32.t) : usize  = mk_usize (FStar.UInt32.v x)
-let from_isize (x:FStar.Int32.t) : isize  = mk_isize (FStar.Int32.v x)
+let from_usize (x:FStar.UInt32.t) : usize  = mk_int (FStar.UInt32.v x)
+let from_isize (x:FStar.Int32.t) : isize  = mk_int (FStar.Int32.v x)
 
 let to_uint8 (x:u8) : FStar.UInt8.t = x
 let to_int8 (x:i8) : FStar.Int8.t  = x
