@@ -176,6 +176,7 @@
             pkgs.openssl.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
+            pkgs.toml2json
             rustfmt
             rustc
 
@@ -183,7 +184,7 @@
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
-          fstar = pkgs.mkShell {
+          examples = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
             shellHook = ''
@@ -191,11 +192,11 @@
               export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
               export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
             '';
-            packages = packages ++ [fstar];
+            packages = packages ++ [fstar pkgs.proverif];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
-            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
         };
       }

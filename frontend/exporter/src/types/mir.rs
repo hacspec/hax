@@ -469,7 +469,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
             trace!("type: {:?}", ty);
             trace!("type kind: {:?}", ty.kind());
             let sig = match ty.kind() {
-                rustc_middle::ty::TyKind::FnPtr(sig) => sig,
+                rustc_middle::ty::TyKind::FnPtr(sig, ..) => sig,
                 _ => unreachable!(),
             };
             trace!("FnPtr: {:?}", sig);
@@ -996,12 +996,11 @@ pub enum AggregateKind {
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CastKind, state: S as s)]
+#[args(<'tcx, S>, from: rustc_middle::mir::CastKind, state: S as _s)]
 pub enum CastKind {
     PointerExposeProvenance,
     PointerWithExposedProvenance,
-    PointerCoercion(PointerCoercion),
-    DynStar,
+    PointerCoercion(PointerCoercion, CoercionSource),
     IntToInt,
     FloatToInt,
     FloatToFloat,
@@ -1009,6 +1008,14 @@ pub enum CastKind {
     PtrToPtr,
     FnPtrToPtr,
     Transmute,
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S>, from: rustc_middle::mir::CoercionSource, state: S as _s)]
+pub enum CoercionSource {
+    AsCast,
+    Implicit,
 }
 
 #[derive_group(Serializers)]
@@ -1035,7 +1042,7 @@ pub enum Rvalue {
     Repeat(Operand, ConstantExpr),
     Ref(Region, BorrowKind, Place),
     ThreadLocalRef(DefId),
-    AddressOf(Mutability, Place),
+    RawPtr(Mutability, Place),
     Len(Place),
     Cast(CastKind, Operand, Ty),
     BinaryOp(BinOp, (Operand, Operand)),
@@ -1129,6 +1136,7 @@ pub enum ScopeData {
     Arguments,
     Destruction,
     IfThen,
+    IfThenRescope,
     Remainder(FirstStatementIndex),
 }
 

@@ -130,14 +130,6 @@ module type MAKE = sig
   module Letfuns : sig
     val print : item list -> string
   end
-
-  module Processes : sig
-    val print : item list -> string
-  end
-
-  module Toplevel : sig
-    val print : item list -> string
-  end
 end
 
 module Make (Options : OPTS) : MAKE = struct
@@ -619,23 +611,30 @@ module Make (Options : OPTS) : MAKE = struct
                   (string "let x = construct_fail() in "
                   ^^ print#default_value type_name_doc)
               in
-
-              if is_struct then
-                let struct_constructor = List.hd variants in
-                match struct_constructor with
-                | None -> empty
-                | Some constructor ->
-                    type_line ^^ hardline ^^ to_bitstring_converter_line
-                    ^^ hardline ^^ from_bitstring_converter_line ^^ hardline
-                    ^^ default_line ^^ hardline ^^ err_line ^^ hardline
-                    ^^ fun_and_reduc name constructor
-              else
+              let default_lines =
                 type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
                 ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
                 ^^ hardline ^^ err_line ^^ hardline
-                ^^ separate_map hardline
-                     (fun variant -> fun_and_reduc name variant)
-                     variants
+              in
+              let destructor_lines =
+                if is_struct then
+                  let struct_constructor = List.hd variants in
+                  match struct_constructor with
+                  | None -> empty
+                  | Some constructor -> fun_and_reduc name constructor
+                else
+                  separate_map hardline
+                    (fun variant -> fun_and_reduc name variant)
+                    variants
+              in
+              if
+                Attrs.find_unique_attr item.attrs
+                  ~f:
+                    ([%eq: Types.ha_payload] OpaqueType
+                    >> Fn.flip Option.some_if ())
+                |> Option.is_some
+              then default_lines
+              else default_lines ^^ destructor_lines
           | Quote { quote; _ } -> print#quote quote
           | _ -> empty
 
@@ -767,7 +766,11 @@ module Make (Options : OPTS) : MAKE = struct
   end
 
   let filter_crate_functions (items : AST.item list) =
-    List.filter ~f:(fun item -> [%matches? Fn _] item.v) items
+    List.filter
+      ~f:(fun item ->
+        [%matches? Fn _] item.v
+        || [%matches? Quote { origin = { item_kind = `Fn; _ }; _ }] item.v)
+      items
 
   let is_process_read : attrs -> bool =
     Attr_payloads.payloads
@@ -819,7 +822,8 @@ module Make (Options : OPTS) : MAKE = struct
        letfun bitstring_err() = let x = construct_fail() in \
        bitstring_default().\n\n\
        letfun nat_default() = 0.\n\
-       fun nat_to_bitstring(nat): bitstring.\n\n\
+       fun nat_to_bitstring(nat): bitstring.\n\
+       letfun nat_err() = let x = construct_fail() in nat_default().\n\n\
        letfun bool_default() = false.\n"
 
     let contents items = ""
@@ -830,7 +834,11 @@ module Make (Options : OPTS) : MAKE = struct
     let preamble items = ""
 
     let filter_data_types items =
-      List.filter ~f:(fun item -> [%matches? Type _] item.v) items
+      List.filter
+        ~f:(fun item ->
+          [%matches? Type _] item.v
+          || [%matches? Quote { origin = { item_kind = `Type; _ }; _ }] item.v)
+        items
 
     let contents items =
       let contents, _ = Print.items NoAuxInfo (filter_data_types items) in
@@ -853,24 +861,6 @@ module Make (Options : OPTS) : MAKE = struct
       in
       pure_letfuns_print ^ process_letfuns_print
   end)
-
-  module Processes = MkSubprinter (struct
-    let banner = "Processes"
-    let preamble items = ""
-    let process_filter item = [%matches? Fn _] item.v && is_process item
-
-    let contents items =
-      let contents, _ =
-        Print.items NoAuxInfo (List.filter ~f:process_filter items)
-      in
-      contents
-  end)
-
-  module Toplevel = MkSubprinter (struct
-    let banner = "Top-level process"
-    let preamble items = "process\n    0\n"
-    let contents items = ""
-  end)
 end
 
 let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
@@ -882,17 +872,11 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   in
   let lib_contents =
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
-    ^ M.Processes.print items
   in
-  let analysis_contents = M.Toplevel.print items in
   let lib_file =
     Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None }
   in
-  let analysis_file =
-    Types.
-      { path = "analysis.pv"; contents = analysis_contents; sourcemap = None }
-  in
-  [ lib_file; analysis_file ]
+  [ lib_file ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)

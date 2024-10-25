@@ -7,6 +7,7 @@
   hacl-star,
   hax-env,
   jq,
+  proverif,
 }: let
   matches = re: path: !builtins.isNull (builtins.match re path);
   commonArgs = {
@@ -15,8 +16,8 @@
       src = craneLib.path ./..;
       filter = path: type:
         # We include only certain files. FStar files under the example
-        # directory are listed out.
-        (   matches ".*(Makefile|.*[.](rs|toml|lock|diff|fsti?))$" path
+        # directory are listed out. Same for proverif (*.pvl) files.
+        (   matches ".*(Makefile|.*[.](rs|toml|lock|diff|fsti?|pv))$" path
         && !matches ".*examples/.*[.]fsti?$" path
         ) || ("directory" == type);
     };
@@ -46,5 +47,10 @@ in
         sed -i "s/make -C limited-order-book/HAX_VANILLA_RUSTC=never make -C limited-order-book/g" Makefile
         make
       '';
-      buildInputs = [hax hax-env fstar jq];
+      buildInputs = [
+        hax hax-env fstar jq
+        (proverif.overrideDerivation (_: {
+          patches = [ ./proverif-psk/pv_div_by_zero_fix.diff ];
+        }))
+      ];
     })
