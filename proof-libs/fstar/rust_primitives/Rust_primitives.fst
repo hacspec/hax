@@ -35,6 +35,10 @@ instance cast_tc_integers (t:inttype) (t':inttype)
   : cast_tc (int_t t) (int_t t')
   = { cast = (fun x -> Rust_primitives.Integers.cast_mod #t #t' x) }
 
+instance cast_tc_bool_integer (t:inttype)
+  : cast_tc bool (int_t t)
+  = { cast = (fun x -> if x then Rust_primitives.Integers.mk_int 1 else Rust_primitives.Integers.mk_int 0) }
+
 class unsize_tc source = {
   output: Type;
   unsize: source -> output;
