@@ -253,7 +253,7 @@ struct
           }
       | Return { e; witness } ->
           {
-            e = Return { e = dexpr_same e; witness };
+            e = Return { e = dexpr e; witness };
             span = expr.span;
             typ = local_vars_expr.typ;
           }
