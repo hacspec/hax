@@ -134,14 +134,21 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for RDefId {
     }
 }
 
-#[cfg(feature = "rustc")]
-impl From<&DefId> for RDefId {
-    fn from<'tcx>(def_id: &DefId) -> Self {
-        let (krate, index) = def_id.index;
-        Self {
+impl DefId {
+    #[cfg(feature = "rustc")]
+    pub fn to_rust_def_id(&self) -> RDefId {
+        let (krate, index) = self.index;
+        RDefId {
             krate: rustc_hir::def_id::CrateNum::from_u32(krate),
             index: rustc_hir::def_id::DefIndex::from_u32(index),
         }
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl From<&DefId> for RDefId {
+    fn from<'tcx>(def_id: &DefId) -> Self {
+        def_id.to_rust_def_id()
     }
 }
 
