@@ -2,6 +2,8 @@ use crate::prelude::*;
 use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
+use rustc_hir::def::DefKind as RDefKind;
+#[cfg(feature = "rustc")]
 use rustc_middle::ty;
 #[cfg(feature = "rustc")]
 use rustc_span::def_id::DefId as RDefId;
@@ -38,23 +40,25 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
         }
         let tcx = s.base().tcx;
         let def_id = *self;
+        let def_kind = tcx.def_kind(def_id);
         let kind = {
             let state_with_id = with_owner_id(s.base(), (), (), def_id);
-            tcx.def_kind(def_id).sinto(&state_with_id)
+            def_kind.sinto(&state_with_id)
         };
 
         let source_span = def_id.as_local().map(|ldid| tcx.source_span(ldid));
         let source_text = source_span
             .filter(|source_span| source_span.ctxt().is_root())
             .and_then(|source_span| tcx.sess.source_map().span_to_snippet(source_span).ok());
+
         let full_def = FullDef {
             def_id: self.sinto(s),
             parent: tcx.opt_parent(def_id).sinto(s),
-            span: tcx.def_span(def_id).sinto(s),
+            span: get_def_span(tcx, def_id, def_kind).sinto(s),
             source_span: source_span.sinto(s),
             source_text,
-            attributes: get_def_attrs(tcx, def_id).sinto(s),
-            visibility: get_def_visibility(tcx, def_id),
+            attributes: get_def_attrs(tcx, def_id, def_kind).sinto(s),
+            visibility: get_def_visibility(tcx, def_id, def_kind),
             lang_item: s
                 .base()
                 .tcx
@@ -392,12 +396,31 @@ impl FullDef {
     }
 }
 
+/// Gets the attributes of the definition.
+#[cfg(feature = "rustc")]
+fn get_def_span<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: RDefId,
+    def_kind: RDefKind,
+) -> rustc_span::Span {
+    use RDefKind::*;
+    match def_kind {
+        // These kinds cause `def_span` to panic.
+        ForeignMod => rustc_span::DUMMY_SP,
+        _ => tcx.def_span(def_id),
+    }
+}
+
 /// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
 /// meaningful visibility.
 #[cfg(feature = "rustc")]
-fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<bool> {
-    use rustc_hir::def::DefKind::*;
-    match tcx.def_kind(def_id) {
+fn get_def_visibility<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: RDefId,
+    def_kind: RDefKind,
+) -> Option<bool> {
+    use RDefKind::*;
+    match def_kind {
         AssocConst
         | AssocFn
         | Const
@@ -435,11 +458,15 @@ fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<boo
 
 /// Gets the attributes of the definition.
 #[cfg(feature = "rustc")]
-fn get_def_attrs<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> &'tcx [rustc_ast::ast::Attribute] {
-    use rustc_hir::def::DefKind::*;
-    match tcx.def_kind(def_id) {
+fn get_def_attrs<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: RDefId,
+    def_kind: RDefKind,
+) -> &'tcx [rustc_ast::ast::Attribute] {
+    use RDefKind::*;
+    match def_kind {
         // These kinds cause `get_attrs_unchecked` to panic.
-        ConstParam | LifetimeParam | TyParam => &[],
+        ConstParam | LifetimeParam | TyParam | ForeignMod => &[],
         _ => tcx.get_attrs_unchecked(def_id),
     }
 }
