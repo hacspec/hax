@@ -18,6 +18,7 @@ struct Options {
     from: syn::TypePath,
     state: syn::Ident,
     state_type: syn::Type,
+    where_clause: Option<syn::WhereClause>,
 }
 mod option_parse {
     use super::*;
@@ -29,20 +30,30 @@ mod option_parse {
         fn parse(input: ParseStream) -> syn::Result<Self> {
             let generics = input.parse()?;
             input.parse::<Token![,]>()?;
+
             input.parse::<kw::from>()?;
             input.parse::<Token![:]>()?;
             let from = input.parse()?;
             input.parse::<Token![,]>()?;
+
             input.parse::<kw::state>()?;
             input.parse::<Token![:]>()?;
             let state_type = input.parse()?;
             input.parse::<Token![as]>()?;
             let state = input.parse()?;
+
+            let mut where_clause = None;
+            if input.peek(Token![,]) && input.peek2(Token![where]) {
+                input.parse::<Token![,]>()?;
+                where_clause = Some(input.parse()?);
+            }
+
             Ok(Options {
                 generics,
                 from,
                 state,
                 state_type,
+                where_clause,
             })
         }
     }
@@ -291,6 +302,7 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         from: from_with_generics,
         state,
         state_type,
+        where_clause,
     } = parse_attr("args", attrs).expect("An [args] attribute was expected");
 
     let generics = {
@@ -388,7 +400,7 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         const _ : () = {
             use #from as FROM_TYPE;
             use #to as TO_TYPE;
-            impl #generics SInto<#state_type, #to #to_generics> for #from_with_generics {
+            impl #generics SInto<#state_type, #to #to_generics> for #from_with_generics #where_clause {
                 #[tracing::instrument(level = "trace", skip(#state))]
                 fn sinto(&self, #state: &#state_type) -> #to #to_generics {
                     tracing::trace!("Enters sinto ({})", stringify!(#from_with_generics));

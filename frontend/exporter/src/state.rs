@@ -130,13 +130,19 @@ mod types {
         pub id_table_session: id_table::Session,
     }
 
+    /// Defines a mapping from types to types, for use with `TypeMap`.
+    pub struct FullDefMapper {}
+    impl TypeMapper for FullDefMapper {
+        type Value<Body: TypeMappable> = Arc<FullDef<Body>>;
+    }
+
     /// Per-item cache
     #[derive(Default)]
     pub struct ItemCache<'tcx> {
         /// The translated `DefId`.
         pub def_id: Option<DefId>,
-        /// The translated definition.
-        pub full_def: Option<Arc<FullDef>>,
+        /// The translated definitions, generic in the body.
+        pub full_def: TypeMap<FullDefMapper>,
         /// Cache the `Ty` translations.
         pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the trait resolution engine for each item.
