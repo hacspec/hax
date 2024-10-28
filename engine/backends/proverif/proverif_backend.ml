@@ -75,6 +75,7 @@ struct
         let lifetime = reject
         let monadic_action = reject
         let monadic_binding = reject
+        let fold_like_loop = reject
         let block = reject
         let dyn = reject
         let match_guard = reject
@@ -129,22 +130,14 @@ module type MAKE = sig
   module Letfuns : sig
     val print : item list -> string
   end
-
-  module Processes : sig
-    val print : item list -> string
-  end
-
-  module Toplevel : sig
-    val print : item list -> string
-  end
 end
 
 module Make (Options : OPTS) : MAKE = struct
   module Print = struct
     module GenericPrint =
-      Generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
+      Deprecated_generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
 
-    open Generic_printer_base.Make (InputLanguage)
+    open Deprecated_generic_printer_base.Make (InputLanguage)
     open PPrint
 
     let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
@@ -242,8 +235,8 @@ module Make (Options : OPTS) : MAKE = struct
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
-          | { p = PConstruct { name; _ } }
-            when Global_ident.eq_name Core__result__Result__Err name ->
+          | { p = PConstruct { constructor; _ } }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
               print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
@@ -264,7 +257,8 @@ module Make (Options : OPTS) : MAKE = struct
 
         method typed_wildcard = print#wildcard ^^ string ": bitstring"
 
-        method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+        method tuple_elem_pat'
+            : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -277,14 +271,15 @@ module Make (Options : OPTS) : MAKE = struct
                 p ^^ colon ^^ space ^^ print#ty ctx typ
             | p -> print#pat' ctx p
 
-        method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+        method tuple_elem_pat
+            : Deprecated_generic_printer_base.par_state -> pat fn =
           fun ctx { p; span; _ } ->
             print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
 
         method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
 
         (* Overridden methods *)
-        method! pat' : Generic_printer_base.par_state -> pat' fn =
+        method! pat' : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -294,16 +289,18 @@ module Make (Options : OPTS) : MAKE = struct
             fun pat ->
               match pat with
               | PConstant { lit } -> string "=" ^^ print#literal Pat lit
-              | PConstruct { name; args }
-                when Global_ident.eq_name Core__option__Option__None name ->
+              | PConstruct { constructor; fields }
+                when Global_ident.eq_name Core__option__Option__None constructor
+                ->
                   string "None()"
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* The `Some` constructor in ProVerif expects a
                  bitstring argument, so we use the appropriate
                  `_to_bitstring` type converter on the inner
                  expression. *)
-                when Global_ident.eq_name Core__option__Option__Some name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__option__Option__Some constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
@@ -320,21 +317,23 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* We replace applications of the `Ok` constructor
                  with their contents. *)
-                when Global_ident.eq_name Core__result__Result__Ok name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__result__Result__Ok constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
                   let inner_field_doc = print#pat ctx inner_field.pat in
                   inner_field_doc
-              | PConstruct { name; args } -> (
+              | PConstruct { constructor; fields } -> (
                   match
-                    translate_known_name name ~dict:library_constructor_patterns
+                    translate_known_name constructor
+                      ~dict:library_constructor_patterns
                   with
-                  | Some (_, translation) -> translation args
+                  | Some (_, translation) -> translation fields
                   | None -> super#pat' ctx pat)
               | PWild ->
                   print#typed_wildcard
@@ -344,7 +343,8 @@ module Make (Options : OPTS) : MAKE = struct
         method! ty_bool = string "bool"
         method! ty_int _ = string "nat"
 
-        method! pat_at : Generic_printer_base.ast_position -> pat fn =
+        method! pat_at : Deprecated_generic_printer_base.ast_position -> pat fn
+            =
           fun pos pat ->
             match pat with
             | { p = PWild } -> (
@@ -374,7 +374,7 @@ module Make (Options : OPTS) : MAKE = struct
           in
           f ^^ iblock parens args
 
-        method! expr' : Generic_printer_base.par_state -> expr' fn =
+        method! expr' : Deprecated_generic_printer_base.par_state -> expr' fn =
           fun ctx e ->
             let wrap_parens =
               group
@@ -611,24 +611,31 @@ module Make (Options : OPTS) : MAKE = struct
                   (string "let x = construct_fail() in "
                   ^^ print#default_value type_name_doc)
               in
-
-              if is_struct then
-                let struct_constructor = List.hd variants in
-                match struct_constructor with
-                | None -> empty
-                | Some constructor ->
-                    type_line ^^ hardline ^^ to_bitstring_converter_line
-                    ^^ hardline ^^ from_bitstring_converter_line ^^ hardline
-                    ^^ default_line ^^ hardline ^^ err_line ^^ hardline
-                    ^^ fun_and_reduc name constructor
-              else
+              let default_lines =
                 type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
                 ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
                 ^^ hardline ^^ err_line ^^ hardline
-                ^^ separate_map hardline
-                     (fun variant -> fun_and_reduc name variant)
-                     variants
-          | Quote quote -> print#quote quote
+              in
+              let destructor_lines =
+                if is_struct then
+                  let struct_constructor = List.hd variants in
+                  match struct_constructor with
+                  | None -> empty
+                  | Some constructor -> fun_and_reduc name constructor
+                else
+                  separate_map hardline
+                    (fun variant -> fun_and_reduc name variant)
+                    variants
+              in
+              if
+                Attrs.find_unique_attr item.attrs
+                  ~f:
+                    ([%eq: Types.ha_payload] OpaqueType
+                    >> Fn.flip Option.some_if ())
+                |> Option.is_some
+              then default_lines
+              else default_lines ^^ destructor_lines
+          | Quote { quote; _ } -> print#quote quote
           | _ -> empty
 
         method! expr_let : lhs:pat -> rhs:expr -> expr fn =
@@ -720,7 +727,7 @@ module Make (Options : OPTS) : MAKE = struct
                   | _ -> super#expr ctx e (*This cannot happen*))
               | _ -> super#expr ctx e)
 
-        method! ty : Generic_printer_base.par_state -> ty fn =
+        method! ty : Deprecated_generic_printer_base.par_state -> ty fn =
           fun ctx ty ->
             match ty with
             | TBool -> print#ty_bool
@@ -759,7 +766,11 @@ module Make (Options : OPTS) : MAKE = struct
   end
 
   let filter_crate_functions (items : AST.item list) =
-    List.filter ~f:(fun item -> [%matches? Fn _] item.v) items
+    List.filter
+      ~f:(fun item ->
+        [%matches? Fn _] item.v
+        || [%matches? Quote { origin = { item_kind = `Fn; _ }; _ }] item.v)
+      items
 
   let is_process_read : attrs -> bool =
     Attr_payloads.payloads
@@ -811,7 +822,8 @@ module Make (Options : OPTS) : MAKE = struct
        letfun bitstring_err() = let x = construct_fail() in \
        bitstring_default().\n\n\
        letfun nat_default() = 0.\n\
-       fun nat_to_bitstring(nat): bitstring.\n\n\
+       fun nat_to_bitstring(nat): bitstring.\n\
+       letfun nat_err() = let x = construct_fail() in nat_default().\n\n\
        letfun bool_default() = false.\n"
 
     let contents items = ""
@@ -822,7 +834,11 @@ module Make (Options : OPTS) : MAKE = struct
     let preamble items = ""
 
     let filter_data_types items =
-      List.filter ~f:(fun item -> [%matches? Type _] item.v) items
+      List.filter
+        ~f:(fun item ->
+          [%matches? Type _] item.v
+          || [%matches? Quote { origin = { item_kind = `Type; _ }; _ }] item.v)
+        items
 
     let contents items =
       let contents, _ = Print.items NoAuxInfo (filter_data_types items) in
@@ -845,24 +861,6 @@ module Make (Options : OPTS) : MAKE = struct
       in
       pure_letfuns_print ^ process_letfuns_print
   end)
-
-  module Processes = MkSubprinter (struct
-    let banner = "Processes"
-    let preamble items = ""
-    let process_filter item = [%matches? Fn _] item.v && is_process item
-
-    let contents items =
-      let contents, _ =
-        Print.items NoAuxInfo (List.filter ~f:process_filter items)
-      in
-      contents
-  end)
-
-  module Toplevel = MkSubprinter (struct
-    let banner = "Top-level process"
-    let preamble items = "process\n    0\n"
-    let contents items = ""
-  end)
 end
 
 let translate m _ (bo : BackendOptions.t) ~(bundles : AST.item list list)
@@ -874,14 +872,11 @@ let translate m _ (bo : BackendOptions.t) ~(bundles : AST.item list list)
   in
   let lib_contents =
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
-    ^ M.Processes.print items
   in
-  let analysis_contents = M.Toplevel.print items in
-  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
-  let analysis_file =
-    Types.{ path = "analysis.pv"; contents = analysis_contents }
+  let lib_file =
+    Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None }
   in
-  [ lib_file; analysis_file ]
+  [ lib_file ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
@@ -902,7 +897,6 @@ module TransformToInputLanguage =
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
   |> Phases.Simplify_match_return
-  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn

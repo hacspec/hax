@@ -41,6 +41,7 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type quote = Features.Off.quote
              and type state_passing_loop = Features.Off.state_passing_loop
+             and type fold_like_loop = Features.Off.fold_like_loop
              and type dyn = Features.Off.dyn
              and type match_guard = Features.Off.match_guard
              and type trait_item_default = Features.Off.trait_item_default
@@ -215,16 +216,16 @@ struct
         C.AST.Ident var.name
     | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray _ -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { name = `TupleCons 0; args = []; _ } -> C.AST.UnitPat
-    | PConstruct { name = `TupleCons 1; args = [ _ ]; _ } ->
+    | PConstruct { constructor = `TupleCons 0; fields = []; _ } -> C.AST.UnitPat
+    | PConstruct { constructor = `TupleCons 1; fields = [ _ ]; _ } ->
         __TODO_pat__ p.span "tuple 1"
-    | PConstruct { name = `TupleCons _n; args; _ } ->
-        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
-    | PConstruct { name; args; is_record = true; _ } ->
-        C.AST.RecordPat (pglobal_ident name, pfield_pats args)
-    | PConstruct { name; args; is_record = false; _ } ->
+    | PConstruct { constructor = `TupleCons _n; fields; _ } ->
+        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
+    | PConstruct { constructor; fields; is_record = true; _ } ->
+        C.AST.RecordPat (pglobal_ident constructor, pfield_pats fields)
+    | PConstruct { constructor; fields; is_record = false; _ } ->
         C.AST.ConstructorPat
-          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
+          (pglobal_ident constructor, List.map ~f:(fun p -> ppat p.pat) fields)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | _ -> .
 
@@ -582,7 +583,7 @@ struct
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
           C.AST.Instance
-            ( pglobal_ident name,
+            ( pconcrete_ident name,
               List.map ~f:(pgeneric_param_as_argument span) generics.params,
               pty span self_ty,
               args_ty span gen_vals,
@@ -694,6 +695,7 @@ let translate _ _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
              path = mod_name ^ ".v";
              contents =
                hardcoded_coq_headers ^ "\n" ^ string_of_items items ^ "\n";
+             sourcemap = None;
            })
 
 open Phase_utils

@@ -216,17 +216,17 @@ module Make (F : Features.T) = struct
       method pat' : par_state -> pat' fn =
         fun _ -> function
           | PConstant { lit } -> print#literal Pat lit
-          | PConstruct { name; args; is_record; is_struct } -> (
-              match name with
+          | PConstruct { constructor; is_record; is_struct; fields } -> (
+              match constructor with
               | `Concrete constructor ->
                   print#doc_construct_inductive ~is_record ~is_struct
                     ~constructor ~base:None
                     (List.map
                        ~f:(fun fp ->
                          (fp.field, print#pat_at Pat_ConcreteInductive fp.pat))
-                       args)
+                       fields)
               | `TupleCons _ ->
-                  List.map ~f:(fun fp -> fp.pat) args
+                  List.map ~f:(fun fp -> fp.pat) fields
                   |> print#pat_construct_tuple
               | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
                   print#assertion_failure "todo err")

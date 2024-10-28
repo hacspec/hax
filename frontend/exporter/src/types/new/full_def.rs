@@ -115,7 +115,12 @@ pub enum FullDefKind {
         #[value({
             use ty::Upcast;
             let tcx = s.base().tcx;
-            let pred: ty::TraitPredicate = ty::TraitRef::identity(tcx, s.owner_id()).upcast(tcx);
+            let pred: ty::TraitPredicate =
+                crate::traits::self_predicate(tcx, s.owner_id())
+                    .unwrap()
+                    .no_bound_vars()
+                    .unwrap()
+                    .upcast(tcx);
             pred.sinto(s)
         })]
         self_predicate: TraitPredicate,
@@ -303,6 +308,9 @@ pub enum FullDefKind {
     LifetimeParam,
     /// A use of `global_asm!`.
     GlobalAsm,
+    /// A synthetic coroutine body created by the lowering of a coroutine-closure, such as an async
+    /// closure.
+    SyntheticCoroutineBody,
 }
 
 impl FullDef {
@@ -420,6 +428,7 @@ fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<boo
         | InlineConst
         | LifetimeParam
         | OpaqueTy
+        | SyntheticCoroutineBody
         | TyParam => None,
     }
 }
@@ -468,8 +477,7 @@ fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     def_id: RDefId,
 ) -> GenericPredicates {
-    // We use `predicates_defined_on` to skip the implied `Self` clause.
-    let predicates = s.base().tcx.predicates_defined_on(def_id);
+    let predicates = predicates_defined_on(s.base().tcx, def_id);
     let pred_list = normalize_trait_clauses(s, predicates.predicates);
     GenericPredicates {
         parent: predicates.parent.sinto(s),

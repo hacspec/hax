@@ -131,10 +131,10 @@ struct
                                                                     p =
                                                                       PConstruct
                                                                         {
-                                                                          name =
+                                                                          constructor =
                                                                             `Concrete
                                                                               none_ctor;
-                                                                          args =
+                                                                          fields =
                                                                             [];
                                                                           _;
                                                                         };
@@ -180,10 +180,10 @@ struct
                                                                     p =
                                                                       PConstruct
                                                                         {
-                                                                          name =
+                                                                          constructor =
                                                                             `Concrete
                                                                               some_ctor;
-                                                                          args =
+                                                                          fields =
                                                                             [
                                                                               {
                                                                                 pat;
@@ -255,6 +255,7 @@ struct
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop expr.span witness;
+                  control_flow = None;
                 };
             span = expr.span;
             typ = UB.unit_typ;

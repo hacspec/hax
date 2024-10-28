@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "rustc", feature(rustc_private))]
 //! This crate contains the type definitions that are used to communicate between:
 //!  - the command line (the `cargo-hax` binary);
 //!  - the custom rustc driver;

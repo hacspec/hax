@@ -99,6 +99,29 @@ type literal =
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
+type item_kind =
+  [ `Fn
+  | `TyAlias
+  | `Type
+  | `IMacroInvokation
+  | `Trait
+  | `Impl
+  | `Alias
+  | `Use
+  | `Quote
+  | `HaxError
+  | `NotImplementedYet ]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** Describes the (shallow) kind of an item. *)
+
+type item_quote_origin = {
+  item_kind : item_kind;
+  item_ident : concrete_ident;
+  position : [ `Before | `After | `Replace ];
+}
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+(** From where does a quote item comes from? *)
+
 module Make =
 functor
   (F : Features.T)
@@ -196,10 +219,10 @@ functor
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
-          name : global_ident;
-          args : field_pat list;
+          constructor : global_ident;
           is_record : bool; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
+          fields : field_pat list;
         }
       (* An or-pattern, e.g. `p | q`.
          Invariant: `List.length subpats >= 2`. *)
@@ -217,6 +240,13 @@ functor
 
     and pat = { p : pat'; span : span; typ : ty }
     and field_pat = { field : global_ident; pat : pat }
+
+    (* This marker describes what control flow is present in a loop.
+       It is added by phase `DropReturnBreakContinue` and the
+       information is used in `FunctionalizeLoops`. We need it because
+       we replace the control flow nodes of the AST by some encoding
+       in the `ControlFlow` enum. *)
+    and cf_kind = BreakOnly | BreakOrReturn
 
     and expr' =
       (* pure fragment *)
@@ -262,18 +292,24 @@ functor
           body : expr;
           kind : loop_kind;
           state : loop_state option;
+          control_flow : (cf_kind * F.fold_like_loop) option;
           label : string option;
           witness : F.loop;
         }
       (* ControlFlow *)
-      | Break of { e : expr; label : string option; witness : F.break * F.loop }
+      | Break of {
+          e : expr;
+          acc : (expr * F.state_passing_loop) option;
+          label : string option;
+          witness : F.break * F.loop;
+        }
       | Return of { e : expr; witness : F.early_exit }
       | QuestionMark of { e : expr; return_typ : ty; witness : F.question_mark }
           (** The expression `e?`. In opposition to Rust, no implicit
       coercion is applied on the (potential) error payload of
       `e`. Coercion should be made explicit within `e`. *)
       | Continue of {
-          e : (F.state_passing_loop * expr) option;
+          acc : (expr * F.state_passing_loop) option;
           label : string option;
           witness : F.continue * F.loop;
         }
@@ -421,7 +457,7 @@ functor
       | Impl of {
           generics : generics;
           self_ty : ty;
-          of_trait : global_ident * generic_value list;
+          of_trait : concrete_ident * generic_value list;
           items : impl_item list;
           parent_bounds : (impl_expr * impl_ident) list;
           safety : safety_kind;
@@ -434,7 +470,7 @@ functor
           is_external : bool;
           rename : string option;
         }
-      | Quote of quote
+      | Quote of { quote : quote; origin : item_quote_origin }
       | HaxError of string
       | NotImplementedYet
 

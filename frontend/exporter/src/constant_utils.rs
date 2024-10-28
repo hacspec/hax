@@ -62,6 +62,7 @@ pub enum ConstantExprKind {
         id: GlobalIdent,
         generics: Vec<GenericArg>,
         trait_refs: Vec<ImplExpr>,
+        variant_information: Option<VariantInformations>,
     },
     /// A trait constant
     ///
@@ -110,6 +111,9 @@ pub struct ConstantFieldExpr {
 /// ([`rustc_middle::ty::ConstKind`]). For simplicity hax maps those
 /// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
+
+// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
+pub type ConstantKind = ConstantExpr;
 
 #[cfg(feature = "rustc")]
 pub use self::rustc::*;
@@ -178,12 +182,16 @@ mod rustc {
                     id,
                     generics: _,
                     trait_refs: _,
-                } => ExprKind::GlobalName { id },
+                    variant_information,
+                } => ExprKind::GlobalName {
+                    id,
+                    constructor: variant_information,
+                },
                 Borrow(e) => ExprKind::Borrow {
                     borrow_kind: BorrowKind::Shared,
                     arg: e.into(),
                 },
-                MutPtr(e) => ExprKind::AddressOf {
+                MutPtr(e) => ExprKind::RawBorrow {
                     mutability: true,
                     arg: e.into(),
                 },
@@ -285,6 +293,7 @@ mod rustc {
                         id: did.sinto(s),
                         generics: Vec::new(),
                         trait_refs: Vec::new(),
+                        variant_information: None,
                     },
                     GlobalAlloc::Memory(alloc) => {
                         let values = alloc.inner().get_bytes_unchecked(
@@ -430,7 +439,7 @@ mod rustc {
 
                         // Solve the trait obligations
                         let parent_def_id = tcx.parent(ucv.def);
-                        let trait_refs = solve_item_traits(s, parent_def_id, ucv.args, None);
+                        let trait_refs = solve_item_required_traits(s, parent_def_id, ucv.args);
 
                         // Convert
                         let id = ucv.def.sinto(s);
@@ -439,6 +448,7 @@ mod rustc {
                             id,
                             generics,
                             trait_refs,
+                            variant_information: None,
                         }
                     }
                 } else {
@@ -449,6 +459,7 @@ mod rustc {
                         id,
                         generics: vec![],
                         trait_refs: vec![],
+                        variant_information: None,
                     }
                 };
                 let cv = kind.decorate(ty.sinto(s), span.sinto(s));
@@ -459,7 +470,7 @@ mod rustc {
     impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
         fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
             let (ty, evaluated) = self
-                .eval(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
+                .eval_valtree(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
                 .ok()?;
             let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(ty, evaluated));
             (&evaluated != self).then_some(evaluated)

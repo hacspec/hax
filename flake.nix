@@ -56,6 +56,7 @@
             cat "${hax-env-file}" | xargs -I{} echo "export {}"
           fi
         '';
+        ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
@@ -73,7 +74,7 @@
               #!${pkgs.stdenv.shell}
               ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
             '';
-            inherit rustc;
+            inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
@@ -162,11 +163,11 @@
           };
           packages = [
             ocamlformat
-            pkgs.ocamlPackages.ocaml-lsp
-            pkgs.ocamlPackages.ocamlformat-rpc-lib
-            pkgs.ocamlPackages.ocaml-print-intf
-            pkgs.ocamlPackages.odoc
-            pkgs.ocamlPackages.utop
+            ocamlPackages.ocaml-lsp
+            ocamlPackages.ocamlformat-rpc-lib
+            ocamlPackages.ocaml-print-intf
+            ocamlPackages.odoc
+            ocamlPackages.utop
 
             pkgs.just
             pkgs.cargo-expand
@@ -175,6 +176,7 @@
             pkgs.openssl.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
+            pkgs.toml2json
             rustfmt
             rustc
 
@@ -182,7 +184,7 @@
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
-          fstar = pkgs.mkShell {
+          examples = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
             shellHook = ''
@@ -190,11 +192,11 @@
               export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
               export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
             '';
-            packages = packages ++ [fstar];
+            packages = packages ++ [fstar pkgs.proverif];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
-            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
         };
       }

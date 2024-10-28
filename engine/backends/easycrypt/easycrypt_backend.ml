@@ -53,6 +53,7 @@ module RejectNotEC (FA : Features.T) = struct
         let monadic_binding = reject
         let arbitrary_lhs = reject
         let state_passing_loop = reject
+        let fold_like_loop = reject
         let nontrivial_lhs = reject
         let block = reject
         let for_loop = reject

@@ -71,7 +71,7 @@ module Make (F : Features.T) = struct
           ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
-            @ v#visit_global_ident () (fst of_trait)
+            @ v#visit_concrete_ident () (fst of_trait)
             @ concat_map (v#visit_generic_value ()) (snd of_trait)
             @ concat_map (v#visit_impl_item ()) items
             @ concat_map
@@ -393,7 +393,16 @@ module Make (F : Features.T) = struct
     in
     let mut_rec_bundles =
       let mod_graph_cycles = ModGraph.of_items items |> ModGraph.cycles in
-      let bundles = ItemGraph.CyclicDep.of_mod_sccs items mod_graph_cycles in
+      (* `Use` items shouldn't be bundled as they have no dependencies
+          and they have dummy names. *)
+      let non_use_items =
+        List.filter
+          ~f:(fun item -> match item.v with Use _ -> false | _ -> true)
+          items
+      in
+      let bundles =
+        ItemGraph.CyclicDep.of_mod_sccs non_use_items mod_graph_cycles
+      in
       let f = List.filter_map ~f:from_ident in
       List.map ~f bundles
     in
@@ -441,11 +450,19 @@ module Make (F : Features.T) = struct
                     )))
         | _ -> []
       in
-
+      let variant_and_constructors_renamings =
+        List.concat_map ~f:variants_renamings renamings
+        |> List.concat_map ~f:(fun (old_name, new_name) ->
+               [
+                 (old_name, new_name);
+                 ( Concrete_ident.Create.ctor old_name,
+                   Concrete_ident.Create.ctor new_name );
+               ])
+      in
       let renamings =
         Map.of_alist_exn
           (module Concrete_ident)
-          (renamings @ List.concat_map ~f:variants_renamings renamings)
+          (renamings @ variant_and_constructors_renamings)
       in
       let rename =
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in

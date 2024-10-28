@@ -121,13 +121,13 @@ struct
     | PWild -> PWild
     | PAscription { typ; typ_span; pat } ->
         PAscription { typ = dty span typ; pat = dpat pat; typ_span }
-    | PConstruct { name; args; is_record; is_struct } ->
+    | PConstruct { constructor; is_record; is_struct; fields } ->
         PConstruct
           {
-            name;
-            args = List.map ~f:(dfield_pat span) args;
+            constructor;
             is_record;
             is_struct;
+            fields = List.map ~f:(dfield_pat span) fields;
           }
     | POr { subpats } -> POr { subpats = List.map ~f:dpat subpats }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
@@ -236,19 +236,28 @@ struct
             e = dexpr e;
             witness = S.mutable_variable span witness;
           }
-    | Loop { body; kind; state; label; witness } ->
+    | Loop { body; kind; state; label; witness; control_flow } ->
         Loop
           {
             body = dexpr body;
             kind = dloop_kind span kind;
             state = Option.map ~f:(dloop_state span) state;
             label;
+            control_flow =
+              Option.map
+                ~f:
+                  ((function
+                     | A.BreakOnly -> B.BreakOnly
+                     | A.BreakOrReturn -> B.BreakOrReturn)
+                  *** S.fold_like_loop span)
+                control_flow;
             witness = S.loop span witness;
           }
-    | Break { e; label; witness } ->
+    | Break { e; acc; label; witness } ->
         Break
           {
             e = dexpr e;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.break span *** S.loop span) witness;
           }
@@ -261,10 +270,10 @@ struct
             return_typ = dty span return_typ;
             witness = S.question_mark span witness;
           }
-    | Continue { e; label; witness = w1, w2 } ->
+    | Continue { acc; label; witness = w1, w2 } ->
         Continue
           {
-            e = Option.map ~f:(S.state_passing_loop span *** dexpr) e;
+            acc = Option.map ~f:(dexpr *** S.state_passing_loop span) acc;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }
@@ -532,7 +541,7 @@ struct
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
-      | Quote quote -> Quote (dquote span quote)
+      | Quote { quote; origin } -> Quote { quote = dquote span quote; origin }
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
 

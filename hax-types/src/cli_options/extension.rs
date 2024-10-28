@@ -14,14 +14,11 @@ macro_rules! trait_alias {
 
 trait_alias!(
     ExtensionPoint =
-    bincode::Decode
-        + bincode::Encode
-        + std::fmt::Debug
+        std::fmt::Debug
         + for<'a> serde::Deserialize<'a>
         + serde::Serialize
         + JsonSchema
         + Clone
-        + for<'a> bincode::BorrowDecode<'a>
 );
 
 trait_alias!(SubcommandExtensionPoint = ExtensionPoint + clap::Subcommand);

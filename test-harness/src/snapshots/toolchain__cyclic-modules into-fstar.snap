@@ -32,7 +32,7 @@ module Cyclic_modules.B
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_194616565 {g as g}
+include Cyclic_modules.Rec_bundle_696247411 {g as g}
 '''
 "Cyclic_modules.C.fst" = '''
 module Cyclic_modules.C
@@ -272,8 +272,8 @@ open FStar.Mul
 
 include Cyclic_modules.Rec1_same_name.Rec_bundle_213192514 {f91805216 as f}
 '''
-"Cyclic_modules.Rec_bundle_194616565.fst" = '''
-module Cyclic_modules.Rec_bundle_194616565
+"Cyclic_modules.Rec_bundle_696247411.fst" = '''
+module Cyclic_modules.Rec_bundle_696247411
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -350,51 +350,94 @@ include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T2Rec as t_T2Rec}
 
 include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T2Rec_T2 as T2Rec_T2}
 '''
+"Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539.fst" = '''
+module Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Context =
+  | Context_A : i32 -> t_Context
+  | Context_B : i32 -> t_Context
+
+let test (x: Core.Option.t_Option i32) : Core.Option.t_Option t_Context =
+  Core.Option.impl__map #i32 #t_Context x Context_A
+
+let h (_: Prims.unit) : t_Context = Context_A 1l <: t_Context
+
+let f (_: Prims.unit) : t_Context = h ()
+'''
+"Cyclic_modules.Variant_constructor_a.fst" = '''
+module Cyclic_modules.Variant_constructor_a
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {t_Context as t_Context}
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {Context_A as Context_A}
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {Context_B as Context_B}
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {test as impl__Context__test}
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {f as f}
+'''
+"Cyclic_modules.Variant_constructor_b.fst" = '''
+module Cyclic_modules.Variant_constructor_b
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539 {h as h}
+'''
 "Cyclic_modules.fst" = '''
 module Cyclic_modules
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_194616565 {v_DUMMY as v_DUMMY}
+include Cyclic_modules.Rec_bundle_696247411 {b as b}
 
-include Cyclic_modules.Rec_bundle_194616565 {b as b}
+include Cyclic_modules.Rec_bundle_696247411 {c as c}
 
-include Cyclic_modules.Rec_bundle_194616565 {c as c}
+include Cyclic_modules.Rec_bundle_696247411 {d as d}
 
-include Cyclic_modules.Rec_bundle_194616565 {d as d}
+include Cyclic_modules.Rec_bundle_696247411 {de as de}
 
-include Cyclic_modules.Rec_bundle_194616565 {de as de}
+include Cyclic_modules.Rec_bundle_696247411 {disjoint_cycle_a as disjoint_cycle_a}
 
-include Cyclic_modules.Rec_bundle_194616565 {disjoint_cycle_a as disjoint_cycle_a}
+include Cyclic_modules.Rec_bundle_696247411 {disjoint_cycle_b as disjoint_cycle_b}
 
-include Cyclic_modules.Rec_bundle_194616565 {disjoint_cycle_b as disjoint_cycle_b}
+include Cyclic_modules.Rec_bundle_696247411 {e as e}
 
-include Cyclic_modules.Rec_bundle_194616565 {e as e}
+include Cyclic_modules.Rec_bundle_696247411 {enums_a as enums_a}
 
-include Cyclic_modules.Rec_bundle_194616565 {enums_a as enums_a}
+include Cyclic_modules.Rec_bundle_696247411 {enums_b as enums_b}
 
-include Cyclic_modules.Rec_bundle_194616565 {enums_b as enums_b}
+include Cyclic_modules.Rec_bundle_696247411 {m1 as m1}
 
-include Cyclic_modules.Rec_bundle_194616565 {m1 as m1}
+include Cyclic_modules.Rec_bundle_696247411 {m2 as m2}
 
-include Cyclic_modules.Rec_bundle_194616565 {m2 as m2}
+include Cyclic_modules.Rec_bundle_696247411 {v_rec as v_rec}
 
-include Cyclic_modules.Rec_bundle_194616565 {v_rec as v_rec}
+include Cyclic_modules.Rec_bundle_696247411 {rec1_same_name as rec1_same_name}
 
-include Cyclic_modules.Rec_bundle_194616565 {rec1_same_name as rec1_same_name}
+include Cyclic_modules.Rec_bundle_696247411 {rec2_same_name as rec2_same_name}
 
-include Cyclic_modules.Rec_bundle_194616565 {rec2_same_name as rec2_same_name}
+include Cyclic_modules.Rec_bundle_696247411 {std as std}
 
-include Cyclic_modules.Rec_bundle_194616565 {std as std}
+include Cyclic_modules.Rec_bundle_696247411 {typ_a as typ_a}
 
-include Cyclic_modules.Rec_bundle_194616565 {typ_a as typ_a}
+include Cyclic_modules.Rec_bundle_696247411 {typ_b as typ_b}
 
-include Cyclic_modules.Rec_bundle_194616565 {typ_b as typ_b}
+include Cyclic_modules.Rec_bundle_696247411 {variant_constructor_a as variant_constructor_a}
 
-include Cyclic_modules.Rec_bundle_194616565 {f as f}
+include Cyclic_modules.Rec_bundle_696247411 {variant_constructor_b as variant_constructor_b}
 
-include Cyclic_modules.Rec_bundle_194616565 {h as h}
+include Cyclic_modules.Rec_bundle_696247411 {f as f}
 
-include Cyclic_modules.Rec_bundle_194616565 {h2 as h2}
+include Cyclic_modules.Rec_bundle_696247411 {h as h}
+
+include Cyclic_modules.Rec_bundle_696247411 {h2 as h2}
 '''

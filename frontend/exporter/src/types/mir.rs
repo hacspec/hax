@@ -1,4 +1,9 @@
+//! Copies of the relevant `MIR` types. MIR represents a rust (function) body as a CFG. It's a
+//! semantically rich representation that contains no high-level control-flow operations like loops
+//! or patterns; instead the control flow is entirely described by gotos and switches on integer
+//! values.
 use crate::prelude::*;
+use crate::sinto_as_usize;
 #[cfg(feature = "rustc")]
 use tracing::trace;
 
@@ -310,7 +315,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let mut trait_refs = solve_item_traits(s, def_id, generics, None);
+    let mut trait_refs = solve_item_required_traits(s, def_id, generics);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -378,10 +383,9 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
         // }
         // ```
         // The generics for `insert` are `<u32>` for the impl and `<bool>` for the method.
-        let params_info = get_params_info(s, container_def_id);
-        let num_container_generics = params_info.num_generic_params;
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                let num_container_generics = tcx.generics_of(container_def_id).own_params.len();
                 // Retrieve the trait information
                 let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
@@ -393,7 +397,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
                 let container_trait_refs =
-                    solve_item_traits(s, container_def_id, container_generics, None);
+                    solve_item_required_traits(s, container_def_id, container_generics);
                 trait_refs.extend(container_trait_refs);
                 (generics.sinto(s), Option::None)
             }
@@ -465,7 +469,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
             trace!("type: {:?}", ty);
             trace!("type kind: {:?}", ty.kind());
             let sig = match ty.kind() {
-                rustc_middle::ty::TyKind::FnPtr(sig) => sig,
+                rustc_middle::ty::TyKind::FnPtr(sig, ..) => sig,
                 _ => unreachable!(),
             };
             trace!("FnPtr: {:?}", sig);
@@ -946,7 +950,7 @@ pub enum AggregateKind {
     Tuple,
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
-        let trait_refs = solve_item_traits(s, *def_id, generics, None);
+        let trait_refs = solve_item_required_traits(s, *def_id, generics);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
@@ -974,15 +978,14 @@ pub enum AggregateKind {
         let closure = generics.as_closure();
         let sig = closure.sig().sinto(s);
 
-        // Solve the trait obligations. Note that we solve the parent
+        // Solve the predicates from the parent (i.e., the function which calls the closure).
         let tcx = s.base().tcx;
         let parent_generics = closure.parent_args();
         let generics = tcx.mk_args(parent_generics);
-        // Retrieve the predicates from the parent (i.e., the function which calls
-        // the closure).
-        let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
+        // TODO: does this handle nested closures?
+        let parent = tcx.generics_of(rust_id).parent.unwrap();
+        let trait_refs = solve_item_required_traits(s, parent, generics);
 
-        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
@@ -993,12 +996,11 @@ pub enum AggregateKind {
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CastKind, state: S as s)]
+#[args(<'tcx, S>, from: rustc_middle::mir::CastKind, state: S as _s)]
 pub enum CastKind {
     PointerExposeProvenance,
     PointerWithExposedProvenance,
-    PointerCoercion(PointerCoercion),
-    DynStar,
+    PointerCoercion(PointerCoercion, CoercionSource),
     IntToInt,
     FloatToInt,
     FloatToFloat,
@@ -1006,6 +1008,14 @@ pub enum CastKind {
     PtrToPtr,
     FnPtrToPtr,
     Transmute,
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S>, from: rustc_middle::mir::CoercionSource, state: S as _s)]
+pub enum CoercionSource {
+    AsCast,
+    Implicit,
 }
 
 #[derive_group(Serializers)]
@@ -1032,7 +1042,7 @@ pub enum Rvalue {
     Repeat(Operand, ConstantExpr),
     Ref(Region, BorrowKind, Place),
     ThreadLocalRef(DefId),
-    AddressOf(Mutability, Place),
+    RawPtr(Mutability, Place),
     Len(Place),
     Cast(CastKind, Operand, Ty),
     BinaryOp(BinOp, (Operand, Operand)),
@@ -1062,11 +1072,168 @@ make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
 make_idx_wrapper!(rustc_target::abi, FieldIdx);
 
+/// Reflects [`rustc_middle::mir::UnOp`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Copy, Clone, Debug, JsonSchema)]
+#[args(<'slt, S: UnderOwnerState<'slt>>, from: rustc_middle::mir::UnOp, state: S as _s)]
+pub enum UnOp {
+    Not,
+    Neg,
+    PtrMetadata,
+}
+
+/// Reflects [`rustc_middle::mir::BinOp`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Copy, Clone, Debug, JsonSchema)]
+#[args(<'slt, S: UnderOwnerState<'slt>>, from: rustc_middle::mir::BinOp, state: S as _s)]
+pub enum BinOp {
+    // We merge the checked and unchecked variants because in either case overflow is failure.
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Add | rustc_middle::mir::BinOp::AddUnchecked => BinOp::Add,
+    )]
+    Add,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Sub | rustc_middle::mir::BinOp::SubUnchecked => BinOp::Sub,
+    )]
+    Sub,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Mul | rustc_middle::mir::BinOp::MulUnchecked => BinOp::Mul,
+    )]
+    Mul,
+    AddWithOverflow,
+    SubWithOverflow,
+    MulWithOverflow,
+    Div,
+    Rem,
+    BitXor,
+    BitAnd,
+    BitOr,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Shl | rustc_middle::mir::BinOp::ShlUnchecked => BinOp::Shl,
+    )]
+    Shl,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Shr | rustc_middle::mir::BinOp::ShrUnchecked => BinOp::Shr,
+    )]
+    Shr,
+    Eq,
+    Lt,
+    Le,
+    Ne,
+    Ge,
+    Gt,
+    Cmp,
+    Offset,
+}
+
+/// Reflects [`rustc_middle::mir::ScopeData`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::ScopeData, state: S as gstate)]
+pub enum ScopeData {
+    Node,
+    CallSite,
+    Arguments,
+    Destruction,
+    IfThen,
+    IfThenRescope,
+    Remainder(FirstStatementIndex),
+}
+
+sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
+
+/// Reflects [`rustc_middle::mir::BinOp`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::Scope, state: S as gstate)]
+pub struct Scope {
+    pub id: ItemLocalId,
+    pub data: ScopeData,
+}
+
+sinto_as_usize!(rustc_hir::hir_id, ItemLocalId);
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::Const<'tcx> {
+    fn sinto(&self, s: &S) -> ConstantExpr {
+        use rustc_middle::mir::Const;
+        let tcx = s.base().tcx;
+        match self {
+            Const::Val(const_value, ty) => {
+                const_value_to_constant_expr(s, *ty, *const_value, rustc_span::DUMMY_SP)
+            }
+            Const::Ty(_ty, c) => c.sinto(s),
+            Const::Unevaluated(ucv, _ty) => {
+                use crate::rustc_middle::query::Key;
+                let span = tcx
+                    .def_ident_span(ucv.def)
+                    .unwrap_or_else(|| ucv.def.default_span(tcx));
+                if ucv.promoted.is_some() {
+                    self.eval_constant(s)
+                        .unwrap_or_else(|| {
+                            supposely_unreachable_fatal!(s, "UnevalPromotedConstant"; {self, ucv});
+                        })
+                        .sinto(s)
+                } else {
+                    match self.translate_uneval(s, ucv.shrink(), span) {
+                        TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                        TranslateUnevalRes::GlobalName(c) => c,
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
+    fn sinto(&self, _: &S) -> u64 {
+        self.0.get()
+    }
+}
+
+/// Reflects [`rustc_middle::mir::BorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::BorrowKind, state: S as gstate)]
+#[derive_group(Serializers)]
+#[derive(Copy, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BorrowKind {
+    Shared,
+    Fake(FakeBorrowKind),
+    Mut { kind: MutBorrowKind },
+}
+
+/// Reflects [`rustc_middle::mir::MutBorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::MutBorrowKind, state: S as _s)]
+#[derive_group(Serializers)]
+#[derive(Copy, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MutBorrowKind {
+    Default,
+    TwoPhaseBorrow,
+    ClosureCapture,
+}
+
+/// Reflects [`rustc_middle::mir::FakeBorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::FakeBorrowKind, state: S as _s)]
+#[derive_group(Serializers)]
+#[derive(Copy, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FakeBorrowKind {
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    Deep,
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    Shallow,
+}
+
+sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
+sinto_todo!(rustc_ast::ast, InlineAsmOptions);
 sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
 sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
-sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
-sinto_todo!(rustc_ast::ast, InlineAsmOptions);
 sinto_todo!(rustc_middle::mir, InlineAsmOperand<'tcx>);
 sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
@@ -1077,5 +1244,6 @@ sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, CallSource);
+sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
-sinto_todo!(rustc_span, ErrorGuaranteed);
+sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);

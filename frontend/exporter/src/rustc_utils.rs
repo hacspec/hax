@@ -13,20 +13,11 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(
-    sig: &ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> TyKind {
-    TyKind::Arrow(Box::new(sig.sinto(s)))
-}
-
-#[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_target::abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
-    s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
     fn is_named<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
@@ -265,4 +256,17 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
             _ => items.map(|item| item.sinto(s)).collect(),
         })
         .collect()
+}
+
+/// Gets the closest ancestor of `id` that is the id of a type.
+pub fn get_closest_parent_type(
+    tcx: &ty::TyCtxt,
+    id: rustc_span::def_id::DefId,
+) -> rustc_span::def_id::DefId {
+    match tcx.def_kind(id) {
+        rustc_hir::def::DefKind::Union
+        | rustc_hir::def::DefKind::Struct
+        | rustc_hir::def::DefKind::Enum => id,
+        _ => get_closest_parent_type(tcx, tcx.parent(id)),
+    }
 }

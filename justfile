@@ -4,7 +4,7 @@
 # Build Rust and OCaml parts and install binaries in PATH. To build
 # only OCaml parts or only Rust parts, set target to `rust` or
 # `ocaml`.
-@build target='rust ocaml':
+@build target='rust+ocaml':
   ./.utils/rebuild.sh {{target}}
 
 alias b := build
@@ -28,12 +28,20 @@ expand *FLAGS:
 
 # Show the Rust to OCaml generated types available to the engine.
 @list-types:
-  just _ensure_binary_availability ocamlformat ocamlformat
+  just _ensure_command_in_path ocamlformat ocamlformat
   cd engine && dune describe pp lib/types.ml \
     | sed -e '1,/open ParseError/ d' \
     | sed '/let rec pp_/,$d' \
     | ocamlformat --impl - \
     | just _pager
+
+# Show the OCaml module `Generated_generic_printer_base`
+@show-generated-printer-ml:
+  just _ensure_command_in_path ocamlformat ocamlformat
+  cd engine && dune describe pp lib/generated_generic_printer_base.ml \
+    | ocamlformat --impl - \
+    | just _pager
+
 
 # Format all the code
 fmt:
@@ -64,6 +72,27 @@ test-review: (_ensure_command_in_path "cargo-insta" "Insta (https://insta.rs)")
       | rg '^[+-]\d' \
       | sd '[-](\d+)' '#$1\t is labeled `marked-unimplemented`, but was not found in the code' \
       | sd '[+](\d+)' '#$1\t is *not* labeled `marked-unimplemented` or is closed'
+
+# Check that the licenses of every crate and every package are compliant with `deny.toml`
+check-licenses:
+  #!/usr/bin/env bash
+  just _ensure_command_in_path cargo-deny "cargo-deny (https://embarkstudios.github.io/cargo-deny/)"
+  just _ensure_command_in_path toml2json "toml2json (https://github.com/woodruffw/toml2json)"
+  echo "> Check licenses for Rust"
+  cargo deny check licenses
+  cd engine
+  echo "> Check licenses for OCaml"
+  # initialize opam if needed
+  opam env >& /dev/null || opam init --no
+  # pin package `hax-engine` if needed
+  opam list --required-by=hax-engine --column=name,license: -s >& /dev/null || opam pin . --yes
+  # Check that every pacakge matches licenses of `deny.toml`
+  if opam list --required-by=hax-engine --column=name,license: -s \
+     | grep -Pvi $(toml2json ../deny.toml| jq '.licenses.allow | join("|")'); then
+     echo "Some licenses were non compliant to our policy (see `deny.toml`)"
+  else
+    echo "licenses ok"
+  fi
 
 _ensure_command_in_path BINARY NAME:
   #!/usr/bin/env bash
