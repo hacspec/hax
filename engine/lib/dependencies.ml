@@ -455,8 +455,8 @@ module Make (F : Features.T) = struct
         |> List.concat_map ~f:(fun (old_name, new_name) ->
                [
                  (old_name, new_name);
-                 ( Concrete_ident.Create.ctor old_name,
-                   Concrete_ident.Create.ctor new_name );
+                 ( Concrete_ident.Create.constructor old_name,
+                   Concrete_ident.Create.constructor new_name );
                ])
       in
       let renamings =
