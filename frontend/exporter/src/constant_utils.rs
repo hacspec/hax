@@ -215,10 +215,11 @@ mod rustc {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         x: rustc_middle::ty::ScalarInt,
-        ty: rustc_middle::ty::Ty,
+        ty: rustc_middle::ty::Ty<'tcx>,
     ) -> ConstantLiteral {
         match ty.kind() {
             ty::Char => ConstantLiteral::Char(
@@ -236,14 +237,19 @@ mod rustc {
                 let v = x.to_uint(x.size());
                 ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
             }
-            _ => fatal!(
-                s,
-                "scalar_int_to_constant_literal: the type {:?} is not a literal",
-                ty
-            ),
+            // https://github.com/rust-lang/rust/pull/116930
+            _ => {
+                let ty_sinto: Ty = ty.sinto(s);
+                supposely_unreachable_fatal!(
+                    s,
+                    "scalar_int_to_constant_literal_ExpectedLiteralType";
+                    { ty, ty_sinto, x }
+                )
+            }
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         ty: rustc_middle::ty::Ty<'tcx>,
@@ -373,6 +379,7 @@ mod rustc {
         )
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
         _const_def_id: rustc_hir::def_id::DefId,
@@ -486,6 +493,7 @@ mod rustc {
         }
     }
     impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn sinto(&self, s: &S) -> ConstantExpr {
             use rustc_middle::query::Key;
             let span = self.default_span(s.base().tcx);
@@ -515,7 +523,7 @@ mod rustc {
         }
     }
 
-    // #[tracing::instrument(skip(s))]
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         valtree: rustc_middle::ty::ValTree<'tcx>,
