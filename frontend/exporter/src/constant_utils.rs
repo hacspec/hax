@@ -80,6 +80,13 @@ pub enum ConstantExprKind {
     Borrow(ConstantExpr),
     /// A `*mut` pointer to a static mutable variable.
     MutPtr(ConstantExpr),
+    /// A cast `<source> as <type>`, `<type>` is stored as the type of
+    /// the current constant expression. Currently, this is only used
+    /// to represent `lit as *mut T` or `lit as *const T`, where `lit`
+    /// is a `usize` literal.
+    Cast {
+        source: ConstantExpr,
+    },
     ConstRef {
         id: ParamConst,
     },
@@ -201,6 +208,9 @@ mod rustc {
                 },
                 Tuple { fields } => ExprKind::Tuple {
                     fields: fields.into_iter().map(|field| field.into()).collect(),
+                },
+                Cast { source } => ExprKind::Cast {
+                    source: source.into(),
                 },
                 kind @ (FnPtr { .. } | TraitConst { .. }) => {
                     // SH: I see the `Closure` kind, but it's not the same as function pointer?
@@ -574,6 +584,16 @@ mod rustc {
                         }
                     }
                     _ => unreachable!(),
+                }
+            }
+            (ty::ValTree::Leaf(x), ty::RawPtr(_, _)) => {
+                use crate::rustc_type_ir::inherent::Ty;
+                let raw_address = x.to_bits_unchecked();
+                let uint_ty = UintTy::Usize;
+                let usize_ty = rustc_middle::ty::Ty::new_usize(s.base().tcx).sinto(s);
+                let lit = ConstantLiteral::Int(ConstantInt::Uint(raw_address, uint_ty));
+                ConstantExprKind::Cast {
+                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s))
                 }
             }
             (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
