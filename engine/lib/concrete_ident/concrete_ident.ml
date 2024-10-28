@@ -630,6 +630,10 @@ module Create = struct
     in
     let path = List.drop_last_exn old.def_id.path @ [ last ] in
     { old with def_id = { old.def_id with path } }
+
+  let constructor name =
+    let path = name.def_id.path @ [ { data = Ctor; disambiguator = 0 } ] in
+    { name with def_id = { name.def_id with path } }
 end
 
 let lookup_raw_impl_info (impl : t) : Types.impl_infos option =

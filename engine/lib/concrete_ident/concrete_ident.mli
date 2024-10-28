@@ -30,6 +30,10 @@ module Create : sig
   val fresh_module : from:t list -> t
   val move_under : new_parent:t -> t -> t
 
+  val constructor : t -> t
+  (** [constructor ident] adds a [Ctor] to [ident]
+      this allows to build a constructor from a variant name. *)
+
   val map_last : f:(string -> string) -> t -> t
   (** [map_last f ident] applies [f] on the last chunk of [ident]'s
       path if it holds a string *)
