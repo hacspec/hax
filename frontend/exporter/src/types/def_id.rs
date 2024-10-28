@@ -44,6 +44,13 @@ pub struct DisambiguatedDefPathItem {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema))]
 pub struct DefId {
+    pub(crate) contents: crate::id_table::Node<DefIdContents>,
+}
+
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema))]
+pub struct DefIdContents {
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
     /// Rustc's `CrateNum` and `DefIndex` raw indexes. This can be
@@ -56,6 +63,13 @@ pub struct DefId {
     /// indexes unless you cannot do otherwise.
     pub index: (u32, u32),
     pub is_local: bool,
+}
+
+impl std::ops::Deref for DefId {
+    type Target = DefIdContents;
+    fn deref(&self) -> &Self::Target {
+        &self.contents
+    }
 }
 
 #[cfg(not(feature = "rustc"))]
@@ -78,12 +92,12 @@ impl std::fmt::Debug for DefId {
 
 impl std::hash::Hash for DefId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let DefId {
+        let DefIdContents {
             krate,
             path,
             index: _,    // intentionally discarding index
             is_local: _, // intentionally discarding is_local
-        } = self;
+        } = &**self;
         krate.hash(state);
         path.hash(state);
     }
@@ -94,15 +108,18 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
     let tcx = s.base().tcx;
     let def_path = tcx.def_path(def_id);
     let krate = tcx.crate_name(def_path.krate);
-    DefId {
+    let contents = DefIdContents {
         path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
-        krate: format!("{}", krate),
+        krate: krate.to_string(),
         index: (
             rustc_hir::def_id::CrateNum::as_u32(def_id.krate),
             rustc_hir::def_id::DefIndex::as_u32(def_id.index),
         ),
         is_local: def_id.is_local(),
-    }
+    };
+    let contents =
+        s.with_global_cache(|cache| id_table::Node::new(contents, &mut cache.id_table_session));
+    DefId { contents }
 }
 
 #[cfg(all(not(feature = "extract_names_mode"), feature = "rustc"))]
@@ -142,14 +159,15 @@ pub type Path = Vec<String>;
 #[cfg(all(not(feature = "extract_names_mode"), feature = "rustc"))]
 impl std::convert::From<DefId> for Path {
     fn from(v: DefId) -> Vec<String> {
-        std::iter::once(v.krate)
-            .chain(v.path.into_iter().filter_map(|item| match item.data {
+        std::iter::once(&v.krate)
+            .chain(v.path.iter().filter_map(|item| match &item.data {
                 DefPathItem::TypeNs(s)
                 | DefPathItem::ValueNs(s)
                 | DefPathItem::MacroNs(s)
                 | DefPathItem::LifetimeNs(s) => Some(s),
                 _ => None,
             }))
+            .cloned()
             .collect()
     }
 }

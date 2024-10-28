@@ -39,19 +39,16 @@ pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
         kind,
-        type_namespace: DefId {
-            path: match constructs_type.path.as_slice() {
-                [init @ .., _] => init.to_vec(),
-                _ => {
-                    let span = s.base().tcx.def_span(variant);
-                    fatal!(
-                        s[span],
-                        "Type {:#?} appears to have no path",
-                        constructs_type
-                    )
-                }
-            },
-            ..constructs_type.clone()
+        type_namespace: match s.base().tcx.opt_parent((&constructs_type).into()) {
+            Some(parent) => parent.sinto(s),
+            None => {
+                let span = s.base().tcx.def_span(variant);
+                fatal!(
+                    s[span],
+                    "Type {:#?} appears to have no path",
+                    constructs_type
+                )
+            }
         },
     }
 }
