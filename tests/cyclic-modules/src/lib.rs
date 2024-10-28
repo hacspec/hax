@@ -146,3 +146,23 @@ pub mod disjoint_cycle_b {
         super::disjoint_cycle_a::g()
     }
 }
+
+pub mod variant_constructor_a {
+    pub enum Context {
+        A(i32),
+        B(i32),
+    }
+    pub fn f() -> Context {
+        super::variant_constructor_b::h()
+    }
+    impl Context {
+        pub fn test(x: Option<i32>) -> Option<Context> {
+            x.map(Self::A)
+        }
+    }
+}
+pub mod variant_constructor_b {
+    pub fn h() -> super::variant_constructor_a::Context {
+        super::variant_constructor_a::Context::A(1)
+    }
+}

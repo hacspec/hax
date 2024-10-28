@@ -29,6 +29,7 @@ val to_debug_string : t -> string
 module Create : sig
   val fresh_module : from:t list -> t
   val move_under : new_parent:t -> t -> t
+  val ctor : t -> t
 
   val map_last : f:(string -> string) -> t -> t
   (** [map_last f ident] applies [f] on the last chunk of [ident]'s

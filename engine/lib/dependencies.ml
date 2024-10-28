@@ -450,11 +450,19 @@ module Make (F : Features.T) = struct
                     )))
         | _ -> []
       in
-
+      let variant_and_constructors_renamings =
+        List.concat_map ~f:variants_renamings renamings
+        |> List.concat_map ~f:(fun (old_name, new_name) ->
+               [
+                 (old_name, new_name);
+                 ( Concrete_ident.Create.ctor old_name,
+                   Concrete_ident.Create.ctor new_name );
+               ])
+      in
       let renamings =
         Map.of_alist_exn
           (module Concrete_ident)
-          (renamings @ List.concat_map ~f:variants_renamings renamings)
+          (renamings @ variant_and_constructors_renamings)
       in
       let rename =
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
