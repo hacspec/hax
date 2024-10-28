@@ -11,7 +11,7 @@ use rustc_span::def_id::DefId as RDefId;
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
-pub struct FullDef {
+pub struct FullDef<Body = ()> {
     pub def_id: DefId,
     /// The enclosing item.
     pub parent: Option<DefId>,
@@ -29,58 +29,69 @@ pub struct FullDef {
     pub lang_item: Option<String>,
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<String>,
-    pub kind: FullDefKind,
+    pub kind: FullDefKind<Body>,
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
-    fn sinto(&self, s: &S) -> Arc<FullDef> {
-        if let Some(full_def) = s.with_item_cache(*self, |cache| cache.full_def.clone()) {
-            return full_def;
+fn translate_full_def<'tcx, S, Body>(s: &S, def_id: RDefId) -> FullDef<Body>
+where
+    S: BaseState<'tcx>,
+    Body: IsBody,
+{
+    let tcx = s.base().tcx;
+    let def_kind = tcx.def_kind(def_id);
+    let kind = {
+        let state_with_id = with_owner_id(s.base(), (), (), def_id);
+        def_kind.sinto(&state_with_id)
+    };
+
+    let source_span = def_id.as_local().map(|ldid| tcx.source_span(ldid));
+    let source_text = source_span
+        .filter(|source_span| source_span.ctxt().is_root())
+        .and_then(|source_span| tcx.sess.source_map().span_to_snippet(source_span).ok());
+
+    FullDef {
+        def_id: def_id.sinto(s),
+        parent: tcx.opt_parent(def_id).sinto(s),
+        span: get_def_span(tcx, def_id, def_kind).sinto(s),
+        source_span: source_span.sinto(s),
+        source_text,
+        attributes: get_def_attrs(tcx, def_id, def_kind).sinto(s),
+        visibility: get_def_visibility(tcx, def_id, def_kind),
+        lang_item: s
+            .base()
+            .tcx
+            .as_lang_item(def_id)
+            .map(|litem| litem.name())
+            .sinto(s),
+        diagnostic_item: tcx.get_diagnostic_name(def_id).sinto(s),
+        kind,
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S, Body> SInto<S, Arc<FullDef<Body>>> for RDefId
+where
+    Body: IsBody + TypeMappable,
+    S: BaseState<'tcx>,
+{
+    fn sinto(&self, s: &S) -> Arc<FullDef<Body>> {
+        if let Some(def) = s.with_item_cache(*self, |cache| cache.full_def.get().cloned()) {
+            return def;
         }
-        let tcx = s.base().tcx;
-        let def_id = *self;
-        let def_kind = tcx.def_kind(def_id);
-        let kind = {
-            let state_with_id = with_owner_id(s.base(), (), (), def_id);
-            def_kind.sinto(&state_with_id)
-        };
-
-        let source_span = def_id.as_local().map(|ldid| tcx.source_span(ldid));
-        let source_text = source_span
-            .filter(|source_span| source_span.ctxt().is_root())
-            .and_then(|source_span| tcx.sess.source_map().span_to_snippet(source_span).ok());
-
-        let full_def = FullDef {
-            def_id: self.sinto(s),
-            parent: tcx.opt_parent(def_id).sinto(s),
-            span: get_def_span(tcx, def_id, def_kind).sinto(s),
-            source_span: source_span.sinto(s),
-            source_text,
-            attributes: get_def_attrs(tcx, def_id, def_kind).sinto(s),
-            visibility: get_def_visibility(tcx, def_id, def_kind),
-            lang_item: s
-                .base()
-                .tcx
-                .as_lang_item(def_id)
-                .map(|litem| litem.name())
-                .sinto(s),
-            diagnostic_item: tcx.get_diagnostic_name(def_id).sinto(s),
-            kind,
-        };
-        let full_def: Arc<FullDef> = Arc::new(full_def);
-        s.with_item_cache(*self, |cache| cache.full_def = Some(full_def.clone()));
-        full_def
+        let def = Arc::new(translate_full_def(s, *self));
+        s.with_item_cache(*self, |cache| cache.full_def.insert(def.clone()));
+        def
     }
 }
 
 /// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
 /// Important: the `owner_id()` must be the id of this definition.
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s, where Body: IsBody)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
-pub enum FullDefKind {
+pub enum FullDefKind<Body> {
     // Type namespace
     Mod,
     /// Refers to the struct definition, [`DefKind::Ctor`] refers to its constructor if it exists.
@@ -194,6 +205,8 @@ pub enum FullDefKind {
         inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
+        #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
+        body: Option<Body>,
     },
     /// Associated function: `impl MyStruct { fn associated() {} }` or `trait Foo { fn associated()
     /// {} }`
@@ -210,6 +223,8 @@ pub enum FullDefKind {
         inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
+        #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
+        body: Option<Body>,
     },
     /// A closure, coroutine, or coroutine-closure.
     ///
@@ -237,6 +252,8 @@ pub enum FullDefKind {
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
+        #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
+        body: Option<Body>,
     },
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
     AssocConst {
@@ -250,6 +267,8 @@ pub enum FullDefKind {
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
+        #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
+        body: Option<Body>,
     },
     Static {
         /// Whether it's a `unsafe static`, `safe static` (inside extern only) or just a `static`.
@@ -264,6 +283,8 @@ pub enum FullDefKind {
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
+        #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
+        body: Option<Body>,
     },
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
@@ -317,13 +338,13 @@ pub enum FullDefKind {
     SyntheticCoroutineBody,
 }
 
-impl FullDef {
+impl<Body: IsBody> FullDef<Body> {
     #[cfg(feature = "rustc")]
     pub fn rust_def_id(&self) -> RDefId {
         (&self.def_id).into()
     }
 
-    pub fn kind(&self) -> &FullDefKind {
+    pub fn kind(&self) -> &FullDefKind<Body> {
         &self.kind
     }
 
