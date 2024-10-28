@@ -189,74 +189,66 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for thir::Expr<'tcx> {
                             .decorate(ty.sinto(s), span.sinto(s));
                     return cexpr.into();
                 }
-                thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def_id, _generics) => {
-                        /* TODO: translate generics
-                        let tcx = s.base().tcx;
-                        let sig = &tcx.fn_sig(*def).instantiate(tcx, generics);
-                        let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
-                        let inputs = sig.inputs();
-                        let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
-                        let params = indexes.map(|i| inputs.map_bound(|tys| tys[i]));
-                        let params: Vec<rustc_middle::ty::Ty> =
-                        params.map(|i| tcx.erase_late_bound_regions(i)).collect();
-                        */
-                        let tcx = s.base().tcx;
-                        let constructor = if tcx.is_constructor(*def_id) {
-                            let adt_def =
-                                tcx.adt_def(rustc_utils::get_closest_parent_type(&tcx, *def_id));
-                            let variant_index = adt_def.variant_index_with_id(tcx.parent(*def_id));
-                            Some(rustc_utils::get_variant_information(
-                                &adt_def,
-                                variant_index,
-                                s,
-                            ))
-                        } else {
-                            None
+                thir::ExprKind::ZstLiteral { .. } => {
+                    if ty.is_phantom_data() {
+                        let rustc_middle::ty::Adt(def, _) = ty.kind() else {
+                            supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
+                        };
+                        let adt_def = AdtExpr {
+                            info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
+                            user_ty: None,
+                            base: None,
+                            fields: vec![],
                         };
                         return Expr {
-                            contents: Box::new(ExprKind::GlobalName {
-                                id: def_id.sinto(s),
-                                constructor,
-                            }),
+                            contents: Box::new(ExprKind::Adt(adt_def)),
                             span: self.span.sinto(s),
                             ty: ty.sinto(s),
                             hir_id,
                             attributes,
                         };
                     }
-                    _ => {
-                        if ty.is_phantom_data() {
-                            let rustc_middle::ty::Adt(def, _) = ty.kind() else {
-                                supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
-                            };
-                            let adt_def = AdtExpr {
-                                info: get_variant_information(
-                                    def,
-                                    rustc_target::abi::FIRST_VARIANT,
-                                    s,
-                                ),
-                                user_ty: None,
-                                base: None,
-                                fields: vec![],
-                            };
-                            return Expr {
-                                contents: Box::new(ExprKind::Adt(adt_def)),
-                                span: self.span.sinto(s),
-                                ty: ty.sinto(s),
-                                hir_id,
-                                attributes,
-                            };
-                        } else {
-                            supposely_unreachable!(
-                                s[span],
-                                "ZstLiteral ty≠FnDef(...) or PhantomData";
-                                {kind, span, ty}
-                            );
-                            kind.sinto(s)
+                    let def_id = match ty.kind() {
+                        rustc_middle::ty::Adt(adt_def, generics) => {
+                            // Here, we should only get `struct Name;` structs.
+                            s_assert!(s, adt_def.variants().len() == 1);
+                            s_assert!(s, generics.is_empty());
+                            adt_def.did()
                         }
-                    }
-                },
+                        rustc_middle::ty::TyKind::FnDef(def_id, _generics) => *def_id,
+                        ty_kind => {
+                            let ty_kind = ty_kind.sinto(s);
+                            supposely_unreachable_fatal!(
+                                s[span],
+                                "ZstLiteral ty≠FnDef(...) or PhantomData or naked Struct";
+                                {kind, span, ty, ty_kind}
+                            );
+                        }
+                    };
+                    let tcx = s.base().tcx;
+                    let constructor = if tcx.is_constructor(def_id) {
+                        let adt_def =
+                            tcx.adt_def(rustc_utils::get_closest_parent_type(&tcx, def_id));
+                        let variant_index = adt_def.variant_index_with_id(tcx.parent(def_id));
+                        Some(rustc_utils::get_variant_information(
+                            &adt_def,
+                            variant_index,
+                            s,
+                        ))
+                    } else {
+                        None
+                    };
+                    return Expr {
+                        contents: Box::new(ExprKind::GlobalName {
+                            id: def_id.sinto(s),
+                            constructor,
+                        }),
+                        span: self.span.sinto(s),
+                        ty: ty.sinto(s),
+                        hir_id,
+                        attributes,
+                    };
+                }
                 thir::ExprKind::Field {
                     lhs,
                     variant_index,
