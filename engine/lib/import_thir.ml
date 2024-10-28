@@ -837,7 +837,7 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | MutPtr _ | TraitConst _ | FnPtr _ ->
+      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ ->
           assertion_failure [ span ]
             "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"

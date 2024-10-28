@@ -78,8 +78,18 @@ pub enum ConstantExprKind {
     },
     /// A shared reference to a static variable.
     Borrow(ConstantExpr),
-    /// A `*mut` pointer to a static mutable variable.
-    MutPtr(ConstantExpr),
+    /// A raw borrow (`*const` or `*mut`).
+    RawBorrow {
+        mutability: Mutability,
+        arg: ConstantExpr,
+    },
+    /// A cast `<source> as <type>`, `<type>` is stored as the type of
+    /// the current constant expression. Currently, this is only used
+    /// to represent `lit as *mut T` or `lit as *const T`, where `lit`
+    /// is a `usize` literal.
+    Cast {
+        source: ConstantExpr,
+    },
     ConstRef {
         id: ParamConst,
     },
@@ -191,9 +201,9 @@ mod rustc {
                     borrow_kind: BorrowKind::Shared,
                     arg: e.into(),
                 },
-                MutPtr(e) => ExprKind::RawBorrow {
-                    mutability: true,
-                    arg: e.into(),
+                RawBorrow { mutability, arg } => ExprKind::RawBorrow {
+                    mutability,
+                    arg: arg.into(),
                 },
                 ConstRef { id } => ExprKind::ConstRef { id },
                 Array { fields } => ExprKind::Array {
@@ -201,6 +211,9 @@ mod rustc {
                 },
                 Tuple { fields } => ExprKind::Tuple {
                     fields: fields.into_iter().map(|field| field.into()).collect(),
+                },
+                Cast { source } => ExprKind::Cast {
+                    source: source.into(),
                 },
                 kind @ (FnPtr { .. } | TraitConst { .. }) => {
                     // SH: I see the `Closure` kind, but it's not the same as function pointer?
@@ -215,10 +228,11 @@ mod rustc {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         x: rustc_middle::ty::ScalarInt,
-        ty: rustc_middle::ty::Ty,
+        ty: rustc_middle::ty::Ty<'tcx>,
     ) -> ConstantLiteral {
         match ty.kind() {
             ty::Char => ConstantLiteral::Char(
@@ -236,14 +250,19 @@ mod rustc {
                 let v = x.to_uint(x.size());
                 ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
             }
-            _ => fatal!(
-                s,
-                "scalar_int_to_constant_literal: the type {:?} is not a literal",
-                ty
-            ),
+            // https://github.com/rust-lang/rust/pull/116930
+            _ => {
+                let ty_sinto: Ty = ty.sinto(s);
+                supposely_unreachable_fatal!(
+                    s,
+                    "scalar_int_to_constant_literal_ExpectedLiteralType";
+                    { ty, ty_sinto, x }
+                )
+            }
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         ty: rustc_middle::ty::Ty<'tcx>,
@@ -317,7 +336,10 @@ mod rustc {
                 let contents = contents.decorate(inner_ty.sinto(s), cspan.clone());
                 match ty.kind() {
                     ty::Ref(..) => ConstantExprKind::Borrow(contents),
-                    ty::RawPtr(..) => ConstantExprKind::MutPtr(contents),
+                    ty::RawPtr(_, mutability) => ConstantExprKind::RawBorrow {
+                        arg: contents,
+                        mutability: mutability.sinto(s),
+                    },
                     _ => unreachable!(),
                 }
             }
@@ -373,6 +395,7 @@ mod rustc {
         )
     }
 
+    #[tracing::instrument(level = "trace", skip(s))]
     fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
         _const_def_id: rustc_hir::def_id::DefId,
@@ -486,6 +509,7 @@ mod rustc {
         }
     }
     impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn sinto(&self, s: &S) -> ConstantExpr {
             use rustc_middle::query::Key;
             let span = self.default_span(s.base().tcx);
@@ -515,7 +539,7 @@ mod rustc {
         }
     }
 
-    // #[tracing::instrument(skip(s))]
+    #[tracing::instrument(level = "trace", skip(s))]
     pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         valtree: rustc_middle::ty::ValTree<'tcx>,
@@ -523,59 +547,69 @@ mod rustc {
         span: rustc_span::Span,
     ) -> ConstantExpr {
         let kind = match (valtree, ty.kind()) {
-        (_, ty::Ref(_, inner_ty, _)) => {
-            ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
-        }
-        (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-            ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
-                ty::ValTree::Leaf(leaf) => leaf.to_u8(),
-                _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
-            }).collect(), StrStyle::Cooked))
-        ,
-        (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-            let contents: rustc_middle::ty::DestructuredConst = s
-                .base().tcx
-                .destructure_const(ty::Const::new_value(s.base().tcx, valtree, ty));
-            let fields = contents.fields.iter().copied();
-            match ty.kind() {
-                ty::Array(_, _) => ConstantExprKind::Array {
-                    fields: fields
-                        .map(|field| field.sinto(s))
-                        .collect(),
-                },
-                ty::Tuple(_) => ConstantExprKind::Tuple {
-                    fields: fields
-                        .map(|field| field.sinto(s))
-                        .collect(),
-                },
-                ty::Adt(def, _) => {
-                    let variant_idx = contents
-                        .variant
-                        .s_expect(s, "destructed const of adt without variant idx");
-                    let variant_def = &def.variant(variant_idx);
-
-                    ConstantExprKind::Adt{
-                        info: get_variant_information(def, variant_idx, s),
-                        fields: fields.into_iter()
-                            .zip(&variant_def.fields)
-                            .map(|(value, field)| ConstantFieldExpr {
-                                field: field.did.sinto(s),
-                                value: value.sinto(s),
-                            })
-                        .collect(),
-                    }
-                }
-                _ => unreachable!(),
+            (_, ty::Ref(_, inner_ty, _)) => {
+                ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
             }
-        }
-        (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
-            scalar_int_to_constant_literal(s, x, ty)
-        ),
-        _ => supposely_unreachable_fatal!(
-            s[span], "valtree_to_expr";
-            {valtree, ty}
-        ),
-    };
+            (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
+                ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
+                    ty::ValTree::Leaf(leaf) => leaf.to_u8(),
+                    _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
+                }).collect(), StrStyle::Cooked))
+                ,
+            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
+                let contents: rustc_middle::ty::DestructuredConst = s
+                    .base().tcx
+                    .destructure_const(ty::Const::new_value(s.base().tcx, valtree, ty));
+                let fields = contents.fields.iter().copied();
+                match ty.kind() {
+                    ty::Array(_, _) => ConstantExprKind::Array {
+                        fields: fields
+                            .map(|field| field.sinto(s))
+                            .collect(),
+                    },
+                    ty::Tuple(_) => ConstantExprKind::Tuple {
+                        fields: fields
+                            .map(|field| field.sinto(s))
+                            .collect(),
+                    },
+                    ty::Adt(def, _) => {
+                        let variant_idx = contents
+                            .variant
+                            .s_expect(s, "destructed const of adt without variant idx");
+                        let variant_def = &def.variant(variant_idx);
+
+                        ConstantExprKind::Adt{
+                            info: get_variant_information(def, variant_idx, s),
+                            fields: fields.into_iter()
+                                .zip(&variant_def.fields)
+                                .map(|(value, field)| ConstantFieldExpr {
+                                    field: field.did.sinto(s),
+                                    value: value.sinto(s),
+                                })
+                                .collect(),
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            (ty::ValTree::Leaf(x), ty::RawPtr(_, _)) => {
+                use crate::rustc_type_ir::inherent::Ty;
+                let raw_address = x.to_bits_unchecked();
+                let uint_ty = UintTy::Usize;
+                let usize_ty = rustc_middle::ty::Ty::new_usize(s.base().tcx).sinto(s);
+                let lit = ConstantLiteral::Int(ConstantInt::Uint(raw_address, uint_ty));
+                ConstantExprKind::Cast {
+                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s))
+                }
+            }
+            (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
+                scalar_int_to_constant_literal(s, x, ty)
+            ),
+            _ => supposely_unreachable_fatal!(
+                s[span], "valtree_to_expr";
+                {valtree, ty}
+            ),
+        };
         kind.decorate(ty.sinto(s), span.sinto(s))
     }
 

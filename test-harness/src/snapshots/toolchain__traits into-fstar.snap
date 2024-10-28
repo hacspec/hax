@@ -387,11 +387,11 @@ let method_caller
   ()
 
 class t_SubTrait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8779313392680198588:t_Trait v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_11748868061750783190:t_Trait v_Self
     v_TypeArg
     v_ConstArg;
   f_AssocType:Type0;
-  f_AssocType_6369404467997533198:t_Trait f_AssocType v_TypeArg v_ConstArg
+  f_AssocType_10469511598065652520:t_Trait f_AssocType v_TypeArg v_ConstArg
 }
 '''
 "Traits.Interlaced_consts_types.fst" = '''
