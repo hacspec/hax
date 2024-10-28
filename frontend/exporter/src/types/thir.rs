@@ -579,8 +579,7 @@ pub enum ExprKind {
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
         let (generic_args, r#trait, bounds_impls);
-        // A function is any expression whose type is something callable
-        let fun = match ty.kind() {
+        let fun = match e.ty.kind() {
             rustc_middle::ty::TyKind::FnDef(def_id, generics) => {
                 let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
                 let hir_id = hir_id.map(|hir_id| hir_id.index());
@@ -613,11 +612,15 @@ pub enum ExprKind {
                 r#trait = None; // A function pointer is not a method
                 e.sinto(gstate)
             },
-            ty_kind => supposely_unreachable_fatal!(
-                gstate[e.span],
-                "CallNotTyFnDef";
-                {e, ty_kind}
-            )
+            ty_kind => {
+                let ty_norm: Ty = gstate.base().tcx.normalize_erasing_regions(gstate.param_env(), *ty).sinto(gstate);
+                let ty_kind_sinto = ty_kind.sinto(gstate);
+                supposely_unreachable_fatal!(
+                    gstate[e.span],
+                    "CallNotTyFnDef";
+                    {e, ty_kind, ty_kind_sinto, ty_norm}
+                );
+            }
         };
         TO_TYPE::Call {
             ty: ty.sinto(gstate),
