@@ -78,8 +78,11 @@ pub enum ConstantExprKind {
     },
     /// A shared reference to a static variable.
     Borrow(ConstantExpr),
-    /// A `*mut` pointer to a static mutable variable.
-    MutPtr(ConstantExpr),
+    /// A raw borrow (`*const` or `*mut`).
+    RawBorrow {
+        mutability: Mutability,
+        arg: ConstantExpr,
+    },
     /// A cast `<source> as <type>`, `<type>` is stored as the type of
     /// the current constant expression. Currently, this is only used
     /// to represent `lit as *mut T` or `lit as *const T`, where `lit`
@@ -198,9 +201,9 @@ mod rustc {
                     borrow_kind: BorrowKind::Shared,
                     arg: e.into(),
                 },
-                MutPtr(e) => ExprKind::RawBorrow {
-                    mutability: true,
-                    arg: e.into(),
+                RawBorrow { mutability, arg } => ExprKind::RawBorrow {
+                    mutability,
+                    arg: arg.into(),
                 },
                 ConstRef { id } => ExprKind::ConstRef { id },
                 Array { fields } => ExprKind::Array {
@@ -333,7 +336,10 @@ mod rustc {
                 let contents = contents.decorate(inner_ty.sinto(s), cspan.clone());
                 match ty.kind() {
                     ty::Ref(..) => ConstantExprKind::Borrow(contents),
-                    ty::RawPtr(..) => ConstantExprKind::MutPtr(contents),
+                    ty::RawPtr(_, mutability) => ConstantExprKind::RawBorrow {
+                        arg: contents,
+                        mutability: mutability.sinto(s),
+                    },
                     _ => unreachable!(),
                 }
             }
