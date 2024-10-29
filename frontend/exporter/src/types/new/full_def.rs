@@ -36,7 +36,7 @@ pub struct FullDef<Body = ()> {
 fn translate_full_def<'tcx, S, Body>(s: &S, def_id: RDefId) -> FullDef<Body>
 where
     S: BaseState<'tcx>,
-    Body: IsBody,
+    Body: IsBody + TypeMappable,
 {
     let tcx = s.base().tcx;
     let def_kind = tcx.def_kind(def_id);
@@ -88,7 +88,7 @@ where
 /// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
 /// Important: the `owner_id()` must be the id of this definition.
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s, where Body: IsBody)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s, where Body: IsBody + TypeMappable)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FullDefKind<Body> {
@@ -189,7 +189,7 @@ pub enum FullDefKind<Body> {
                 .collect::<Vec<_>>()
                 .sinto(s)
         )]
-        items: Vec<(AssocItem, Arc<FullDef>)>,
+        items: Vec<(AssocItem, Arc<FullDef<Body>>)>,
     },
     /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
     TraitAlias,
@@ -211,7 +211,7 @@ pub enum FullDefKind<Body> {
                 .collect::<Vec<_>>()
                 .sinto(s)
         )]
-        items: Vec<(AssocItem, Arc<FullDef>)>,
+        items: Vec<(AssocItem, Arc<FullDef<Body>>)>,
     },
 
     // Functions
