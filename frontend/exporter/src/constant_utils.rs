@@ -22,9 +22,7 @@ pub enum ConstantInt {
 pub enum ConstantLiteral {
     Bool(bool),
     Char(char),
-    // Rust floats do not have the Eq or Ord traits due to the presence of NaN
-    // We instead store their bit representation, which always fits in a u128
-    Float(u128, FloatTy),
+    Float(String, FloatTy),
     Int(ConstantInt),
     Str(String, StrStyle),
     ByteStr(Vec<u8>, StrStyle),
@@ -173,7 +171,7 @@ mod rustc {
                                 }
                             }
                         }
-                        Float(_bits, _ty) => todo!("Converting float literals back to AST"),
+                        Float(f, ty) => LitKind::Float(f, LitFloatType::Suffixed(ty)),
                         ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
                         Str(raw, str_style) => LitKind::Str(raw, str_style),
                     };
@@ -250,7 +248,10 @@ mod rustc {
                 let v = x.to_uint(x.size());
                 ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
             }
-            // https://github.com/rust-lang/rust/pull/116930
+            ty::Float(kind) => {
+                let v = x.to_bits_unchecked();
+                bits_and_type_to_float_constant_literal(v, kind.sinto(s))
+            }
             _ => {
                 let ty_sinto: Ty = ty.sinto(s);
                 supposely_unreachable_fatal!(
@@ -260,6 +261,18 @@ mod rustc {
                 )
             }
         }
+    }
+
+    /// Converts a bit-representation of a float of type `ty` to a constant literal
+    fn bits_and_type_to_float_constant_literal(bits: u128, ty: FloatTy) -> ConstantLiteral {
+        use rustc_apfloat::{ieee, Float};
+        let string = match &ty {
+            FloatTy::F16 => ieee::Half::from_bits(bits).to_string(),
+            FloatTy::F32 => ieee::Single::from_bits(bits).to_string(),
+            FloatTy::F64 => ieee::Double::from_bits(bits).to_string(),
+            FloatTy::F128 => ieee::Quad::from_bits(bits).to_string(),
+        };
+        ConstantLiteral::Float(string, ty)
     }
 
     #[tracing::instrument(level = "trace", skip(s))]
@@ -292,10 +305,9 @@ mod rustc {
                         scalar
                     )
                 });
-                ConstantExprKind::Literal(ConstantLiteral::Float(
-                    scalar_int.to_bits_unchecked(),
-                    float_type.sinto(s),
-                ))
+                let data = scalar_int.to_bits_unchecked();
+                let lit = bits_and_type_to_float_constant_literal(data, float_type.sinto(s));
+                ConstantExprKind::Literal(lit)
             }
             ty::Ref(_, inner_ty, Mutability::Not) | ty::RawPtr(inner_ty, Mutability::Mut) => {
                 let tcx = s.base().tcx;
