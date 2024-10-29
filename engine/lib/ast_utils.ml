@@ -1274,8 +1274,8 @@ struct
       ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
 end
 
-module ASTGenerator = struct
-  module AST = Ast.Make (Features.Full)
+module ASTGenerator (F : Features.T) = struct
+  module AST = Ast.Make (F)
   open AST
 
   type ast_type =
@@ -1312,14 +1312,14 @@ module ASTGenerator = struct
               ( [%yojson_of: literal]
                   (Int
                      {
-                       value = "dummy";
+                       value = "42";
                        negative = false;
                        kind = { size = S8; signedness = Unsigned };
                      }),
                 indexes ));
             (fun () ->
               ( [%yojson_of: literal]
-                  (Float { value = "dummy"; negative = false; kind = F16 }),
+                  (Float { value = "6.9"; negative = false; kind = F16 }),
                 indexes ));
             (fun () -> ([%yojson_of: literal] (Bool false), indexes));
           ]
@@ -1335,7 +1335,17 @@ module ASTGenerator = struct
             (fun () ->
               let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
               let g_ident = [%of_yojson: global_ident] g_ident in
-              ([%yojson_of: ty] (TApp { ident = g_ident; args = [] }), indexes));
+
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+
+              ( [%yojson_of: ty]
+                  (TApp
+                     {
+                       ident = g_ident;
+                       args = [ GType typ (* must have 1+ items *) ];
+                     }),
+                indexes ));
             (fun () ->
               let typ, indexes = generate_helper TY indexes in
               let typ = [%of_yojson: ty] typ in
@@ -1346,24 +1356,23 @@ module ASTGenerator = struct
             (fun () ->
               let typ, indexes = generate_helper TY indexes in
               let typ = [%of_yojson: ty] typ in
+
+              let wit = [%of_yojson: F.slice] (`String "Slice") in
+
               ( [%yojson_of: ty]
-                  (TSlice { witness = Features.On.slice; ty = typ }),
+                  (TSlice { witness = wit (* Features.On.slice *); ty = typ }),
                 indexes ));
             (fun () ->
-              ( [%yojson_of: ty]
-                  (TRawPointer { witness = Features.On.raw_pointer }),
-                indexes ));
+              let wit = [%of_yojson: F.raw_pointer] (`String "Raw_pointer") in
+              ([%yojson_of: ty] (TRawPointer { witness = wit }), indexes));
             (fun () ->
               let typ, indexes = generate_helper TY indexes in
               let typ = [%of_yojson: ty] typ in
+
+              let wit = [%of_yojson: F.reference] (`String "Reference") in
+
               ( [%yojson_of: ty]
-                  (TRef
-                     {
-                       witness = Features.On.reference;
-                       region = "todo";
-                       typ;
-                       mut = Immutable;
-                     }),
+                  (TRef { witness = wit; region = "todo"; typ; mut = Immutable }),
                 indexes ));
             (fun () ->
               let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
@@ -1387,8 +1396,8 @@ module ASTGenerator = struct
               let c_ident = [%of_yojson: concrete_ident] c_ident in
               ([%yojson_of: ty] (TOpaque c_ident), indexes));
             (fun () ->
-              ( [%yojson_of: ty] (TDyn { witness = Features.On.dyn; goals = [] }),
-                indexes ));
+              let wit = [%of_yojson: F.dyn] (`String "Dyn") in
+              ([%yojson_of: ty] (TDyn { witness = wit; goals = [] }), indexes));
           ]
       | EXPR ->
           let expr_shell e indexes =
@@ -1472,13 +1481,10 @@ module ASTGenerator = struct
                 let expr, indexes = generate_helper EXPR indexes in
                 let expr = [%of_yojson: expr] expr in
 
+                let wit = [%of_yojson: F.block] (`String "Block") in
+
                 ( [%yojson_of: expr']
-                    (Block
-                       {
-                         e = expr;
-                         safety_mode = Safe;
-                         witness = Features.On.block;
-                       }),
+                    (Block { e = expr; safety_mode = Safe; witness = wit }),
                   indexes ));
               (fun () ->
                 let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
@@ -1498,13 +1504,12 @@ module ASTGenerator = struct
               (fun () ->
                 let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
                 let g_ident = [%of_yojson: global_ident] g_ident in
+
+                let wit = [%of_yojson: F.macro] (`String "Macro") in
+
                 ( [%yojson_of: expr']
                     (MacroInvokation
-                       {
-                         macro = g_ident;
-                         args = "dummy";
-                         witness = Features.On.macro;
-                       }),
+                       { macro = g_ident; args = "dummy"; witness = wit }),
                   indexes ));
               (fun () ->
                 let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
@@ -1515,17 +1520,24 @@ module ASTGenerator = struct
 
                 let typ, indexes = generate_helper TY indexes in
                 let typ = [%of_yojson: ty] typ in
+
+                let wit =
+                  [%of_yojson: F.mutable_variable] (`String "mutable_variable")
+                in
+
                 ( [%yojson_of: expr']
                     (Assign
                        {
                          lhs = LhsLocalVar { var = l_ident; typ };
                          e = expr;
-                         witness = Features.On.mutable_variable;
+                         witness = wit;
                        }),
                   indexes ));
               (fun () ->
                 let body, indexes = generate_helper EXPR indexes in
                 let body = [%of_yojson: expr] body in
+
+                let wit = [%of_yojson: F.loop] (`String "Loop") in
 
                 ( [%yojson_of: expr']
                     (Loop
@@ -1535,26 +1547,32 @@ module ASTGenerator = struct
                          state = None;
                          control_flow = None;
                          label = None;
-                         witness = Features.On.loop;
+                         witness = wit;
                        }),
                   indexes ));
               (fun () ->
                 let expr, indexes = generate_helper EXPR indexes in
                 let expr = [%of_yojson: expr] expr in
+
+                let wit = [%of_yojson: F.break] (`String "Break") in
+                let wit2 = [%of_yojson: F.loop] (`String "Loop") in
+
                 ( [%yojson_of: expr']
                     (Break
                        {
                          e = expr;
                          acc = None;
                          label = None;
-                         witness = (Features.On.break, Features.On.loop);
+                         witness = (wit, wit2);
                        }),
                   indexes ));
               (fun () ->
                 let expr, indexes = generate_helper EXPR indexes in
                 let expr = [%of_yojson: expr] expr in
-                ( [%yojson_of: expr']
-                    (Return { e = expr; witness = Features.On.early_exit }),
+
+                let wit = [%of_yojson: F.early_exit] (`String "Early_exit") in
+
+                ( [%yojson_of: expr'] (Return { e = expr; witness = wit }),
                   indexes ));
               (fun () ->
                 let expr, indexes = generate_helper EXPR indexes in
@@ -1562,44 +1580,38 @@ module ASTGenerator = struct
 
                 let typ, indexes = generate_helper TY indexes in
                 let typ = [%of_yojson: ty] typ in
+
+                let wit =
+                  [%of_yojson: F.question_mark] (`String "Question_mark")
+                in
+
                 ( [%yojson_of: expr']
-                    (QuestionMark
-                       {
-                         e = expr;
-                         return_typ = typ;
-                         witness = Features.On.question_mark;
-                       }),
+                    (QuestionMark { e = expr; return_typ = typ; witness = wit }),
                   indexes ));
               (fun () ->
+                let wit = [%of_yojson: F.continue] (`String "Continue") in
+                let wit2 = [%of_yojson: F.loop] (`String "Loop") in
                 ( [%yojson_of: expr']
                     (Continue
-                       {
-                         acc = None;
-                         label = None;
-                         witness = (Features.On.continue, Features.On.loop);
-                       }),
+                       { acc = None; label = None; witness = (wit, wit2) }),
                   indexes ));
               (fun () ->
                 let expr, indexes = generate_helper EXPR indexes in
                 let expr = [%of_yojson: expr] expr in
+
+                let wit = [%of_yojson: F.reference] (`String "Reference") in
+
                 ( [%yojson_of: expr']
-                    (Borrow
-                       {
-                         kind = Shared;
-                         e = expr;
-                         witness = Features.On.reference;
-                       }),
+                    (Borrow { kind = Shared; e = expr; witness = wit }),
                   indexes ));
               (fun () ->
                 let expr, indexes = generate_helper EXPR indexes in
                 let expr = [%of_yojson: expr] expr in
+
+                let wit = [%of_yojson: F.raw_pointer] (`String "Raw_pointer") in
+
                 ( [%yojson_of: expr']
-                    (AddressOf
-                       {
-                         mut = Immutable;
-                         e = expr;
-                         witness = Features.On.raw_pointer;
-                       }),
+                    (AddressOf { mut = Immutable; e = expr; witness = wit }),
                   indexes ));
               (fun () ->
                 let body, indexes = generate_helper EXPR indexes in
@@ -1673,8 +1685,10 @@ module ASTGenerator = struct
               (fun () ->
                 let pat, indexes = generate_helper PAT indexes in
                 let pat = [%of_yojson: pat] pat in
-                ( [%yojson_of: pat']
-                    (PDeref { subpat = pat; witness = Features.On.reference }),
+
+                let wit = [%of_yojson: F.reference] (`String "Reference") in
+
+                ( [%yojson_of: pat'] (PDeref { subpat = pat; witness = wit }),
                   indexes ));
               (fun () ->
                 let lit, indexes = generate_helper LITERAL indexes in
@@ -1686,10 +1700,14 @@ module ASTGenerator = struct
 
                 let typ, indexes = generate_helper TY indexes in
                 let typ = [%of_yojson: ty] typ in
+
+                let wit =
+                  [%of_yojson: F.mutable_variable] (`String "mutable_variable")
+                in
                 ( [%yojson_of: pat']
                     (PBinding
                        {
-                         mut = Mutable Features.On.mutable_variable;
+                         mut = Mutable wit;
                          mode = ByValue;
                          var = l_ident;
                          typ;
@@ -1781,13 +1799,16 @@ module ASTGenerator = struct
               (fun () ->
                 let macro, indexes = generate_helper CONCRETE_IDENT indexes in
                 let macro = [%of_yojson: concrete_ident] macro in
+
+                let wit = [%of_yojson: F.macro] (`String "Macro") in
+
                 ( [%yojson_of: item']
                     (IMacroInvokation
                        {
                          macro;
                          argument = "TODO";
                          span = Span.dummy ();
-                         witness = Features.On.macro;
+                         witness = wit;
                        }),
                   indexes ));
               (fun () ->
@@ -1869,7 +1890,7 @@ module ASTGenerator = struct
             (* Bool *)
             [ 4 ];
           ]
-      | TY ->
+      | TY -> (
           [
             (* TBool *)
             [ 0 ];
@@ -1883,15 +1904,25 @@ module ASTGenerator = struct
             [ 4 ];
           ]
           (* TApp *)
-          @ generate_depth_list_helper depth [ 5 ] [ GLOBAL_IDENT ]
+          @ generate_depth_list_helper (depth - 1) [ 5 ] [ GLOBAL_IDENT; TY ]
           (* TODO: Any number of extra ty args? *)
           (* TArray *)
           @ generate_depth_list_helper (depth - 1) [ 6 ] [ TY; EXPR ]
           (* TSlice *)
-          @ generate_depth_list_helper (depth - 1) [ 7 ] [ TY ]
-          @ [ (* TRawPointer *) [ 8 ] ]
+          @ (try
+               let _ = [%of_yojson: F.slice] (`String "Slice") in
+               generate_depth_list_helper (depth - 1) [ 7 ] [ TY ]
+             with _ -> [])
+          @ (try
+               let _ = [%of_yojson: F.raw_pointer] (`String "Raw_pointer") in
+               [ (* TRawPointer *) [ 8 ] ]
+             with _ -> [])
           (* TRef *)
-          @ generate_depth_list_helper (depth - 1) [ 9 ] [ TY ]
+          @ (try
+               let _ = [%of_yojson: F.reference] (`String "Reference") in
+               generate_depth_list_helper (depth - 1) [ 9 ] [ TY ]
+             with _ -> [])
+          (* TODO: mutable? *)
           (* TParam *)
           @ generate_depth_list_helper depth [ 10 ] [ LOCAL_IDENT ]
           (* TArrow *)
@@ -1901,7 +1932,11 @@ module ASTGenerator = struct
               [ IMPL_EXPR; CONCRETE_IDENT ]
           (* TOpaque *)
           @ generate_depth_list_helper (depth - 1) [ 13 ] [ CONCRETE_IDENT ]
-          @ [ (* TDyn *) [ 14 ] ]
+          @
+          try
+            let _ = [%of_yojson: F.dyn] (`String "Dyn") in
+            [ (* TDyn *) [ 14 ] ]
+          with _ -> [])
       | PAT ->
           List.map
             ~f:(fun x ->
@@ -1916,11 +1951,20 @@ module ASTGenerator = struct
             @ generate_depth_list_helper (depth - 1) [ 3 ] [ PAT; PAT ]
             @ [ (* PArray *) [ 4 ] ]
             (* PDeref *)
-            @ generate_depth_list_helper (depth - 1) [ 5 ] [ PAT ]
+            @ (try
+                 let _ = [%of_yojson: F.reference] (`String "Reference") in
+                 generate_depth_list_helper (depth - 1) [ 5 ] [ PAT ]
+               with _ -> [])
             (* PConstant *)
             @ generate_depth_list_helper depth [ 6 ] [ LITERAL ]
-            @ (* PBinding *)
-            generate_depth_list_helper (depth - 1) [ 7 ] [ LOCAL_IDENT; TY ])
+            @
+            (* PBinding *)
+            try
+              let _ =
+                [%of_yojson: F.mutable_variable] (`String "Mutable_variable")
+              in
+              generate_depth_list_helper (depth - 1) [ 7 ] [ LOCAL_IDENT; TY ]
+            with _ -> [])
       | EXPR ->
           List.map
             ~f:(fun x ->
@@ -1941,7 +1985,10 @@ module ASTGenerator = struct
             (* Let *)
             @ generate_depth_list_helper (depth - 1) [ 6 ] [ PAT; EXPR; EXPR ]
             (* Block *)
-            @ generate_depth_list_helper (depth - 1) [ 7 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.block] (`String "Block") in
+                 generate_depth_list_helper (depth - 1) [ 7 ] [ EXPR ]
+               with _ -> [])
             (* LocalVar *)
             @ generate_depth_list_helper (depth - 1) [ 8 ] [ LOCAL_IDENT ]
             (* GlobalVar *)
@@ -1949,23 +1996,56 @@ module ASTGenerator = struct
             (* Ascription *)
             @ generate_depth_list_helper (depth - 1) [ 10 ] [ EXPR; TY ]
             (* MacroInvokation *)
-            @ generate_depth_list_helper (depth - 1) [ 11 ] [ GLOBAL_IDENT ]
+            @ (try
+                 let _ = [%of_yojson: F.macro] (`String "Macro") in
+                 generate_depth_list_helper (depth - 1) [ 11 ] [ GLOBAL_IDENT ]
+               with _ -> [])
             (* Assign *)
-            @ generate_depth_list_helper (depth - 1) [ 12 ]
-                [ LOCAL_IDENT; EXPR; TY ]
+            @ (try
+                 let _ =
+                   [%of_yojson: F.mutable_variable] (`String "Mutable_variable")
+                 in
+                 generate_depth_list_helper (depth - 1) [ 12 ]
+                   [ LOCAL_IDENT; EXPR; TY ]
+               with _ -> [])
             (* Loop *)
-            @ generate_depth_list_helper (depth - 1) [ 13 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.loop] (`String "Loop") in
+                 generate_depth_list_helper (depth - 1) [ 13 ] [ EXPR ]
+               with _ -> [])
             (* Break *)
-            @ generate_depth_list_helper (depth - 1) [ 14 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.loop] (`String "Loop") in
+                 let _ = [%of_yojson: F.break] (`String "Break") in
+                 generate_depth_list_helper (depth - 1) [ 14 ] [ EXPR ]
+               with _ -> [])
             (* Return *)
-            @ generate_depth_list_helper (depth - 1) [ 15 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.early_exit] (`String "Early_exit") in
+                 generate_depth_list_helper (depth - 1) [ 15 ] [ EXPR ]
+               with _ -> [])
             (* QuestionMark *)
-            @ generate_depth_list_helper (depth - 1) [ 16 ] [ EXPR; TY ]
-            @ [ (* Continue *) [ 17 ] ]
+            @ (try
+                 let _ =
+                   [%of_yojson: F.question_mark] (`String "Question_mark")
+                 in
+                 generate_depth_list_helper (depth - 1) [ 16 ] [ EXPR; TY ]
+               with _ -> [])
+            @ (try
+                 let _ = [%of_yojson: F.loop] (`String "Loop") in
+                 let _ = [%of_yojson: F.continue] (`String "Continue") in
+                 [ (* Continue *) [ 17 ] ]
+               with _ -> [])
             (* Borrow *)
-            @ generate_depth_list_helper (depth - 1) [ 18 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.reference] (`String "Reference") in
+                 generate_depth_list_helper (depth - 1) [ 18 ] [ EXPR ]
+               with _ -> [])
             (* AddressOf *)
-            @ generate_depth_list_helper (depth - 1) [ 19 ] [ EXPR ]
+            @ (try
+                 let _ = [%of_yojson: F.raw_pointer] (`String "Raw_pointer") in
+                 generate_depth_list_helper (depth - 1) [ 19 ] [ EXPR ]
+               with _ -> [])
             @ (* Closure *)
             generate_depth_list_helper (depth - 1) [ 20 ] [ EXPR ])
       | ITEM ->
@@ -1984,7 +2064,10 @@ module ASTGenerator = struct
             @ generate_depth_list_helper (depth - 1) [ 3 ]
                 [ CONCRETE_IDENT; GENERICS ]
             (* IMacroInvokation *)
-            @ generate_depth_list_helper depth [ 4 ] [ CONCRETE_IDENT ]
+            @ (try
+                 let _ = [%of_yojson: F.macro] (`String "Macro") in
+                 generate_depth_list_helper depth [ 4 ] [ CONCRETE_IDENT ]
+               with _ -> [])
             (* Trait *)
             @ generate_depth_list_helper (depth - 1) [ 5 ]
                 [ CONCRETE_IDENT; GENERICS ]
@@ -2010,40 +2093,62 @@ module ASTGenerator = struct
       int list list =
     if depth >= 0 then generate_depth_list depth pre t else []
 
+  let generate_literals () =
+    let literal_args = generate_depth 0 [] LITERAL in
+    List.map
+      ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x))
+      literal_args
+
+  let generate_tys depth : ty list =
+    let ty_args = generate_depth depth [] TY in
+    List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args
+
+  let generate_pats depth =
+    let pat_args = generate_depth depth [] PAT in
+    List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
+
+  let generate_exprs depth =
+    let expr_args = generate_depth depth [] EXPR in
+    List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
+
+  let generate_items depth =
+    let item_args = generate_depth depth [] ITEM in
+    List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args
+
   let rec flatten (l : int list list) : int list list =
     match l with
     | (x :: xs) :: (y :: ys) :: ls ->
         (if phys_equal x y then [] else [ x :: xs ]) @ flatten ((y :: ys) :: ls)
     | _ -> l
 
-  let generate_literals =
+  let generate_flat_literals () =
     let literal_args = flatten (generate_depth 0 [] LITERAL) in
     List.map
       ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x))
       literal_args
 
-  let generate_tys : ty list =
+  let generate_flat_tys () : ty list =
     let ty_args = flatten (generate_depth 1 [] TY) in
     List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args
 
-  let generate_pats =
+  let generate_flat_pats () =
     let pat_args = flatten (generate_depth 1 [] PAT) in
     List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
 
-  let generate_expr =
+  let generate_flat_exprs () =
     let expr_args = flatten (generate_depth 1 [] EXPR) in
     List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
 
-  let generate_items =
+  let generate_flat_items () =
     let item_args = flatten (generate_depth 1 [] ITEM) in
     List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args
 
-  let generate_full_ast :
+  let generate_full_ast () :
       literal list * ty list * pat list * expr list * item list =
-    let my_literals = generate_literals in
-    let my_tys = generate_tys in
-    let my_pats = generate_pats in
-    let my_exprs = generate_expr in
-    let my_items = generate_items in
+    let my_literals = generate_flat_literals () in
+    let my_tys = generate_flat_tys () in
+    let my_pats = generate_flat_pats () in
+    let my_exprs = generate_flat_exprs () in
+    let my_items = generate_flat_items () in
     (my_literals, my_tys, my_pats, my_exprs, my_items)
 end
