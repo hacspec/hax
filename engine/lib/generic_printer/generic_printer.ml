@@ -599,8 +599,6 @@ module Make (F : Features.T) = struct
             | `Concrete cid ->
                 (self#_do_not_override_lazy_of_concrete_ident ast_position cid)
                   #p
-            (* | `Primitive _prim_id -> string "(\*TODO*\) prim_id" *)
-            (* | `TupleType 0 -> string "unit" *)
             | _ -> self#assertion_failure "[global_ident]")
           ast_position id
 
