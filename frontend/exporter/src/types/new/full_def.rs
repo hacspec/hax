@@ -93,7 +93,10 @@ where
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FullDefKind<Body> {
     // Type namespace
-    Mod,
+    Mod {
+        #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
+        items: Vec<DefId>,
+    },
     /// Refers to the struct definition, [`DefKind::Ctor`] refers to its constructor if it exists.
     Struct {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
@@ -298,7 +301,10 @@ pub enum FullDefKind<Body> {
     ExternCrate,
     Use,
     /// An `extern` block.
-    ForeignMod,
+    ForeignMod {
+        #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
+        items: Vec<DefId>,
+    },
     /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
     AnonConst,
     /// An inline constant, e.g. `const { 1 + 2 }`
@@ -489,6 +495,38 @@ fn get_def_attrs<'tcx>(
         // These kinds cause `get_attrs_unchecked` to panic.
         ConstParam | LifetimeParam | TyParam | ForeignMod => &[],
         _ => tcx.get_attrs_unchecked(def_id),
+    }
+}
+
+/// Gets the children of a module.
+#[cfg(feature = "rustc")]
+fn get_mod_children<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Vec<RDefId> {
+    match def_id.as_local() {
+        Some(ldid) => match tcx.hir_node_by_def_id(ldid) {
+            rustc_hir::Node::Crate(m)
+            | rustc_hir::Node::Item(&rustc_hir::Item {
+                kind: rustc_hir::ItemKind::Mod(m),
+                ..
+            }) => m
+                .item_ids
+                .iter()
+                .map(|item_id| item_id.owner_id.to_def_id())
+                .collect(),
+
+            rustc_hir::Node::Item(rustc_hir::Item {
+                kind: rustc_hir::ItemKind::ForeignMod { items, .. },
+                ..
+            }) => items
+                .iter()
+                .map(|foreign_item_ref| foreign_item_ref.id.owner_id.to_def_id())
+                .collect(),
+            node => panic!("DefKind::Module is an unexpected node: {node:?}"),
+        },
+        None => tcx
+            .module_children(def_id)
+            .iter()
+            .map(|child| child.res.def_id())
+            .collect(),
     }
 }
 
