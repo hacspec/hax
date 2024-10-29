@@ -453,8 +453,7 @@ module Make (F : Features.T) = struct
         | _, _, _ ->
             if is_record && is_struct then
               match base with
-              | Some x ->
-                  string "Build_" ^^ x#p ^^ fields_or_empty space
+              | Some x -> string "Build_" ^^ x#p ^^ fields_or_empty space
               | None ->
                   string "Build_t_"
                   ^^ (self#_do_not_override_lazy_of_global_ident
