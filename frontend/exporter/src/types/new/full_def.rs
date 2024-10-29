@@ -222,6 +222,8 @@ pub enum FullDefKind<Body> {
         predicates: GenericPredicates,
         #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
         inline: InlineAttr,
+        #[value(s.base().tcx.constness(s.owner_id()) == rustc_hir::Constness::Const)]
+        is_const: bool,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
         #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
@@ -240,6 +242,8 @@ pub enum FullDefKind<Body> {
         predicates: GenericPredicates,
         #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
         inline: InlineAttr,
+        #[value(s.base().tcx.constness(s.owner_id()) == rustc_hir::Constness::Const)]
+        is_const: bool,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
         #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
@@ -255,6 +259,8 @@ pub enum FullDefKind<Body> {
         /// constant.
         #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
         parent: DefId,
+        #[value(s.base().tcx.constness(s.owner_id()) == rustc_hir::Constness::Const)]
+        is_const: bool,
         #[value({
             let fun_type = s.base().tcx.type_of(s.owner_id()).instantiate_identity();
             match fun_type.kind() {
