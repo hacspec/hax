@@ -255,7 +255,7 @@ struct
           {
             e = Return { e = dexpr e; witness };
             span = expr.span;
-            typ = local_vars_expr.typ;
+            typ = dty expr.span expr.typ;
           }
       | Continue { acc = None; label; witness; _ } ->
           let w = Features.On.state_passing_loop in
