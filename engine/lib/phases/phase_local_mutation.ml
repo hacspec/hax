@@ -251,6 +251,12 @@ struct
             span = expr.span;
             typ = local_vars_expr.typ;
           }
+      | Return { e; witness } ->
+          {
+            e = Return { e = dexpr e; witness };
+            span = expr.span;
+            typ = dty expr.span expr.typ;
+          }
       | Continue { acc = None; label; witness; _ } ->
           let w = Features.On.state_passing_loop in
           let e = local_vars_expr in
@@ -354,7 +360,8 @@ struct
               }
           else loop
       | [%inline_arms
-          "dexpr'.*" - Let - Assign - Closure - Loop - If - Match - Break] ->
+          "dexpr'.*" - Let - Assign - Closure - Loop - If - Match - Break
+          - Return] ->
           map (fun e ->
               let e' =
                 B.{ e; typ = dty expr.span expr.typ; span = expr.span }
