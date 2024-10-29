@@ -85,6 +85,7 @@ let hardcoded_coq_headers =
    Import RecordSetNotations.\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
+
 module Make (Default : sig
   val default : string -> string
 end)
@@ -206,18 +207,16 @@ struct
           else
             add_space
             ^^ parens
-              (separate_map (comma ^^ space) (fun x -> (snd x)#p) fields)
+                 (separate_map (comma ^^ space) (fun x -> (snd x)#p) fields)
         in
         if is_record && is_struct then
           match base with
           | Some x -> string "Build_" ^^ x#p ^^ fields_or_empty space
-          | None ->
-            string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
+          | None -> string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
         else if not is_record then
           if is_struct then
             string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
-          else
-            constructor#p ^^ fields_or_empty space
+          else constructor#p ^^ fields_or_empty space
         else string "(* TODO: Record? *)"
       (* let fields_or_empty add_space = *)
       (*   if List.is_empty fields then empty *)
@@ -249,33 +248,33 @@ struct
       (*     #p ^^ fields_or_empty space *)
       (* else string "(\* TODO: Record? *\)" *)
 
-        (* if is_struct then *)
-        (*   if is_record then *)
-        (*     (\* Struct *\) *)
-        (*     Option.value *)
-        (*       ~default: *)
-        (*         (string "Build_t_" ^^ constructor#p *)
-        (*         ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
-        (*         ) *)
-        (*       (Option.map *)
-        (*          ~f:(fun b -> *)
-        (*            b#p *)
-        (*            ^^ concat_map *)
-        (*                 (fun (ident, exp) -> *)
-        (*                   space ^^ string "<|" ^^ space ^^ ident#p ^^ space *)
-        (*                   ^^ !^":=" ^^ space ^^ parens exp#p ^^ space *)
-        (*                   ^^ string "|>") *)
-        (*                 fields *)
-        (*            ^^ space) *)
-        (*          base) *)
-        (*   else *)
-        (*     (\* Tuple struct *\) *)
-        (*     string "Build_" ^^ constructor#p *)
-        (*     ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
-        (* else *)
-        (*   (\* Indutive type *\) *)
-        (*   constructor#p *)
-        (*   ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
+      (* if is_struct then *)
+      (*   if is_record then *)
+      (*     (\* Struct *\) *)
+      (*     Option.value *)
+      (*       ~default: *)
+      (*         (string "Build_t_" ^^ constructor#p *)
+      (*         ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
+      (*         ) *)
+      (*       (Option.map *)
+      (*          ~f:(fun b -> *)
+      (*            b#p *)
+      (*            ^^ concat_map *)
+      (*                 (fun (ident, exp) -> *)
+      (*                   space ^^ string "<|" ^^ space ^^ ident#p ^^ space *)
+      (*                   ^^ !^":=" ^^ space ^^ parens exp#p ^^ space *)
+      (*                   ^^ string "|>") *)
+      (*                 fields *)
+      (*            ^^ space) *)
+      (*          base) *)
+      (*   else *)
+      (*     (\* Tuple struct *\) *)
+      (*     string "Build_" ^^ constructor#p *)
+      (*     ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
+      (* else *)
+      (*   (\* Indutive type *\) *)
+      (*   constructor#p *)
+      (*   ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
 
       method expr'_Construct_tuple ~super:_ ~components =
         if List.length components == 0 then !^"tt"
@@ -413,10 +412,8 @@ struct
           ^^ nest 2 (break 1 ^^ body#p)
 
       method impl_item'_IIType ~typ ~parent_bounds:_ = typ#p
-
-      method item ~v ~span:_ ~ident:_ ~attrs:_ =
-        v#p
-        (* if is_document_empty v#p then empty else v#p ^^ break 1 *)
+      method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p
+      (* if is_document_empty v#p then empty else v#p ^^ break 1 *)
 
       method item'_Alias ~super:_ ~name ~item =
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
@@ -450,18 +447,20 @@ struct
         if is_lemma then
           CoqNotation.lemma name#p generics#p
             (List.map ~f:(fun x -> x#p) params)
-            (Option.value ~default:empty (requires) ^^ space ^^ !^"->" ^^ break 1 ^^ Option.value ~default:empty ensures)
+            (Option.value ~default:empty requires
+            ^^ space ^^ !^"->" ^^ break 1
+            ^^ Option.value ~default:empty ensures)
         else if is_rec then
           CoqNotation.fixpoint name#p generics#p
             (List.map ~f:(fun x -> x#p) params
-             @
-             Option.value ~default:[] (Option.map ~f:(fun x -> [string "`" ^^ braces x]) requires))
+            @ Option.value ~default:[]
+                (Option.map ~f:(fun x -> [ string "`" ^^ braces x ]) requires))
             typ#p body#p (* ^^ TODO: ensures? *)
         else
           CoqNotation.definition name#p generics#p
             (List.map ~f:(fun x -> x#p) params
-            @
-            Option.value ~default:[] (Option.map ~f:(fun x -> [string "`" ^^ braces x]) requires))
+            @ Option.value ~default:[]
+                (Option.map ~f:(fun x -> [ string "`" ^^ braces x ]) requires))
             typ#p body#p (* ^^ TODO: ensures? *)
 
       method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
@@ -639,7 +638,10 @@ struct
       method loop_state ~init ~bpat ~witness:_ =
         parens (init#p ^^ space ^^ !^"state" ^^ space ^^ bpat#p)
 
-      method modul x1 = separate_map (break 1) (fun x -> x#p) x1 (* default_document_for "modul" *)
+      method modul x1 =
+        separate_map (break 1)
+          (fun x -> x#p)
+          x1 (* default_document_for "modul" *)
 
       method param ~pat ~typ ~typ_span:_ ~attrs:_ =
         parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
@@ -656,9 +658,12 @@ struct
 
       method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record
           ~is_struct ~fields =
-        if is_record
-        then
-          constructor#p ^^ space ^^ parens (separate_map (comma ^^ space) (fun field_pat -> (snd field_pat)#p) fields)
+        if is_record then
+          constructor#p ^^ space
+          ^^ parens
+               (separate_map (comma ^^ space)
+                  (fun field_pat -> (snd field_pat)#p)
+                  fields)
         else
           (if is_struct then string "Build_t_" else empty)
           ^^ constructor#p
@@ -666,7 +671,8 @@ struct
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)
-        (* string "'" ^^ *) parens (separate_map comma (fun x -> x#p) components)
+        (* string "'" ^^ *)
+        parens (separate_map comma (fun x -> x#p) components)
 
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
         default_document_for "pat'_PDeref"
@@ -830,20 +836,22 @@ struct
       (* val mutable current_namespace : (string * string list) option = None *)
     end
 
-  let new_printer: BasePrinter.finalized_printer =
+  let new_printer : BasePrinter.finalized_printer =
     BasePrinter.finalize (fun () -> (new printer :> BasePrinter.printer))
 end
 
 module type S = sig
-  val new_printer: BasePrinter.finalized_printer
+  val new_printer : BasePrinter.finalized_printer
 end
 
 let make (module M : Attrs.WITH_ITEMS) =
-  let open (Make
-                     (struct
-                         let default x = x
-                       end)
-                     (M) : S) in
+  let open (
+    Make
+      (struct
+        let default x = x
+      end)
+      (M) :
+      S) in
   new_printer
 
 let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
@@ -857,13 +865,11 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
-         let (contents, _annotations) = my_printer#entrypoint_modul items in
+         let contents, _annotations = my_printer#entrypoint_modul items in
          Types.
            {
              path = mod_name ^ ".v";
-             contents =
-               hardcoded_coq_headers ^ "\n"
-               ^ contents;
+             contents = hardcoded_coq_headers ^ "\n" ^ contents;
              sourcemap = None;
            })
 

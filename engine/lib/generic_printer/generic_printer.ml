@@ -448,7 +448,8 @@ module Make (F : Features.T) = struct
                 ~f:(fun field ->
                   let name, expr = field#v in
                   ( self#_do_not_override_lazy_of_global_ident
-                      Generated_generic_printer_base.AstPos_pat'_PConstruct_constructor name,
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_constructor name,
                     expr ))
                 fields
             in
@@ -470,7 +471,10 @@ module Make (F : Features.T) = struct
             self#expr'_GlobalVar_concrete ~super concrete
         | `Primitive primitive ->
             self#expr'_GlobalVar_primitive ~super primitive
-        | `TupleCons 0 -> self#_do_not_override_expr'_Construct ~super ~constructor:global_ident ~is_record:false ~is_struct:false ~fields:[] ~base:None
+        | `TupleCons 0 ->
+            self#_do_not_override_expr'_Construct ~super
+              ~constructor:global_ident ~is_record:false ~is_struct:false
+              ~fields:[] ~base:None
         | _ ->
             self#assertion_failure
             @@ "GlobalVar: expected a concrete or primitive global ident, got:"
@@ -490,13 +494,13 @@ module Make (F : Features.T) = struct
                   let { field; pat } = field#v in
                   let field =
                     self#_do_not_override_lazy_of_global_ident
-                      Generated_generic_printer_base.AstPos_pat'_PConstruct_fields
-                      field
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_fields field
                   in
                   let pat =
                     self#_do_not_override_lazy_of_pat
-                      Generated_generic_printer_base.AstPos_pat'_PConstruct_fields
-                      pat
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_fields pat
                   in
                   (field, pat))
                 fields
@@ -592,7 +596,9 @@ module Make (F : Features.T) = struct
         lazy_doc
           (fun (id : global_ident) ->
             match id with
-            | `Concrete cid -> (self#_do_not_override_lazy_of_concrete_ident ast_position cid)#p
+            | `Concrete cid ->
+                (self#_do_not_override_lazy_of_concrete_ident ast_position cid)
+                  #p
             (* | `Primitive _prim_id -> string "(\*TODO*\) prim_id" *)
             (* | `TupleType 0 -> string "unit" *)
             | _ -> self#assertion_failure "[global_ident]")
