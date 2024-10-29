@@ -134,7 +134,7 @@ module Make (F : Features.T) = struct
   open Ast.Make (F)
   module Gen = Generated_generic_printer_base.Make (F)
 
-  type printer = (unit -> Annotation.t list, PPrint.document) Gen.object_type
+  type printer = (Annotation.t list, PPrint.document) Gen.object_type
   type finalized_printer = (unit, string * Annotation.t list) Gen.object_type
 
   let finalize (new_printer : unit -> printer) : finalized_printer =
@@ -143,7 +143,7 @@ module Make (F : Features.T) = struct
         let doc = apply printer in
         let buf = Buffer.create 0 in
         PPrint.ToBuffer.pretty 1.0 80 buf doc;
-        (Buffer.contents buf, printer#get_span_data ()))
+        (Buffer.contents buf, printer#span_data))
 
   class virtual base =
     object (self)

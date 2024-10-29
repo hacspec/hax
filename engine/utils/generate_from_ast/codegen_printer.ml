@@ -383,23 +383,23 @@ module Make (F : Features.T) = struct
      %s
    end
 
-   type ('get_span_data, 'a) object_type = <
-        get_span_data : 'get_span_data;
+   type ('span_data, 'a) object_type = <
+        span_data : 'span_data;
         %s
      >
 
-   let map (type get_span_data) (type a) (type b)
-           (f: ((get_span_data, a) object_type -> a) -> b)
+   let map (type span_data) (type a) (type b)
+           (f: ((span_data, a) object_type -> a) -> b)
            : (unit, b) object_type = object
-        method get_span_data: unit = ()
+        method span_data: unit = ()
         %s
      end
 
-   let map_get_span_data (type a) (type b) (type t)
+   let map_span_data (type a) (type b) (type t)
           (obj: (a, t) object_type)
-          (get_span_data: b)          
+          (span_data: b)          
           : (b, t) object_type = object
-        method get_span_data: b = get_span_data
+        method span_data: b = span_data
         %s
      end
 end
