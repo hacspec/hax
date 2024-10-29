@@ -1357,23 +1357,34 @@ fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
     s: &S,
     item: &ty::AssocItem,
 ) -> AssocItemContainer {
-    let container_id = item.container_id(s.base().tcx);
+    let tcx = s.base().tcx;
+    let container_id = item.container_id(tcx);
     match item.container {
         ty::AssocItemContainer::TraitContainer => AssocItemContainer::TraitContainer {
             trait_id: container_id.sinto(s),
         },
         ty::AssocItemContainer::ImplContainer => {
             if let Some(implemented_trait_item) = item.trait_item_def_id {
+                // The trait ref that is being implemented by this `impl` block.
+                let implemented_trait_ref = tcx
+                    .impl_trait_ref(container_id)
+                    .unwrap()
+                    .instantiate_identity();
+
+                // Resolve required impl exprs for this item.
+                let item_args = ty::GenericArgs::identity_for_item(tcx, item.def_id);
+                // Subtlety: we have to add the GAT arguments (if any) to the trait ref arguments.
+                let args = item_args.rebase_onto(tcx, container_id, implemented_trait_ref.args);
+                let state_with_id = with_owner_id(s.base(), (), (), item.def_id);
+                let required_impl_exprs =
+                    solve_item_implied_traits(&state_with_id, implemented_trait_item, args);
+
                 AssocItemContainer::TraitImplContainer {
                     impl_id: container_id.sinto(s),
-                    implemented_trait: s
-                        .base()
-                        .tcx
-                        .trait_of_item(implemented_trait_item)
-                        .unwrap()
-                        .sinto(s),
+                    implemented_trait: implemented_trait_ref.def_id.sinto(s),
                     implemented_trait_item: implemented_trait_item.sinto(s),
-                    overrides_default: s.base().tcx.defaultness(implemented_trait_item).has_value(),
+                    overrides_default: tcx.defaultness(implemented_trait_item).has_value(),
+                    required_impl_exprs,
                 }
             } else {
                 AssocItemContainer::InherentImplContainer {
@@ -1431,6 +1442,17 @@ pub enum AssocItemContainer {
         /// Whether the corresponding trait item had a default (and therefore this one overrides
         /// it).
         overrides_default: bool,
+        /// The `ImplExpr`s required to satisfy the predicates on the associated type. E.g.:
+        /// ```ignore
+        /// trait Foo {
+        ///     type Type<T>: Clone,
+        /// }
+        /// impl Foo for () {
+        ///     type Type<T>: Arc<T>; // would supply an `ImplExpr` for `Arc<T>: Clone`.
+        /// }
+        /// ```
+        /// Empty if this item is an associated const or fn.
+        required_impl_exprs: Vec<ImplExpr>,
     },
     InherentImplContainer {
         impl_id: DefId,
