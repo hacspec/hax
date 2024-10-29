@@ -46,7 +46,6 @@ Inductive t_E : Type :=
 | t_E_B.
 Arguments t_E:clear implicits.
 Arguments t_E.
-
 Definition t_E_cast_to_repr (x : t_E) : t_isize :=
   match x with
   | t_E_A =>
@@ -54,49 +53,43 @@ Definition t_E_cast_to_repr (x : t_E) : t_isize :=
   | t_E_B =>
     1
   end.
-
 (* NotImplementedYet *)
-
 Definition bar (x : t_E) : unit :=
   match x with
   | t_E_A
   | t_E_B =>
     tt
   end.
-
 Definition deep (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   match x with
   | (1
-  | 2, t_Option_Some (3
+  | 2,t_Option_Some (3
   | 4)) =>
     0
-  | (x, _) =>
+  | (x,_) =>
     x
   end.
-
 Definition deep_capture (x : t_Result (((t_i32*t_i32))) (((t_i32*t_i32)))) : t_i32 :=
   match x with
   | t_Result_Ok ((1
-  | 2, x))
+  | 2,x))
   | t_Result_Err ((3
-  | 4, x)) =>
+  | 4,x)) =>
     x
-  | t_Result_Ok ((x, _))
-  | t_Result_Err ((x, _)) =>
+  | t_Result_Ok ((x,_))
+  | t_Result_Err ((x,_)) =>
     x
   end.
-
 Definition equivalent (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   match x with
-  | (1, t_Option_Some (3))
-  | (1, t_Option_Some (4))
-  | (2, t_Option_Some (3))
-  | (2, t_Option_Some (4)) =>
+  | (1,t_Option_Some (3))
+  | (1,t_Option_Some (4))
+  | (2,t_Option_Some (3))
+  | (2,t_Option_Some (4)) =>
     0
-  | (x, _) =>
+  | (x,_) =>
     x
   end.
-
 Definition nested (x : t_Option ((t_i32))) : t_i32 :=
   match x with
   | t_Option_Some (1
@@ -106,5 +99,4 @@ Definition nested (x : t_Option ((t_i32))) : t_i32 :=
     x
   | t_Option_None =>
     0
-  end.
-'''
+  end.'''

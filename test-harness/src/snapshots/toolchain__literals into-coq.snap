@@ -21,23 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-warning: unused variable: `attr`
-   --> /home/au538501/Documents/git/hax/hax-lib-macros/src/lib.rs:387:18
-    |
-387 | pub fn interface(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
-    |                  ^^^^ help: if this is intentional, prefix it with an underscore: `_attr`
-    |
-    = note: `#[warn(unused_variables)]` on by default
-
-warning: unused variable: `block`
-   --> /home/au538501/Documents/git/hax/hax-lib-macros/src/lib.rs:395:9
-    |
-395 |         block,
-    |         ^^^^^ help: try ignoring the field: `block: _`
-
-warning: `hax-lib-macros` (lib) generated 2 warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -59,7 +43,6 @@ Import RecordSetNotations.
 
 From Literals Require Import Hax_lib (t_int).
 Export Hax_lib (t_int).
-
 Record t_Foo : Type :=
   {
     t_Foo_f_field : t_u8;
@@ -69,12 +52,9 @@ Arguments t_Foo.
 Arguments Build_t_Foo.
 #[export] Instance settable_t_Foo : Settable _ :=
   settable! (@Build_t_Foo) <t_Foo_f_field>.
-
 (* NotImplementedYet *)
-
 Definition v_CONSTANT : t_Foo :=
   Build_t_Foo (3).
-
 Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_usize) : unit :=
   let _ : t_u64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (x64)) (cast (xs)) in
   let _ : t_u32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (x32)) (cast (x64))) (cast (xs)) in
@@ -85,12 +65,10 @@ Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_u
   let _ : t_i16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
   let _ : t_i8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
   tt.
-
 Definition fn_pointer_cast (_ : unit) : unit :=
   let f : t_u32 -> t_u32 := fun x =>
     x in
   tt.
-
 Definition math_integers (x : t_Int) `{andb (t_PartialOrd_f_gt (x) (impl__Int___unsafe_from_str ("0"%string))) (t_PartialOrd_f_lt (x) (impl__Int___unsafe_from_str ("16"%string))) = true} : t_u8 :=
   let _ : t_Int := t_Abstraction_f_lift (3) in
   let _ := t_PartialOrd_f_gt (impl__Int___unsafe_from_str ("-340282366920938463463374607431768211455000"%string)) (impl__Int___unsafe_from_str ("340282366920938463463374607431768211455000"%string)) in
@@ -114,7 +92,6 @@ Definition math_integers (x : t_Int) `{andb (t_PartialOrd_f_gt (x) (impl__Int___
   let _ : t_u128 := impl__Int__to_u128 (x) in
   let _ : t_usize := impl__Int__to_usize (x) in
   impl__Int__to_u8 (t_Add_f_add (x) (t_Mul_f_mul (x) (x))).
-
 Definition numeric (_ : unit) : unit :=
   let _ : t_usize := 123 in
   let _ : t_isize := 42 in
@@ -122,7 +99,6 @@ Definition numeric (_ : unit) : unit :=
   let _ : t_i32 := 42 in
   let _ : t_u128 := 22222222222222222222 in
   tt.
-
 Definition patterns (_ : unit) : unit :=
   let _ := match 1 with
   | 2 =>
@@ -130,8 +106,8 @@ Definition patterns (_ : unit) : unit :=
   | _ =>
     tt
   end in
-  let _ := match ("hello"%string, (123, ["a"%string; "b"%string])) with
-  | ("hello"%string, (123, v__todo)) =>
+  let _ := match ("hello"%string,(123,["a"%string; "b"%string])) with
+  | ("hello"%string,(123,v__todo)) =>
     tt
   | _ =>
     tt
@@ -143,11 +119,8 @@ Definition patterns (_ : unit) : unit :=
     tt
   end in
   tt.
-
 Definition panic_with_msg (_ : unit) : unit :=
   never_to_any (panic_fmt (impl_2__new_const (["with msg"%string]))).
-
 Definition empty_array (_ : unit) : unit :=
   let _ : t_Slice t_u8 := unsize ([]) in
-  tt.
-'''
+  tt.'''

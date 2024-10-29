@@ -45,7 +45,6 @@ Inductive t_Foo : Type :=
 | t_Foo_B.
 Arguments t_Foo:clear implicits.
 Arguments t_Foo.
-
 Record t_Bar : Type :=
   {
     t_Bar_0 : t_Foo;
@@ -55,7 +54,6 @@ Arguments t_Bar.
 Arguments Build_t_Bar.
 #[export] Instance settable_t_Bar : Settable _ :=
   settable! (@Build_t_Bar) <t_Bar_0>.
-
 Definition t_Foo_cast_to_repr (x : t_Foo) : t_isize :=
   match x with
   | t_Foo_A =>
@@ -63,18 +61,12 @@ Definition t_Foo_cast_to_repr (x : t_Foo) : t_isize :=
   | t_Foo_B =>
     1
   end.
-
 (* NotImplementedYet *)
-
 Definition f (_ : t_u32) : t_Foo :=
   t_Foo_A.
-
 Definition g (_ : unit) : t_Bar :=
   Build_t_Bar (f (32)).
-
 Definition no_dependency_1_ (_ : unit) : unit :=
   tt.
-
 Definition no_dependency_2_ (_ : unit) : unit :=
-  tt.
-'''
+  tt.'''

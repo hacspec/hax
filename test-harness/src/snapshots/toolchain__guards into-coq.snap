@@ -41,7 +41,6 @@ Import RecordSetNotations.
 
 
 (* NotImplementedYet *)
-
 Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | t_Option_None =>
@@ -69,7 +68,6 @@ Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
       end
     end
   end.
-
 Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
   match match x with
   | t_Option_Some (v) =>
@@ -87,7 +85,6 @@ Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
   | t_Option_None =>
     0
   end.
-
 Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | t_Option_None =>
@@ -115,7 +112,6 @@ Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 
       end
     end
   end.
-
 Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | t_Option_None =>
@@ -157,5 +153,4 @@ Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i
         end
       end
     end
-  end.
-'''
+  end.'''

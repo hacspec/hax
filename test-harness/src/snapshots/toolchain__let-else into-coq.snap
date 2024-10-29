@@ -41,7 +41,6 @@ Import RecordSetNotations.
 
 
 (* NotImplementedYet *)
-
 Definition let_else (opt : t_Option ((t_u32))) : bool :=
   run (match opt with
   | t_Option_Some (x) =>
@@ -49,7 +48,6 @@ Definition let_else (opt : t_Option ((t_u32))) : bool :=
   | _ =>
     t_ControlFlow_Break (false)
   end).
-
 Definition let_else_different_type (opt : t_Option ((t_u32))) : bool :=
   run (let hoist1 := match opt with
   | t_Option_Some (x) =>
@@ -57,5 +55,4 @@ Definition let_else_different_type (opt : t_Option ((t_u32))) : bool :=
   | _ =>
     t_ControlFlow_Break (false)
   end in
-  t_ControlFlow_Continue (let_else (hoist1))).
-'''
+  t_ControlFlow_Continue (let_else (hoist1))).'''
