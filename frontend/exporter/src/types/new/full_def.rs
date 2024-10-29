@@ -92,11 +92,7 @@ where
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FullDefKind<Body> {
-    // Type namespace
-    Mod {
-        #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
-        items: Vec<DefId>,
-    },
+    // Types
     /// Refers to the struct definition, [`DefKind::Ctor`] refers to its constructor if it exists.
     Struct {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
@@ -122,8 +118,48 @@ pub enum FullDefKind<Body> {
         #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
         def: AdtDef,
     },
-    /// Refers to the variant definition, [`DefKind::Ctor`] refers to its constructor if it exists.
-    Variant,
+    /// Type alias: `type Foo = Bar;`
+    TyAlias {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        /// `Some` if the item is in the local crate.
+        #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
+            let rustc_hir::Node::Item(item) = node else { unreachable!() };
+            let rustc_hir::ItemKind::TyAlias(ty, _generics) = &item.kind else { unreachable!() };
+            let mut s = State::from_under_owner(s);
+            s.base.ty_alias_mode = true;
+            ty.sinto(&s)
+        }))]
+        ty: Option<Ty>,
+    },
+    /// Type from an `extern` block.
+    ForeignTy,
+    /// Associated type: `trait MyTrait { type Assoc; }`
+    AssocTy {
+        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
+        parent: DefId,
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_item_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
+        associated_item: AssocItem,
+        #[value({
+            let tcx = s.base().tcx;
+            if tcx.defaultness(s.owner_id()).has_value() {
+                Some(tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))
+            } else {
+                None
+            }
+        })]
+        value: Option<Ty>,
+    },
+    /// Opaque type, aka `impl Trait`.
+    OpaqueTy,
+
+    // Traits
     Trait {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
@@ -155,50 +191,30 @@ pub enum FullDefKind<Body> {
         )]
         items: Vec<(AssocItem, Arc<FullDef>)>,
     },
-    /// Type alias: `type Foo = Bar;`
-    TyAlias {
+    /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
+    TraitAlias,
+    Impl {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
-        /// `Some` if the item is in the local crate.
-        #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
-            let rustc_hir::Node::Item(item) = node else { unreachable!() };
-            let rustc_hir::ItemKind::TyAlias(ty, _generics) = &item.kind else { unreachable!() };
-            let mut s = State::from_under_owner(s);
-            s.base.ty_alias_mode = true;
-            ty.sinto(&s)
-        }))]
-        ty: Option<Ty>,
+        #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
+        impl_subject: ImplSubject,
+        /// Associated items, in definition order.
+        #[value(
+            s
+                .base()
+                .tcx
+                .associated_items(s.owner_id())
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s)
+        )]
+        items: Vec<(AssocItem, Arc<FullDef>)>,
     },
-    /// Type from an `extern` block.
-    ForeignTy,
-    /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
-    TraitAlias,
-    /// Associated type: `trait MyTrait { type Assoc; }`
-    AssocTy {
-        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
-        parent: DefId,
-        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
-        generics: TyGenerics,
-        #[value(get_item_predicates(s, s.owner_id()))]
-        predicates: GenericPredicates,
-        #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
-        associated_item: AssocItem,
-        #[value({
-            let tcx = s.base().tcx;
-            if tcx.defaultness(s.owner_id()).has_value() {
-                Some(tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))
-            } else {
-                None
-            }
-        })]
-        value: Option<Ty>,
-    },
-    /// Type parameter: the `T` in `struct Vec<T> { ... }`
-    TyParam,
 
-    // Value namespace
+    // Functions
     Fn {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
@@ -248,6 +264,8 @@ pub enum FullDefKind<Body> {
         })]
         args: ClosureArgs,
     },
+
+    // Constants
     Const {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
@@ -273,6 +291,10 @@ pub enum FullDefKind<Body> {
         #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
         body: Option<Body>,
     },
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
+    AnonConst,
+    /// An inline constant, e.g. `const { 1 + 2 }`
+    InlineConst,
     Static {
         /// Whether it's a `unsafe static`, `safe static` (inside extern only) or just a `static`.
         safety: Safety,
@@ -289,54 +311,41 @@ pub enum FullDefKind<Body> {
         #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
         body: Option<Body>,
     },
-    /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
-    ConstParam,
-    /// Refers to the struct or enum variant's constructor.
-    Ctor(CtorOf, CtorKind),
 
-    // Macro namespace
-    Macro(MacroKind),
-
-    // Not namespaced (or they are, but we don't treat them so)
+    // Crates and modules
     ExternCrate,
     Use,
+    Mod {
+        #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
+        items: Vec<DefId>,
+    },
     /// An `extern` block.
     ForeignMod {
         #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
         items: Vec<DefId>,
     },
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
-    AnonConst,
-    /// An inline constant, e.g. `const { 1 + 2 }`
-    InlineConst,
-    /// Opaque type, aka `impl Trait`.
-    OpaqueTy,
-    Impl {
-        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
-        generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
-        predicates: GenericPredicates,
-        #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
-        impl_subject: ImplSubject,
-        /// Associated items, in definition order.
-        #[value(
-            s
-                .base()
-                .tcx
-                .associated_items(s.owner_id())
-                .in_definition_order()
-                .map(|assoc| (assoc, assoc.def_id))
-                .collect::<Vec<_>>()
-                .sinto(s)
-        )]
-        items: Vec<(AssocItem, Arc<FullDef>)>,
-    },
+
+    // Type-level parameters
+    /// Type parameter: the `T` in `struct Vec<T> { ... }`
+    TyParam,
+    /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
+    ConstParam,
+    /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
+    LifetimeParam,
+
+    // ADT parts
+    /// Refers to the variant definition, [`DefKind::Ctor`] refers to its constructor if it exists.
+    Variant,
+    /// Refers to the struct or enum variant's constructor.
+    Ctor(CtorOf, CtorKind),
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
     /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
     Field,
-    /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
-    LifetimeParam,
+
+    // Others
+    /// Macros
+    Macro(MacroKind),
     /// A use of `global_asm!`.
     GlobalAsm,
     /// A synthetic coroutine body created by the lowering of a coroutine-closure, such as an async
