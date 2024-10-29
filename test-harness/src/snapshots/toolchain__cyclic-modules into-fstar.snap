@@ -32,7 +32,7 @@ module Cyclic_modules.B
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_696247411 {g as g}
+include Cyclic_modules.Rec_bundle_318256792 {g as g}
 '''
 "Cyclic_modules.C.fst" = '''
 module Cyclic_modules.C
@@ -272,8 +272,8 @@ open FStar.Mul
 
 include Cyclic_modules.Rec1_same_name.Rec_bundle_213192514 {f91805216 as f}
 '''
-"Cyclic_modules.Rec_bundle_696247411.fst" = '''
-module Cyclic_modules.Rec_bundle_696247411
+"Cyclic_modules.Rec_bundle_318256792.fst" = '''
+module Cyclic_modules.Rec_bundle_318256792
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -397,47 +397,9 @@ module Cyclic_modules
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_696247411 {b as b}
+include Cyclic_modules.Rec_bundle_318256792 {f as f}
 
-include Cyclic_modules.Rec_bundle_696247411 {c as c}
+include Cyclic_modules.Rec_bundle_318256792 {h as h}
 
-include Cyclic_modules.Rec_bundle_696247411 {d as d}
-
-include Cyclic_modules.Rec_bundle_696247411 {de as de}
-
-include Cyclic_modules.Rec_bundle_696247411 {disjoint_cycle_a as disjoint_cycle_a}
-
-include Cyclic_modules.Rec_bundle_696247411 {disjoint_cycle_b as disjoint_cycle_b}
-
-include Cyclic_modules.Rec_bundle_696247411 {e as e}
-
-include Cyclic_modules.Rec_bundle_696247411 {enums_a as enums_a}
-
-include Cyclic_modules.Rec_bundle_696247411 {enums_b as enums_b}
-
-include Cyclic_modules.Rec_bundle_696247411 {m1 as m1}
-
-include Cyclic_modules.Rec_bundle_696247411 {m2 as m2}
-
-include Cyclic_modules.Rec_bundle_696247411 {v_rec as v_rec}
-
-include Cyclic_modules.Rec_bundle_696247411 {rec1_same_name as rec1_same_name}
-
-include Cyclic_modules.Rec_bundle_696247411 {rec2_same_name as rec2_same_name}
-
-include Cyclic_modules.Rec_bundle_696247411 {std as std}
-
-include Cyclic_modules.Rec_bundle_696247411 {typ_a as typ_a}
-
-include Cyclic_modules.Rec_bundle_696247411 {typ_b as typ_b}
-
-include Cyclic_modules.Rec_bundle_696247411 {variant_constructor_a as variant_constructor_a}
-
-include Cyclic_modules.Rec_bundle_696247411 {variant_constructor_b as variant_constructor_b}
-
-include Cyclic_modules.Rec_bundle_696247411 {f as f}
-
-include Cyclic_modules.Rec_bundle_696247411 {h as h}
-
-include Cyclic_modules.Rec_bundle_696247411 {h2 as h2}
+include Cyclic_modules.Rec_bundle_318256792 {h2 as h2}
 '''

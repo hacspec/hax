@@ -383,7 +383,11 @@ module Make (F : Features.T) = struct
     let aliases =
       List.map (old_new :: variants_renamings old_new)
         ~f:(fun (old_ident, new_ident) ->
-          { item with v = Alias { name = old_ident; item = new_ident } })
+          {
+            item with
+            v = Alias { name = old_ident; item = new_ident };
+            attrs = [];
+          })
     in
     item' :: aliases
 
@@ -397,7 +401,8 @@ module Make (F : Features.T) = struct
           and they have dummy names. *)
       let non_use_items =
         List.filter
-          ~f:(fun item -> match item.v with Use _ -> false | _ -> true)
+          ~f:(fun item ->
+            match item.v with Use _ | NotImplementedYet -> false | _ -> true)
           items
       in
       let bundles =
