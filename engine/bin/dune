@@ -25,6 +25,12 @@
  (modules native_driver)
  (libraries lib))
 
+(executable
+ (public_name hax-ast-printer)
+ (name ast_printer)
+ (modules ast_printer)
+ (libraries lib))
+
 ; The following line is commented: by default, we don't want to
 ; generate javascript.
 
