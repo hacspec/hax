@@ -188,12 +188,17 @@ impl HaxMessage {
                     format!("{}.{}", n / factor, n % factor)
                 }
                 let title = format!(
-                    "profiling [{}]: {}ms, memory={}, {} item{}",
+                    "[profiling] {}: {}ms, memory={}, {} item{}{}",
                     data.context,
                     format_with_dot(6, data.time_ns),
                     data.memory,
                     data.quantity,
-                    if data.quantity > 1 { "s" } else { "" }
+                    if data.quantity > 1 { "s" } else { "" },
+                    if data.errored {
+                        " (note: this failed!)"
+                    } else {
+                        ""
+                    }
                 );
                 eprintln!("{}", renderer.render(Level::Info.title(&title)));
             }

@@ -72,6 +72,10 @@ pub struct ProfilingData {
     /// How many things were processed? (often, this is the number of
     /// items a phase processes)
     pub quantity: u32,
+    /// Did the action errored? This is important since a failed
+    /// action might have exited very early, making the numbers
+    /// unusable.
+    pub errored: bool,
 }
 
 pub mod protocol {
