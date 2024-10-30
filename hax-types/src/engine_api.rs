@@ -56,6 +56,22 @@ pub struct Output {
     pub diagnostics: Vec<crate::diagnostics::Diagnostics>,
     pub files: Vec<File>,
     pub debug_json: Option<String>,
+    pub profiling_data: Vec<ProfilingData>,
+}
+
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
+pub struct ProfilingData {
+    /// What context are we profiling?
+    pub context: String,
+    /// How long this took?
+    pub time_ns: u64,
+    /// How much memory this took? This is using OCaml's
+    /// `Gc.minor_words`, and is probably not very precise.
+    pub memory: u64,
+    /// How many things were processed? (often, this is the number of
+    /// items a phase processes)
+    pub quantity: u32,
 }
 
 pub mod protocol {
@@ -68,6 +84,7 @@ pub mod protocol {
         PrettyPrintDiagnostic(crate::diagnostics::Diagnostics),
         PrettyPrintRust(String),
         DebugString(String),
+        ProfilingData(ProfilingData),
         Exit,
         Ping,
     }

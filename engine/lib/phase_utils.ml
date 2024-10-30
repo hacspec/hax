@@ -248,10 +248,12 @@ module TracePhase (P : PHASE) = struct
   include P
 
   let name = [%show: Diagnostics.Phase.t] P.metadata.current_phase
-  let enable = Option.is_some P.metadata.previous_phase
+  (* We distinguish between composite phases (i.e. `BindPhase(_)(_)`) versus non-composite ones. *)
+
+  let composite_phase = Option.is_some P.metadata.previous_phase
 
   let ditems =
-    if enable then P.ditems
+    if composite_phase then P.ditems
     else fun items ->
       Logs.info (fun m -> m "Entering phase [%s]" name);
       let items = P.ditems items in
@@ -259,12 +261,25 @@ module TracePhase (P : PHASE) = struct
       items
 end
 
+module ProfilePhase (P : PHASE) = struct
+  include P
+
+  (* We distinguish between composite phases (i.e. `BindPhase(_)(_)`) versus non-composite ones. *)
+  let composite_phase = Option.is_some P.metadata.previous_phase
+
+  let ditems items =
+    if composite_phase then P.ditems items
+    else
+      let ctx = Diagnostics.Context.Phase P.metadata.current_phase in
+      Profiling.profile ctx (List.length items) (fun () -> P.ditems items)
+end
+
 module BindPhase
     (D1 : PHASE)
     (D2 : PHASE with module FA = D1.FB and module A = D1.B) =
 struct
-  module D1' = TracePhase (D1)
-  module D2' = TracePhase (D2)
+  module D1' = ProfilePhase (TracePhase (D1))
+  module D2' = ProfilePhase (TracePhase (D2))
   module FA = D1.FA
   module FB = D2.FB
   module A = D1.A

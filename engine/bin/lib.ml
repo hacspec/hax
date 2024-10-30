@@ -138,6 +138,8 @@ let run (options : Types.engine_options) : Types.output =
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
     files = Option.value ~default:[] files;
     debug_json = None;
+    profiling_data = [];
+    (* This data is sent interactively via Hax_io *)
   }
 
 (** Shallow parses a `id_table::Node<T>` (or a raw `T`) JSON *)
