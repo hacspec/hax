@@ -208,8 +208,8 @@ pub enum FullDefKind<Body> {
         /// impl Foo for () {} // would supply an `ImplExpr` for `Self: Bar`.
         /// ```
         required_impl_exprs: Vec<ImplExpr>,
-        /// Associated items, in definition order.
-        items: Vec<(AssocItem, Arc<FullDef<Body>>)>,
+        /// Associated items, in the order of the trait declaration. Includes defaulted items.
+        items: Vec<ImplAssocItem<Body>>,
     },
     #[disable_mapping]
     InherentImpl {
@@ -366,7 +366,54 @@ pub enum FullDefKind<Body> {
     SyntheticCoroutineBody,
 }
 
-impl<Body: IsBody> FullDef<Body> {
+/// An associated item in a trait impl. This can be an item provided by the trait impl, or an item
+/// that reuses the trait decl default value.
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
+pub struct ImplAssocItem<Body> {
+    pub name: Symbol,
+    /// The definition of the item from the trait declaration.
+    pub decl_def: Arc<FullDef<Body>>,
+    /// The `ImplExpr`s required to satisfy the predicates on the associated type. E.g.:
+    /// ```ignore
+    /// trait Foo {
+    ///     type Type<T>: Clone,
+    /// }
+    /// impl Foo for () {
+    ///     type Type<T>: Arc<T>; // would supply an `ImplExpr` for `Arc<T>: Clone`.
+    /// }
+    /// ```
+    /// Empty if this item is an associated const or fn.
+    pub required_impl_exprs: Vec<ImplExpr>,
+    /// The value of the implemented item.
+    pub value: ImplAssocItemValue<Body>,
+}
+
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
+pub enum ImplAssocItemValue<Body> {
+    /// The item is provided by the trait impl.
+    Provided {
+        /// The definition of the item in the trait impl.
+        def: Arc<FullDef<Body>>,
+        /// Whether the trait had a default value for this item (which is therefore overriden).
+        is_override: bool,
+    },
+    /// This is an associated type that reuses the trait declaration default.
+    DefaultedTy {
+        /// The default type, with generics properly instantiated. Note that this can be a GAT;
+        /// relevant generics and predicates can be found in `decl_def`.
+        ty: Ty,
+    },
+    /// This is a non-overriden default method.
+    /// FIXME: provide properly instantiated generics.
+    DefaultedFn {},
+    /// This is an associated const that reuses the trait declaration default. The default const
+    /// value can be found in `decl_def`.
+    DefaultedConst,
+}
+
+impl<Body> FullDef<Body> {
     #[cfg(feature = "rustc")]
     pub fn rust_def_id(&self) -> RDefId {
         (&self.def_id).into()
@@ -446,6 +493,27 @@ impl<Body: IsBody> FullDef<Body> {
                 ..
             } => Some((generics, predicates)),
             _ => None,
+        }
+    }
+}
+
+impl<Body> ImplAssocItem<Body> {
+    /// The relevant definition: the provided implementation if any, otherwise the default
+    /// declaration from the trait declaration.
+    pub fn def(&self) -> &FullDef<Body> {
+        match &self.value {
+            ImplAssocItemValue::Provided { def, .. } => def.as_ref(),
+            _ => self.decl_def.as_ref(),
+        }
+    }
+
+    /// The kind of item this is.
+    pub fn assoc_kind(&self) -> AssocKind {
+        match self.def().kind() {
+            FullDefKind::AssocTy { .. } => AssocKind::Type,
+            FullDefKind::AssocFn { .. } => AssocKind::Fn,
+            FullDefKind::AssocConst { .. } => AssocKind::Const,
+            _ => unreachable!(),
         }
     }
 }
@@ -582,32 +650,104 @@ where
     S: UnderOwnerState<'tcx>,
     Body: IsBody + TypeMappable,
 {
+    use std::collections::HashMap;
     let tcx = s.base().tcx;
-    let def_id = s.owner_id();
-    let generics = tcx.generics_of(def_id).sinto(s);
-    let predicates = get_generic_predicates(s, def_id);
-    let items = tcx
-        .associated_items(def_id)
-        .in_definition_order()
-        .map(|assoc| (assoc, assoc.def_id))
-        .collect::<Vec<_>>()
-        .sinto(s);
-    match tcx.impl_subject(def_id).instantiate_identity() {
-        ty::ImplSubject::Inherent(ty) => FullDefKind::InherentImpl {
-            generics,
-            predicates,
-            ty: ty.sinto(s),
-            items,
-        },
+    let impl_def_id = s.owner_id();
+    let generics = tcx.generics_of(impl_def_id).sinto(s);
+    let predicates = get_generic_predicates(s, impl_def_id);
+    match tcx.impl_subject(impl_def_id).instantiate_identity() {
+        ty::ImplSubject::Inherent(ty) => {
+            let items = tcx
+                .associated_items(impl_def_id)
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s);
+            FullDefKind::InherentImpl {
+                generics,
+                predicates,
+                ty: ty.sinto(s),
+                items,
+            }
+        }
         ty::ImplSubject::Trait(trait_ref) => {
             // Also record the polarity.
-            let polarity = tcx.impl_polarity(s.owner_id());
+            let polarity = tcx.impl_polarity(impl_def_id);
             let trait_pred = TraitPredicate {
                 trait_ref: trait_ref.sinto(s),
                 is_positive: matches!(polarity, ty::ImplPolarity::Positive),
             };
+            // Impl exprs required by the trait.
             let required_impl_exprs =
                 solve_item_implied_traits(s, trait_ref.def_id, trait_ref.args);
+
+            let mut item_map: HashMap<RDefId, _> = tcx
+                .associated_items(impl_def_id)
+                .in_definition_order()
+                .map(|assoc| (assoc.trait_item_def_id.unwrap(), assoc))
+                .collect();
+            let items = tcx
+                .associated_items(trait_ref.def_id)
+                .in_definition_order()
+                .map(|decl_assoc| {
+                    let decl_def_id = decl_assoc.def_id;
+                    let decl_def = decl_def_id.sinto(s);
+                    // Impl exprs required by the item.
+                    let required_impl_exprs;
+                    let value = match item_map.remove(&decl_def_id) {
+                        Some(impl_assoc) => {
+                            required_impl_exprs = {
+                                let item_args =
+                                    ty::GenericArgs::identity_for_item(tcx, impl_assoc.def_id);
+                                // Subtlety: we have to add the GAT arguments (if any) to the trait ref arguments.
+                                let args = item_args.rebase_onto(tcx, impl_def_id, trait_ref.args);
+                                let state_with_id =
+                                    with_owner_id(s.base(), (), (), impl_assoc.def_id);
+                                solve_item_implied_traits(&state_with_id, decl_def_id, args)
+                            };
+
+                            ImplAssocItemValue::Provided {
+                                def: impl_assoc.def_id.sinto(s),
+                                is_override: decl_assoc.defaultness(tcx).has_value(),
+                            }
+                        }
+                        None => {
+                            required_impl_exprs = if tcx.generics_of(decl_def_id).is_own_empty() {
+                                // Non-GAT case.
+                                let item_args =
+                                    ty::GenericArgs::identity_for_item(tcx, decl_def_id);
+                                let args = item_args.rebase_onto(tcx, impl_def_id, trait_ref.args);
+                                let state_with_id = with_owner_id(s.base(), (), (), impl_def_id);
+                                solve_item_implied_traits(&state_with_id, decl_def_id, args)
+                            } else {
+                                // FIXME: For GATs, we need a param_env that has the arguments of
+                                // the impl plus those of the associated type, but there's no
+                                // def_id with that param_env.
+                                vec![]
+                            };
+                            match decl_assoc.kind {
+                                ty::AssocKind::Type => {
+                                    let ty = tcx
+                                        .type_of(decl_def_id)
+                                        .instantiate(tcx, trait_ref.args)
+                                        .sinto(s);
+                                    ImplAssocItemValue::DefaultedTy { ty }
+                                }
+                                ty::AssocKind::Fn => ImplAssocItemValue::DefaultedFn {},
+                                ty::AssocKind::Const => ImplAssocItemValue::DefaultedConst {},
+                            }
+                        }
+                    };
+
+                    ImplAssocItem {
+                        name: decl_assoc.name.sinto(s),
+                        value,
+                        required_impl_exprs,
+                        decl_def,
+                    }
+                })
+                .collect();
+            assert!(item_map.is_empty());
             FullDefKind::TraitImpl {
                 generics,
                 predicates,
