@@ -800,6 +800,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.As_pattern
   |> Phases.Reject.Dyn
   |> Phases.Reject.Trait_item_default
+  |> Phases.Bundle_cycles
   |> SubtypeToInputLanguage
   |> Identity
   ]

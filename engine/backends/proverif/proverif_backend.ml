@@ -900,6 +900,7 @@ module TransformToInputLanguage =
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn
+  |> Phases.Bundle_cycles
   |> SubtypeToInputLanguage
   |> Identity
   ]
