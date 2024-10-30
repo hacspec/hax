@@ -166,3 +166,20 @@ pub mod variant_constructor_b {
         super::variant_constructor_a::Context::A(1)
     }
 }
+
+pub mod moved_trait {
+    impl Tr for nested::St {
+        fn f(self) {}
+    }
+    pub trait Tr {
+        fn f(self);
+    }
+
+    pub mod nested {
+        use super::Tr;
+        pub struct St {}
+        fn g(x: St) {
+            x.f()
+        }
+    }
+}
