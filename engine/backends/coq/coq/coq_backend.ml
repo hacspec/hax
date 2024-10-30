@@ -124,18 +124,16 @@ struct
     ('get_span_data, 'a) BasePrinter.Gen.object_type
 
   class printer =
-    (* let associated_expr = let open m in associated_expr in *)
     object (self)
       inherit BasePrinter.base
 
       method private primitive_to_string (id : primitive_ident) : document =
         match id with
-        | Deref -> default_document_for "(TODO: Deref)" (* failwith "Deref" *)
-        | Cast -> string "cast" (* failwith "Cast" *)
+        | Deref -> default_document_for "(TODO: Deref)"
+        | Cast -> string "cast"
         | LogicalOp op -> (
             match op with And -> string "andb" | Or -> string "orb")
 
-      (* BEGIN GENERATED *)
       method arm ~arm ~span:_ = arm#p
 
       method arm' ~super:_ ~arm_pat ~body ~guard:_ =
@@ -160,7 +158,7 @@ struct
       method error_pat x1 = parens (string x1 ^^ string "(* ERROR_PAT *)")
 
       method expr ~e ~span:_ ~typ =
-        e#p (* parens (e#p ^^ space ^^ colon ^^ space ^^ typ#p) *)
+        e#p
 
       method expr'_AddressOf ~super:_ ~mut:_ ~e:_ ~witness =
         match witness with _ -> .
@@ -168,13 +166,11 @@ struct
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
         f#p ^^ concat_map (fun x -> space ^^ parens x#p) args
 
-      method expr'_App_constant ~super:_ ~constant ~generics:_ = constant#p
-      (* default_document_for "expr'_App_constant" *)
+      method expr'_App_constant ~super:_ ~constant ~generics:_ =
+        constant#p
 
       method expr'_App_field_projection ~super:_ ~field ~e =
-        (* e#p *)
         field#p ^^ space ^^ e#p
-      (* TODO: Do nothing if is zero *)
 
       method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
         default_document_for "expr'_App_tuple_projection"
@@ -217,64 +213,7 @@ struct
           if is_struct then
             string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
           else constructor#p ^^ fields_or_empty space
-        else string "(* TODO: Record? *)"
-      (* let fields_or_empty add_space = *)
-      (*   if List.is_empty fields then empty *)
-      (*   else *)
-      (*     add_space *)
-      (*     ^^ parens *)
-      (*       (separate_map (comma ^^ space) (fun x -> (snd x#v)#p) fields) *)
-      (* in *)
-      (* if is_record && is_struct then *)
-      (*   match base with *)
-      (*   | Some x -> string "Build_" ^^ x#p ^^ fields_or_empty space *)
-      (*   | None -> *)
-      (*     string "Build_t_" *)
-      (*     ^^ (self#_do_not_override_lazy_of_global_ident *)
-      (*           Generated_generic_printer_base *)
-      (*           .AstPos_pat'_PConstruct_constructor constructor) *)
-      (*        #p ^^ fields_or_empty space *)
-      (* else if not is_record then *)
-      (*   if is_struct then *)
-      (*     string "Build_t_" *)
-      (*     ^^ (self#_do_not_override_lazy_of_global_ident *)
-      (*           Generated_generic_printer_base *)
-      (*           .AstPos_pat'_PConstruct_constructor constructor) *)
-      (*        #p ^^ fields_or_empty space *)
-      (*   else *)
-      (*     (self#_do_not_override_lazy_of_global_ident *)
-      (*        Generated_generic_printer_base *)
-      (*        .AstPos_pat'_PConstruct_constructor constructor) *)
-      (*     #p ^^ fields_or_empty space *)
-      (* else string "(\* TODO: Record? *\)" *)
-
-      (* if is_struct then *)
-      (*   if is_record then *)
-      (*     (\* Struct *\) *)
-      (*     Option.value *)
-      (*       ~default: *)
-      (*         (string "Build_t_" ^^ constructor#p *)
-      (*         ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
-      (*         ) *)
-      (*       (Option.map *)
-      (*          ~f:(fun b -> *)
-      (*            b#p *)
-      (*            ^^ concat_map *)
-      (*                 (fun (ident, exp) -> *)
-      (*                   space ^^ string "<|" ^^ space ^^ ident#p ^^ space *)
-      (*                   ^^ !^":=" ^^ space ^^ parens exp#p ^^ space *)
-      (*                   ^^ string "|>") *)
-      (*                 fields *)
-      (*            ^^ space) *)
-      (*          base) *)
-      (*   else *)
-      (*     (\* Tuple struct *\) *)
-      (*     string "Build_" ^^ constructor#p *)
-      (*     ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
-      (* else *)
-      (*   (\* Indutive type *\) *)
-      (*   constructor#p *)
-      (*   ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields *)
+        else default_document_for "expr'_Construct_inductive [is_record=true, is_struct = false] todo record"
 
       method expr'_Construct_tuple ~super:_ ~components =
         if List.length components == 0 then !^"tt"
@@ -336,7 +275,6 @@ struct
 
       method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
       method field_pat ~field ~pat = pat#p
-      (* brackets( string ([%show: global_ident] field) ^^ space ^^ pat#p ) ^^ string "(\* TODO *\)" *)
 
       method generic_constraint_GCLifetime _x1 _x2 =
         default_document_for "generic_constraint_GCLifetime"
@@ -396,11 +334,9 @@ struct
 
       method impl_expr_kind_Self = default_document_for "impl_expr_kind_Self"
       method impl_ident ~goal ~name:_ = goal#p
-      (* string name ^^ space ^^ colon ^^ space ^^ goal#p *)
-      (* TODO: include names and do something about numbered names of instance *)
 
       method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ =
-        ii_ident#p (* ^^ ii_generics#p *) ^^ space
+        ii_ident#p ^^ space
         ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
       method impl_item'_IIFn ~body ~params =
@@ -412,8 +348,7 @@ struct
           ^^ nest 2 (break 1 ^^ body#p)
 
       method impl_item'_IIType ~typ ~parent_bounds:_ = typ#p
-      method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p
-      (* if is_document_empty v#p then empty else v#p ^^ break 1 *)
+      method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p ^^ break 1
 
       method item'_Alias ~super:_ ~name ~item =
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
@@ -599,26 +534,11 @@ struct
       method literal_Char x1 =
         string "\"" ^^ string (Char.escaped x1) ^^ string "\"" ^^ string "%char"
 
-      method literal_Float ~value ~negative:_ ~kind:_ =
-        string value ^^ string "%float"
+      method literal_Float ~value ~negative ~kind:_ =
+        (if negative then !^"-" else empty) ^^ string value ^^ string "%float"
 
-      method literal_Int ~value ~negative:_ ~kind:_ =
-        (* let outer, inner = *)
-        (*   match kind.size with *)
-        (*   | S8 -> ("u8", "U8") *)
-        (*   | S16 -> ("u16", "U16") *)
-        (*   | S32 -> ("u32", "U32") *)
-        (*   | S64 -> ("u64", "U64") *)
-        (*   | S128 -> ("u128", "U128") *)
-        (*   | SSize -> ("usize", "U64") *)
-        (*   (\* Dependens on architecture.. *\) *)
-        (* in *)
-        (* string ("Build_t_" ^ outer) *)
-        (* ^^ space *)
-        (* ^^ parens *)
-        (*      (string ("Build_t_" ^ inner) *)
-        (*      ^^ space ^^ string value ^^ string "%N") *)
-        string value
+      method literal_Int ~value ~negative ~kind:_ =
+        (if negative then !^"-" else empty) ^^ string value
 
       method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
@@ -641,7 +561,7 @@ struct
       method modul x1 =
         separate_map (break 1)
           (fun x -> x#p)
-          x1 (* default_document_for "modul" *)
+          x1
 
       method param ~pat ~typ ~typ_span:_ ~attrs:_ =
         parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
@@ -649,10 +569,10 @@ struct
       method pat ~p ~span:_ ~typ:_ = p#p
 
       method pat'_PAscription ~super:_ ~typ ~typ_span:_ ~pat =
-        pat#p ^^ space ^^ colon ^^ space ^^ typ#p (* Ignore asscription pat? *)
+        pat#p ^^ space ^^ colon ^^ space ^^ typ#p
 
       method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var ~typ:_ ~subpat:_ =
-        var#p (* ^^ space ^^ colon ^^ space ^^ typ#p *)
+        var#p
 
       method pat'_PConstant ~super:_ ~lit = lit#p
 
@@ -676,9 +596,6 @@ struct
 
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
         default_document_for "pat'_PDeref"
-
-      (* method pat'_POr ~super ~subpats = *)
-      (*   parens( subpats ) *)
 
       method pat'_PWild = string "_"
       method printer_name = "Coq printer"
@@ -742,12 +659,9 @@ struct
           ^^ separate_map space (fun x -> x#p) params
           ^^ space ^^ string "=>")
         ^^ nest 2 (break 1 ^^ body#p)
-      (* default_document_for "trait_item'_TIDefault" *)
 
       method trait_item'_TIFn x1 = x1#p
       method trait_item'_TIType x1 = string "Type"
-      (* TODO, type should implement x1 traits *)
-      (* concat_map (fun x -> x#p) x1 *)
 
       method ty_TApp_application ~typ ~generics =
         typ#p ^^ concat_map (fun x -> space ^^ parens x#p) generics
@@ -807,12 +721,9 @@ struct
           name#p ^^ space ^^ colon ^^ space
           ^^ separate_map
                (space ^^ string "->" ^^ space)
-               (fun (ident, typ, attr) ->
-                 typ#p
-                 (* parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *))
+               (fun (ident, typ, attr) -> typ#p)
                arguments
           ^^ space ^^ string "->" ^^ space ^^ string "_"
-      (* END GENERATED *)
 
       method module_path_separator = "."
 
@@ -830,10 +741,6 @@ struct
           | "mul" -> "t_Mul_f_mul"
           | "div" -> "t_Div_f_div"
           | x -> x)
-      (* string (String.concat ~sep:"_" (id.crate :: (id.path @ [ id.definition ]))) *)
-      (* string (String.concat ~sep:"_" (id.definition :: Option.to_list (List.last id.path) )) *)
-
-      (* val mutable current_namespace : (string * string list) option = None *)
     end
 
   let new_printer : BasePrinter.finalized_printer =
