@@ -99,7 +99,10 @@ let run (options : Types.engine_options) : Types.output =
     let include_clauses =
       options.backend.translation_options.include_namespaces
     in
-    let items = import_thir_items include_clauses options.input in
+    let items =
+      Profiling.profile ThirImport (List.length options.input) (fun _ ->
+          import_thir_items include_clauses options.input)
+    in
     let items =
       if options.backend.extract_type_aliases then items
       else
@@ -175,17 +178,18 @@ let parse_id_table_node (json : Yojson.Safe.t) :
   in
   (table, value)
 
+let parse_options () =
+  let table, json =
+    Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
+  in
+  table
+  |> List.iter ~f:(fun (id, json) ->
+         Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
+  Types.parse_engine_options json
+
 (** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
 let main () =
-  let options =
-    let table, json =
-      Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
-    in
-    table
-    |> List.iter ~f:(fun (id, json) ->
-           Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
-    Types.parse_engine_options json
-  in
+  let options = Profiling.profile (Other "parse_options") 1 parse_options in
   Printexc.record_backtrace true;
   let result =
     try Ok (run options) with
