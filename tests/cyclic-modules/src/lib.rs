@@ -166,3 +166,15 @@ pub mod variant_constructor_b {
         super::variant_constructor_a::Context::A(1)
     }
 }
+
+pub mod late_skip_a {
+    pub fn f() {
+        super::late_skip_b::f()
+    }
+}
+pub mod late_skip_b {
+    #[hax_lib::requires(true)]
+    pub fn f() {
+        super::late_skip_a::f()
+    }
+}

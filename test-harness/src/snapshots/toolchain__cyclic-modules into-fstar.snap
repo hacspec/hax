@@ -180,6 +180,33 @@ include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_C as U_C}
 
 include Cyclic_modules.Enums_b.Rec_bundle_994866580 {f as f}
 '''
+"Cyclic_modules.Late_skip_a.fst" = '''
+module Cyclic_modules.Late_skip_a
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Late_skip_b.Rec_bundle_447022631 {f749016415 as f}
+'''
+"Cyclic_modules.Late_skip_b.Rec_bundle_447022631.fst" = '''
+module Cyclic_modules.Late_skip_b.Rec_bundle_447022631
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let rec f749016415 (_: Prims.unit) : Prims.unit = f377825240 ()
+
+and f377825240 (_: Prims.unit) : Prims.Pure Prims.unit (requires true) (fun _ -> Prims.l_True) =
+  f749016415 ()
+'''
+"Cyclic_modules.Late_skip_b.fst" = '''
+module Cyclic_modules.Late_skip_b
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Late_skip_b.Rec_bundle_447022631 {f377825240 as f}
+'''
 "Cyclic_modules.M1.fst" = '''
 module Cyclic_modules.M1
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
