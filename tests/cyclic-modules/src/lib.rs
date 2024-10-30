@@ -178,3 +178,20 @@ pub mod late_skip_b {
         super::late_skip_a::f()
     }
 }
+
+pub mod moved_trait {
+    impl Tr for nested::St {
+        fn f(self) {}
+    }
+    pub trait Tr {
+        fn f(self);
+    }
+
+    pub mod nested {
+        use super::Tr;
+        pub struct St {}
+        fn g(x: St) {
+            x.f()
+        }
+    }
+}

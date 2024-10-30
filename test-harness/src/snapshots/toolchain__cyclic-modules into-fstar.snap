@@ -259,6 +259,56 @@ include Cyclic_modules.M1.Cyclic_bundle_892895908 {b as b}
 
 include Cyclic_modules.M1.Cyclic_bundle_892895908 {c as c}
 '''
+"Cyclic_modules.Moved_trait.Nested.fst" = '''
+module Cyclic_modules.Moved_trait.Nested
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {t_St as t_St}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {g as g}
+'''
+"Cyclic_modules.Moved_trait.Rec_bundle_963167032.fst" = '''
+module Cyclic_modules.Moved_trait.Rec_bundle_963167032
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class v_Tr (v_Self: Type0) = {
+  f_f_pre:v_Self -> Type0;
+  f_f_post:v_Self -> Prims.unit -> Type0;
+  f_f:x0: v_Self -> Prims.Pure Prims.unit (f_f_pre x0) (fun result -> f_f_post x0 result)
+}
+
+type t_St = | St : t_St
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: v_Tr t_St =
+  {
+    f_f_pre = (fun (self: t_St) -> true);
+    f_f_post = (fun (self: t_St) (out: Prims.unit) -> true);
+    f_f = fun (self: t_St) -> ()
+  }
+
+let g (x: t_St) : Prims.unit = f_f #t_St #FStar.Tactics.Typeclasses.solve x
+'''
+"Cyclic_modules.Moved_trait.fst" = '''
+module Cyclic_modules.Moved_trait
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {v_Tr as v_Tr}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f_pre as f_f_pre}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f_post as f_f_post}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f as f_f}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {impl as impl}
+'''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
