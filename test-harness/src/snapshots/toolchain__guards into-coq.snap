@@ -40,117 +40,123 @@ From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
 
+
 (* NotImplementedYet *)
+
 Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
-  | t_Option_None =>
+  | Option_None =>
     0
   | _ =>
     match match x with
-    | t_Option_Some (v) =>
+    | Option_Some (v) =>
       match v with
-      | t_Result_Ok (y) =>
-        t_Option_Some (y)
+      | Result_Ok (y) =>
+        Option_Some (y)
       | _ =>
-        t_Option_None
+        Option_None
       end
     | _ =>
-      t_Option_None
+      Option_None
     end with
-    | t_Option_Some (y) =>
+    | Option_Some (y) =>
       y
-    | t_Option_None =>
+    | Option_None =>
       match x with
-      | t_Option_Some (t_Result_Err (y)) =>
+      | Option_Some (Result_Err (y)) =>
         y
       | _ =>
         1
       end
     end
   end.
+
 Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
   match match x with
-  | t_Option_Some (v) =>
+  | Option_Some (v) =>
     match t_PartialOrd_f_gt (v) (0) with
     | true =>
-      t_Option_Some (v)
+      Option_Some (v)
     | _ =>
-      t_Option_None
+      Option_None
     end
   | _ =>
-    t_Option_None
+    Option_None
   end with
-  | t_Option_Some (x) =>
+  | Option_Some (x) =>
     x
-  | t_Option_None =>
+  | Option_None =>
     0
   end.
+
 Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
-  | t_Option_None =>
+  | Option_None =>
     0
   | _ =>
     match match x with
-    | t_Option_Some (v) =>
+    | Option_Some (v) =>
       match v with
-      | t_Result_Ok (y) =>
-        t_Option_Some (y)
+      | Result_Ok (y) =>
+        Option_Some (y)
       | _ =>
-        t_Option_None
+        Option_None
       end
     | _ =>
-      t_Option_None
+      Option_None
     end with
-    | t_Option_Some (x) =>
+    | Option_Some (x) =>
       x
-    | t_Option_None =>
+    | Option_None =>
       match x with
-      | t_Option_Some (t_Result_Err (y)) =>
+      | Option_Some (Result_Err (y)) =>
         y
       | _ =>
         1
       end
     end
   end.
+
 Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
-  | t_Option_None =>
+  | Option_None =>
     0
   | _ =>
     match match x with
-    | t_Option_Some (t_Result_Ok (v)) =>
-      match t_Option_Some (t_Add_f_add (v) (1)) with
-      | t_Option_Some (1) =>
-        t_Option_Some (0)
+    | Option_Some (Result_Ok (v)) =>
+      match Option_Some (t_Add_f_add (v) (1)) with
+      | Option_Some (1) =>
+        Option_Some (0)
       | _ =>
-        t_Option_None
+        Option_None
       end
     | _ =>
-      t_Option_None
+      Option_None
     end with
-    | t_Option_Some (x) =>
+    | Option_Some (x) =>
       x
-    | t_Option_None =>
+    | Option_None =>
       match match x with
-      | t_Option_Some (v) =>
+      | Option_Some (v) =>
         match v with
-        | t_Result_Ok (y) =>
-          t_Option_Some (y)
+        | Result_Ok (y) =>
+          Option_Some (y)
         | _ =>
-          t_Option_None
+          Option_None
         end
       | _ =>
-        t_Option_None
+        Option_None
       end with
-      | t_Option_Some (x) =>
+      | Option_Some (x) =>
         x
-      | t_Option_None =>
+      | Option_None =>
         match x with
-        | t_Option_Some (t_Result_Err (y)) =>
+        | Option_Some (Result_Err (y)) =>
           y
         | _ =>
           1
         end
       end
     end
-  end.'''
+  end.
+'''

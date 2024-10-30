@@ -41,12 +41,18 @@ From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
 
+
 (* NotImplementedYet *)
+
 Definition v_VERSION : t_Slice t_u8 :=
   unsize ([118; 49]).
+
 Definition do_something (_ : t_Slice t_u8) : unit :=
   tt.
+
 Definition r#unsized (_ : t_Array (t_Slice t_u8) (1)) : unit :=
   tt.
+
 Definition sized (x : t_Array (t_Array (t_u8) (4)) (1)) : unit :=
-  r#unsized ([unsize (index (x) (0))]).'''
+  r#unsized ([unsize (index (x) (0))]).
+'''

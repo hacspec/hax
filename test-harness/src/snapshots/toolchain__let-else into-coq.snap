@@ -40,19 +40,23 @@ From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
 
+
 (* NotImplementedYet *)
+
 Definition let_else (opt : t_Option ((t_u32))) : bool :=
   run (match opt with
-  | t_Option_Some (x) =>
-    t_ControlFlow_Continue (true)
+  | Option_Some (x) =>
+    ControlFlow_Continue (true)
   | _ =>
-    t_ControlFlow_Break (false)
+    ControlFlow_Break (false)
   end).
+
 Definition let_else_different_type (opt : t_Option ((t_u32))) : bool :=
   run (let hoist1 := match opt with
-  | t_Option_Some (x) =>
-    t_ControlFlow_Continue (t_Option_Some (t_Add_f_add (x) (1)))
+  | Option_Some (x) =>
+    ControlFlow_Continue (Option_Some (t_Add_f_add (x) (1)))
   | _ =>
-    t_ControlFlow_Break (false)
+    ControlFlow_Break (false)
   end in
-  t_ControlFlow_Continue (let_else (hoist1))).'''
+  ControlFlow_Continue (let_else (hoist1))).
+'''

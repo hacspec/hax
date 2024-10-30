@@ -40,7 +40,9 @@ From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
 
+
 (* NotImplementedYet *)
+
 Definition asserts (_ : unit) : unit :=
   let _ := assert (true) in
   let _ := assert (t_PartialEq_f_eq (1) (1)) in
@@ -52,4 +54,5 @@ Definition asserts (_ : unit) : unit :=
   | (left_val,right_val) =>
     assert (negb (t_PartialEq_f_eq (left_val) (right_val)))
   end in
-  tt.'''
+  tt.
+'''
