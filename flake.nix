@@ -177,6 +177,7 @@
             pkgs.pkg-config
             pkgs.rust-analyzer
             pkgs.toml2json
+            pkgs.mdbook
             rustfmt
             rustc
 

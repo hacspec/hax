@@ -5,9 +5,9 @@ what you are looking for!
 
 ## Setup the tools
 
- - **user-checkable** [Install the hax toolchain](https://github.com/hacspec/hax?tab=readme-ov-file#installation).  
+ - <input type="checkbox" class="user-checkable"/> [Install the hax toolchain](https://github.com/hacspec/hax?tab=readme-ov-file#installation).  
    <span style="margin-right:30px;"></span>🪄 Running `cargo hax --version` should print some version info.
- - **user-checkable** [Install F*](https://github.com/FStarLang/FStar/blob/master/INSTALL.md) *(optional: only if want to run F\*)*
+ - <input type="checkbox" class="user-checkable"/> [Install F*](https://github.com/FStarLang/FStar/blob/master/INSTALL.md) *(optional: only if want to run F\*)*
 
 ## Setup the crate you want to verify
 
@@ -16,11 +16,11 @@ what you are looking for!
 *Note: this part is useful only if you want to run F\*.*
 
 
- - **user-checkable** Create the folder `proofs/fstar/extraction` folder, right next to the `Cargo.toml` of the crate you want to verify.  
+ - <input type="checkbox" class="user-checkable"/> Create the folder `proofs/fstar/extraction` folder, right next to the `Cargo.toml` of the crate you want to verify.  
    <span style="margin-right:30px;"></span>🪄 `mkdir -p proofs/fstar/extraction`
- - **user-checkable** Copy [this makefile](https://gist.github.com/W95Psp/4c304132a1f85c5af4e4959dd6b356c3) to `proofs/fstar/extraction/Makefile`.  
+ - <input type="checkbox" class="user-checkable"/> Copy [this makefile](https://gist.github.com/W95Psp/4c304132a1f85c5af4e4959dd6b356c3) to `proofs/fstar/extraction/Makefile`.  
    <span style="margin-right:30px;"></span>🪄 `curl -o proofs/fstar/extraction/Makefile https://gist.githubusercontent.com/W95Psp/4c304132a1f85c5af4e4959dd6b356c3/raw/Makefile`
- - **user-checkable** Add `hax-lib` as a dependency to your crate, enabled only when using hax.  
+ - <input type="checkbox" class="user-checkable"/> Add `hax-lib` as a dependency to your crate, enabled only when using hax.  
    <span style="margin-right:30px;"></span>🪄 `cargo add --target 'cfg(hax)' --git https://github.com/hacspec/hax hax-lib`  
    <span style="margin-right:30px;"></span><span style="opacity: 0;">🪄</span> *(`hax-lib` is not mandatory, but this guide assumes it is present)*
 
