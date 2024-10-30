@@ -1,0 +1,41 @@
+-R src/ Core
+-arg -w
+-arg all
+
+./src/Core_Clone.v
+
+./src/Core_Marker.v
+
+./src/Core_Option.v
+./src/Core_Cmp.v
+
+./src/Core_Base_Int.v
+./src/Core_Base_Int_Base_spec.v
+./src/Core_Base_Int_Base_impl.v
+
+./src/Core_Coerce.v
+./src/Core_Convert.v
+
+./src/Core_Ops_Arith.v
+./src/Core_Ops_Bit.v
+
+./src/Core_Ops.v
+
+./src/Core_Int.v
+
+./src/Core_Base_Seq.v
+./src/Core_Base_Seq_Base_spec.v
+
+./src/Core_Panicking.v
+
+./src/Core_Base_Seq_Base_impl.v
+
+./src/Core_Primitive.v
+
+./src/Core_Base_Int_Number_conversion.v
+
+./src/Core_Array.v
+
+./src/Core_Intrinsics.v
+
+./src/Core_Num.v
