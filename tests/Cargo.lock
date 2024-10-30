@@ -224,6 +224,9 @@ dependencies = [
 [[package]]
 name = "cyclic-modules"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "dyn"
