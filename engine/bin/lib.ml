@@ -125,7 +125,10 @@ let run (options : Types.engine_options) : Types.output =
     Logs.info (fun m ->
         m "Translating items with backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
-    let items = translate with_items backend_options items ~bundles in
+    let items =
+      Profiling.profile (Backend M.backend) (List.length items) (fun _ ->
+          translate with_items backend_options items ~bundles)
+    in
     items
   in
   let diagnostics, files =
