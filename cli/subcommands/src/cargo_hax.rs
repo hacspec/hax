@@ -182,6 +182,21 @@ impl HaxMessage {
                 );
                 eprintln!("{}", renderer.render(Level::Error.title(&title)));
             }
+            Self::ProfilingData(data) => {
+                fn format_with_dot(shift: u32, n: u64) -> String {
+                    let factor = 10u64.pow(shift);
+                    format!("{}.{}", n / factor, n % factor)
+                }
+                let title = format!(
+                    "profiling [{}]: {}ms, memory={}, {} item{}",
+                    data.context,
+                    format_with_dot(6, data.time_ns),
+                    data.memory,
+                    data.quantity,
+                    if data.quantity > 1 { "s" } else { "" }
+                );
+                eprintln!("{}", renderer.render(Level::Info.title(&title)));
+            }
             Self::CargoBuildFailure => {
                 let title =
                     "hax: running `cargo build` was not successful, continuing anyway.".to_string();
@@ -318,6 +333,10 @@ fn run_engine(
                     send!(&ToEngine::PrettyPrintedRust(code));
                 }
                 FromEngine::ProfilingData(profiling_data) => {
+                    if backend.verbose > 0 {
+                        HaxMessage::ProfilingData(profiling_data.clone())
+                            .report(message_format, None)
+                    }
                     output.profiling_data.push(profiling_data);
                 }
                 FromEngine::Ping => {
