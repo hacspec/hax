@@ -383,11 +383,11 @@ module Make (F : Features.T) = struct
     let aliases =
       List.map (old_new :: variants_renamings old_new)
         ~f:(fun (old_ident, new_ident) ->
-          {
-            item with
-            v = Alias { name = old_ident; item = new_ident };
-            attrs = [];
-          })
+          let attrs =
+            List.filter ~f:(fun att -> Attrs.late_skip [ att ]) item.attrs
+          in
+
+          { item with v = Alias { name = old_ident; item = new_ident }; attrs })
     in
     item' :: aliases
 
