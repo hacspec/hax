@@ -134,7 +134,7 @@ module Make (F : Features.T) = struct
   open Ast.Make (F)
   module Gen = Generated_generic_printer_base.Make (F)
 
-  type printer = (unit -> Annotation.t list, PPrint.document) Gen.object_type
+  type printer = (Annotation.t list, PPrint.document) Gen.object_type
   type finalized_printer = (unit, string * Annotation.t list) Gen.object_type
 
   let finalize (new_printer : unit -> printer) : finalized_printer =
@@ -143,7 +143,7 @@ module Make (F : Features.T) = struct
         let doc = apply printer in
         let buf = Buffer.create 0 in
         PPrint.ToBuffer.pretty 1.0 80 buf doc;
-        (Buffer.contents buf, printer#get_span_data ()))
+        (Buffer.contents buf, printer#span_data))
 
   class virtual base =
     object (self)
@@ -260,7 +260,7 @@ module Make (F : Features.T) = struct
             constructor:concrete_ident lazy_doc ->
             is_record:bool ->
             is_struct:bool ->
-            fields:(concrete_ident lazy_doc * expr lazy_doc) list ->
+            fields:(global_ident lazy_doc * expr lazy_doc) list ->
             base:(expr lazy_doc * F.construct_base) lazy_doc option ->
             document
       (** [expr'_Construct_inductive ~super ~is_record ~is_struct
@@ -284,7 +284,7 @@ module Make (F : Features.T) = struct
             constructor:concrete_ident lazy_doc ->
             is_record:bool ->
             is_struct:bool ->
-            fields:(concrete_ident lazy_doc * pat lazy_doc) list ->
+            fields:(global_ident lazy_doc * pat lazy_doc) list ->
             document
 
       method virtual pat'_PConstruct_tuple
@@ -447,15 +447,9 @@ module Make (F : Features.T) = struct
               List.map
                 ~f:(fun field ->
                   let name, expr = field#v in
-                  let name =
-                    match name with
-                    | `Concrete name -> name
-                    | _ ->
-                        self#assertion_failure
-                          "expr'.Construct: field: non-`Concrete"
-                  in
-                  ( self#_do_not_override_lazy_of_concrete_ident
-                      AstPos_expr'_Construct_fields name,
+                  ( self#_do_not_override_lazy_of_global_ident
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_constructor name,
                     expr ))
                 fields
             in
@@ -477,6 +471,10 @@ module Make (F : Features.T) = struct
             self#expr'_GlobalVar_concrete ~super concrete
         | `Primitive primitive ->
             self#expr'_GlobalVar_primitive ~super primitive
+        | `TupleCons 0 ->
+            self#_do_not_override_expr'_Construct ~super
+              ~constructor:global_ident ~is_record:false ~is_struct:false
+              ~fields:[] ~base:None
         | _ ->
             self#assertion_failure
             @@ "GlobalVar: expected a concrete or primitive global ident, got:"
@@ -495,18 +493,16 @@ module Make (F : Features.T) = struct
                 ~f:(fun field ->
                   let { field; pat } = field#v in
                   let field =
-                    match field with
-                    | `Concrete field -> field
-                    | _ ->
-                        self#assertion_failure
-                          "expr'.Construct: field: non-`Concrete"
+                    self#_do_not_override_lazy_of_global_ident
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_fields field
                   in
                   let pat =
-                    self#_do_not_override_lazy_of_pat AstPos_field_pat__pat pat
+                    self#_do_not_override_lazy_of_pat
+                      Generated_generic_printer_base
+                      .AstPos_pat'_PConstruct_fields pat
                   in
-                  ( self#_do_not_override_lazy_of_concrete_ident
-                      AstPos_pat'_PConstruct_fields field,
-                    pat ))
+                  (field, pat))
                 fields
             in
             self#pat'_PConstruct_inductive ~super ~constructor ~is_record
@@ -546,6 +542,7 @@ module Make (F : Features.T) = struct
 
       method _do_not_override_item'_Type ~super ~name ~generics ~variants
           ~is_struct =
+        let generics, _, _ = generics#v in
         if is_struct then
           match variants with
           | [ variant ] ->
@@ -592,6 +589,22 @@ module Make (F : Features.T) = struct
               String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path
             in
             self#concrete_ident ~local id)
+          ast_position id
+
+      method _do_not_override_lazy_of_global_ident ast_position
+          (id : global_ident) : global_ident lazy_doc =
+        lazy_doc
+          (fun (id : global_ident) ->
+            match id with
+            | `Concrete cid ->
+                (self#_do_not_override_lazy_of_concrete_ident ast_position cid)
+                  #p
+            | _ ->
+                self#assertion_failure
+                  ("_do_not_override_lazy_of_global_ident: expected [`Concrete \
+                    _] got ["
+                  ^ [%show: global_ident] id
+                  ^ "]"))
           ast_position id
 
       method _do_not_override_lazy_of_quote ast_position (value : quote)
