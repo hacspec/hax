@@ -64,10 +64,27 @@ struct
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
+(* module CoqNamePolicy = Concrete_ident.DefaultNamePolicy *)
+module CoqNamePolicy = struct
+  (* include Concrete_ident.DefaultNamePolicy *)
+
+  let reserved_words : string Hash_set.t = Hash_set.of_list (module String) ["Definition"; "Inductive"; "match"; "if"; "then"; "else"; "as"; "into"; "end"; "Record"; "Arguments"; "Type"] (* TODO: Make complete *)
+  (** List of all words that have a special meaning in the target
+      language, and that should thus be escaped. *)
+
+  let index_field_transform x : string = x (* tuple struct, field `0` *)
+  (** Transformation applied to indexes fields name (i.e. [x.1]) *)
+
+  let field_name_transform : struct_name:string -> string -> string = fun ~struct_name x ->
+    struct_name ^ "_" ^ x
+
+  let enum_constructor_name_transform : enum_name:string -> string -> string = fun ~enum_name x -> x
+  let struct_constructor_name_transform : string -> string = fun x -> x
+end
+
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
 open AST
 
@@ -128,6 +145,8 @@ struct
     object (self)
       inherit BasePrinter.base
 
+      val concrete_ident_view = (module U.Concrete_ident_view : Concrete_ident.VIEW_API)
+      
       method private primitive_to_string (id : primitive_ident) : document =
         match id with
         | Deref -> default_document_for "(TODO: Deref)"
