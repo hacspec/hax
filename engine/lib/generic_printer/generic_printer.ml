@@ -599,7 +599,12 @@ module Make (F : Features.T) = struct
             | `Concrete cid ->
                 (self#_do_not_override_lazy_of_concrete_ident ast_position cid)
                   #p
-            | _ -> self#assertion_failure ("_do_not_override_lazy_of_global_ident: expected [`Concrete _] got [" ^ [%show: global_ident] id ^ "]"))
+            | _ ->
+                self#assertion_failure
+                  ("_do_not_override_lazy_of_global_ident: expected [`Concrete \
+                    _] got ["
+                  ^ [%show: global_ident] id
+                  ^ "]"))
           ast_position id
 
       method _do_not_override_lazy_of_quote ast_position (value : quote)

@@ -156,9 +156,7 @@ struct
       method error_expr x1 = parens (string x1 ^^ string "(* ERROR_EXPR *)")
       method error_item x1 = parens (string x1 ^^ string "(* ERROR_ITEM *)")
       method error_pat x1 = parens (string x1 ^^ string "(* ERROR_PAT *)")
-
-      method expr ~e ~span:_ ~typ =
-        e#p
+      method expr ~e ~span:_ ~typ = e#p
 
       method expr'_AddressOf ~super:_ ~mut:_ ~e:_ ~witness =
         match witness with _ -> .
@@ -166,8 +164,7 @@ struct
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
         f#p ^^ concat_map (fun x -> space ^^ parens x#p) args
 
-      method expr'_App_constant ~super:_ ~constant ~generics:_ =
-        constant#p
+      method expr'_App_constant ~super:_ ~constant ~generics:_ = constant#p
 
       method expr'_App_field_projection ~super:_ ~field ~e =
         field#p ^^ space ^^ e#p
@@ -213,7 +210,10 @@ struct
           if is_struct then
             string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
           else constructor#p ^^ fields_or_empty space
-        else default_document_for "expr'_Construct_inductive [is_record=true, is_struct = false] todo record"
+        else
+          default_document_for
+            "expr'_Construct_inductive [is_record=true, is_struct = false] \
+             todo record"
 
       method expr'_Construct_tuple ~super:_ ~components =
         if List.length components == 0 then !^"tt"
@@ -336,8 +336,7 @@ struct
       method impl_ident ~goal ~name:_ = goal#p
 
       method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ =
-        ii_ident#p ^^ space
-        ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
+        ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
       method impl_item'_IIFn ~body ~params =
         if List.length params == 0 then body#p
@@ -558,10 +557,7 @@ struct
       method loop_state ~init ~bpat ~witness:_ =
         parens (init#p ^^ space ^^ !^"state" ^^ space ^^ bpat#p)
 
-      method modul x1 =
-        separate_map (break 1)
-          (fun x -> x#p)
-          x1
+      method modul x1 = separate_map (break 1) (fun x -> x#p) x1
 
       method param ~pat ~typ ~typ_span:_ ~attrs:_ =
         parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
@@ -571,9 +567,7 @@ struct
       method pat'_PAscription ~super:_ ~typ ~typ_span:_ ~pat =
         pat#p ^^ space ^^ colon ^^ space ^^ typ#p
 
-      method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var ~typ:_ ~subpat:_ =
-        var#p
-
+      method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var ~typ:_ ~subpat:_ = var#p
       method pat'_PConstant ~super:_ ~lit = lit#p
 
       method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record
