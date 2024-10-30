@@ -193,24 +193,31 @@ pub enum FullDefKind<Body> {
     },
     /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
     TraitAlias,
-    Impl {
-        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+    #[custom_arm(
+        // Returns `TraitImpl` or `InherentImpl`.
+        RDefKind::Impl { .. } => get_impl_contents(s),
+    )]
+    TraitImpl {
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
-        #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
-        impl_subject: ImplSubject,
+        /// The trait that is implemented by this impl block.
+        trait_pred: TraitPredicate,
+        /// The `ImplExpr`s required to satisfy the predicates on the trait declaration. E.g.:
+        /// ```ignore
+        /// trait Foo: Bar {}
+        /// impl Foo for () {} // would supply an `ImplExpr` for `Self: Bar`.
+        /// ```
+        required_impl_exprs: Vec<ImplExpr>,
         /// Associated items, in definition order.
-        #[value(
-            s
-                .base()
-                .tcx
-                .associated_items(s.owner_id())
-                .in_definition_order()
-                .map(|assoc| (assoc, assoc.def_id))
-                .collect::<Vec<_>>()
-                .sinto(s)
-        )]
+        items: Vec<(AssocItem, Arc<FullDef<Body>>)>,
+    },
+    #[disable_mapping]
+    InherentImpl {
+        generics: TyGenerics,
+        predicates: GenericPredicates,
+        /// The type to which this block applies.
+        ty: Ty,
+        /// Associated items, in definition order.
         items: Vec<(AssocItem, Arc<FullDef<Body>>)>,
     },
 
@@ -428,7 +435,12 @@ impl<Body: IsBody> FullDef<Body> {
                 predicates,
                 ..
             }
-            | Impl {
+            | TraitImpl {
+                generics,
+                predicates,
+                ..
+            }
+            | InherentImpl {
                 generics,
                 predicates,
                 ..
@@ -561,6 +573,49 @@ fn get_foreign_mod_children<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Vec<
             .map(|foreign_item_ref| foreign_item_ref.id.owner_id.to_def_id())
             .collect(),
         None => vec![],
+    }
+}
+
+#[cfg(feature = "rustc")]
+fn get_impl_contents<'tcx, S, Body>(s: &S) -> FullDefKind<Body>
+where
+    S: UnderOwnerState<'tcx>,
+    Body: IsBody + TypeMappable,
+{
+    let tcx = s.base().tcx;
+    let def_id = s.owner_id();
+    let generics = tcx.generics_of(def_id).sinto(s);
+    let predicates = get_generic_predicates(s, def_id);
+    let items = tcx
+        .associated_items(def_id)
+        .in_definition_order()
+        .map(|assoc| (assoc, assoc.def_id))
+        .collect::<Vec<_>>()
+        .sinto(s);
+    match tcx.impl_subject(def_id).instantiate_identity() {
+        ty::ImplSubject::Inherent(ty) => FullDefKind::InherentImpl {
+            generics,
+            predicates,
+            ty: ty.sinto(s),
+            items,
+        },
+        ty::ImplSubject::Trait(trait_ref) => {
+            // Also record the polarity.
+            let polarity = tcx.impl_polarity(s.owner_id());
+            let trait_pred = TraitPredicate {
+                trait_ref: trait_ref.sinto(s),
+                is_positive: matches!(polarity, ty::ImplPolarity::Positive),
+            };
+            let required_impl_exprs =
+                solve_item_implied_traits(s, trait_ref.def_id, trait_ref.args);
+            FullDefKind::TraitImpl {
+                generics,
+                predicates,
+                trait_pred,
+                required_impl_exprs,
+                items,
+            }
+        }
     }
 }
 
