@@ -47,13 +47,13 @@ Export Hax_lib (t_int).
 
 Record t_Foo : Type :=
   {
-    f_field : t_u8;
+    Foo_f_field : t_u8;
   }.
 Arguments t_Foo:clear implicits.
 Arguments t_Foo.
 Arguments Build_t_Foo.
 #[export] Instance settable_t_Foo : Settable _ :=
-  settable! (@Build_t_Foo) <f_field>.
+  settable! (@Build_t_Foo) <Foo_f_field>.
 
 (* NotImplementedYet *)
 
@@ -76,18 +76,18 @@ Definition fn_pointer_cast (_ : unit) : unit :=
     x in
   tt.
 
-Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl__Int___unsafe_from_str ("0"%string))) (f_lt (x) (impl__Int___unsafe_from_str ("16"%string))) = true} : t_u8 :=
-  let _ : t_Int := f_lift (3) in
-  let _ := f_gt (impl__Int___unsafe_from_str ("-340282366920938463463374607431768211455000"%string)) (impl__Int___unsafe_from_str ("340282366920938463463374607431768211455000"%string)) in
-  let _ := f_lt (x) (x) in
-  let _ := f_ge (x) (x) in
-  let _ := f_le (x) (x) in
-  let _ := f_ne (x) (x) in
-  let _ := f_eq (x) (x) in
-  let _ := f_add (x) (x) in
-  let _ := f_sub (x) (x) in
-  let _ := f_mul (x) (x) in
-  let _ := f_div (x) (x) in
+Definition math_integers (x : t_Int) `{andb (PartialOrd_f_gt (x) (impl__Int___unsafe_from_str ("0"%string))) (PartialOrd_f_lt (x) (impl__Int___unsafe_from_str ("16"%string))) = true} : t_u8 :=
+  let _ : t_Int := Abstraction_f_lift (3) in
+  let _ := PartialOrd_f_gt (impl__Int___unsafe_from_str ("-340282366920938463463374607431768211455000"%string)) (impl__Int___unsafe_from_str ("340282366920938463463374607431768211455000"%string)) in
+  let _ := PartialOrd_f_lt (x) (x) in
+  let _ := PartialOrd_f_ge (x) (x) in
+  let _ := PartialOrd_f_le (x) (x) in
+  let _ := PartialEq_f_ne (x) (x) in
+  let _ := PartialEq_f_eq (x) (x) in
+  let _ := Add_f_add (x) (x) in
+  let _ := Sub_f_sub (x) (x) in
+  let _ := Mul_f_mul (x) (x) in
+  let _ := Div_f_div (x) (x) in
   let _ : t_i16 := impl__Int__to_i16 (x) in
   let _ : t_i32 := impl__Int__to_i32 (x) in
   let _ : t_i64 := impl__Int__to_i64 (x) in
@@ -98,7 +98,7 @@ Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl__Int___unsafe_from_s
   let _ : t_u64 := impl__Int__to_u64 (x) in
   let _ : t_u128 := impl__Int__to_u128 (x) in
   let _ : t_usize := impl__Int__to_usize (x) in
-  impl__Int__to_u8 (f_add (x) (f_mul (x) (x))).
+  impl__Int__to_u8 (Add_f_add (x) (Mul_f_mul (x) (x))).
 
 Definition numeric (_ : unit) : unit :=
   let _ : t_usize := 123 in
