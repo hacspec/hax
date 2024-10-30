@@ -59,6 +59,10 @@ _test:
 test-review: (_ensure_command_in_path "cargo-insta" "Insta (https://insta.rs)")
   cargo insta review
 
+# Serve the book
+book: (_ensure_command_in_path "mdbook" "mdBook (https://rust-lang.github.io/mdBook/)")
+  cd book && mdbook serve
+
 # Check the coherency between issues labeled `marked-unimplemented` on GitHub and issues mentionned in the engine in the `Unimplemented {issue_id: ...}` errors.
 @check-issues:
   just _ensure_command_in_path jq "jq (https://jqlang.github.io/jq/)"
