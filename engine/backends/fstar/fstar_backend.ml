@@ -1761,6 +1761,7 @@ module TransformToInputLanguage =
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
+  |> Phases.Bundle_cycles
   |> SubtypeToInputLanguage
   |> Identity
   ]

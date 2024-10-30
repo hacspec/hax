@@ -22,7 +22,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.DropReturnBreakContinue
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct

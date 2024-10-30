@@ -25,7 +25,7 @@ struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.LocalMutation
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct

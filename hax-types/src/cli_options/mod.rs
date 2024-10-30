@@ -308,6 +308,10 @@ pub struct BackendOptions<E: Extension> {
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
+    /// Enables profiling for the engine
+    #[arg(short, long)]
+    pub profile: bool,
+
     /// Enable engine debugging: dumps the AST at each phase.
     ///
     /// The value of `<DEBUG_ENGINE>` can be either:

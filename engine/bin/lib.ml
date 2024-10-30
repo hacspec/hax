@@ -99,7 +99,10 @@ let run (options : Types.engine_options) : Types.output =
     let include_clauses =
       options.backend.translation_options.include_namespaces
     in
-    let items = import_thir_items include_clauses options.input in
+    let items =
+      Profiling.profile ThirImport (List.length options.input) (fun _ ->
+          import_thir_items include_clauses options.input)
+    in
     let items =
       if options.backend.extract_type_aliases then items
       else
@@ -112,9 +115,10 @@ let run (options : Types.engine_options) : Types.output =
           ([%show: Diagnostics.Backend.t] M.backend));
     let items = apply_phases backend_options items in
     let with_items = Attrs.with_items items in
-    let module DepGraph = Dependencies.Make (InputLanguage) in
-    let items = DepGraph.bundle_cyclic_modules items in
-    let bundles, _ = DepGraph.recursive_bundles items in
+    let bundles, _ =
+      let module DepGraph = Dependencies.Make (InputLanguage) in
+      DepGraph.recursive_bundles items
+    in
     let items =
       List.filter items ~f:(fun (i : AST.item) ->
           Attrs.late_skip i.attrs |> not)
@@ -122,7 +126,10 @@ let run (options : Types.engine_options) : Types.output =
     Logs.info (fun m ->
         m "Translating items with backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
-    let items = translate with_items backend_options items ~bundles in
+    let items =
+      Profiling.profile (Backend M.backend) (List.length items) (fun _ ->
+          translate with_items backend_options items ~bundles)
+    in
     items
   in
   let diagnostics, files =
@@ -173,17 +180,20 @@ let parse_id_table_node (json : Yojson.Safe.t) :
   in
   (table, value)
 
+let parse_options () =
+  let table, json =
+    Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
+  in
+  table
+  |> List.iter ~f:(fun (id, json) ->
+         Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
+  let options = Types.parse_engine_options json in
+  Profiling.enabled := options.backend.profile;
+  options
+
 (** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
 let main () =
-  let options =
-    let table, json =
-      Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
-    in
-    table
-    |> List.iter ~f:(fun (id, json) ->
-           Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
-    Types.parse_engine_options json
-  in
+  let options = Profiling.profile (Other "parse_options") 1 parse_options in
   Printexc.record_backtrace true;
   let result =
     try Ok (run options) with

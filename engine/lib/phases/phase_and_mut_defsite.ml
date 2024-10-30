@@ -14,7 +14,7 @@ struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.AndMutDefSite
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module A = Ast.Make (FA)

@@ -58,6 +58,25 @@ pub struct Output {
     pub debug_json: Option<String>,
 }
 
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
+pub struct ProfilingData {
+    /// What context are we profiling?
+    pub context: String,
+    /// How long this took?
+    pub time_ns: u64,
+    /// How much memory this took? This is using OCaml's
+    /// `Gc.minor_words`, and is probably not very precise.
+    pub memory: u64,
+    /// How many things were processed? (often, this is the number of
+    /// items a phase processes)
+    pub quantity: u32,
+    /// Did the action errored? This is important since a failed
+    /// action might have exited very early, making the numbers
+    /// unusable.
+    pub errored: bool,
+}
+
 pub mod protocol {
     use super::*;
     #[derive_group(Serializers)]
@@ -68,6 +87,7 @@ pub mod protocol {
         PrettyPrintDiagnostic(crate::diagnostics::Diagnostics),
         PrettyPrintRust(String),
         DebugString(String),
+        ProfilingData(ProfilingData),
         Exit,
         Ping,
     }
