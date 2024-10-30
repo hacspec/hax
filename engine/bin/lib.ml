@@ -145,8 +145,6 @@ let run (options : Types.engine_options) : Types.output =
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
     files = Option.value ~default:[] files;
     debug_json = None;
-    profiling_data = [];
-    (* This data is sent interactively via Hax_io *)
   }
 
 (** Shallow parses a `id_table::Node<T>` (or a raw `T`) JSON *)
@@ -189,7 +187,9 @@ let parse_options () =
   table
   |> List.iter ~f:(fun (id, json) ->
          Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
-  Types.parse_engine_options json
+  let options = Types.parse_engine_options json in
+  Profiling.enabled := options.backend.profile;
+  options
 
 (** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
 let main () =

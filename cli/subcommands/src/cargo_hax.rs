@@ -251,7 +251,6 @@ fn run_engine(
         diagnostics: vec![],
         files: vec![],
         debug_json: None,
-        profiling_data: vec![],
     };
     {
         let mut rctx = hax_types::diagnostics::report::ReportCtx::default();
@@ -338,11 +337,7 @@ fn run_engine(
                     send!(&ToEngine::PrettyPrintedRust(code));
                 }
                 FromEngine::ProfilingData(profiling_data) => {
-                    if backend.verbose > 0 {
-                        HaxMessage::ProfilingData(profiling_data.clone())
-                            .report(message_format, None)
-                    }
-                    output.profiling_data.push(profiling_data);
+                    HaxMessage::ProfilingData(profiling_data).report(message_format, None)
                 }
                 FromEngine::Ping => {
                     send!(&ToEngine::Pong);
