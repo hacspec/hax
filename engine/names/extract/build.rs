@@ -18,6 +18,7 @@ mod id_table {
     #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
     pub struct Node<T> {
         value: Arc<T>,
+        cache_id: u32,
     }
 
     impl<T> std::ops::Deref for Node<T> {
