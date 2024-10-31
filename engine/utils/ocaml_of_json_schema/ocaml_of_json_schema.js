@@ -577,20 +577,23 @@ and node_for__ty_kind = node_for_ty_kind_generated
 type map_types = ${"[`TyKind of ty_kind]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
 
-let parse_table_id_node (type t) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) = match o with
+let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
+    let label = "parse_table_id_node:" ^ name ^ ": " in
+    match o with
     | \`Assoc alist -> begin
-          let id = match List.assoc "cache_id" alist with
-            | \`Int id -> Base.Int.to_int64 id
-            | \`Intlit lit -> (try Base.Int64.of_string lit with | _ -> failwith ("Base.Int64.of_string failed for " ^ lit))
-            | bad_json -> failwith ("parse_table_id_node: id was expected to be an int, got: " ^ Yojson.Safe.pretty_to_string bad_json ^ "\n\n\nfull json: " ^ Yojson.Safe.pretty_to_string o)
+          let id = match List.assoc_opt "cache_id" alist with
+            | Some (\`Int id) -> Base.Int.to_int64 id
+            | Some (\`Intlit lit) -> (try Base.Int64.of_string lit with | _ -> failwith (label ^ "Base.Int64.of_string failed for " ^ lit))
+            | Some bad_json -> failwith (label ^ "id was expected to be an int, got: " ^ Yojson.Safe.pretty_to_string bad_json ^ "\n\n\nfull json: " ^ Yojson.Safe.pretty_to_string o)
+            | None -> failwith (label ^ " could not find the key 'cache_id' in the following json: " ^ Yojson.Safe.pretty_to_string o)
           in
-          let decode v = decode v |> Base.Option.value_exn ~message:"parse_table_id_node: could not decode value (wrong type)" in
+          let decode v = decode v |> Base.Option.value_exn ~message:(label ^ "could not decode value (wrong type)") in
           match List.assoc_opt "value" alist with
           | Some json when (match json with \`Null -> false | _ -> true) ->
             (parse json, id)
           | _ ->
             let value = match Base.Hashtbl.find cache_map id with
-            | None -> failwith ("parse_table_id_node: failed to lookup id " ^ Base.Int64.to_string id)
+            | None -> failwith (label ^ "failed to lookup id " ^ Base.Int64.to_string id)
             | Some (\`Value v) -> decode v
             | Some (\`JSON json) ->
                 let value = parse json in
@@ -598,7 +601,7 @@ let parse_table_id_node (type t) (encode: t -> map_types) (decode: map_types -> 
                 value
             in (value, id)
        end
-    | _ -> failwith "parse_table_id_node: expected Assoc"
+    | _ -> failwith (label ^ "expected Assoc")
 
 `;
     impl += ('');
