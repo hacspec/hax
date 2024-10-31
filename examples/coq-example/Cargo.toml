@@ -1,0 +1,7 @@
+[package]
+name = "coq-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hax-lib = {path = "../../hax-lib" }

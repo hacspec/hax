@@ -1,3 +1,6 @@
+mod dummy_core_lib;
+use dummy_core_lib::*;
+
 enum Instruction {
     Push(isize),
     Pop,
