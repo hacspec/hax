@@ -39,7 +39,7 @@ where
     Body: IsBody + TypeMappable,
 {
     let tcx = s.base().tcx;
-    let def_kind = tcx.def_kind(def_id);
+    let def_kind = get_def_kind(tcx, def_id);
     let kind = {
         let state_with_id = with_owner_id(s.base(), (), (), def_id);
         def_kind.sinto(&state_with_id)
@@ -438,9 +438,20 @@ impl<Body: IsBody> FullDef<Body> {
     }
 }
 
+/// Gets the kind of the definition.
+#[cfg(feature = "rustc")]
+pub fn get_def_kind<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> RDefKind {
+    if def_id == rustc_span::def_id::CRATE_DEF_ID.to_def_id() {
+        // Horrible hack: without this, `def_kind` crashes on the crate root. Presumably some table
+        // isn't properly initialized otherwise.
+        let _ = tcx.def_span(def_id);
+    };
+    tcx.def_kind(def_id)
+}
+
 /// Gets the attributes of the definition.
 #[cfg(feature = "rustc")]
-fn get_def_span<'tcx>(
+pub fn get_def_span<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     def_id: RDefId,
     def_kind: RDefKind,
