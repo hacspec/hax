@@ -1,4 +1,4 @@
-// This script expect Rust By Example to be in current directory
+// This script expects Rust By Example to be in current directory
 
 const fs = require('fs');
 const SRC_DIR = 'src';
