@@ -27,6 +27,37 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Side_effects.Issue_1083_.fst" = '''
+module Side_effects.Issue_1083_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_MyFrom (v_Self: Type0) (v_T: Type0) = {
+  f_my_from_pre:v_T -> Type0;
+  f_my_from_post:v_T -> v_Self -> Type0;
+  f_my_from:x0: v_T -> Prims.Pure v_Self (f_my_from_pre x0) (fun result -> f_my_from_post x0 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_MyFrom u16 u8 =
+  {
+    f_my_from_pre = (fun (x: u8) -> true);
+    f_my_from_post = (fun (x: u8) (out: u16) -> true);
+    f_my_from = fun (x: u8) -> cast (x <: u8) <: u16
+  }
+
+let f (x: u8) : Core.Result.t_Result u16 u16 =
+  match Core.Result.Result_Err 1uy <: Core.Result.t_Result Prims.unit u8 with
+  | Core.Result.Result_Ok _ ->
+    Core.Result.Result_Ok (f_my_from #u16 #u8 #FStar.Tactics.Typeclasses.solve x)
+    <:
+    Core.Result.t_Result u16 u16
+  | Core.Result.Result_Err err ->
+    Core.Result.Result_Err (Core.Convert.f_from #u16 #u8 #FStar.Tactics.Typeclasses.solve err)
+    <:
+    Core.Result.t_Result u16 u16
+'''
 "Side_effects.fst" = '''
 module Side_effects
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -156,7 +187,7 @@ let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
   match y with
   | Core.Result.Result_Ok hoist1 -> Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32
   | Core.Result.Result_Err err ->
-    Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+    Core.Result.Result_Err (Core.Convert.f_from #u32 #u16 #FStar.Tactics.Typeclasses.solve err)
     <:
     Core.Result.t_Result i8 u32
 
@@ -397,7 +428,7 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
         <:
         Core.Result.t_Result u32 u32
       | Core.Result.Result_Err err ->
-        Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+        Core.Result.Result_Err (Core.Convert.f_from #u32 #u8 #FStar.Tactics.Typeclasses.solve err)
         <:
         Core.Result.t_Result u32 u32
     else
