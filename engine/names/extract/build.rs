@@ -58,7 +58,7 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
         | DefPathItem::ValueNs(s)
         | DefPathItem::MacroNs(s)
         | DefPathItem::LifetimeNs(s) => s,
-        DefPathItem::CrateRoot => "CrateRoot".into(),
+        DefPathItem::CrateRoot { name } => uppercase_first_letter(&name),
         DefPathItem::Impl => "Impl".into(),
         DefPathItem::ForeignMod => "ForeignMod".into(),
         DefPathItem::Use => "Use".into(),

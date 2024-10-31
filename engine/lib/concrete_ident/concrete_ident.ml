@@ -27,7 +27,7 @@ module Imported = struct
   [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Types.def_path_item -> def_path_item = function
-    | CrateRoot -> CrateRoot
+    | CrateRoot _ -> CrateRoot
     | Impl -> Impl
     | ForeignMod -> ForeignMod
     | Use -> Use

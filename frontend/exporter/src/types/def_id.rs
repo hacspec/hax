@@ -29,16 +29,6 @@ impl<'t, S> SInto<S, Symbol> for rustc_span::symbol::Symbol {
     }
 }
 
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
-#[cfg_attr(not(feature = "extract_names_mode"), args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s))]
-/// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
-pub struct DisambiguatedDefPathItem {
-    pub data: DefPathItem,
-    pub disambiguator: u32,
-}
-
 /// Reflects [`rustc_hir::def_id::DefId`]
 #[derive_group(Serializers)]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -80,6 +70,19 @@ impl DefId {
     pub fn ancestry(&self) -> impl Iterator<Item = &Self> {
         std::iter::successors(Some(self), |def| def.parent.as_ref())
     }
+
+    /// The `PathItem` corresponding to this item.
+    pub fn path_item(&self) -> DisambiguatedDefPathItem {
+        self.path
+            .last()
+            .cloned()
+            .unwrap_or_else(|| DisambiguatedDefPathItem {
+                disambiguator: 0,
+                data: DefPathItem::CrateRoot {
+                    name: self.krate.clone(),
+                },
+            })
+    }
 }
 
 impl std::ops::Deref for DefId {
@@ -119,11 +122,18 @@ impl std::hash::Hash for DefId {
 #[cfg(feature = "rustc")]
 pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> DefId {
     let tcx = s.base().tcx;
-    let def_path = tcx.def_path(def_id);
-    let krate = tcx.crate_name(def_path.krate);
+    let path = {
+        // Set the def_id so the `CrateRoot` path item can fetch the crate name.
+        let state_with_id = with_owner_id(s.base(), (), (), def_id);
+        tcx.def_path(def_id)
+            .data
+            .iter()
+            .map(|x| x.sinto(&state_with_id))
+            .collect()
+    };
     let contents = DefIdContents {
-        path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
-        krate: krate.to_string(),
+        path,
+        krate: tcx.crate_name(def_id.krate).to_string(),
         parent: tcx.opt_parent(def_id).sinto(s),
         index: (
             rustc_hir::def_id::CrateNum::as_u32(def_id.krate),
@@ -196,9 +206,12 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
-#[cfg_attr(not(feature = "extract_names_mode"), args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<'ctx, S: UnderOwnerState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as s))]
 pub enum DefPathItem {
-    CrateRoot,
+    CrateRoot {
+        #[cfg_attr(not(feature = "extract_names_mode"), value(s.base().tcx.crate_name(s.owner_id().krate).sinto(s)))]
+        name: Symbol,
+    },
     Impl,
     ForeignMod,
     Use,
@@ -212,4 +225,14 @@ pub enum DefPathItem {
     AnonConst,
     OpaqueTy,
     AnonAdt,
+}
+
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<'a, S: UnderOwnerState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s))]
+/// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
+pub struct DisambiguatedDefPathItem {
+    pub data: DefPathItem,
+    pub disambiguator: u32,
 }
