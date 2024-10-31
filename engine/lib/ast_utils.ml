@@ -890,7 +890,8 @@ module Make (F : Features.T) = struct
         (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
       is_struct args span ret_typ
 
-  let call' ?impl f ?(generic_args = []) ?(impl_generic_args = []) (args : expr list) span ret_typ =
+  let call' ?impl f ?(generic_args = []) ?(impl_generic_args = [])
+      (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
     {
@@ -907,8 +908,9 @@ module Make (F : Features.T) = struct
       span;
     }
 
-  let call ?(kind : Concrete_ident.Kind.t = Value) ?(generic_args = []) ?(impl_generic_args = []) ?impl
-      (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
+  let call ?(kind : Concrete_ident.Kind.t = Value) ?(generic_args = [])
+      ?(impl_generic_args = []) ?impl (f_name : Concrete_ident.name)
+      (args : expr list) span ret_typ =
     call' ?impl ~generic_args ~impl_generic_args
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
