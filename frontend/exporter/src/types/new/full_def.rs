@@ -143,6 +143,7 @@ pub enum FullDefKind<Body> {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
         #[value(get_item_predicates(s, s.owner_id()))]
+        // FIXME: clarify implied vs required predicates
         predicates: GenericPredicates,
         #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
         associated_item: AssocItem,
@@ -372,7 +373,8 @@ pub enum FullDefKind<Body> {
 #[derive(Clone, Debug, JsonSchema)]
 pub struct ImplAssocItem<Body> {
     pub name: Symbol,
-    /// The definition of the item from the trait declaration.
+    /// The definition of the item from the trait declaration. This is `AssocTy`, `AssocFn` or
+    /// `AssocConst`.
     pub decl_def: Arc<FullDef<Body>>,
     /// The `ImplExpr`s required to satisfy the predicates on the associated type. E.g.:
     /// ```ignore
@@ -394,7 +396,8 @@ pub struct ImplAssocItem<Body> {
 pub enum ImplAssocItemValue<Body> {
     /// The item is provided by the trait impl.
     Provided {
-        /// The definition of the item in the trait impl.
+        /// The definition of the item in the trait impl. This is `AssocTy`, `AssocFn` or
+        /// `AssocConst`.
         def: Arc<FullDef<Body>>,
         /// Whether the trait had a default value for this item (which is therefore overriden).
         is_override: bool,
