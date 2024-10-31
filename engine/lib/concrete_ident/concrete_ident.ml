@@ -27,7 +27,7 @@ module Imported = struct
   [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Types.def_path_item -> def_path_item = function
-    | CrateRoot -> CrateRoot
+    | CrateRoot _ -> CrateRoot
     | Impl -> Impl
     | ForeignMod -> ForeignMod
     | Use -> Use
@@ -50,7 +50,8 @@ module Imported = struct
       disambiguator = MyInt64.to_int_exn disambiguator;
     }
 
-  let of_def_id Types.{ krate; path; _ } =
+  let of_def_id
+      ({ contents = { value = { krate; path; _ }; _ } } : Types.def_id) =
     { krate; path = List.map ~f:of_disambiguated_def_path_item path }
 
   let parent { krate; path; _ } = { krate; path = List.drop_last_exn path }
@@ -279,7 +280,7 @@ module View = struct
           namespace
         |> some_if_true
       in
-      let* last = List.last def_id.path in
+      let* last = List.last def_id.contents.value.path in
       let* () = some_if_true Int64.(last.disambiguator = zero) in
       last.data |> Imported.of_def_path_item |> string_of_def_path_item
       |> Option.map ~f:escape
@@ -387,7 +388,7 @@ module View = struct
                   namespace
            in
            let* typ = simple_ty_to_string ~namespace typ in
-           let* trait = List.last trait.path in
+           let* trait = List.last trait.contents.value.path in
            let* trait =
              Imported.of_def_path_item trait.data |> string_of_def_path_item
            in
