@@ -1310,7 +1310,7 @@ let make ~krate : (module EXPR) =
   (module M)
 
 let c_trait_item (item : Thir.trait_item) : trait_item =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
   let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
@@ -1449,7 +1449,7 @@ let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
     [ make_hax_error_item span ident error ]
 
 and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
@@ -1758,15 +1758,21 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
         let def_id = item.owner_id in
         let def_id : Types.def_id =
-          {
-            def_id with
-            path =
-              def_id.path
-              @ [
-                  Types.
-                    { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
-                ];
-          }
+          let value =
+            {
+              def_id.contents.value with
+              path =
+                def_id.contents.value.path
+                @ [
+                    Types.
+                      {
+                        data = ValueNs "DUMMY";
+                        disambiguator = MyInt64.of_int 0;
+                      };
+                  ];
+            }
+          in
+          { contents = { def_id.contents with value } }
         in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
     | Union _ ->

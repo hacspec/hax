@@ -538,8 +538,8 @@ function run(str){
 [@@@warning "-A"]`;
 
     let items = Object.entries(definitions)
-        .map(([name, def]) =>
-            [name == 'Node_for_TyKind' ? 'node_for_ty_kind_generated' : name, def])
+        .map(([name, def]) => ['Node_for_TyKind' == name ? 'node_for_ty_kind_generated' : name, def])
+        .map(([name, def]) => ['Node_for_DefIdContents' == name ? 'node_for_def_id_contents_generated' : name, def])
         .map(
             ([name, def]) => export_definition(name, def)
         ).filter(x => x instanceof Object);
@@ -573,8 +573,9 @@ open ParseError
     );
     impl += `
 and node_for__ty_kind = node_for_ty_kind_generated
+and node_for__def_id_contents = node_for_def_id_contents_generated
 
-type map_types = ${"[`TyKind of ty_kind]"}
+type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
 
 let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
@@ -611,10 +612,19 @@ let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode
     impl += `
 and parse_node_for__ty_kind (o: Yojson.Safe.t): node_for__ty_kind =
    let (value, id) =
-       parse_table_id_node
+       parse_table_id_node "TyKind"
            (fun value -> \`TyKind value)
            (function | \`TyKind value -> Some value | _ -> None)
            parse_ty_kind
+           o
+   in
+   {value; id}
+and parse_node_for__def_id_contents (o: Yojson.Safe.t): node_for__def_id_contents =
+   let (value, id) =
+       parse_table_id_node "DefIdContents"
+           (fun value -> \`DefIdContents value)
+           (function | \`DefIdContents value -> Some value | _ -> None)
+           parse_def_id_contents
            o
    in
    {value; id}
@@ -625,6 +635,7 @@ and parse_node_for__ty_kind (o: Yojson.Safe.t): node_for__ty_kind =
     ).join('\nand '));
     impl += `
 and to_json_node_for__ty_kind {value; id} = to_json_node_for_ty_kind_generated {value; id}
+and to_json_node_for__def_id_contents {value; id} = to_json_node_for_def_id_contents_generated {value; id}
 `;
 
 
