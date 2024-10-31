@@ -327,7 +327,7 @@ pub enum FullDefKind<Body> {
     },
     /// An `extern` block.
     ForeignMod {
-        #[value(get_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
+        #[value(get_foreign_mod_children(s.base().tcx, s.owner_id()).sinto(s))]
         items: Vec<DefId>,
     },
 
@@ -538,14 +538,6 @@ fn get_mod_children<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Vec<RDefId> 
                 .iter()
                 .map(|item_id| item_id.owner_id.to_def_id())
                 .collect(),
-
-            rustc_hir::Node::Item(rustc_hir::Item {
-                kind: rustc_hir::ItemKind::ForeignMod { items, .. },
-                ..
-            }) => items
-                .iter()
-                .map(|foreign_item_ref| foreign_item_ref.id.owner_id.to_def_id())
-                .collect(),
             node => panic!("DefKind::Module is an unexpected node: {node:?}"),
         },
         None => tcx
@@ -553,6 +545,22 @@ fn get_mod_children<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Vec<RDefId> 
             .iter()
             .map(|child| child.res.def_id())
             .collect(),
+    }
+}
+
+/// Gets the children of an `extern` block. Empty if the block is not defined in the current crate.
+#[cfg(feature = "rustc")]
+fn get_foreign_mod_children<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Vec<RDefId> {
+    match def_id.as_local() {
+        Some(ldid) => tcx
+            .hir_node_by_def_id(ldid)
+            .expect_item()
+            .expect_foreign_mod()
+            .1
+            .iter()
+            .map(|foreign_item_ref| foreign_item_ref.id.owner_id.to_def_id())
+            .collect(),
+        None => vec![],
     }
 }
 
