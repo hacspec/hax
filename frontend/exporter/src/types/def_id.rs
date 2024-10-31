@@ -53,6 +53,7 @@ pub struct DefId {
 pub struct DefIdContents {
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
+    pub parent: Option<DefId>,
     /// Rustc's `CrateNum` and `DefIndex` raw indexes. This can be
     /// useful if one needs to convert a [`DefId`] into a
     /// [`rustc_hir::def_id::DefId`]; there is a `From` instance for
@@ -63,6 +64,22 @@ pub struct DefIdContents {
     /// indexes unless you cannot do otherwise.
     pub index: (u32, u32),
     pub is_local: bool,
+}
+
+#[cfg(feature = "rustc")]
+impl DefId {
+    pub fn to_rust_def_id(&self) -> RDefId {
+        let (krate, index) = self.index;
+        RDefId {
+            krate: rustc_hir::def_id::CrateNum::from_u32(krate),
+            index: rustc_hir::def_id::DefIndex::from_u32(index),
+        }
+    }
+
+    /// Iterate over this element and its parents.
+    pub fn ancestry(&self) -> impl Iterator<Item = &Self> {
+        std::iter::successors(Some(self), |def| def.parent.as_ref())
+    }
 }
 
 impl std::ops::Deref for DefId {
@@ -92,14 +109,10 @@ impl std::fmt::Debug for DefId {
 
 impl std::hash::Hash for DefId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let DefIdContents {
-            krate,
-            path,
-            index: _,    // intentionally discarding index
-            is_local: _, // intentionally discarding is_local
-        } = &**self;
-        krate.hash(state);
-        path.hash(state);
+        // A `DefId` is basically an interned path; we only hash the path, discarding the rest of
+        // the information.
+        self.krate.hash(state);
+        self.path.hash(state);
     }
 }
 
@@ -111,6 +124,7 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
     let contents = DefIdContents {
         path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
         krate: krate.to_string(),
+        parent: tcx.opt_parent(def_id).sinto(s),
         index: (
             rustc_hir::def_id::CrateNum::as_u32(def_id.krate),
             rustc_hir::def_id::DefIndex::as_u32(def_id.index),
@@ -131,17 +145,6 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for RDefId {
         let def_id = translate_def_id(s, *self);
         s.with_item_cache(*self, |cache| cache.def_id = Some(def_id.clone()));
         def_id
-    }
-}
-
-impl DefId {
-    #[cfg(feature = "rustc")]
-    pub fn to_rust_def_id(&self) -> RDefId {
-        let (krate, index) = self.index;
-        RDefId {
-            krate: rustc_hir::def_id::CrateNum::from_u32(krate),
-            index: rustc_hir::def_id::DefIndex::from_u32(index),
-        }
     }
 }
 
