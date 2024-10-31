@@ -5,8 +5,8 @@ members = [
     "sha256",
     "barrett",
     "kyber_compress",
-    "proverif-psk"
-, "coq-example"]
+    "proverif-psk",
+    "coq-example"]
 resolver = "2"
 
 [workspace.dependencies]
