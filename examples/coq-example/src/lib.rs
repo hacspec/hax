@@ -9,53 +9,40 @@ enum Instruction {
 }
 
 impl Instruction {
-    pub fn interpret(
-        self,
-        stack: &mut Vec<isize>,
-    ) {
+    pub fn interpret(self, stack: &mut Vec<isize>) {
         match self {
             Instruction::Push(v) => stack.push(v),
             Instruction::Pop => {
                 stack.pop();
             }
-            Instruction::Add => {
-                match (stack.pop(), stack.pop()) {
-                    (Some(a), Some(b)) => stack.push(b + a),
-                    _ => (),
+            Instruction::Add => match (stack.pop(), stack.pop()) {
+                (Some(a), Some(b)) => stack.push(b + a),
+                _ => (),
+            },
+            Instruction::Sub => match (stack.pop(), stack.pop()) {
+                (Some(a), Some(b)) => stack.push(b - a),
+                _ => (),
+            },
+            Instruction::Mul => match (stack.pop(), stack.pop()) {
+                (Some(a), Some(b)) => stack.push(b * a),
+                _ => (),
+            },
+            Instruction::Not => match stack.pop() {
+                Some(a) => stack.push(if a == 0 { 1 } else { 0 }),
+                _ => (),
+            },
+            Instruction::Dup => match stack.pop() {
+                Some(a) => {
+                    stack.push(a);
+                    stack.push(a);
                 }
-            }
-            Instruction::Sub => {
-                match (stack.pop(), stack.pop()) {
-                    (Some(a), Some(b)) => stack.push(b - a),
-                    _ => (),
-                }
-            }
-            Instruction::Mul => {
-                match (stack.pop(), stack.pop()) {
-                    (Some(a), Some(b)) => stack.push(b * a),
-                    _ => (),
-                }
-            }
-            Instruction::Not => {
-                match stack.pop() {
-                    Some(a) => stack.push(if a == 0 { 1 } else { 0 }),
-                    _ => (),
-                }
-            }
-            Instruction::Dup => {
-                match stack.pop() {
-                    Some(a) => {
-                        stack.push(a);
-                        stack.push(a);
-                    }
-                    _ => (),
-                }
-            }
+                _ => (),
+            },
         }
     }
 }
 
-fn example () -> Vec<isize> {
+fn example() -> Vec<isize> {
     let mut stk = Vec::new();
     for cmd in [
         Instruction::Push(1),
@@ -68,7 +55,8 @@ fn example () -> Vec<isize> {
         Instruction::Add,
         Instruction::Dup,
         Instruction::Mul,
-        Instruction::Sub] {
+        Instruction::Sub,
+    ] {
         cmd.interpret(&mut stk)
     }
     stk
