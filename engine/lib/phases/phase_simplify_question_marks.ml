@@ -87,8 +87,9 @@ module%inlined_contents Make (FA : Features.T) = struct
         let* impl = expect_residual_impl_result impl in
         let*? _ = [%eq: ty] error_src error_dest |> not in
         let from_typ = TArrow ([ error_src ], error_dest) in
+        let generic_args = [GType error_dest; GType error_src] in
         Some
-          (UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
+          (UA.call ~generic_args ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
              [ e ] e.span from_typ)
 
       (** [map_err e error_dest impl] creates the expression
