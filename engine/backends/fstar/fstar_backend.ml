@@ -164,7 +164,8 @@ struct
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
     | Float _ ->
-        Error.unimplemented ~issue_id:230 ~details:"pliteral: Float" span
+        Error.unimplemented ~issue_id:464
+          ~details:"Matching on f32 or f64 literals is not yet supported." span
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
@@ -179,6 +180,13 @@ struct
     | Int { value; kind = { size = S128; signedness = sn }; negative } ->
         let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
         wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | Float { value; negative; _ } ->
+        F.mk_e_app
+          (F.term_of_lid [ "mk_float" ])
+          [
+            mk_const
+              (F.Const.Const_string (pnegative negative ^ value, F.dummyRange));
+          ]
     | _ -> mk_const @@ pliteral span e
 
   let pconcrete_ident (id : concrete_ident) =
@@ -310,7 +318,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat _ -> Error.unimplemented ~issue_id:230 ~details:"pty: Float" span
+    | TFloat _ -> F.term_of_lid [ "float" ]
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
