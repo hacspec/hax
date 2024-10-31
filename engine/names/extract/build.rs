@@ -86,7 +86,7 @@ fn def_id_to_str(def_id: &DefId) -> (Value, String) {
     };
     // Update the crate name in the json output as well.
     let mut json = serde_json::to_value(def_id).unwrap();
-    json["krate"] = Value::String(crate_name.to_owned());
+    json["contents"]["value"]["krate"] = Value::String(crate_name.to_owned());
 
     let crate_name = uppercase_first_letter(crate_name);
     let path = [crate_name]
