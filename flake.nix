@@ -23,6 +23,10 @@
       url = "github:hacl-star/hacl-star";
       flake = false;
     };
+    rust-by-examples = {
+      url = "github:rust-lang/rust-by-example";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -86,6 +90,18 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          rust-by-example-hax-extraction = pkgs.stdenv.mkDerivation {
+            name = "rust-by-example-hax-extraction";
+            phases = ["installPhase"];
+            buildInputs = [packages.hax pkgs.cargo];
+            installPhase = ''
+              cp --no-preserve=mode -rf ${inputs.rust-by-examples} workdir
+              cd workdir
+              ${pkgs.nodejs}/bin/node ${./.utils/rust-by-example.js}
+              mv rust-by-examples-crate/proofs $out
+            '';
+          };
 
           # The commit that corresponds to our nightly pin, helpful when updating rusrc.
           toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''

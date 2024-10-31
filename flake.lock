@@ -100,7 +100,24 @@
         "fstar": "fstar",
         "hacl-star": "hacl-star",
         "nixpkgs": "nixpkgs",
+        "rust-by-examples": "rust-by-examples",
         "rust-overlay": "rust-overlay"
+      }
+    },
+    "rust-by-examples": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1729958822,
+        "narHash": "sha256-/X1dI2MPYSfOdqOOxpNFCykoJtVetQCOo7WfBa7XAyU=",
+        "owner": "rust-lang",
+        "repo": "rust-by-example",
+        "rev": "4e3881e0cb1b690158acca3c16e271fdadf736da",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rust-lang",
+        "repo": "rust-by-example",
+        "type": "github"
       }
     },
     "rust-overlay": {
