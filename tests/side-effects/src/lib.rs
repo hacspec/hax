@@ -156,3 +156,20 @@ fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
     foo.y.1[3].b.0[5].0 = true;
     foo
 }
+
+mod issue_1083 {
+    trait MyFrom<T> {
+        fn my_from(x: T) -> Self;
+    }
+
+    impl MyFrom<u8> for u16 {
+        fn my_from(x: u8) -> u16 {
+            x as u16
+        }
+    }
+
+    fn f(x: u8) -> Result<u16, u16> {
+        Err(1u8)?;
+        Ok(u16::my_from(x))
+    }
+}
