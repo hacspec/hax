@@ -1,5 +1,5 @@
 // This script expects Rust By Example to be in current directory
-// (clone the repo https://github.com/rust-lang/rust-by-example)
+// (clone the repo https://github.com/rust-lang/rust-by-example, `cd` into it, and run `node rust-by-examples.js`)
 
 const fs = require('fs');
 const SRC_DIR = 'src';
