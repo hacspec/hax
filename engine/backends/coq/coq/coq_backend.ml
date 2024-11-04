@@ -90,15 +90,16 @@ module CoqNamePolicy = struct
   (* TODO: Make complete *)
 
   (** Transformation applied to indexes fields name (i.e. [x.1]) *)
-  let index_field_transform x : string = x (* tuple struct, field `0` *)
+  let index_field_transform x = x
 
-  let field_name_transform : struct_name:string -> string -> string =
-   fun ~struct_name x -> struct_name ^ "_" ^ x
+  let field_name_transform ~struct_name x =
+   struct_name ^ "_" ^ x
 
-  let enum_constructor_name_transform : enum_name:string -> string -> string =
-   fun ~enum_name x -> x
+  let enum_constructor_name_transform ~enum_name x = x
+  let struct_constructor_name_transform x : string =
+    "Build_t_" ^ x
 
-  let struct_constructor_name_transform : string -> string = fun x -> x
+  let constructor_prefix = ""
 end
 
 module AST = Ast.Make (InputLanguage)
@@ -124,7 +125,8 @@ let dummy_lib =
   "Definition t_usize := Z.\n\
    Class t_Sized (T : Type) := { }.\n\
    Definition t_Array T (x : t_usize) := list T.\n\
-   Definition t_u8 := Z.\n"
+   Definition t_u8 := Z.\n\
+   Definition t_i32 := Z.\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -169,6 +171,13 @@ struct
 
     let arguments name (explicivity : bool list) =
       !^"Arguments" ^^ space ^^ name ^^ concat_map_with ~pre:space (function | true -> string "(_)" | false -> string "{_}") explicivity ^^ dot
+
+    let notation pattern value =
+        !^"Notation" ^^ space ^^ string "\"" ^^ pattern ^^ string "\"" ^^ space ^^ !^":=" ^^ space ^^ value ^^ dot
+
+    let notation_name name value =
+        notation (string "'" ^^ name ^^ string "'") value
+    
   end
 
   type ('get_span_data, 'a) object_type =
@@ -218,7 +227,8 @@ struct
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
         f#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args
 
-      method expr'_App_constant ~super:_ ~constant ~generics:_ = constant#p
+      method expr'_App_constant ~super:_ ~constant ~generics:_ =
+        constant#p
 
       method expr'_App_field_projection ~super:_ ~field ~e =
         field#p ^^ space ^^ e#p
@@ -253,16 +263,15 @@ struct
           if List.is_empty fields then empty
           else
             add_space
-            ^^ parens
-                 (separate_map (comma ^^ space) (fun x -> (snd x)#p) fields)
+            ^^ separate_map space (fun x -> (snd x)#p) fields
         in
         if is_record && is_struct then
           match base with
           | Some x -> string "Build_" ^^ x#p ^^ fields_or_empty space
-          | None -> string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
+          | None -> constructor#p ^^ fields_or_empty space
         else if not is_record then
           if is_struct then
-            string "Build_t_" ^^ constructor#p ^^ fields_or_empty space
+            constructor#p ^^ fields_or_empty space
           else constructor#p ^^ fields_or_empty space
         else
           default_document_for
@@ -403,8 +412,9 @@ struct
       method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p ^^ break 1
 
       method item'_Alias ~super:_ ~name ~item =
-        string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
-        ^^ space ^^ string ":=" ^^ space ^^ parens item#p ^^ dot
+        CoqNotation.notation_name
+          (name#p)
+          (parens item#p)
 
       method item'_Fn ~super ~name ~generics ~body ~params ~safety:_ =
         (* TODO: Why is type not available here ? *)
@@ -482,10 +492,11 @@ struct
         ^^ CoqNotation.arguments name#p (List.map ~f:(fun _ -> true) params @ List.map ~f:(fun _ -> false) constraints)
 
       method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
-        string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
-        ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
+        CoqNotation.notation_name
+          (name#p)
+          ty#p
 
-      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_
+      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct
           ~arguments =
         let arguments_explicity_with_ty =
           (List.map ~f:(fun _ -> true) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
@@ -505,20 +516,26 @@ struct
         ^^ break 1 ^^ CoqNotation.arguments (!^"Build_" ^^ name#p) arguments_explicity_with_ty
         ^^ concat_map_with ~pre:(break 1) (fun (ident, typ, attr) -> CoqNotation.arguments ident#p arguments_explicity_without_ty) arguments
         ^^ break 1 ^^ !^"#[export]" ^^ space
-        ^^ if List.is_empty arguments
-        then empty
-        else
-          CoqNotation.instance
-            (string "settable" ^^ string "_" ^^ name#p)
-            generics#p []
-            (!^"Settable" ^^ space ^^ !^"_")
-            (string "settable!" ^^ space
-             ^^ parens (!^"Build_" ^^ name#p ^^ (concat_map_with ~pre:space (fun (x : generic_param) -> match x with | { ident; _ } -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics ident)#p) generics#v.params))
-             ^^ space ^^ string "<"
-             ^^ separate_map (semi ^^ space)
-               (fun (ident, typ, attr) -> ident#p)
-               arguments
-             ^^ string ">")
+        ^^
+        (if List.is_empty arguments
+         then empty
+         else
+           CoqNotation.instance
+             (string "settable" ^^ string "_" ^^ name#p)
+             generics#p []
+             (!^"Settable" ^^ space ^^ !^"_")
+             (string "settable!" ^^ space
+              ^^ parens (!^"Build_" ^^ name#p ^^ (concat_map_with ~pre:space (fun (x : generic_param) -> match x with | { ident; _ } -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics ident)#p) generics#v.params))
+              ^^ space ^^ string "<"
+              ^^ separate_map (semi ^^ space)
+                (fun (ident, typ, attr) -> ident#p)
+                arguments
+              ^^ string ">"))
+          ^^
+          (if tuple_struct
+           then break 1 ^^
+                (CoqNotation.notation_name (string (String.drop_prefix (U.Concrete_ident_view.to_definition_name name#v) 2 )) (!^"Build_" ^^ name#p))
+           else empty)
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
         CoqNotation.inductive name#p generics#p [] (string "Type")
@@ -631,9 +648,10 @@ struct
                   (fun field_pat -> (snd field_pat)#p)
                   fields)
         else
-          (if is_struct then string "Build_t_" else empty)
-          ^^ constructor#p
-          ^^ concat_map (fun (ident, exp) -> space ^^ parens exp#p) fields
+          (* constructor#p ^^ *)
+          string "{|" ^^
+            separate_map (semi ^^ space) (fun (ident, exp) -> ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p) fields
+          ^^ string "|}"
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)
