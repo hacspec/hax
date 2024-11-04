@@ -120,6 +120,12 @@ let hardcoded_coq_headers =
    From RecordUpdate Require Import RecordSet.\n\
    Import RecordSetNotations.\n"
 
+let dummy_lib =
+  "Definition t_usize := Z.\n\
+   Class t_Sized (T : Type) := { }.\n\
+   Definition t_Array T (x : t_usize) := list T.\n\
+   Definition t_u8 := Z.\n"
+
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
 module Make
@@ -133,17 +139,22 @@ struct
   let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
   let default_document_for = default_string_for >> string
 
+  let concat_with ?(pre=empty) ?(post=empty) l = concat_map (fun x -> pre ^^ x ^^ post) l
+  let concat_map_with ?(pre=empty) ?(post=empty) f l = concat_map (fun x -> pre ^^ f x ^^ post) l
+
+  let concat_spaced_doc l = concat_map_with ~pre:space (fun x -> x#p) l
+
   module CoqNotation = struct
     let definition_struct keyword n name generics params typ body =
       keyword ^^ space ^^ name ^^ generics
-      ^^ concat_map (fun x -> space ^^ x) params
+      ^^ concat_with ~pre:space params
       ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":="
       ^^ nest n (break 1 ^^ body)
       ^^ dot
 
     let proof_struct keyword name generics params statement =
       keyword ^^ space ^^ name ^^ generics
-      ^^ concat_map (fun x -> space ^^ x) params
+      ^^ concat_with ~pre:space params
       ^^ space ^^ colon
       ^^ nest 2 (break 1 ^^ statement ^^ dot)
       ^^ break 1 ^^ string "Proof" ^^ dot ^^ space ^^ string "Admitted" ^^ dot
@@ -155,6 +166,9 @@ struct
     let instance = definition_struct (string "Instance") 2
     let class_ = definition_struct (string "Class") 2
     let lemma = proof_struct (string "Lemma")
+
+    let arguments name (explicivity : bool list) =
+      !^"Arguments" ^^ space ^^ name ^^ concat_map_with ~pre:space (function | true -> string "(_)" | false -> string "{_}") explicivity ^^ dot
   end
 
   type ('get_span_data, 'a) object_type =
@@ -202,7 +216,7 @@ struct
         match witness with _ -> .
 
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
-        f#p ^^ concat_map (fun x -> space ^^ parens x#p) args
+        f#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args
 
       method expr'_App_constant ~super:_ ~constant ~generics:_ = constant#p
 
@@ -229,7 +243,7 @@ struct
 
       method expr'_Closure ~super:_ ~params ~body ~captures:_ =
         !^"fun"
-        ^^ concat_map (fun x -> space ^^ x#p) params
+        ^^ concat_spaced_doc params
         ^^ space ^^ !^"=>" ^^ space
         ^^ nest 2 (break 1 ^^ body#p)
 
@@ -301,7 +315,7 @@ struct
       method expr'_Match ~super:_ ~scrutinee ~arms =
         string "match" ^^ space ^^ scrutinee#p ^^ space ^^ string "with"
         ^^ break 1
-        ^^ concat_map (fun x -> string "|" ^^ space ^^ x#p ^^ break 1) arms
+        ^^ concat_map_with ~pre:(string "|" ^^ space) ~post:(break 1) (fun x -> x#p) arms
         ^^ string "end"
 
       method expr'_QuestionMark ~super:_ ~e:_ ~return_typ:_ ~witness =
@@ -339,9 +353,8 @@ struct
       method generic_value_GType x1 = parens x1#p
 
       method generics ~params ~constraints =
-        let params_document = concat_map (fun x -> space ^^ x#p) params in
-        let constraints_document =
-          concat_map (fun x -> space ^^ x#p) constraints
+        let params_document = concat_spaced_doc params in
+        let constraints_document = concat_spaced_doc constraints
         in
         params_document ^^ constraints_document
 
@@ -382,7 +395,7 @@ struct
         if List.length params == 0 then body#p
         else
           string "fun" ^^ space
-          ^^ concat_map (fun x -> x#p ^^ space) params
+          ^^ concat_spaced_doc params
           ^^ string "=>"
           ^^ nest 2 (break 1 ^^ body#p)
 
@@ -449,10 +462,10 @@ struct
         CoqNotation.instance
           (name#p ^^ string "_" ^^ string (Int.to_string ([%hash: item] super)))
           generics#p []
-          (name#p ^^ concat_map (fun x -> space ^^ parens x#p) args)
+          (name#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args)
           (braces
              (nest 2
-                (concat_map (fun x -> break 1 ^^ name#p ^^ !^"_" ^^ x#p) items)
+                (concat_map_with ~pre:(break 1 ^^ name#p ^^ !^"_") (fun x -> x#p) items)
              ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
@@ -465,12 +478,8 @@ struct
         CoqNotation.class_ name#p generics#p [] !^"Type"
           (braces
              (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1))
-        ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon
-        ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space
-        ^^ name#p
-        ^^ concat_map (fun _ -> space ^^ !^"(_)") params
-        ^^ concat_map (fun _ -> space ^^ !^"{_}") constraints
-        ^^ dot
+        ^^ break 1
+        ^^ CoqNotation.arguments name#p (List.map ~f:(fun _ -> true) params @ List.map ~f:(fun _ -> false) constraints)
 
       method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
@@ -478,6 +487,12 @@ struct
 
       method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_
           ~arguments =
+        let arguments_explicity_with_ty =
+          (List.map ~f:(fun _ -> true) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
+        in
+        let arguments_explicity_without_ty =
+          (List.map ~f:(fun _ -> false) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
+        in
         CoqNotation.record name#p generics#p [] (string "Type")
           (braces
              (nest 2
@@ -487,25 +502,22 @@ struct
                      ^^ semi)
                    arguments)
              ^^ break 1))
-        ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon
-        ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space
-        ^^ name#p
-        ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params
-        ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints
-        ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space ^^ !^"Build_" ^^ name#p
-        ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.params
-        ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints
-        ^^ dot ^^ break 1 ^^ !^"#[export]" ^^ space
-        ^^ CoqNotation.instance
-             (string "settable" ^^ string "_" ^^ name#p)
-             generics#p []
-             (!^"Settable" ^^ space ^^ !^"_")
-             (string "settable!" ^^ space
-             ^^ parens (!^"@" ^^ !^"Build_" ^^ name#p ^^ generics#p)
+        ^^ break 1 ^^ CoqNotation.arguments (!^"Build_" ^^ name#p) arguments_explicity_with_ty
+        ^^ concat_map_with ~pre:(break 1) (fun (ident, typ, attr) -> CoqNotation.arguments ident#p arguments_explicity_without_ty) arguments
+        ^^ break 1 ^^ !^"#[export]" ^^ space
+        ^^ if List.is_empty arguments
+        then empty
+        else
+          CoqNotation.instance
+            (string "settable" ^^ string "_" ^^ name#p)
+            generics#p []
+            (!^"Settable" ^^ space ^^ !^"_")
+            (string "settable!" ^^ space
+             ^^ parens (!^"Build_" ^^ name#p ^^ (concat_map_with ~pre:space (fun (x : generic_param) -> match x with | { ident; _ } -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics ident)#p) generics#v.params))
              ^^ space ^^ string "<"
              ^^ separate_map (semi ^^ space)
-                  (fun (ident, typ, attr) -> ident#p)
-                  arguments
+               (fun (ident, typ, attr) -> ident#p)
+               arguments
              ^^ string ">")
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
@@ -809,7 +821,7 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in
            let open Generic_printer.AnnotatedString in
-           let header = pure (hardcoded_coq_headers ^ "\n") in
+           let header = pure (hardcoded_coq_headers ^ "\n" ^ dummy_lib) in
            let annotated = concat header annotated in
            (to_sourcemap annotated, to_string annotated)
          in
