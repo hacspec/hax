@@ -1,5 +1,6 @@
 use super::Diagnostics;
 use annotate_snippets::*;
+use miette::SourceOffset;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -11,29 +12,8 @@ pub struct ReportCtx {
 }
 
 /// Translates a line and column position into an absolute offset
-fn compute_offset(src: &str, mut line: usize, col: usize) -> usize {
-    let mut chars = src.chars().enumerate();
-    while line > 1 {
-        while let Some((_offset, ch)) = chars.next() {
-            if ch == '\n' {
-                break;
-            }
-        }
-        line -= 1;
-    }
-    let offset = chars
-        .clone()
-        .next()
-        .map(|(offset, _ch)| offset)
-        .unwrap_or(0);
-    let are_col_first_chars_blank = chars
-        .take(col)
-        .all(|(_offset, ch)| matches!(ch, ' ' | '\t'));
-    if are_col_first_chars_blank {
-        offset
-    } else {
-        offset + col
-    }
+fn compute_offset(src: &str, line: usize, col: usize) -> usize {
+    SourceOffset::from_location(src, line, col).offset() + 1
 }
 
 impl ReportCtx {
