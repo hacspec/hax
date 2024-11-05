@@ -117,6 +117,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
             let _: &mut _ = { x }.deref_mut();
         }
     };
+    panic!()
 }
 
 macro_rules! impl_arith {

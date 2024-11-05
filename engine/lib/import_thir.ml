@@ -1322,7 +1322,8 @@ let c_trait_item (item : Thir.trait_item) : trait_item =
     ti_attrs = c_item_attrs item.attributes;
   }
 
-let is_automatically_derived (attrs : Thir.attribute list) =
+let is_automatically_derived (attrs : Thir.item_attributes) =
+  let attrs = attrs.attributes @ attrs.parent_attributes in
   List.exists (* We need something better here, see issue #108 *)
     ~f:(function
       | { kind = Normal { item = { path; _ }; _ }; _ } ->
@@ -1340,7 +1341,7 @@ let is_hax_skip (attrs : Thir.attribute list) =
 
 let should_skip (attrs : Thir.item_attributes) =
   let attrs = attrs.attributes @ attrs.parent_attributes in
-  is_hax_skip attrs || is_automatically_derived attrs
+  is_hax_skip attrs
 
 (** Converts a generic parameter to a generic value. This assumes the
 parameter is bound. *)
@@ -1464,6 +1465,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
          |> not
     in
     let c_body = if drop_body then c_expr_drop_body else c_expr in
+    let is_generated = is_automatically_derived item.attributes in
     (* TODO: things might be unnamed (e.g. constants) *)
     match (item.kind : Thir.item_kind) with
     | Const (_, generics, body) ->
@@ -1709,7 +1711,19 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  [ U.make_unit_param span ]
                                else List.map ~f:(c_param item.span) params
                              in
-                             IIFn { body = c_expr body; params }
+                             let body = c_expr body in
+                             let body =
+                               if is_generated then
+                                 U.call Rust_primitives__hax__never_to_any
+                                   [
+                                     U.call Core__panicking__panic
+                                       [ unit_expr body.span ]
+                                       body.span U.never_typ;
+                                   ]
+                                   body.span body.typ
+                               else body
+                             in
+                             IIFn { body; params }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
                          | Type { ty; parent_bounds } ->
