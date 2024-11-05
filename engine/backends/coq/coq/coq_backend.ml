@@ -126,7 +126,10 @@ let dummy_lib =
    Class t_Sized (T : Type) := { }.\n\
    Definition t_Array T (x : t_usize) := list T.\n\
    Definition t_u8 := Z.\n\
-   Definition t_i32 := Z.\n"
+   Definition t_i32 := Z.\n\
+   Definition t_isize := Z.\n\
+   Definition t_String := string.\n\
+   Definition ToString_f_to_string (x : string) := x.\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -263,20 +266,23 @@ struct
           if List.is_empty fields then empty
           else
             add_space
-            ^^ separate_map space (fun x -> (snd x)#p) fields
+            ^^ separate_map space (fun x -> parens((snd x)#p)) fields
         in
         if is_record && is_struct then
           match base with
-          | Some x -> string "Build_" ^^ x#p ^^ fields_or_empty space
-          | None -> constructor#p ^^ fields_or_empty space
-        else if not is_record then
-          if is_struct then
+          | Some x ->
+            (* Update fields *)
+            x#p ^^ concat_map_with ~pre:space (fun x -> string "<|" ^^ (fst x)#p ^^ space ^^ !^":=" ^^ space ^^ (snd x)#p ^^ space ^^ string "|>") fields
+          | None ->
             constructor#p ^^ fields_or_empty space
+        else if not is_record then
+          if is_struct
+          then constructor#p ^^ fields_or_empty space
           else constructor#p ^^ fields_or_empty space
         else
-          default_document_for
-            "expr'_Construct_inductive [is_record=true, is_struct = false] \
-             todo record"
+          constructor#p ^^ space ^^ string "{|" ^^ space ^^
+          separate_map (semi ^^ space) (fun (ident, exp) -> ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p) fields
+           ^^ space ^^ string "|}"
 
       method expr'_Construct_tuple ~super:_ ~components =
         if List.length components == 0 then !^"tt"
@@ -346,7 +352,7 @@ struct
       method generic_constraint_GCType x1 = string "`" ^^ braces x1#p
 
       method generic_param ~ident ~span:_ ~attrs:_ ~kind =
-        string "`" ^^ braces (ident#p ^^ space ^^ colon ^^ space ^^ kind#p)
+        ident#p ^^ space ^^ colon ^^ space ^^ kind#p
 
       method generic_param_kind_GPConst ~typ = typ#p
 
@@ -362,7 +368,7 @@ struct
       method generic_value_GType x1 = parens x1#p
 
       method generics ~params ~constraints =
-        let params_document = concat_spaced_doc params in
+        let params_document = concat_map_with ~pre:space (fun x -> string "`" ^^ braces (x#p))  params in
         let constraints_document = concat_spaced_doc constraints
         in
         params_document ^^ constraints_document
@@ -487,7 +493,7 @@ struct
         let _, params, constraints = generics#v in
         CoqNotation.class_ name#p generics#p [] !^"Type"
           (braces
-             (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1))
+             (nest 2 (concat_map_with ~pre:(break 1) (fun x -> x#p) items) ^^ break 1))
         ^^ break 1
         ^^ CoqNotation.arguments name#p (List.map ~f:(fun _ -> true) params @ List.map ~f:(fun _ -> false) constraints)
 
@@ -504,7 +510,7 @@ struct
         let arguments_explicity_without_ty =
           (List.map ~f:(fun _ -> false) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
         in
-        CoqNotation.record name#p generics#p [] (string "Type")
+        CoqNotation.record name#p ((concat_map_with ~pre:space (fun x -> parens( self#entrypoint_generic_param x )) generics#v.params) ^^ (concat_map_with ~pre:space (fun x -> self#entrypoint_generic_constraint x ) generics#v.constraints)) [] (string "Type")
           (braces
              (nest 2
                 (concat_map
@@ -537,17 +543,38 @@ struct
                 (CoqNotation.notation_name (string (String.drop_prefix (U.Concrete_ident_view.to_definition_name name#v) 2 )) (!^"Build_" ^^ name#p))
            else empty)
 
-      method item'_Type_enum ~super:_ ~name ~generics ~variants =
+      (* map_def_path_item_string (fun x -> x) x#v.name *)
+
+      method item'_Type_enum ~super ~name ~generics ~variants =
+        concat_map_with ~post:(break 1) (fun x ->
+            (self#item'_Type_struct ~super ~name:(
+                self#_do_not_override_lazy_of_concrete_ident
+                  AstPos_variant__arguments (
+                  Concrete_ident.Create.map_last ~f:(fun x -> x ^ "_record") x#v.name
+              )) ~generics ~tuple_struct:false ~arguments:(List.map
+                  ~f:(fun (ident, typ, attrs) ->
+                    ( self#_do_not_override_lazy_of_concrete_ident
+                        AstPos_variant__arguments ident,
+                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
+                        typ,
+                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
+                        attrs ))
+                  x#v.arguments))
+          ) (List.filter ~f:(fun x -> x#v.is_record) variants) ^^
         CoqNotation.inductive name#p generics#p [] (string "Type")
           (separate_map (break 1)
-             (fun x -> string "|" ^^ space ^^ x#p)
+             (fun x -> string "|" ^^ space ^^ x#p ^^
+                       (if x#v.is_record
+                        then
+                          (concat_map_with ~pre:space (fun (x : generic_param) -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics x.ident)#p) generics#v.params) ^^ space ^^ !^"->" ^^ space ^^ !^"_"
+                        else empty))
              variants)
-        ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon
-        ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space
-        ^^ name#p
-        ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params
-        ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints
-        ^^ dot
+        (* ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon *)
+        (* ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space *)
+        (* ^^ name#p *)
+        (* ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params *)
+        (* ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints *)
+        (* ^^ dot *)
 
       method item'_Use ~super:_ ~path ~is_external ~rename:_ =
         if List.length path == 0 || is_external then empty
@@ -641,17 +668,22 @@ struct
 
       method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record
           ~is_struct ~fields =
-        if is_record then
+        if is_record
+        then
           constructor#p ^^ space
           ^^ parens
                (separate_map (comma ^^ space)
                   (fun field_pat -> (snd field_pat)#p)
                   fields)
         else
+        if is_record
+        then
           (* constructor#p ^^ *)
           string "{|" ^^
             separate_map (semi ^^ space) (fun (ident, exp) -> ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p) fields
           ^^ string "|}"
+        else
+          constructor#p ^^ concat_map_with ~pre:space (fun (ident, exp) -> exp#p) fields
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)
@@ -775,18 +807,19 @@ struct
 
       method item'_Enum_Variant ~name ~arguments ~is_record ~attrs:_ =
         if is_record then
-          concat_map
-            (fun (ident, typ, attr) ->
-              ident#p ^^ space ^^ colon ^^ space ^^ typ#p)
-            arguments
-          ^^ semi
-        else if List.length arguments == 0 then name#p
+          name#p ^^ space ^^ colon ^^ space ^^ name#p ^^ !^"_record" ^^ space
+          (* concat_map *)
+          (*   (fun (ident, typ, attr) -> *)
+          (*     ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *)
+          (*   arguments *)
+        else
+        if List.length arguments == 0 then name#p
         else
           name#p ^^ space ^^ colon ^^ space
           ^^ separate_map
-               (space ^^ string "->" ^^ space)
-               (fun (ident, typ, attr) -> typ#p)
-               arguments
+            (space ^^ string "->" ^^ space)
+            (fun (ident, typ, attr) -> typ#p)
+            arguments
           ^^ space ^^ string "->" ^^ space ^^ string "_"
 
       method module_path_separator = "."
