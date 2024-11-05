@@ -118,6 +118,18 @@ module%inlined_contents Make (F : Features.T) = struct
                  in exit nodes. **)
       end
 
+    let closure_visitor =
+      let module Visitors = Ast_visitors.Make (F) in
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_expr' () e =
+          match e with
+          | Closure ({ body; _ } as closure) ->
+              Closure { closure with body = visitor#visit_expr None body }
+          | _ -> super#visit_expr' () e
+      end
+
     [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr' (span : span) (expr : A.expr') : B.expr' =
@@ -157,7 +169,8 @@ module%inlined_contents Make (F : Features.T) = struct
     [%%inline_defs "Item.*" - ditems]
 
     let ditems (items : A.item list) : B.item list =
-      List.concat_map items ~f:(visitor#visit_item None >> ditem)
+      List.concat_map items
+        ~f:(visitor#visit_item None >> closure_visitor#visit_item () >> ditem)
   end
 
   include Implem
