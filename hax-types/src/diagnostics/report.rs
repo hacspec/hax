@@ -12,10 +12,10 @@ pub struct ReportCtx {
 
 /// Translates a line and column position into an absolute offset
 fn compute_offset(src: &str, mut line: usize, col: usize) -> usize {
-    let mut chars = src.chars().enumerate();
+    let mut chars = src.bytes().enumerate();
     while line > 1 {
         while let Some((_offset, ch)) = chars.next() {
-            if ch == '\n' {
+            if ch == b'\n' {
                 break;
             }
         }
@@ -28,7 +28,7 @@ fn compute_offset(src: &str, mut line: usize, col: usize) -> usize {
         .unwrap_or(0);
     let are_col_first_chars_blank = chars
         .take(col)
-        .all(|(_offset, ch)| matches!(ch, ' ' | '\t'));
+        .all(|(_offset, ch)| matches!(ch, b' ' | b'\t'));
     if are_col_first_chars_blank {
         offset
     } else {
