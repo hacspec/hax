@@ -173,3 +173,9 @@ mod issue_1083 {
         Ok(u16::my_from(x))
     }
 }
+
+mod issue_1089 {
+    fn test(x: Option<i32>, y: Option<i32>) -> Option<i32> {
+        x.map(|i| Some(i + y?))?
+    }
+}
