@@ -81,6 +81,10 @@ module Imported = struct
     let f = map_disambiguated_def_path_item_string ~f in
     { did with path = List.map ~f did.path }
 
+  let with_disambiguator (disambiguator : int) (x : disambiguated_def_path_item)
+      : disambiguated_def_path_item =
+    { x with disambiguator }
+
   module AssociatedItem : sig
     type t [@@deriving show, yojson, compare, sexp, eq, hash]
     (** An identifier that is an associated item *)
@@ -628,6 +632,13 @@ module Create = struct
     let last =
       List.last_exn old.def_id.path
       |> Imported.map_disambiguated_def_path_item_string ~f
+    in
+    let path = List.drop_last_exn old.def_id.path @ [ last ] in
+    { old with def_id = { old.def_id with path } }
+
+  let add_disambiguator disambiguator old =
+    let last =
+      List.last_exn old.def_id.path |> Imported.with_disambiguator disambiguator
     in
     let path = List.drop_last_exn old.def_id.path @ [ last ] in
     { old with def_id = { old.def_id with path } }

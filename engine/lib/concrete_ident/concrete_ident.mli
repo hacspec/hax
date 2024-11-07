@@ -37,6 +37,10 @@ module Create : sig
   val map_last : f:(string -> string) -> t -> t
   (** [map_last f ident] applies [f] on the last chunk of [ident]'s
       path if it holds a string *)
+
+  val add_disambiguator : int -> t -> t
+  (** [add_disambiguator d ident] adds the disambiguator [d] to the last 
+      chunk of [ident]'s path if it holds a string *)
 end
 
 type view = { crate : string; path : string list; definition : string }

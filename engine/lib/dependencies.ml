@@ -431,10 +431,7 @@ module Make (F : Features.T) = struct
             (List.mem duplicates (new_name_under_ns id)
                ~equal:Concrete_ident.equal)
         then id
-        else
-          Concrete_ident.Create.map_last
-            ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
-            id
+        else Concrete_ident.Create.add_disambiguator (Concrete_ident.hash id) id
       in
       let renamings =
         List.map
