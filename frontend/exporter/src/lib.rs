@@ -23,6 +23,7 @@ cfg_feature_rustc! {
     extern crate rustc_ast;
     extern crate rustc_ast_pretty;
     extern crate rustc_attr;
+    extern crate rustc_apfloat;
     extern crate rustc_data_structures;
     extern crate rustc_driver;
     extern crate rustc_errors;
@@ -49,6 +50,7 @@ cfg_feature_rustc! {
 
 mod body;
 mod constant_utils;
+pub mod id_table;
 mod types;
 
 mod index_vec;

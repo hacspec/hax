@@ -11,7 +11,7 @@ module%inlined_contents Make (FA : Features.T) = struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarQuestionMarks
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -87,9 +87,10 @@ module%inlined_contents Make (FA : Features.T) = struct
         let* impl = expect_residual_impl_result impl in
         let*? _ = [%eq: ty] error_src error_dest |> not in
         let from_typ = TArrow ([ error_src ], error_dest) in
+        let impl_generic_args = [ GType error_dest; GType error_src ] in
         Some
-          (UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-             [ e ] e.span from_typ)
+          (UA.call ~impl_generic_args ~kind:(AssociatedItem Value) ~impl
+             Core__convert__From__from [ e ] e.span from_typ)
 
       (** [map_err e error_dest impl] creates the expression
       [e.map_err(from)] with the proper types and impl
@@ -111,17 +112,17 @@ module%inlined_contents Make (FA : Features.T) = struct
       let mk_pconstruct ~is_struct ~is_record ~span ~typ
           (constructor : Concrete_ident_generated.t)
           (fields : (Concrete_ident_generated.t * pat) list) =
-        let name =
+        let constructor =
           Global_ident.of_name (Constructor { is_struct }) constructor
         in
-        let args =
+        let fields =
           List.map
             ~f:(fun (field, pat) ->
               let field = Global_ident.of_name Field field in
               { field; pat })
             fields
         in
-        let p = PConstruct { name; args; is_record; is_struct } in
+        let p = PConstruct { constructor; fields; is_record; is_struct } in
         { p; span; typ }
 
       (** [extract e] returns [Some (x, ty)] if [e] was a `y?`
@@ -153,8 +154,8 @@ module%inlined_contents Make (FA : Features.T) = struct
           match p.p with
           | PConstruct
               {
-                name;
-                args =
+                constructor = name;
+                fields =
                   [
                     {
                       pat =

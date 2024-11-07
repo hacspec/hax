@@ -33,7 +33,24 @@ fn json_schema_static_asset() {
     .unwrap();
 }
 
+fn git_dirty_env_var() {
+    println!("cargo:rurun-if-env-changed=HAX_GIT_IS_DIRTY");
+    let dirty = {
+        use std::process::Command;
+        let _ = Command::new("git")
+            .args(["update-index", "-q", "--refresh"])
+            .status();
+        !Command::new("git")
+            .args(["diff-index", "--quiet", "HEAD", "--"])
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(true)
+    };
+    println!("cargo:rustc-env=HAX_GIT_IS_DIRTY={}", dirty);
+}
+
 fn main() {
     rustc_version_env_var();
     json_schema_static_asset();
+    git_dirty_env_var();
 }

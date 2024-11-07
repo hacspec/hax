@@ -12,6 +12,7 @@
   core
   logs
   re
+  sourcemaps
   ocamlgraph)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
@@ -56,6 +57,17 @@
    (with-stdin-from
     %{ast}
     (run generate_from_ast visitors)))))
+
+(rule
+ (target generated_generic_printer_base.ml)
+ (deps
+  (:ast ast.ml))
+ (action
+  (with-stdout-to
+   generated_generic_printer_base.ml
+   (with-stdin-from
+    %{ast}
+    (run generate_from_ast printer)))))
 
 (rule
  (target ast_destruct_generated.ml)

@@ -21,8 +21,10 @@ colored.workspace = true
 serde_json.workspace = true
 annotate-snippets.workspace = true
 hax-adt-into.workspace = true
-bincode.workspace = true
+tracing.workspace = true
+serde-brief ={ version = "*", features = ["std", "alloc"]}
 zstd = "0.13.1"
+miette = "7.2.0"
 
 [features]
 rustc = ["hax-frontend-exporter/rustc"]

@@ -7,7 +7,7 @@ module Make (F : Features.T) =
   Phase_utils.MakeMonomorphicPhase
     (F)
     (struct
-      let phase_id = Diagnostics.Phase.HoistDisjunctions
+      let phase_id = [%auto_phase_name auto]
 
       open Ast.Make (F)
       module U = Ast_utils.Make (F)
@@ -64,18 +64,18 @@ module Make (F : Features.T) =
             in
 
             match p.p with
-            | PConstruct { name; args; is_record; is_struct } ->
-                let args_as_pat =
-                  List.rev_map args ~f:(fun arg -> self#visit_pat () arg.pat)
+            | PConstruct { constructor; fields; is_record; is_struct } ->
+                let fields_as_pat =
+                  List.rev_map fields ~f:(fun arg -> self#visit_pat () arg.pat)
                 in
                 let subpats =
-                  List.map (treat_args [ [] ] args_as_pat)
-                    ~f:(fun args_as_pat ->
-                      let args =
-                        List.map2_exn args_as_pat args
+                  List.map (treat_args [ [] ] fields_as_pat)
+                    ~f:(fun fields_as_pat ->
+                      let fields =
+                        List.map2_exn fields_as_pat fields
                           ~f:(fun pat { field; _ } -> { field; pat })
                       in
-                      PConstruct { name; args; is_record; is_struct }
+                      PConstruct { constructor; fields; is_record; is_struct }
                       |> return_pat)
                 in
 

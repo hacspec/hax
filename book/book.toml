@@ -7,4 +7,9 @@ title = "hax"
 
 [output.html]
 mathjax-support = true
+additional-css = ["static/custom.css"]
+additional-js = ["theme/fstar.js", "theme/lz-string.js", "theme/ansi_up.js"]
 
+[output.html.playground]
+runnable = true
+editable = true

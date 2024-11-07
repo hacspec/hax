@@ -27,7 +27,7 @@ module Imported = struct
   [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Types.def_path_item -> def_path_item = function
-    | CrateRoot -> CrateRoot
+    | CrateRoot _ -> CrateRoot
     | Impl -> Impl
     | ForeignMod -> ForeignMod
     | Use -> Use
@@ -50,7 +50,8 @@ module Imported = struct
       disambiguator = MyInt64.to_int_exn disambiguator;
     }
 
-  let of_def_id Types.{ krate; path; _ } =
+  let of_def_id
+      ({ contents = { value = { krate; path; _ }; _ } } : Types.def_id) =
     { krate; path = List.map ~f:of_disambiguated_def_path_item path }
 
   let parent { krate; path; _ } = { krate; path = List.drop_last_exn path }
@@ -266,7 +267,7 @@ module View = struct
   open Utils
 
   let simple_ty_to_string ~(namespace : Imported.def_id) :
-      Types.ty -> string option =
+      Types.node_for__ty_kind -> string option =
     let escape =
       let re = Re.Pcre.regexp "_((?:e_)*)of_" in
       let f group = "_e_" ^ Re.Group.get group 1 ^ "of_" in
@@ -279,14 +280,14 @@ module View = struct
           namespace
         |> some_if_true
       in
-      let* last = List.last def_id.path in
+      let* last = List.last def_id.contents.value.path in
       let* () = some_if_true Int64.(last.disambiguator = zero) in
       last.data |> Imported.of_def_path_item |> string_of_def_path_item
       |> Option.map ~f:escape
     in
-    let arity0 =
-      Option.map ~f:escape << function
-      | Types.Bool -> Some "bool"
+    let arity0 (ty : Types.node_for__ty_kind) =
+      match ty.Types.value with
+      | Bool -> Some "bool"
       | Char -> Some "char"
       | Str -> Some "str"
       | Never -> Some "never"
@@ -305,12 +306,14 @@ module View = struct
       | Float F32 -> Some "f32"
       | Float F64 -> Some "f64"
       | Tuple [] -> Some "unit"
-      | Adt { def_id; generic_args = []; _ } -> adt def_id
+      | Adt { def_id; generic_args = []; _ } ->
+          Option.map ~f:escape (adt def_id)
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
-    let rec arity1 = function
-      | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
+    let rec arity1 (ty : Types.node_for__ty_kind) =
+      match ty.value with
+      | Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
       | Adt { def_id; generic_args = [ Type arg ]; _ } ->
           let* adt = adt def_id in
@@ -319,7 +322,7 @@ module View = struct
       | Tuple l ->
           let* l = List.map ~f:arity0 l |> Option.all in
           Some ("tuple_" ^ String.concat ~sep:"_" l)
-      | otherwise -> arity0 otherwise
+      | _ -> arity0 ty
     in
     arity1
 
@@ -385,7 +388,7 @@ module View = struct
                   namespace
            in
            let* typ = simple_ty_to_string ~namespace typ in
-           let* trait = List.last trait.path in
+           let* trait = List.last trait.contents.value.path in
            let* trait =
              Imported.of_def_path_item trait.data |> string_of_def_path_item
            in
@@ -628,6 +631,10 @@ module Create = struct
     in
     let path = List.drop_last_exn old.def_id.path @ [ last ] in
     { old with def_id = { old.def_id with path } }
+
+  let constructor name =
+    let path = name.def_id.path @ [ { data = Ctor; disambiguator = 0 } ] in
+    { name with def_id = { name.def_id with path } }
 end
 
 let lookup_raw_impl_info (impl : t) : Types.impl_infos option =

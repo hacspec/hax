@@ -306,6 +306,7 @@ module Make (F : Features.T) = struct
         method! visit_global_ident lvl (x : Global_ident.t) =
           match x with
           | `Concrete x -> `Concrete (f lvl x)
+          | `Projector (`Concrete x) -> `Projector (`Concrete (f lvl x))
           | _ -> super#visit_global_ident lvl x
 
         method! visit_ty _ t = super#visit_ty TypeLevel t
@@ -706,7 +707,7 @@ module Make (F : Features.T) = struct
   (* TODO: Those tuple1 things are wrong! Tuples of size one exists in Rust! e.g. `(123,)` *)
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
-    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ]; _ } ->
+    | PConstruct { constructor = `TupleType 1; fields = [ { pat; _ } ]; _ } ->
         remove_tuple1_pat pat
     | _ -> p
 
@@ -747,7 +748,7 @@ module Make (F : Features.T) = struct
         pat_is_expr p e
     | PBinding { subpat = None; var = pv; _ }, LocalVar ev ->
         [%eq: local_ident] pv ev
-    | ( PConstruct { name = pn; args = pargs; _ },
+    | ( PConstruct { constructor = pn; fields = pargs; _ },
         Construct { constructor = en; fields = eargs; base = None; _ } )
       when [%eq: global_ident] pn en -> (
         match List.zip pargs eargs with
@@ -823,10 +824,10 @@ module Make (F : Features.T) = struct
           p =
             PConstruct
               {
-                name = `TupleCons len;
-                args = tuple;
+                constructor = `TupleCons len;
                 is_record = false;
                 is_struct = true;
+                fields = tuple;
               };
           typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
@@ -889,7 +890,8 @@ module Make (F : Features.T) = struct
         (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
       is_struct args span ret_typ
 
-  let call' ?impl f (args : expr list) span ret_typ =
+  let call' ?impl f ?(generic_args = []) ?(impl_generic_args = [])
+      (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
     {
@@ -898,17 +900,18 @@ module Make (F : Features.T) = struct
           {
             f = { e; typ; span };
             args;
-            generic_args = [];
+            generic_args;
             bounds_impls = [];
-            trait = Option.map ~f:(fun impl -> (impl, [])) impl;
+            trait = Option.map ~f:(fun impl -> (impl, impl_generic_args)) impl;
           };
       typ = ret_typ;
       span;
     }
 
-  let call ?(kind : Concrete_ident.Kind.t = Value) ?impl
-      (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
-    call' ?impl
+  let call ?(kind : Concrete_ident.Kind.t = Value) ?(generic_args = [])
+      ?(impl_generic_args = []) ?impl (f_name : Concrete_ident.name)
+      (args : expr list) span ret_typ =
+    call' ?impl ~generic_args ~impl_generic_args
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
 
@@ -997,6 +1000,20 @@ module Make (F : Features.T) = struct
       { p = PBinding { mut; mode; var; typ; subpat }; span; typ }
     in
     Some { pat; typ; typ_span = Some span; attrs = [] }
+
+  let kind_of_item (item : item) : item_kind =
+    match item.v with
+    | Fn _ -> `Fn
+    | TyAlias _ -> `TyAlias
+    | Type _ -> `Type
+    | IMacroInvokation _ -> `IMacroInvokation
+    | Trait _ -> `Trait
+    | Impl _ -> `Impl
+    | Alias _ -> `Alias
+    | Use _ -> `Use
+    | Quote _ -> `Quote
+    | HaxError _ -> `HaxError
+    | NotImplementedYet -> `NotImplementedYet
 
   let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
     match lhs with

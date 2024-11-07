@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "rustc", feature(rustc_private))]
 //! This crate contains the type definitions that are used to communicate between:
 //!  - the command line (the `cargo-hax` binary);
 //!  - the custom rustc driver;
@@ -25,3 +26,6 @@ pub mod driver_api;
 /// The types used to communicate between `cargo-hax` and
 /// `hax-engine`.
 pub mod engine_api;
+
+/// Compile-time version of hax
+pub const HAX_VERSION: &str = env!("HAX_VERSION");

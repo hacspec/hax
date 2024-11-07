@@ -71,6 +71,9 @@ module Make (InputLanguage : Features.T) (M : BackendMetadata) = struct
   end
 
   module Attrs = Attr_payloads.Make (InputLanguage) (Error)
+  [@@ocaml.deprecated
+    "Use more precise errors: Error.unimplemented, Error.assertion_failure or \
+     a raw Error.t (with Error.raise)"]
 
   let failwith ?(span = Span.default) msg =
     Error.unimplemented
@@ -78,7 +81,4 @@ module Make (InputLanguage : Features.T) (M : BackendMetadata) = struct
         ("[TODO: this error uses failwith, and thus leads to bad error \
           messages, please update it using [Diagnostics.*] helpers] " ^ msg)
       span
-    [@@ocaml.deprecated
-      "Use more precise errors: Error.unimplemented, Error.assertion_failure \
-       or a raw Error.t (with Error.raise)"]
 end

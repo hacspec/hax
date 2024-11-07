@@ -261,30 +261,31 @@ struct
                   ( { e with e = Return { e = e'; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with return = Some e'.typ }) ))
-          | Break { e = e'; label; witness } ->
+          | Break { e = e'; label; acc; witness } ->
               HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
-                  ( { e with e = Break { e = e'; label; witness } },
+                  ( { e with e = Break { e = e'; acc; label; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with break = Some e'.typ }) ))
-          | Continue { e = e'; label; witness } -> (
+          | Continue { acc = e'; label; witness } -> (
               let ceffect =
                 no_lbs
                   {
                     SideEffects.zero with
-                    continue = Some (Option.map ~f:(fun (_, e) -> e.typ) e');
+                    continue = Some (Option.map ~f:(fun (e, _) -> e.typ) e');
                   }
               in
               match e' with
-              | Some (witness', e') ->
+              | Some (e', witness') ->
                   HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                       ( {
                           e with
                           e =
-                            Continue { e = Some (witness', e'); label; witness };
+                            Continue
+                              { acc = Some (e', witness'); label; witness };
                         },
                         m#plus ceffect effects ))
               | None -> (e, ceffect))
-          | Loop { body; kind; state; label; witness } ->
+          | Loop { body; kind; state; label; witness; control_flow } ->
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
@@ -329,7 +330,11 @@ struct
                   in
                   let effects = m#plus effects body_effects in
                   let body = lets_of_bindings lbs body in
-                  ( { e with e = Loop { body; kind; state; label; witness } },
+                  ( {
+                      e with
+                      e =
+                        Loop { body; kind; state; label; witness; control_flow };
+                    },
                     effects ))
           | If { cond; then_; else_ } ->
               HoistSeq.one env (self#visit_expr env cond) (fun cond effects ->

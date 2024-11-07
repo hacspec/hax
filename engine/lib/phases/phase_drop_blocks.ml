@@ -12,7 +12,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.DropReferences
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module UA = Ast_utils.Make (F)

@@ -11,7 +11,7 @@ module%inlined_contents Make (FA : Features.T) = struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarWhileLoops
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -95,6 +95,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop expr.span witness;
+                  control_flow = None;
                 };
             span = expr.span;
             typ = UB.unit_typ;

@@ -308,6 +308,10 @@ pub struct BackendOptions<E: Extension> {
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
+    /// Enables profiling for the engine
+    #[arg(short, long)]
+    pub profile: bool,
+
     /// Enable engine debugging: dumps the AST at each phase.
     ///
     /// The value of `<DEBUG_ENGINE>` can be either:
@@ -378,6 +382,13 @@ pub enum Command<E: Extension> {
         )]
         kind: Vec<ExportBodyKind>,
 
+        /// By default, `cargo hax json` outputs a JSON where every
+        /// piece of information is inlined. This however creates very
+        /// large JSON files. This flag enables the use of unique IDs
+        /// and outputs a map from IDs to actual objects.
+        #[arg(long)]
+        use_ids: bool,
+
         /// Whether to include extra informations about `DefId`s.
         #[arg(short = 'E', long = "include-extra", default_value = "false")]
         include_extra: bool,
@@ -405,7 +416,14 @@ pub enum ExportBodyKind {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
-#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
+#[command(
+    author,
+    version = crate::HAX_VERSION,
+    long_version = concat!("\nversion=", env!("HAX_VERSION"), "\n", "commit=", env!("HAX_GIT_COMMIT_HASH")),
+    name = "hax",
+    about,
+    long_about = None
+)]
 pub struct ExtensibleOptions<E: Extension> {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. `A::B::c`) in

@@ -11,7 +11,7 @@ module%inlined_contents Make (FA : Features.T) = struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarQuestionMarks
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -130,8 +130,8 @@ module%inlined_contents Make (FA : Features.T) = struct
           match p.p with
           | PConstruct
               {
-                name;
-                args =
+                constructor;
+                fields =
                   [
                     {
                       pat =
@@ -145,7 +145,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   ];
                 _;
               } ->
-              Some (name, var)
+              Some (constructor, var)
           | _ -> None
         in
         match e.e with

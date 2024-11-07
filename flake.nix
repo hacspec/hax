@@ -23,6 +23,10 @@
       url = "github:hacl-star/hacl-star";
       flake = false;
     };
+    rust-by-examples = {
+      url = "github:rust-lang/rust-by-example";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -56,6 +60,7 @@
             cat "${hax-env-file}" | xargs -I{} echo "export {}"
           fi
         '';
+        ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
@@ -73,7 +78,7 @@
               #!${pkgs.stdenv.shell}
               ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
             '';
-            inherit rustc;
+            inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
@@ -85,6 +90,18 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          rust-by-example-hax-extraction = pkgs.stdenv.mkDerivation {
+            name = "rust-by-example-hax-extraction";
+            phases = ["installPhase"];
+            buildInputs = [packages.hax pkgs.cargo];
+            installPhase = ''
+              cp --no-preserve=mode -rf ${inputs.rust-by-examples} workdir
+              cd workdir
+              ${pkgs.nodejs}/bin/node ${./.utils/rust-by-example.js}
+              mv rust-by-examples-crate/proofs $out
+            '';
+          };
 
           # The commit that corresponds to our nightly pin, helpful when updating rusrc.
           toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''
@@ -131,24 +148,6 @@
               ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
-          # Check the coherency between issues labeled
-          # `marked-unimplemented` on GitHub and issues mentionned in
-          # the engine in the `Unimplemented {issue_id: ...}` errors.
-          check-unimlemented-issue-coherency = {
-            type = "app";
-            program = "${pkgs.writeScript "check-unimlemented-issue-coherency" ''
-              RG=${pkgs.ripgrep}/bin/rg
-              SD=${pkgs.sd}/bin/sd
-
-              diff -U0 \
-                  <(${pkgs.gh}/bin/gh issue -R hacspec/hax list --label 'marked-unimplemented' --json number,closed -L 200 \
-                       | ${pkgs.jq}/bin/jq '.[] | select(.closed | not) | .number' | sort -u) \
-                  <($RG 'issue_id:(\d+)' -Ior '$1' | sort -u) \
-                  | $RG '^[+-]\d' \
-                  | $SD '[-](\d+)' '#$1\t is labeled `marked-unimplemented`, but was not found in the code' \
-                  | $SD '[+](\d+)' '#$1\t is *not* labeled `marked-unimplemented` or is closed'
-            ''}";
-          };
           serve-book = {
             type = "app";
             program = "${pkgs.writeScript "serve-book" ''
@@ -176,24 +175,25 @@
             installPhase = ''
                 mkdir -p $out/bin
                 cp ${./.utils/rebuild.sh} $out/bin/rebuild
-                cp ${./.utils/list-names.sh} $out/bin/list-names
-                cp ${./.utils/expand.sh} $out/bin/expand-hax-macros
               '';
           };
           packages = [
             ocamlformat
-            pkgs.ocamlPackages.ocaml-lsp
-            pkgs.ocamlPackages.ocamlformat-rpc-lib
-            pkgs.ocamlPackages.ocaml-print-intf
-            pkgs.ocamlPackages.odoc
-            pkgs.ocamlPackages.utop
+            ocamlPackages.ocaml-lsp
+            ocamlPackages.ocamlformat-rpc-lib
+            ocamlPackages.ocaml-print-intf
+            ocamlPackages.odoc
+            ocamlPackages.utop
 
+            pkgs.just
             pkgs.cargo-expand
             pkgs.cargo-release
             pkgs.cargo-insta
             pkgs.openssl.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
+            pkgs.toml2json
+            pkgs.mdbook
             rustfmt
             rustc
 
@@ -201,7 +201,7 @@
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
-          fstar = pkgs.mkShell {
+          examples = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
             shellHook = ''
@@ -209,11 +209,11 @@
               export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
               export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
             '';
-            packages = packages ++ [fstar];
+            packages = packages ++ [fstar pkgs.proverif];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
-            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
         };
       }

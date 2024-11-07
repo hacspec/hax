@@ -9,12 +9,12 @@ _return a value_: it will not panic or diverge. We could enrich the
 contract of `square` with a post-condition about the fact it is a
 increasing function:
 
-```rust,noplaypen
-{{#include sources.rs:square_ensures}}
-```
-
-```ocaml
-{{#include Sources.fst:square_ensures}}
+```rust,editable
+#[hax_lib::requires(x < 16)]
+#[hax_lib::ensures(|result| result >= x)]
+fn square_ensures(x: u8) -> u8 {
+    x * x
+}
 ```
 
 Such a simple post-condition is automatically proven by F\*. The
@@ -37,12 +37,30 @@ Given `value` a field element (a `i32` whose absolute value is at most
 It is easy to write this contract directly as `hax::requires` and
 `hax::ensures` annotations, as shown in the snippet below.
 
-```rust,noplaypen
-{{#include sources.rs:barrett}}
-```
+```rust,editable
+type FieldElement = i32;
+const FIELD_MODULUS: i32 = 3329;
+const BARRETT_SHIFT: i64 = 26;
+const BARRETT_R: i64 = 0x4000000; // 2^26
+const BARRETT_MULTIPLIER: i64 = 20159; // ⌊(BARRETT_R / FIELD_MODULUS) + 1/2⌋
 
-```ocaml
-{{#include Sources.fst:barrett}}
+#[hax_lib::requires((i64::from(value) >= -BARRETT_R && i64::from(value) <= BARRETT_R))]
+#[hax_lib::ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS
+                     && result %  FIELD_MODULUS ==  value % FIELD_MODULUS)]
+fn barrett_reduce(value: i32) -> i32 {
+    let t = i64::from(value) * BARRETT_MULTIPLIER;
+    let t = t + (BARRETT_R >> 1);
+
+    let quotient = t >> BARRETT_SHIFT;
+    let quotient = quotient as i32;
+
+    let sub = quotient * FIELD_MODULUS;
+
+    // Here a lemma to prove that `(quotient * 3329) % 3329 = 0`
+    // may have to be called in F*.
+
+    value - sub
+}
 ```
 
 <!-- Note that we call to `cancel_mul_mod`, a lemma: in Rust, this have no
@@ -76,12 +94,14 @@ property: encrypting a ciphertext and decrypting the result with a
 same key produces the ciphertext again. `|c| decrypt(c, key)` is the
 inverse of `|p| encrypt(p, key)`.
 
-```rust,noplaypen
-{{#include sources.rs:encrypt_decrypt}}
-```
+```rust,editable
+fn encrypt(plaintext: u32, key: u32) -> u32 {
+    plaintext ^ key
+}
 
-```ocaml
-{{#include Sources.fst:encrypt_decrypt}}
+fn decrypt(ciphertext: u32, key: u32) -> u32 {
+    ciphertext ^ key
+}
 ```
 
 In this situation, adding a pre- or a post-condition to either
@@ -97,10 +117,20 @@ proof itself are not relevant, at this stage, we only care about the
 statement. The proof will be completed manually in the proof
 assistant.
 
-```rust,noplaypen
-{{#include sources.rs:encrypt_decrypt_identity}}
-```
-
-```ocaml
-{{#include Sources.fst:encrypt_decrypt_identity}}
+```rust,editable
+# fn encrypt(plaintext: u32, key: u32) -> u32 {
+#     plaintext ^ key
+# }
+# 
+# fn decrypt(ciphertext: u32, key: u32) -> u32 {
+#     ciphertext ^ key
+# }
+# 
+#[hax_lib::lemma]
+#[hax_lib::requires(true)]
+fn encrypt_decrypt_identity(
+    key: u32,
+    plaintext: u32,
+) -> Proof<{ decrypt(encrypt(plaintext, key), key) == plaintext }> {
+}
 ```

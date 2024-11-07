@@ -1,3 +1,4 @@
+#![feature(rustc_private)]
 use annotate_snippets::{Level, Renderer};
 use clap::Parser;
 use colored::Colorize;
@@ -13,6 +14,7 @@ use std::path::PathBuf;
 use std::process;
 
 mod engine_debug_webapp;
+use hax_frontend_exporter::id_table;
 
 /// Return a toolchain argument to pass to `cargo`: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure `rustup` is available
@@ -180,6 +182,26 @@ impl HaxMessage {
                 );
                 eprintln!("{}", renderer.render(Level::Error.title(&title)));
             }
+            Self::ProfilingData(data) => {
+                fn format_with_dot(shift: u32, n: u64) -> String {
+                    let factor = 10u64.pow(shift);
+                    format!("{}.{}", n / factor, n % factor)
+                }
+                let title = format!(
+                    "[profiling] {}: {}ms, memory={}, {} item{}{}",
+                    data.context,
+                    format_with_dot(6, data.time_ns),
+                    data.memory,
+                    data.quantity,
+                    if data.quantity > 1 { "s" } else { "" },
+                    if data.errored {
+                        " (note: this failed!)"
+                    } else {
+                        ""
+                    }
+                );
+                eprintln!("{}", renderer.render(Level::Info.title(&title)));
+            }
             Self::CargoBuildFailure => {
                 let title =
                     "hax: running `cargo build` was not successful, continuing anyway.".to_string();
@@ -199,6 +221,7 @@ impl HaxMessage {
 /// Runs `hax-engine`
 fn run_engine(
     haxmeta: HaxMeta<hax_frontend_exporter::ThirBody>,
+    id_table: id_table::Table,
     working_dir: PathBuf,
     manifest_dir: PathBuf,
     backend: &BackendOptions<()>,
@@ -246,7 +269,9 @@ fn run_engine(
             };
         }
 
-        send!(&engine_options);
+        id_table::WithTable::run(id_table, engine_options, |with_table| {
+            send!(with_table);
+        });
 
         let out_dir = backend.output_dir.clone().unwrap_or({
             let relative_path: PathBuf = [
@@ -311,6 +336,9 @@ fn run_engine(
                     };
                     send!(&ToEngine::PrettyPrintedRust(code));
                 }
+                FromEngine::ProfilingData(profiling_data) => {
+                    HaxMessage::ProfilingData(profiling_data).report(message_format, None)
+                }
                 FromEngine::Ping => {
                     send!(&ToEngine::Pong);
                 }
@@ -362,6 +390,29 @@ fn target_dir(suffix: &str) -> PathBuf {
     dir.into()
 }
 
+/// Gets hax version: if hax is being compiled from a dirty git repo,
+/// then this function taints the hax version with the hash of the
+/// current executable. This makes sure cargo doesn't cache across
+/// different versions of hax, for more information see
+/// https://github.com/hacspec/hax/issues/801.
+fn get_hax_version() -> String {
+    let mut version = hax_types::HAX_VERSION.to_string();
+    if env!("HAX_GIT_IS_DIRTY") == "true" {
+        version += &std::env::current_exe()
+            .ok()
+            .and_then(|exe_path| std::fs::read(exe_path).ok())
+            .map(|contents| {
+                use std::hash::{DefaultHasher, Hash, Hasher};
+                let mut s = DefaultHasher::new();
+                contents.hash(&mut s);
+                format!("hash-exe-{}", s.finish())
+            })
+            .expect("Expect read path")
+    }
+
+    version
+}
+
 /// Calls `cargo` with a custom driver which computes `haxmeta` files
 /// in `TARGET`. One `haxmeta` file is produced by crate. Each
 /// `haxmeta` file contains the full AST of one crate.
@@ -393,6 +444,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         )
         .env(RUST_LOG_STYLE, rust_log_style())
         .env(RUSTFLAGS, rustflags())
+        .env("HAX_CARGO_CACHE_KEY", get_hax_version())
         .env(
             ENV_VAR_OPTIONS_FRONTEND,
             serde_json::to_string(&options)
@@ -442,26 +494,39 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
             output_file,
             kind,
             include_extra,
+            use_ids,
             ..
         } => {
             with_kind_type!(kind, <Body>|| {
                 for EmitHaxMetaMessage { path, .. } in haxmeta_files {
-                    let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
+                    let (haxmeta, id_table): (HaxMeta<Body>, _) = HaxMeta::read(fs::File::open(&path).unwrap());
                     let dest = output_file.open_or_stdout();
+
                     (if include_extra {
-                        serde_json::to_writer(
-                            dest,
-                            &WithDefIds {
-                                def_ids: haxmeta.def_ids,
-                                impl_infos: haxmeta.impl_infos,
-                                items: haxmeta.items,
-                                comments: haxmeta.comments,
-                            },
-                        )
+                        let data = WithDefIds {
+                            def_ids: haxmeta.def_ids,
+                            impl_infos: haxmeta.impl_infos,
+                            items: haxmeta.items,
+                            comments: haxmeta.comments,
+                        };
+                        if use_ids {
+                            id_table::WithTable::run(id_table, data, |with_table| {
+                                serde_json::to_writer(dest, with_table)
+                            })
+                        } else {
+                            serde_json::to_writer(dest, &data)
+                        }
                     } else {
-                        serde_json::to_writer(dest, &haxmeta.items)
+                        if use_ids {
+                            id_table::WithTable::run(id_table, haxmeta.items, |with_table| {
+                                serde_json::to_writer(dest, with_table)
+                            })
+                        } else {
+                            serde_json::to_writer(dest, &haxmeta.items)
+                        }
                     })
                         .unwrap()
+
                 }
             });
             false
@@ -484,11 +549,13 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                 path,
             } in haxmeta_files
             {
-                let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
+                let (haxmeta, id_table): (HaxMeta<Body>, _) =
+                    HaxMeta::read(fs::File::open(&path).unwrap());
 
                 error = error
                     || run_engine(
                         haxmeta,
+                        id_table,
                         working_dir,
                         manifest_dir,
                         &backend,

@@ -13,46 +13,42 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
-    Ty::Arrow(Box::new(sig.sinto(s)))
-}
-
-#[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_target::abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
-    s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
+    fn is_named<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
     }
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);
+    let kind = if adt_def.is_struct() {
+        let named = is_named(adt_def.all_fields());
+        VariantKind::Struct { named }
+    } else if adt_def.is_union() {
+        VariantKind::Union
+    } else {
+        let named = is_named(variant_def.fields.iter());
+        let index = variant_index.into();
+        VariantKind::Enum { index, named }
+    };
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
-        variant_index: variant_index.into(),
-
-        typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
-        variant_is_record: is_record(variant_def.fields.iter()),
-        typ_is_struct: adt_def.is_struct(),
-
-        type_namespace: DefId {
-            path: match constructs_type.path.as_slice() {
-                [init @ .., _] => init.to_vec(),
-                _ => {
-                    let span = s.base().tcx.def_span(variant);
-                    fatal!(
-                        s[span],
-                        "Type {:#?} appears to have no path",
-                        constructs_type
-                    )
-                }
-            },
-            ..constructs_type.clone()
+        kind,
+        type_namespace: match &constructs_type.parent {
+            Some(parent) => parent.clone(),
+            None => {
+                let span = s.base().tcx.def_span(variant);
+                fatal!(
+                    s[span],
+                    "Type {:#?} appears to have no parent",
+                    constructs_type
+                )
+            }
         },
     }
 }
@@ -257,4 +253,17 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
             _ => items.map(|item| item.sinto(s)).collect(),
         })
         .collect()
+}
+
+/// Gets the closest ancestor of `id` that is the id of a type.
+pub fn get_closest_parent_type(
+    tcx: &ty::TyCtxt,
+    id: rustc_span::def_id::DefId,
+) -> rustc_span::def_id::DefId {
+    match tcx.def_kind(id) {
+        rustc_hir::def::DefKind::Union
+        | rustc_hir::def::DefKind::Struct
+        | rustc_hir::def::DefKind::Enum => id,
+        _ => get_closest_parent_type(tcx, tcx.parent(id)),
+    }
 }

@@ -10,6 +10,7 @@ module Thir = struct
   type generic_param = generic_param_for__decorated_for__expr_kind
   type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
   type trait_item = trait_item_for__decorated_for__expr_kind
+  type ty = node_for__ty_kind
 end
 
 open! Prelude
@@ -385,7 +386,7 @@ end) : EXPR = struct
     in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
-      match (ty, expr, List.drop_last stmts, List.last stmts) with
+      match (ty.value, expr, List.drop_last stmts, List.last stmts) with
       | ( Thir.Never,
           None,
           Some stmts,
@@ -517,7 +518,7 @@ end) : EXPR = struct
           let f =
             let f = c_expr fun' in
             match (trait, fun'.contents) with
-            | Some _, GlobalName { id } ->
+            | Some _, GlobalName { id; _ } ->
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
@@ -585,6 +586,7 @@ end) : EXPR = struct
               state = None;
               label = None;
               witness = W.loop;
+              control_flow = None;
             }
       | Match { scrutinee; arms } ->
           let scrutinee = c_expr scrutinee in
@@ -636,13 +638,21 @@ end) : EXPR = struct
               trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
-      | GlobalName { id } -> GlobalVar (def_id Value id)
+      | GlobalName { id; constructor } ->
+          let kind =
+            match constructor with
+            | Some { kind = Struct _; _ } ->
+                Concrete_ident.Kind.Constructor { is_struct = true }
+            | Some _ -> Concrete_ident.Kind.Constructor { is_struct = false }
+            | None -> Concrete_ident.Kind.Value
+          in
+          GlobalVar (def_id kind id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
           let kind = c_borrow_kind e.span kind in
           Borrow { kind; e = e'; witness = W.reference }
-      | AddressOf { arg; mutability = mut } ->
+      | RawBorrow { arg; mutability = mut } ->
           let e = c_expr arg in
           AddressOf
             {
@@ -654,9 +664,9 @@ end) : EXPR = struct
           (* TODO: labels! *)
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
-          Break { e; label = None; witness = (W.break, W.loop) }
+          Break { e; acc = None; label = None; witness = (W.break, W.loop) }
       | Continue _ ->
-          Continue { e = None; label = None; witness = (W.continue, W.loop) }
+          Continue { acc = None; label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
@@ -679,9 +689,15 @@ end) : EXPR = struct
           (U.make_tuple_expr' ~span @@ List.map ~f:c_expr fields).e
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ e.span ]
+                  "Construct union types: not supported"
           in
+          let constructor = def_id (Constructor { is_struct }) info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -695,14 +711,7 @@ end) : EXPR = struct
                 (field, value))
               fields
           in
-          Construct
-            {
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-              constructor;
-              fields;
-              base;
-            }
+          Construct { is_record; is_struct; constructor; fields; base }
       | Literal { lit; neg; _ } -> (
           match c_lit e.span neg lit typ with
           | EL_Lit lit -> Literal lit
@@ -716,11 +725,17 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; _ } ->
+      | NamedConst { def_id = id; impl; _ } -> (
           let kind : Concrete_ident.Kind.t =
             match impl with Some _ -> AssociatedItem Value | _ -> Value
           in
-          GlobalVar (def_id kind id)
+          let f = GlobalVar (def_id kind id) in
+          match impl with
+          | Some impl ->
+              let trait = Some (c_impl_expr e.span impl, []) in
+              let f = { e = f; span; typ = TArrow ([], typ) } in
+              App { f; trait; args = []; generic_args = []; bounds_impls = [] }
+          | _ -> f)
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
@@ -817,11 +832,12 @@ end) : EXPR = struct
           Array { fields = List.map ~f:constant_expr_to_expr fields }
       | Tuple { fields } ->
           Tuple { fields = List.map ~f:constant_expr_to_expr fields }
-      | GlobalName { id; _ } -> GlobalName { id }
+      | GlobalName { id; variant_information; _ } ->
+          GlobalName { id; constructor = variant_information }
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | MutPtr _ | TraitConst _ | FnPtr _ ->
+      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ ->
           assertion_failure [ span ]
             "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"
@@ -867,17 +883,17 @@ end) : EXPR = struct
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ pat.span ]
+                  "Pattern match on union types: not supported"
           in
-          let args = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct
-            {
-              name;
-              args;
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-            }
+          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let fields = List.map ~f:(c_field_pat info) subpatterns in
+          PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
           (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
@@ -975,7 +991,7 @@ end) : EXPR = struct
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
-    match ty with
+    match ty.value with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
@@ -1014,7 +1030,7 @@ end) : EXPR = struct
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias { kind = Opaque; def_id; _ } ->
+    | Alias { kind = Opaque _; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Alias { kind = Inherent; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
@@ -1273,7 +1289,7 @@ include struct
     let is_core_item = false
   end)
 
-  let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
+  let import_ty : Types.span -> Types.node_for__ty_kind -> Ast.Rust.ty = c_ty
 
   let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref
@@ -1294,7 +1310,7 @@ let make ~krate : (module EXPR) =
   (module M)
 
 let c_trait_item (item : Thir.trait_item) : trait_item =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
   let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
@@ -1374,12 +1390,12 @@ let cast_of_enum typ_name generics typ thir_span
             {
               is_record = variant.is_record;
               is_struct = false;
-              args =
+              fields =
                 List.map
                   ~f:(fun (cid, typ, _) ->
                     { field = `Concrete cid; pat = { p = PWild; typ; span } })
                   variant.arguments;
-              name = `Concrete variant.name;
+              constructor = `Concrete variant.name;
             }
         in
         let pat = { p = pat; typ = self; span } in
@@ -1433,7 +1449,7 @@ let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
     [ make_hax_error_item span ident error ]
 
 and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
@@ -1457,7 +1473,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_body body;
+               body = c_expr body;
                params = [];
                safety = Safe;
              }
@@ -1513,7 +1529,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
-                [%matches? Types.Struct { fields = _ :: _; _ }] data
+                [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
+                  data
               in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
@@ -1549,6 +1566,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let v =
           let kind = Concrete_ident.Kind.Constructor { is_struct } in
           let name = Concrete_ident.of_def_id kind def_id in
+          let name = Concrete_ident.Create.move_under name ~new_parent:name in
           let mk fields is_record =
             let arguments =
               List.map
@@ -1667,7 +1685,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                generics = c_generics generics;
                self_ty = c_ty item.span self_ty;
                of_trait =
-                 ( def_id Trait of_trait.def_id,
+                 ( Concrete_ident.of_def_id Trait of_trait.def_id,
                    List.map ~f:(c_generic_value item.span) of_trait.generic_args
                  );
                items =
@@ -1740,19 +1758,27 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
         let def_id = item.owner_id in
         let def_id : Types.def_id =
-          {
-            def_id with
-            path =
-              def_id.path
-              @ [
-                  Types.
-                    { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
-                ];
-          }
+          let value =
+            {
+              def_id.contents.value with
+              path =
+                def_id.contents.value.path
+                @ [
+                    Types.
+                      {
+                        data = ValueNs "DUMMY";
+                        disambiguator = MyInt64.of_int 0;
+                      };
+                  ];
+            }
+          in
+          { contents = { def_id.contents with value } }
         in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
+    | Union _ ->
+        unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-    | OpaqueTy _ | Union _ | TraitAlias _ ->
+    | TraitAlias _ ->
         mk NotImplementedYet
 
 let import_item ~drop_body (item : Thir.item) :

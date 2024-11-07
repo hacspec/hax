@@ -12,6 +12,8 @@ module Phase = struct
       | NotInBackendLang of Backend.t
       | ArbitraryLhs
       | Continue
+      | Break
+      | QuestionMark
       | RawOrMutPointer
       | EarlyExit
       | AsPattern
@@ -25,39 +27,8 @@ module Phase = struct
       | x -> [%show: t] x
   end
 
-  type t =
-    | DirectAndMut
-    | AndMutDefSite
-    | Identity
-    | DropReferences
-    | DropBlocks
-    | DropSizedTrait
-    | DropMatchGuards
-    | RefMut
-    | ResugarAsserts
-    | ResugarForLoops
-    | ResugarWhileLoops
-    | ResugarForIndexLoops
-    | ResugarQuestionMarks
-    | RewriteControlFlow
-    | SimplifyQuestionMarks
-    | Specialize
-    | HoistSideEffects
-    | HoistDisjunctions
-    | LocalMutation
-    | TrivializeAssignLhs
-    | CfIntoMonads
-    | FunctionalizeLoops
-    | TraitsSpecs
-    | SimplifyMatchReturn
-    | SimplifyHoisting
-    | DropNeedlessReturns
-    | TransformHaxLibInline
-    | NewtypeAsRefinement
-    | DummyA
-    | DummyB
-    | DummyC
-    | Reject of Rejection.t
+  (** All names for phases defined in `lib/phases_*` are generated automatically *)
+  type%add_phase_names t = Identity | HoistSideEffects | Reject of Rejection.t
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
   let display = function

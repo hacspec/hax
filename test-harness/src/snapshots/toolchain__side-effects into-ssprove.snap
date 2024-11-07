@@ -54,163 +54,6 @@ Import choice.Choice.Exports.
 
 Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
-(*Not implemented yet? todo(item)*)
-
-Equations add3 {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 int32) (y : both L2 I2 int32) (z : both L3 I3 int32) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32 :=
-  add3 x y z  :=
-    solve_lift (impl__u32__wrapping_add (impl__u32__wrapping_add x y) z) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32.
-Fail Next Obligation.
-
-Equations direct_result_question_mark {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result 'unit int32)) : both L1 I1 (t_Result int8 int32) :=
-  direct_result_question_mark y  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := y in
-    Result_Ok (Result_Ok (ret_both (0 : int8))))) : both L1 I1 (t_Result int8 int32).
-Fail Next Obligation.
-
-Equations direct_result_question_mark_coercion {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result int8 int16)) : both L1 I1 (t_Result int8 int32) :=
-  direct_result_question_mark_coercion y  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] hoist1 := impl__map_err y f_from in
-    Result_Ok (Result_Ok hoist1))) : both L1 I1 (t_Result int8 int32).
-Fail Next Obligation.
-
-Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both L1 I1 int32 :=
-  early_returns x  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (3 : int32))
-    then letm[choice_typeMonad.result_bind_code int32] hoist2 := ControlFlow_Break (ret_both (0 : int32)) in
-    ControlFlow_Continue (never_to_any hoist2)
-    else () in
-    letb hoist3 := x >.? (ret_both (30 : int32)) in
-    letm[choice_typeMonad.result_bind_code int32] hoist5 := ifb hoist3
-    then matchb ret_both (true : 'bool) with
-    | true =>
-      letm[choice_typeMonad.result_bind_code int32] hoist4 := ControlFlow_Break (ret_both (34 : int32)) in
-      ControlFlow_Continue (solve_lift (never_to_any hoist4))
-    | _ =>
-      ControlFlow_Continue (solve_lift (ret_both (3 : int32)))
-    end
-    else ControlFlow_Continue (letb _ := assign todo(term) in
-    x .+ (ret_both (1 : int32))) in
-    letb hoist6 := impl__u32__wrapping_add (ret_both (123 : int32)) hoist5 in
-    letb hoist7 := impl__u32__wrapping_add hoist6 x in
-    letm[choice_typeMonad.result_bind_code int32] hoist8 := ControlFlow_Break hoist7 in
-    ControlFlow_Continue (never_to_any hoist8))) : both L1 I1 int32.
-Fail Next Obligation.
-
-Definition y_loc : Location :=
-  (int32;0%nat).
-Definition y_loc : Location :=
-  (int32;1%nat).
-Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both (L1 :|: fset [y_loc;y_loc]) I1 int32 :=
-  local_mutation x  :=
-    letb y loc(y_loc) := ret_both (0 : int32) in
-    letb _ := assign todo(term) in
-    letb hoist9 := x >.? (ret_both (3 : int32)) in
-    solve_lift (ifb hoist9
-    then letb _ := assign todo(term) in
-    letb y loc(y_loc) := x ./ (ret_both (2 : int32)) in
-    letb _ := assign todo(term) in
-    letb hoist10 := ret_both (0 : int32) in
-    letb hoist11 := Build_t_Range (f_start := hoist10) (f_end := ret_both (10 : int32)) in
-    letb hoist12 := f_into_iter hoist11 in
-    letb _ := foldi_both_list hoist12 (fun i =>
-      ssp (fun _ =>
-        assign todo(term) : (both (*0*)(L1:|:fset []) (I1) 'unit))) (ret_both (tt : 'unit)) in
-    impl__u32__wrapping_add x y
-    else letb hoist15 := matchb x with
-    | 12 =>
-      letb _ := assign todo(term) in
-      solve_lift (ret_both (3 : int32))
-    | 13 =>
-      letb hoist14 := x in
-      letb _ := assign todo(term) in
-      letb hoist13 := impl__u32__wrapping_add (ret_both (123 : int32)) x in
-      solve_lift (add3 hoist14 hoist13 x)
-    | _ =>
-      solve_lift (ret_both (0 : int32))
-    end in
-    letb _ := assign todo(term) in
-    impl__u32__wrapping_add x y) : both (L1 :|: fset [y_loc;y_loc]) I1 int32.
-Fail Next Obligation.
-
-Equations options {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 (t_Option int8)) (y : both L2 I2 (t_Option int8)) (z : both L3 I3 (t_Option int64)) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8) :=
-  options x y z  :=
-    solve_lift (run (letm[choice_typeMonad.option_bind_code] hoist19 := x in
-    letb hoist20 := hoist19 >.? (ret_both (10 : int8)) in
-    letm[choice_typeMonad.option_bind_code] hoist26 := ifb hoist20
-    then letm[choice_typeMonad.option_bind_code] hoist21 := x in
-    Option_Some (letb hoist22 := impl__u8__wrapping_add hoist21 (ret_both (3 : int8)) in
-    Option_Some hoist22)
-    else letm[choice_typeMonad.option_bind_code] hoist24 := x in
-    letm[choice_typeMonad.option_bind_code] hoist23 := y in
-    Option_Some (letb hoist25 := impl__u8__wrapping_add hoist24 hoist23 in
-    Option_Some hoist25) in
-    letm[choice_typeMonad.option_bind_code] hoist27 := hoist26 in
-    letm[choice_typeMonad.option_bind_code] v := matchb hoist27 with
-    | 3 =>
-      Option_None
-    | 4 =>
-      letm[choice_typeMonad.option_bind_code] hoist16 := z in
-      Option_Some (letb hoist17 := hoist16 >.? (ret_both (4 : int64)) in
-      letb hoist18 := ifb hoist17
-      then ret_both (0 : int8)
-      else ret_both (3 : int8) in
-      solve_lift ((ret_both (4 : int8)) .+ hoist18))
-    | _ =>
-      Option_Some (solve_lift (ret_both (12 : int8)))
-    end in
-    letm[choice_typeMonad.option_bind_code] hoist28 := x in
-    letb hoist30 := impl__u8__wrapping_add v hoist28 in
-    letm[choice_typeMonad.option_bind_code] hoist29 := y in
-    Option_Some (letb hoist31 := impl__u8__wrapping_add hoist30 hoist29 in
-    Option_Some hoist31))) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8).
-Fail Next Obligation.
-
-Definition y_loc : Location :=
-  (int32;2%nat).
-Equations question_mark {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both (L1 :|: fset [y_loc]) I1 (t_Result int32 int32) :=
-  question_mark x  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (40 : int32))
-    then letb y loc(y_loc) := ret_both (0 : int32) in
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    letb hoist32 := x >.? (ret_both (90 : int32)) in
-    ifb hoist32
-    then impl__map_err (Result_Err (ret_both (12 : int8))) f_from
-    else ()
-    else () in
-    Result_Ok (Result_Ok (impl__u32__wrapping_add (ret_both (3 : int32)) x)))) : both (L1 :|: fset [y_loc]) I1 (t_Result int32 int32).
-Fail Next Obligation.
-
-Equations simplifiable_question_mark {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (c : both L1 I1 'bool) (x : both L2 I2 (t_Option int32)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32) :=
-  simplifiable_question_mark c x  :=
-    solve_lift (run (letm[choice_typeMonad.option_bind_code] a := ifb c
-    then letm[choice_typeMonad.option_bind_code] hoist33 := x in
-    Option_Some (hoist33 .+ (ret_both (10 : int32)))
-    else Option_Some (ret_both (0 : int32)) in
-    Option_Some (letb b := ret_both (20 : int32) in
-    Option_Some (a .+ b)))) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32).
-Fail Next Obligation.
-
-Definition x_loc : Location :=
-  (int32;3%nat).
-Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (c1 : both L1 I1 'bool) (c2 : both L2 I2 'bool) (c3 : both L3 I3 'bool) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32 :=
-  simplifiable_return c1 c2 c3  :=
-    solve_lift (run (letb x loc(x_loc) := ret_both (0 : int32) in
-    letm[choice_typeMonad.result_bind_code int32] _ := ifb c1
-    then letm[choice_typeMonad.result_bind_code int32] _ := ifb c2
-    then letb _ := assign todo(term) in
-    ifb c3
-    then letm[choice_typeMonad.result_bind_code int32] hoist34 := ControlFlow_Break (ret_both (1 : int32)) in
-    ControlFlow_Continue (never_to_any hoist34)
-    else ()
-    else () in
-    ControlFlow_Continue (letb _ := assign todo(term) in
-    ret_both (tt : 'unit))
-    else () in
-    ControlFlow_Continue x)) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32.
-Fail Next Obligation.
-
 Definition t_A : choice_type :=
   'unit.
 Equations Build_t_A : both (fset []) (fset []) (t_A) :=
@@ -245,16 +88,6 @@ Equations Build_t_Bar {L0 : {fset Location}} {L1 : {fset Location}} {I0 : Interf
 Fail Next Obligation.
 Notation "'Build_t_Bar' '[' x ']' '(' 'f_a' ':=' y ')'" := (Build_t_Bar (f_a := y) (f_b := f_b x)).
 Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := f_a x) (f_b := y)).
-
-Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
-  monad_lifting x  :=
-    solve_lift (run (ifb x >.? (ret_both (123 : int8))
-    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Continue (Result_Err B) in
-    letb hoist36 := Result_Ok hoist35 in
-    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist37 := ControlFlow_Break hoist36 in
-    ControlFlow_Continue (never_to_any hoist37)
-    else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
-Fail Next Obligation.
 
 Definition t_Foo : choice_type :=
   ('bool × 'bool × t_Vec t_Bar t_Global × nseq t_Bar 6 × t_Bar).
@@ -291,6 +124,17 @@ Notation "'Build_t_Foo' '[' x ']' '(' 'f_y' ':=' y ')'" := (Build_t_Foo (f_x := 
 Notation "'Build_t_Foo' '[' x ']' '(' 'f_z' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := y) (f_bar := f_bar x)).
 Notation "'Build_t_Foo' '[' x ']' '(' 'f_bar' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := f_z x) (f_bar := y)).
 
+(*Not implemented yet? todo(item)*)
+
+(*Not implemented yet? todo(item)*)
+
+(*Not implemented yet? todo(item)*)
+
+Equations add3 {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 int32) (y : both L2 I2 int32) (z : both L3 I3 int32) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32 :=
+  add3 x y z  :=
+    solve_lift (impl__u32__wrapping_add (impl__u32__wrapping_add x y) z) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32.
+Fail Next Obligation.
+
 Equations assign_non_trivial_lhs {L1 : {fset Location}} {I1 : Interface} (foo : both L1 I1 t_Foo) : both L1 I1 t_Foo :=
   assign_non_trivial_lhs foo  :=
     letb _ := assign todo(term) in
@@ -299,5 +143,248 @@ Equations assign_non_trivial_lhs {L1 : {fset Location}} {I1 : Interface} (foo : 
     letb _ := assign todo(term) in
     letb _ := assign todo(term) in
     solve_lift foo : both L1 I1 t_Foo.
+Fail Next Obligation.
+
+Equations direct_result_question_mark {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result 'unit int32)) : both L1 I1 (t_Result int8 int32) :=
+  direct_result_question_mark y  :=
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := y in
+    Result_Ok (Result_Ok (ret_both (0 : int8))))) : both L1 I1 (t_Result int8 int32).
+Fail Next Obligation.
+
+Equations direct_result_question_mark_coercion {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result int8 int16)) : both L1 I1 (t_Result int8 int32) :=
+  direct_result_question_mark_coercion y  :=
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] hoist5 := impl__map_err y f_from in
+    Result_Ok (Result_Ok hoist5))) : both L1 I1 (t_Result int8 int32).
+Fail Next Obligation.
+
+Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both L1 I1 int32 :=
+  early_returns x  :=
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (3 : int32))
+    then letm[choice_typeMonad.result_bind_code int32] hoist6 := ControlFlow_Break (ret_both (0 : int32)) in
+    ControlFlow_Continue (never_to_any hoist6)
+    else () in
+    letb hoist7 := x >.? (ret_both (30 : int32)) in
+    letm[choice_typeMonad.result_bind_code int32] hoist9 := ifb hoist7
+    then matchb ret_both (true : 'bool) with
+    | true =>
+      letm[choice_typeMonad.result_bind_code int32] hoist8 := ControlFlow_Break (ret_both (34 : int32)) in
+      ControlFlow_Continue (solve_lift (never_to_any hoist8))
+    | _ =>
+      ControlFlow_Continue (solve_lift (ret_both (3 : int32)))
+    end
+    else ControlFlow_Continue (letb _ := assign todo(term) in
+    x .+ (ret_both (1 : int32))) in
+    letb hoist10 := impl__u32__wrapping_add (ret_both (123 : int32)) hoist9 in
+    letb hoist11 := impl__u32__wrapping_add hoist10 x in
+    letm[choice_typeMonad.result_bind_code int32] hoist12 := ControlFlow_Break hoist11 in
+    ControlFlow_Continue (never_to_any hoist12))) : both L1 I1 int32.
+Fail Next Obligation.
+
+Definition y_loc : Location :=
+  (int32;0%nat).
+Definition y_loc : Location :=
+  (int32;1%nat).
+Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both (L1 :|: fset [y_loc;y_loc]) I1 int32 :=
+  local_mutation x  :=
+    letb y loc(y_loc) := ret_both (0 : int32) in
+    letb _ := assign todo(term) in
+    letb hoist13 := x >.? (ret_both (3 : int32)) in
+    solve_lift (ifb hoist13
+    then letb _ := assign todo(term) in
+    letb y loc(y_loc) := x ./ (ret_both (2 : int32)) in
+    letb _ := assign todo(term) in
+    letb hoist14 := ret_both (0 : int32) in
+    letb hoist15 := Build_t_Range (f_start := hoist14) (f_end := ret_both (10 : int32)) in
+    letb hoist16 := f_into_iter hoist15 in
+    letb _ := foldi_both_list hoist16 (fun i =>
+      ssp (fun _ =>
+        assign todo(term) : (both (*0*)(L1:|:fset []) (I1) 'unit))) (ret_both (tt : 'unit)) in
+    impl__u32__wrapping_add x y
+    else letb hoist19 := matchb x with
+    | 12 =>
+      letb _ := assign todo(term) in
+      solve_lift (ret_both (3 : int32))
+    | 13 =>
+      letb hoist18 := x in
+      letb _ := assign todo(term) in
+      letb hoist17 := impl__u32__wrapping_add (ret_both (123 : int32)) x in
+      solve_lift (add3 hoist18 hoist17 x)
+    | _ =>
+      solve_lift (ret_both (0 : int32))
+    end in
+    letb _ := assign todo(term) in
+    impl__u32__wrapping_add x y) : both (L1 :|: fset [y_loc;y_loc]) I1 int32.
+Fail Next Obligation.
+
+Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
+  monad_lifting x  :=
+    solve_lift (run (ifb x >.? (ret_both (123 : int8))
+    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist20 := ControlFlow_Continue (Result_Err B) in
+    letb hoist21 := Result_Ok hoist20 in
+    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist22 := ControlFlow_Break hoist21 in
+    ControlFlow_Continue (never_to_any hoist22)
+    else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
+Fail Next Obligation.
+
+Equations options {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 (t_Option int8)) (y : both L2 I2 (t_Option int8)) (z : both L3 I3 (t_Option int64)) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8) :=
+  options x y z  :=
+    solve_lift (run (letm[choice_typeMonad.option_bind_code] hoist26 := x in
+    letb hoist27 := hoist26 >.? (ret_both (10 : int8)) in
+    letm[choice_typeMonad.option_bind_code] hoist33 := ifb hoist27
+    then letm[choice_typeMonad.option_bind_code] hoist28 := x in
+    Option_Some (letb hoist29 := impl__u8__wrapping_add hoist28 (ret_both (3 : int8)) in
+    Option_Some hoist29)
+    else letm[choice_typeMonad.option_bind_code] hoist31 := x in
+    letm[choice_typeMonad.option_bind_code] hoist30 := y in
+    Option_Some (letb hoist32 := impl__u8__wrapping_add hoist31 hoist30 in
+    Option_Some hoist32) in
+    letm[choice_typeMonad.option_bind_code] hoist34 := hoist33 in
+    letm[choice_typeMonad.option_bind_code] v := matchb hoist34 with
+    | 3 =>
+      Option_None
+    | 4 =>
+      letm[choice_typeMonad.option_bind_code] hoist23 := z in
+      Option_Some (letb hoist24 := hoist23 >.? (ret_both (4 : int64)) in
+      letb hoist25 := ifb hoist24
+      then ret_both (0 : int8)
+      else ret_both (3 : int8) in
+      solve_lift ((ret_both (4 : int8)) .+ hoist25))
+    | _ =>
+      Option_Some (solve_lift (ret_both (12 : int8)))
+    end in
+    letm[choice_typeMonad.option_bind_code] hoist35 := x in
+    letb hoist37 := impl__u8__wrapping_add v hoist35 in
+    letm[choice_typeMonad.option_bind_code] hoist36 := y in
+    Option_Some (letb hoist38 := impl__u8__wrapping_add hoist37 hoist36 in
+    Option_Some hoist38))) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8).
+Fail Next Obligation.
+
+Definition y_loc : Location :=
+  (int32;2%nat).
+Equations question_mark {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both (L1 :|: fset [y_loc]) I1 (t_Result int32 int32) :=
+  question_mark x  :=
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (40 : int32))
+    then letb y loc(y_loc) := ret_both (0 : int32) in
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    letb hoist39 := x >.? (ret_both (90 : int32)) in
+    ifb hoist39
+    then impl__map_err (Result_Err (ret_both (12 : int8))) f_from
+    else ()
+    else () in
+    Result_Ok (Result_Ok (impl__u32__wrapping_add (ret_both (3 : int32)) x)))) : both (L1 :|: fset [y_loc]) I1 (t_Result int32 int32).
+Fail Next Obligation.
+
+Equations simplifiable_question_mark {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (c : both L1 I1 'bool) (x : both L2 I2 (t_Option int32)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32) :=
+  simplifiable_question_mark c x  :=
+    solve_lift (run (letm[choice_typeMonad.option_bind_code] a := ifb c
+    then letm[choice_typeMonad.option_bind_code] hoist40 := x in
+    Option_Some (hoist40 .+ (ret_both (10 : int32)))
+    else Option_Some (ret_both (0 : int32)) in
+    Option_Some (letb b := ret_both (20 : int32) in
+    Option_Some (a .+ b)))) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32).
+Fail Next Obligation.
+
+Definition x_loc : Location :=
+  (int32;3%nat).
+Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (c1 : both L1 I1 'bool) (c2 : both L2 I2 'bool) (c3 : both L3 I3 'bool) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32 :=
+  simplifiable_return c1 c2 c3  :=
+    solve_lift (run (letb x loc(x_loc) := ret_both (0 : int32) in
+    letm[choice_typeMonad.result_bind_code int32] _ := ifb c1
+    then letm[choice_typeMonad.result_bind_code int32] _ := ifb c2
+    then letb _ := assign todo(term) in
+    ifb c3
+    then letm[choice_typeMonad.result_bind_code int32] hoist41 := ControlFlow_Break (ret_both (1 : int32)) in
+    ControlFlow_Continue (never_to_any hoist41)
+    else ()
+    else () in
+    ControlFlow_Continue (letb _ := assign todo(term) in
+    ret_both (tt : 'unit))
+    else () in
+    ControlFlow_Continue x)) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32.
+Fail Next Obligation.
+'''
+"Side_effects_Issue_1083_.v" = '''
+(* File automatically generated by Hacspec *)
+Set Warnings "-notation-overridden,-ambiguous-paths".
+From Crypt Require Import choice_type Package Prelude.
+Import PackageNotation.
+From extructures Require Import ord fset.
+From mathcomp Require Import word_ssrZ word.
+From Jasmin Require Import word.
+
+From Coq Require Import ZArith.
+From Coq Require Import Strings.String.
+Import List.ListNotations.
+Open Scope list_scope.
+Open Scope Z_scope.
+Open Scope bool_scope.
+
+From Hacspec Require Import ChoiceEquality.
+From Hacspec Require Import LocationUtility.
+From Hacspec Require Import Hacspec_Lib_Comparable.
+From Hacspec Require Import Hacspec_Lib_Pre.
+From Hacspec Require Import Hacspec_Lib.
+
+Open Scope hacspec_scope.
+Import choice.Choice.Exports.
+
+Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
+
+Class t_MyFrom (Self : choice_type) := {
+  f_my_from_loc : {fset Location} ;
+  f_my_from : (forall {L1 I1}, both L1 I1 v_T -> both (L1 :|: f_my_from_loc) I1 v_Self) ;
+}.
+Hint Unfold f_my_from_loc.
+
+#[global] Program Instance int16_t_MyFrom : t_MyFrom int16 int8 :=
+  let f_my_from := fun  {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) => solve_lift (cast_int (WS2 := _) x) : both (L1 :|: fset []) I1 int16 in
+  {| f_my_from_loc := (fset [] : {fset Location});
+  f_my_from := (@f_my_from)|}.
+Fail Next Obligation.
+Hint Unfold int16_t_MyFrom.
+
+Equations f {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result int16 int16) :=
+  f x  :=
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int16] _ := impl__map_err (Result_Err (ret_both (1 : int8))) f_from in
+    Result_Ok (Result_Ok (f_my_from x)))) : both L1 I1 (t_Result int16 int16).
+Fail Next Obligation.
+'''
+"Side_effects_Issue_1089_.v" = '''
+(* File automatically generated by Hacspec *)
+Set Warnings "-notation-overridden,-ambiguous-paths".
+From Crypt Require Import choice_type Package Prelude.
+Import PackageNotation.
+From extructures Require Import ord fset.
+From mathcomp Require Import word_ssrZ word.
+From Jasmin Require Import word.
+
+From Coq Require Import ZArith.
+From Coq Require Import Strings.String.
+Import List.ListNotations.
+Open Scope list_scope.
+Open Scope Z_scope.
+Open Scope bool_scope.
+
+From Hacspec Require Import ChoiceEquality.
+From Hacspec Require Import LocationUtility.
+From Hacspec Require Import Hacspec_Lib_Comparable.
+From Hacspec Require Import Hacspec_Lib_Pre.
+From Hacspec Require Import Hacspec_Lib.
+
+Open Scope hacspec_scope.
+Import choice.Choice.Exports.
+
+Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
+
+Equations test {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (x : both L1 I1 (t_Option int32)) (y : both L2 I2 (t_Option int32)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32) :=
+  test x y  :=
+    solve_lift (run (letb hoist3 := fun i =>
+      letm[choice_typeMonad.option_bind_code] hoist1 := y in
+      Option_Some (letb hoist2 := i .+ hoist1 in
+      Option_Some hoist2) in
+    letb hoist4 := impl__map x hoist3 in
+    hoist4)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32).
 Fail Next Obligation.
 '''

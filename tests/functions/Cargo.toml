@@ -7,4 +7,4 @@ edition = "2021"
 hax-lib = { path = "../../hax-lib" }
 
 [package.metadata.hax-tests]
-into."fstar+coq" = { snapshot = "stdout" }
+into."fstar" = { snapshot = "stdout" }

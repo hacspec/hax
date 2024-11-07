@@ -42,6 +42,7 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
+             and type fold_like_loop = Features.Off.fold_like_loop
              and type match_guard = Features.Off.match_guard
              and type trait_item_default = Features.Off.trait_item_default) =
 struct
@@ -163,7 +164,8 @@ struct
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
     | Float _ ->
-        Error.unimplemented ~issue_id:230 ~details:"pliteral: Float" span
+        Error.unimplemented ~issue_id:464
+          ~details:"Matching on f32 or f64 literals is not yet supported." span
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
@@ -178,6 +180,13 @@ struct
     | Int { value; kind = { size = S128; signedness = sn }; negative } ->
         let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
         wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | Float { value; negative; _ } ->
+        F.mk_e_app
+          (F.term_of_lid [ "mk_float" ])
+          [
+            mk_const
+              (F.Const.Const_string (pnegative negative ^ value, F.dummyRange));
+          ]
     | _ -> mk_const @@ pliteral span e
 
   let pconcrete_ident (id : concrete_ident) =
@@ -309,7 +318,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat _ -> Error.unimplemented ~issue_id:230 ~details:"pty: Float" span
+    | TFloat _ -> F.term_of_lid [ "float" ]
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
@@ -409,23 +418,26 @@ struct
           "Nested disjuntive patterns should have been eliminated by phase \
            `HoistDisjunctions` (see PR #830)."
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
-    | PConstruct { name = `TupleCons 0; args = [] } ->
+    | PConstruct { constructor = `TupleCons 0; fields = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
-    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> ppat pat
-    | PConstruct { name = `TupleCons n; args } ->
+    | PConstruct { constructor = `TupleCons 1; fields = [ { pat } ] } ->
+        ppat pat
+    | PConstruct { constructor = `TupleCons n; fields } ->
         F.pat
-        @@ F.AST.PatTuple (List.map ~f:(fun { pat } -> ppat pat) args, false)
-    | PConstruct { name; args; is_record; is_struct } ->
+        @@ F.AST.PatTuple (List.map ~f:(fun { pat } -> ppat pat) fields, false)
+    | PConstruct { constructor; fields; is_record; is_struct } ->
         let pat_rec () =
-          F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args)
+          F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat fields)
         in
         if is_struct && is_record then pat_rec ()
         else
-          let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
+          let pat_name =
+            F.pat @@ F.AST.PatName (pglobal_ident p.span constructor)
+          in
           F.pat_app pat_name
           @@
           if is_record then [ pat_rec () ]
-          else List.map ~f:(fun { field; pat } -> ppat pat) args
+          else List.map ~f:(fun { field; pat } -> ppat pat) fields
     | PConstant { lit } -> F.pat @@ F.AST.PatConst (pliteral p.span lit)
     | _ -> .
 
@@ -1416,7 +1428,7 @@ struct
         in
         let typ =
           F.mk_e_app
-            (F.term @@ F.AST.Name (pglobal_ident e.span trait))
+            (F.term @@ F.AST.Name (pconcrete_ident trait))
             (List.map ~f:(pgeneric_value e.span) generic_args)
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
@@ -1462,7 +1474,7 @@ struct
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-    | Quote quote ->
+    | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
             | ItemQuote q -> Some q.fstar_options
@@ -1678,7 +1690,8 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
+(** Translate as F* (the "legacy" printer) *)
+let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
     (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
@@ -1710,10 +1723,18 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
                    contents =
                      "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n"
                      ^ body ^ "\n";
+                   sourcemap = None;
                  }
          in
          List.filter_map ~f:Fn.id
            [ make ~ext:"fst" impl; make ~ext:"fsti" intf ])
+
+let translate =
+  if
+    Sys.getenv "HAX_ENGINE_EXPERIMENTAL_RUST_PRINTER_INSTEAD_OF_FSTAR"
+    |> Option.is_some
+  then failwith "todo"
+  else translate_as_fstar
 
 open Phase_utils
 module DepGraphR = Dependencies.Make (Features.Rust)
@@ -1738,18 +1759,17 @@ module TransformToInputLanguage =
   |> Side_effect_utils.Hoist
   |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
-  |> Phases.Rewrite_control_flow
-  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
-  |> Phases.Reject.Continue
-  |> Phases.Cf_into_monads
-  |> Phases.Reject.EarlyExit
+  |> Phases.Rewrite_control_flow
+  |> Phases.Drop_return_break_continue
   |> Phases.Functionalize_loops
+  |> Phases.Reject.Question_mark
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
+  |> Phases.Bundle_cycles
   |> SubtypeToInputLanguage
   |> Identity
   ]

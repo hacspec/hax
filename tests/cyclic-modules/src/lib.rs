@@ -118,3 +118,63 @@ mod enums_b {
         T::A
     }
 }
+
+mod m1 {
+    pub fn a() {
+        super::m2::c()
+    }
+}
+
+mod m2 {
+    pub fn d() {}
+    pub fn b() {
+        super::m1::a();
+        d()
+    }
+    pub fn c() {}
+}
+
+pub mod disjoint_cycle_a {
+    pub fn f() {
+        super::disjoint_cycle_b::h()
+    }
+    pub fn g() {}
+}
+pub mod disjoint_cycle_b {
+    pub fn h() {}
+    pub fn i() {
+        super::disjoint_cycle_a::g()
+    }
+}
+
+pub mod variant_constructor_a {
+    pub enum Context {
+        A(i32),
+        B(i32),
+    }
+    pub fn f() -> Context {
+        super::variant_constructor_b::h()
+    }
+    impl Context {
+        pub fn test(x: Option<i32>) -> Option<Context> {
+            x.map(Self::A)
+        }
+    }
+}
+pub mod variant_constructor_b {
+    pub fn h() -> super::variant_constructor_a::Context {
+        super::variant_constructor_a::Context::A(1)
+    }
+}
+
+pub mod late_skip_a {
+    pub fn f() {
+        super::late_skip_b::f()
+    }
+}
+pub mod late_skip_b {
+    #[hax_lib::requires(true)]
+    pub fn f() {
+        super::late_skip_a::f()
+    }
+}

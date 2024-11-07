@@ -5,15 +5,13 @@ integer. To extract this function to F* using hax, we simply need to
 run the command `cargo hax into fstar` in the directory of the crate
 in which the function `square` is defined.
 
-*Note: throughout this tutorial, you can inspect the hax extraction to
-F\* for each code Rust snippets, by clicking on the "F\* extraction"
-tab.*
+*Note: throughout this tutorial, you can edit the snippets of code and
+extract to F\* by clicking the play button ( <i class="fa fa-play"></i> ), or even typecheck it with the button ( <i class="fa fa-check"></i> ).*
 
-```rust,noplaypen
-{{#include sources.rs:square}}
-```
-```ocaml
-{{#include Sources.fst:square}}
+```rust,editable
+fn square(x: u8) -> u8 {
+    x * x
+}
 ```
 
 Though, if we try to verify this function, F* is complaining about a
@@ -58,11 +56,14 @@ its input is within `0` and `15`.
 
 ### Solution A: reflect the partialness of the function in Rust
 A first solution is to make `square` return an `Option<u8>` instead of a `u8`:
-```rust,noplaypen
-{{#include sources.rs:square_option}}
-```
-```ocaml
-{{#include Sources.fst:square_option}}
+```rust,editable
+fn square_option(x: u8) -> Option<u8> {
+    if x >= 16 {
+        None
+    } else {
+        Some(x * x)
+    }
+}
 ```
 
 Here, F* is able to prove panic-freedom: calling `square` with any
@@ -90,11 +91,11 @@ provdes the `requires`
 [proc-macro](https://doc.rust-lang.org/reference/procedural-macros.html)
 which lets user writting pre-conditions directly in Rust.
 
-```rust,noplaypen
-{{#include sources.rs:square_requires}}
-```
-```ocaml
-{{#include Sources.fst:square_requires}}
+```rust,editable
+#[hax_lib::requires(x < 16)]
+fn square_requires(x: u8) -> u8 {
+    x * x
+}
 ```
 
 With this precondition, F* is able to prove panic freedom. From now

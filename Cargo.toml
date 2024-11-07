@@ -44,7 +44,7 @@ readme = "README.md"
 itertools = "0.11.0"
 schemars = "0.8"
 which = "4.4"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 syn = { version = "1.0.107", features = [
@@ -68,7 +68,6 @@ quote = "1.0.32"
 proc-macro2 = "1.0.66"
 cargo_metadata = "0.15"
 colored = "2"
-bincode = "2.0.0-rc.3"
 annotate-snippets = "0.11"
 
 # Crates in this repository

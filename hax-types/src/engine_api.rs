@@ -15,10 +15,39 @@ pub struct EngineOptions {
 }
 
 #[derive_group(Serializers)]
+#[allow(non_snake_case)]
+#[derive(JsonSchema, Debug, Clone)]
+pub struct SourceMap {
+    pub mappings: String,
+    pub sourceRoot: String,
+    pub sources: Vec<String>,
+    pub sourcesContent: Vec<Option<String>>,
+    pub names: Vec<String>,
+    pub version: u8,
+    pub file: String,
+}
+
+impl SourceMap {
+    pub fn inline_sources_content(&mut self) {
+        self.sourcesContent = vec![];
+        for source in &self.sources {
+            let path = if self.sourceRoot.is_empty() {
+                source.clone()
+            } else {
+                format!("{}/{}", &self.sourceRoot, source)
+            };
+            let contents = Some(std::fs::read_to_string(path).unwrap());
+            self.sourcesContent.push(contents);
+        }
+    }
+}
+
+#[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
 pub struct File {
     pub path: String,
     pub contents: String,
+    pub sourcemap: Option<SourceMap>,
 }
 
 #[derive_group(Serializers)]
@@ -27,6 +56,25 @@ pub struct Output {
     pub diagnostics: Vec<crate::diagnostics::Diagnostics>,
     pub files: Vec<File>,
     pub debug_json: Option<String>,
+}
+
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
+pub struct ProfilingData {
+    /// What context are we profiling?
+    pub context: String,
+    /// How long this took?
+    pub time_ns: u64,
+    /// How much memory this took? This is using OCaml's
+    /// `Gc.minor_words`, and is probably not very precise.
+    pub memory: u64,
+    /// How many things were processed? (often, this is the number of
+    /// items a phase processes)
+    pub quantity: u32,
+    /// Did the action errored? This is important since a failed
+    /// action might have exited very early, making the numbers
+    /// unusable.
+    pub errored: bool,
 }
 
 pub mod protocol {
@@ -39,6 +87,7 @@ pub mod protocol {
         PrettyPrintDiagnostic(crate::diagnostics::Diagnostics),
         PrettyPrintRust(String),
         DebugString(String),
+        ProfilingData(ProfilingData),
         Exit,
         Ping,
     }

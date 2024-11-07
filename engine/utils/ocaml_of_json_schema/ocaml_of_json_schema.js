@@ -537,9 +537,12 @@ function run(str){
     let impl = `include struct
 [@@@warning "-A"]`;
 
-    let items = Object.entries(definitions).map(
-        ([name, def]) => export_definition(name, def)
-    ).filter(x => x instanceof Object);
+    let items = Object.entries(definitions)
+        .map(([name, def]) => ['Node_for_TyKind' == name ? 'node_for_ty_kind_generated' : name, def])
+        .map(([name, def]) => ['Node_for_DefIdContents' == name ? 'node_for_def_id_contents_generated' : name, def])
+        .map(
+            ([name, def]) => export_definition(name, def)
+        ).filter(x => x instanceof Object);
 
     let derive_items = ['show', 'eq'];
     
@@ -568,14 +571,73 @@ open ParseError
             ).join('\nand ')
             + derive_clause
     );
+    impl += `
+and node_for__ty_kind = node_for_ty_kind_generated
+and node_for__def_id_contents = node_for_def_id_contents_generated
+
+type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
+let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
+
+let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
+    let label = "parse_table_id_node:" ^ name ^ ": " in
+    match o with
+    | \`Assoc alist -> begin
+          let id = match List.assoc_opt "cache_id" alist with
+            | Some (\`Int id) -> Base.Int.to_int64 id
+            | Some (\`Intlit lit) -> (try Base.Int64.of_string lit with | _ -> failwith (label ^ "Base.Int64.of_string failed for " ^ lit))
+            | Some bad_json -> failwith (label ^ "id was expected to be an int, got: " ^ Yojson.Safe.pretty_to_string bad_json ^ "\n\n\nfull json: " ^ Yojson.Safe.pretty_to_string o)
+            | None -> failwith (label ^ " could not find the key 'cache_id' in the following json: " ^ Yojson.Safe.pretty_to_string o)
+          in
+          let decode v = decode v |> Base.Option.value_exn ~message:(label ^ "could not decode value (wrong type)") in
+          match List.assoc_opt "value" alist with
+          | Some json when (match json with \`Null -> false | _ -> true) ->
+            (parse json, id)
+          | _ ->
+            let value = match Base.Hashtbl.find cache_map id with
+            | None -> failwith (label ^ "failed to lookup id " ^ Base.Int64.to_string id)
+            | Some (\`Value v) -> decode v
+            | Some (\`JSON json) ->
+                let value = parse json in
+                Base.Hashtbl.set cache_map ~key:id ~data:(\`Value (encode value));
+                value
+            in (value, id)
+       end
+    | _ -> failwith (label ^ "expected Assoc")
+
+`;
     impl += ('');
     impl += ('let rec ' + items.map(({name, type, parse}) =>
         `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`
     ).join('\nand '));
+    impl += `
+and parse_node_for__ty_kind (o: Yojson.Safe.t): node_for__ty_kind =
+   let (value, id) =
+       parse_table_id_node "TyKind"
+           (fun value -> \`TyKind value)
+           (function | \`TyKind value -> Some value | _ -> None)
+           parse_ty_kind
+           o
+   in
+   {value; id}
+and parse_node_for__def_id_contents (o: Yojson.Safe.t): node_for__def_id_contents =
+   let (value, id) =
+       parse_table_id_node "DefIdContents"
+           (fun value -> \`DefIdContents value)
+           (function | \`DefIdContents value -> Some value | _ -> None)
+           parse_def_id_contents
+           o
+   in
+   {value; id}
+`;
     impl += ('');
     impl += ('let rec ' + items.map(({name, type, parse, to_json}) =>
         `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
+    impl += `
+and to_json_node_for__ty_kind {value; id} = to_json_node_for_ty_kind_generated {value; id}
+and to_json_node_for__def_id_contents {value; id} = to_json_node_for_def_id_contents_generated {value; id}
+`;
+
 
     return impl + ' \n end';
 }
