@@ -1717,7 +1717,10 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  U.call Rust_primitives__hax__never_to_any
                                    [
                                      U.call Core__panicking__panic
-                                       [ unit_expr body.span ]
+                                       [
+                                         U.string_lit body.span
+                                           "Derived trait implementation.";
+                                       ]
                                        body.span U.never_typ;
                                    ]
                                    body.span body.typ
