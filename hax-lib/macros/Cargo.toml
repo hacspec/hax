@@ -12,18 +12,29 @@ description = "Hax-specific proc-macros for Rust programs"
 [lib]
 proc-macro = true
 
-[dependencies]
+[target.'cfg(hax)'.dependencies]
 proc-macro-error = { version = "1.0.4", optional = true }
-proc-macro2 = { workspace = true, optional = true }
-quote = { workspace = true }
-syn = { version = "2.0", features = ["full", "visit-mut"] }
 hax-lib-macros-types = { workspace = true, optional = true }
 paste = { version = "1.0.15", optional = true }
 
+[dependencies]
+proc-macro2 = { workspace = true, optional = true }
+quote = { workspace = true }
+syn = { version = "2.0", features = ["full", "visit-mut"] }
+
 [features]
-hax = [ "dep:paste", "dep:hax-lib-macros-types", "dep:proc-macro-error", "dep:proc-macro2",
-        "syn/visit", "syn/extra-traits", "syn/parsing"
-      ]
+hax = [
+    "dep:paste",
+    "dep:hax-lib-macros-types",
+    "dep:proc-macro-error",
+    "dep:proc-macro2",
+    "syn/visit",
+    "syn/extra-traits",
+    "syn/parsing",
+]
 
 [dev-dependencies]
 hax-lib = { path = ".." }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)', 'cfg(doc_cfg)'] }

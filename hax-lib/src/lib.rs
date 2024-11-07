@@ -18,11 +18,11 @@
 #[cfg(feature = "macros")]
 mod proc_macros;
 
-// hax engine relies on `hax-lib` names: to avoid clutering names with
+// hax engine relies on `hax-lib` names: to avoid cluttering names with
 // an additional `implementation` in all paths, we `include!` instead
 // of doing conditional `mod` and `pub use`.
 
-#[cfg(not(feature = "hax"))]
+#[cfg(not(hax))]
 core::include!("dummy.rs");
-#[cfg(feature = "hax")]
+#[cfg(hax)]
 core::include!("implementation.rs");

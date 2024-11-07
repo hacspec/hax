@@ -11,7 +11,7 @@ macro_rules! debug_assert {
 #[macro_export]
 macro_rules! assert {
     ($($arg:tt)*) => {
-        ::core::assert!($arg);
+        ::core::assert!($($arg)*);
     };
 }
 

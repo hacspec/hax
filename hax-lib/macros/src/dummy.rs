@@ -61,7 +61,7 @@ pub fn lemma(_attr: TokenStream, _item: TokenStream) -> TokenStream {
 }
 
 fn unsafe_expr() -> TokenStream {
-    quote! { ::std::compile_error!("`hax_lib::unsafe_expr` has no meaning outside of hax extraction, please use it solely on hax only places.") }.into()
+    quote! {}.into()
 }
 
 #[proc_macro]
