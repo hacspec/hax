@@ -1,0 +1,11 @@
+-R ./ Core
+-arg -w
+-arg all
+
+./Coverage_Test_closures.v
+./Coverage_Test_enum.v
+./Coverage_Test_functions.v
+./Coverage_Test_primitives.v
+./Coverage_Test_sequence.v
+./Coverage_Test_struct.v
+./Coverage.v
