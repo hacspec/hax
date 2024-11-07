@@ -646,6 +646,8 @@ module Create = struct
   let constructor name =
     let path = name.def_id.path @ [ { data = Ctor; disambiguator = 0 } ] in
     { name with def_id = { name.def_id with path } }
+
+  let with_kind_of kind_name name = { name with kind = kind_name.kind }
 end
 
 let lookup_raw_impl_info (impl : t) : Types.impl_infos option =

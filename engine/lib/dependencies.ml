@@ -467,7 +467,10 @@ module Make (F : Features.T) = struct
           (renamings @ variant_and_constructors_renamings)
       in
       let rename =
-        let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
+        let renamer _lvl i =
+          Map.find renamings i |> Option.value ~default:i
+          |> Concrete_ident.Create.with_kind_of i
+        in
         (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
       in
       shallow_copy rename variants_renamings it

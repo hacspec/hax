@@ -41,6 +41,10 @@ module Create : sig
   val add_disambiguator : int -> t -> t
   (** [add_disambiguator d ident] adds the disambiguator [d] to the last 
       chunk of [ident]'s path if it holds a string *)
+
+  val with_kind_of : t -> t -> t
+  (** [with_kind_of kind_ident ident] returns [ident] with its kind replaced
+      by the kind of [kind_ident] *)
 end
 
 type view = { crate : string; path : string list; definition : string }
