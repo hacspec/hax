@@ -119,17 +119,28 @@ let hardcoded_coq_headers =
    Require Import String.\n\
    Require Import Coq.Floats.Floats.\n\
    From RecordUpdate Require Import RecordSet.\n\
-   Import RecordSetNotations.\n"
+   Import RecordSetNotations.\n\n\
+   From Core Require Import Core.\n"
 
 let dummy_lib =
-  "Definition t_usize := Z.\n\
-   Class t_Sized (T : Type) := { }.\n\
-   Definition t_Array T (x : t_usize) := list T.\n\
+  "Class t_Sized (T : Type) := { }.\n\
    Definition t_u8 := Z.\n\
+   Definition t_u16 := Z.\n\
+   Definition t_u32 := Z.\n\
+   Definition t_u64 := Z.\n\
+   Definition t_u128 := Z.\n\
+   Definition t_usize := Z.\n\
+   Definition t_i8 := Z.\n\
+   Definition t_i16 := Z.\n\
    Definition t_i32 := Z.\n\
+   Definition t_i64 := Z.\n\
+   Definition t_i128 := Z.\n\
    Definition t_isize := Z.\n\
+   Definition t_Array T (x : t_usize) := list T.\n\
    Definition t_String := string.\n\
-   Definition ToString_f_to_string (x : string) := x.\n"
+   Definition ToString_f_to_string (x : string) := x.\n\
+   Instance Sized_any : forall {t_A}, t_Sized t_A := {}.\n\
+   Instance Clone_any : forall {t_A}, t_Clone t_A := {t_Clone_f_clone := fun x => x}.\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -236,8 +247,22 @@ struct
       method expr'_App_field_projection ~super:_ ~field ~e =
         field#p ^^ space ^^ e#p
 
-      method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
-        default_document_for "expr'_App_tuple_projection"
+      method expr'_App_tuple_projection ~super:_ ~size ~nth ~e =
+        let size = match e#v.e with
+          | Construct {
+              constructor;
+              is_record;
+              is_struct;
+              fields;
+              base;
+            } ->
+            List.length fields
+          | _ -> size (* TODO: Size argument incorrect? *)
+        in
+        List.fold_right ~init:(e#p)
+          ~f:(fun x y -> parens(x ^^ y))
+          ((if Stdlib.(nth != 0) then [ string "snd" ] else [])
+           @ List.init (size - 1 - nth) ~f:(fun _ -> string "fst"))
 
       method expr'_Ascription ~super:_ ~e ~typ =
         e#p ^^ space ^^ colon ^^ space ^^ typ#p
@@ -433,6 +458,18 @@ struct
           self#_do_not_override_lazy_of_ty AstPos_item'_Fn_body body#v.typ
         in
 
+        let params =
+          List.map ~f:(fun x -> match x#v with
+              | { pat = { p = PBinding {
+                  mut;
+                  mode;
+                  var;
+                  typ = _;
+                  subpat;
+                }; span : span; typ = _ }; typ; typ_span; attrs } -> x#p
+              | _ -> string "'" ^^ x#p) params
+        in
+
         let get_expr_of kind f : document option =
           Attrs.associated_expr kind super.attrs
           |> Option.map ~f:(self#entrypoint_expr >> f)
@@ -445,23 +482,22 @@ struct
           get_expr_of Ensures (fun x ->
               x ^^ space ^^ string "=" ^^ space ^^ string "true")
         in
-
         let is_lemma = Attrs.lemma super.attrs in
         if is_lemma then
           CoqNotation.lemma name#p generics#p
-            (List.map ~f:(fun x -> x#p) params)
+            params
             (Option.value ~default:empty requires
             ^^ space ^^ !^"->" ^^ break 1
             ^^ Option.value ~default:empty ensures)
         else if is_rec then
           CoqNotation.fixpoint name#p generics#p
-            (List.map ~f:(fun x -> x#p) params
+            (params
             @ Option.value ~default:[]
                 (Option.map ~f:(fun x -> [ string "`" ^^ braces x ]) requires))
             typ#p body#p (* ^^ TODO: ensures? *)
         else
           CoqNotation.definition name#p generics#p
-            (List.map ~f:(fun x -> x#p) params
+            (params
             @ Option.value ~default:[]
                 (Option.map ~f:(fun x -> [ string "`" ^^ braces x ]) requires))
             typ#p body#p (* ^^ TODO: ensures? *)
@@ -630,7 +666,10 @@ struct
         string "\"" ^^ string (Char.escaped x1) ^^ string "\"" ^^ string "%char"
 
       method literal_Float ~value ~negative ~kind:_ =
-        (if negative then !^"-" else empty) ^^ string value ^^ string "%float"
+        (if negative
+        then parens(!^"-" ^^ string value)
+        else string value)
+        ^^ string "%float"
 
       method literal_Int ~value ~negative ~kind:_ =
         (if negative then !^"-" else empty) ^^ string value
