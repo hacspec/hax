@@ -1711,20 +1711,22 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  [ U.make_unit_param span ]
                                else List.map ~f:(c_param item.span) params
                              in
-                             let body = c_expr body in
+                             let body_span, body_typ =
+                               (Span.of_thir body.span, c_ty body.span body.ty)
+                             in
                              let body =
                                if is_generated then
                                  U.call Rust_primitives__hax__never_to_any
                                    [
                                      U.call Core__panicking__panic
                                        [
-                                         U.string_lit body.span
+                                         U.string_lit body_span
                                            "Derived trait implementation.";
                                        ]
-                                       body.span U.never_typ;
+                                       body_span U.never_typ;
                                    ]
-                                   body.span body.typ
-                               else body
+                                   body_span body_typ
+                               else c_expr body
                              in
                              IIFn { body; params }
                          | Const (_ty, e) ->
