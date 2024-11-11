@@ -10,7 +10,7 @@ Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-From Core Require Import Core.
+(* From Core Require Import Core. *)
 
 Class t_Sized (T : Type) := { }.
 Definition t_u8 := Z.
@@ -29,7 +29,10 @@ Definition t_Array T (x : t_usize) := list T.
 Definition t_String := string.
 Definition ToString_f_to_string (x : string) := x.
 Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {t_Clone_f_clone := fun x => x}.
+Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
+Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
+Definition t_Slice (T : Type) := list T.
+Definition unsize {T : Type} : list T -> t_Slice T := id.
 
 Definition test '(_ : unit) : unit :=
   let _ : unit := tt in

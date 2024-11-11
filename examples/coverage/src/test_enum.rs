@@ -1,10 +1,14 @@
-enum Foo<'a, T, const N : usize> {
-    Bar(u8),
-    Baz,
-    Qux {x : &'a T, y : [T; N], z : u8},
-}
-
 fn test() {
+    {
+        enum Foo<'a, T, const N : usize> {
+            Bar(u8),
+            Baz,
+            Qux {x : &'a T, y : [T; N], z : u8},
+        }
+
+        let x : Foo<u8, 12> = Foo::Baz;
+    }
+
     {
         enum AnimalA {
             Dog,
@@ -31,12 +35,12 @@ fn test() {
             StructLike { value: i32 },
         }
 
-        use Examples::*; // Creates aliases to all variants.
-        let x = UnitLike; // Path expression of the const item.
-        let x = UnitLike {}; // Struct expression.
-        let y = TupleLike(123); // Call expression.
-        let y = TupleLike { 0: 123 }; // Struct expression using integer field names.
-        let z = StructLike { value: 123 }; // Struct expression.
+        // use Examples::*; // Creates aliases to all variants.
+        let x = Examples::UnitLike; // Path expression of the const item.
+        let x = Examples::UnitLike {}; // Struct expression.
+        let y = Examples::TupleLike(123); // Call expression.
+        let y = Examples::TupleLike { 0: 123 }; // Struct expression using integer field names.
+        let z = Examples::StructLike { value: 123 }; // Struct expression.
     }
     {
         #[repr(u8)]

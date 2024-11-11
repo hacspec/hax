@@ -244,7 +244,7 @@ module View = struct
     let string_of_def_path_item : Imported.def_path_item -> string option =
       function
       | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
-      | Impl ->  Some "impl"
+      | Impl -> Some "impl"
       | AnonConst -> Some "anon_const"
       | _ -> None
 
@@ -560,6 +560,8 @@ let to_debug_string = T.show
 let map_path_strings ~(f : string -> string) (cid : t) : t =
   { cid with def_id = Imported.map_path_strings ~f cid.def_id }
 
+let parent (cid : t) : t = { cid with def_id = Imported.parent cid.def_id }
+
 module DefaultNamePolicy = struct
   let reserved_words = Hash_set.create (module String)
   let index_field_transform = Fn.id
@@ -649,3 +651,15 @@ let parent_impl (id : t) : t option =
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI
+
+let remove_impl old =
+  let new_parent = (parent (parent old)).def_id in
+  {
+    kind = Macro;
+    (* Field; *)
+    def_id =
+      {
+        new_parent with
+        path = new_parent.path @ [ List.last_exn old.def_id.path ];
+      };
+  }

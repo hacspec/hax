@@ -1,0 +1,29 @@
+name: Extract and Run - Coq
+
+on: [pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hax
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: ⤵ Install hax
+        run: |
+          nix profile install --verbose ./hax
+
+      - name: build coverage example
+        working-directory: hax/examples/coverage
+        run: |
+          nix run . into coq
+
+      - name: run coq
+        working-directory: hax/examples/coverage/proofs/coq/extraction
+        run: |
+          sed 's/_impl_f_/_f_/' < Coverage_Test_instance.v > Coverage_Test_instance.v
+          nix-shell --packages coq coqPackages.coq-record-update --run "coq_makefile -f _CoqProject -o Makefile"
+          nix-shell --packages coq coqPackages.coq-record-update --run "make"
