@@ -10,7 +10,7 @@ Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
-From Core Require Import Core.
+(* From Core Require Import Core. *)
 
 Class t_Sized (T : Type) := { }.
 Definition t_u8 := Z.
@@ -29,28 +29,16 @@ Definition t_Array T (x : t_usize) := list T.
 Definition t_String := string.
 Definition ToString_f_to_string (x : string) := x.
 Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {t_Clone_f_clone := fun x => x}.
-
-Record Foo_Qux_record (v_T : Type) (v_N : t_usize) `{t_Sized (v_T)} : Type :=
-  {
-    Qux_f_x : v_T;
-    Qux_f_y : t_Array (v_T) (v_N);
-    Qux_f_z : t_u8;
-  }.
-Arguments Build_Foo_Qux_record (_) (_) {_}.
-Arguments Qux_f_x {_} {_} {_}.
-Arguments Qux_f_y {_} {_} {_}.
-Arguments Qux_f_z {_} {_} {_}.
-#[export] Instance settable_Foo_Qux_record `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} : Settable _ :=
-  settable! (Build_Foo_Qux_record v_T v_N) <Qux_f_x; Qux_f_y; Qux_f_z>.
-Inductive t_Foo `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} : Type :=
-| Foo_Bar : t_u8 -> _
-| Foo_Baz
-| Foo_Qux : Foo_Qux_record  v_T v_N -> _.
+Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
+Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
+Definition t_Slice (T : Type) := list T.
+Definition unsize {T : Type} : list T -> t_Slice T := id.
 
 Inductive t_test__AnimalA : Type :=
 | test__AnimalA_Dog
 | test__AnimalA_Cat.
+Arguments test__AnimalA_Dog.
+Arguments test__AnimalA_Cat.
 
 Definition t_test__AnimalA_cast_to_repr (x : t_test__AnimalA) : t_isize :=
   match x with
@@ -73,6 +61,8 @@ Arguments Cat_f_weight.
 Inductive t_test__AnimalB : Type :=
 | test__AnimalB_Dog : t_String -> float -> _
 | test__AnimalB_Cat : test__AnimalB_Cat_record  -> _.
+Arguments test__AnimalB_Dog.
+Arguments test__AnimalB_Cat.
 
 Record test__Enum_Struct_record : Type :=
   {
@@ -88,6 +78,9 @@ Inductive t_test__Enum : Type :=
 | test__Enum_Unit
 | test__Enum_Tuple : t_u16 -> _
 | test__Enum_Struct : test__Enum_Struct_record  -> _.
+Arguments test__Enum_Unit.
+Arguments test__Enum_Tuple.
+Arguments test__Enum_Struct.
 
 Record test__Examples_StructLike_record : Type :=
   {
@@ -101,8 +94,33 @@ Inductive t_test__Examples : Type :=
 | test__Examples_UnitLike
 | test__Examples_TupleLike : t_i32 -> _
 | test__Examples_StructLike : test__Examples_StructLike_record  -> _.
+Arguments test__Examples_UnitLike.
+Arguments test__Examples_TupleLike.
+Arguments test__Examples_StructLike.
+
+Record test__Foo_Qux_record (v_T : Type) (v_N : t_usize) `{t_Sized (v_T)} : Type :=
+  {
+    Qux_f_x : v_T;
+    Qux_f_y : t_Array (v_T) (v_N);
+    Qux_f_z : t_u8;
+  }.
+Arguments Build_test__Foo_Qux_record (_) (_) {_}.
+Arguments Qux_f_x {_} {_} {_}.
+Arguments Qux_f_y {_} {_} {_}.
+Arguments Qux_f_z {_} {_} {_}.
+#[export] Instance settable_test__Foo_Qux_record `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} : Settable _ :=
+  settable! (Build_test__Foo_Qux_record v_T v_N) <Qux_f_x; Qux_f_y; Qux_f_z>.
+Inductive t_test__Foo (v_T : Type) (v_N : t_usize) `{t_Sized (v_T)} : Type :=
+| test__Foo_Bar : t_u8 -> _
+| test__Foo_Baz
+| test__Foo_Qux : test__Foo_Qux_record  v_T v_N -> _.
+Arguments test__Foo_Bar {_} {_} {_}.
+Arguments test__Foo_Baz {_} {_} {_}.
+Arguments test__Foo_Qux {_} {_} {_}.
 
 Definition test '(_ : unit) : unit :=
+  let x : t_test__Foo ((t_u8)) (12) := test__Foo_Baz in
+  let _ := tt in
   let a : t_test__AnimalA := test__AnimalA_Dog in
   let a := test__AnimalA_Cat in
   let _ := tt in

@@ -34,20 +34,25 @@ Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
 Definition t_Slice (T : Type) := list T.
 Definition unsize {T : Type} : list T -> t_Slice T := id.
 
-Definition first `{v_A : Type} `{v_B : Type} `{t_Sized (v_A)} `{t_Sized (v_B)} `{t_Clone (v_B)} '((value,_) : (v_A*t_i32)) (y : v_B) : v_A :=
-  value.
+Inductive t_SomeEnum (v_T : Type) `{t_Sized (v_T)} : Type :=
+| SomeEnum_None
+| SomeEnum_Some : v_T -> _.
+Arguments SomeEnum_None {_} {_}.
+Arguments SomeEnum_Some {_} {_}.
 
-Definition foo1 `{v_A : Type} `{v_B : Type} `{t_Sized (v_A)} `{t_Sized (v_B)} (x : v_A) (y : v_B) : unit :=
-  tt.
+Class t_SomeTrait (v_Self : Type) : Type :=
+  {
+    SomeTrait_f_some_fun : v_Self -> v_Self;
+  }.
+Arguments t_SomeTrait (_).
 
-Definition foo2 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} (x : t_Slice v_T) (y : t_Array (v_T) (1)) : unit :=
-  tt.
-
-Definition foo3 '(_ : unit) : unit :=
-  tt.
-
-Definition test '(_ : unit) : unit :=
-  let x := [1] in
-  let _ := foo2 (unsize (x)) (x) in
-  let _ := foo2 (unsize ([1; 2])) (x) in
-  tt.
+Instance t_SomeTrait_153652929 `{v_T : Type} `{t_Sized (v_T)} `{t_SomeTrait (v_T)} : t_SomeTrait ((t_SomeEnum ((v_T)))) :=
+  {
+    SomeTrait_impl_f_some_fun := fun  (self : t_SomeEnum ((v_T)))=>
+      match self with
+      | SomeEnum_Some x =>
+        SomeEnum_Some (SomeTrait_f_some_fun (x))
+      | SomeEnum_None =>
+        SomeEnum_None
+      end;
+  }.

@@ -7,3 +7,5 @@ mod test_enum;
 
 mod test_functions;
 mod test_closures;
+
+mod test_instance;
