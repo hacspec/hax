@@ -244,7 +244,7 @@ module View = struct
     let string_of_def_path_item : Imported.def_path_item -> string option =
       function
       | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
-      | Impl -> Some "impl"
+      | Impl ->  Some "impl"
       | AnonConst -> Some "anon_const"
       | _ -> None
 
@@ -473,8 +473,8 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
         else escape name
     | Constructor { is_struct } ->
         let name =
-          if start_lowercase name || is_reserved_word name
-          then NP.constructor_prefix ^ name
+          if start_lowercase name || is_reserved_word name then
+            NP.constructor_prefix ^ name
           else escape name
         in
         if is_struct then NP.struct_constructor_name_transform name
@@ -482,7 +482,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
           let enum_name = type_name |> Option.value_exn in
           NP.enum_constructor_name_transform ~enum_name name
     | Field | AssociatedItem _ ->
-      let struct_name = type_name |> Option.value_exn in
+        let struct_name = type_name |> Option.value_exn in
         NP.field_name_transform ~struct_name
           (match Stdlib.int_of_string_opt name with
           | Some _ -> NP.index_field_transform name

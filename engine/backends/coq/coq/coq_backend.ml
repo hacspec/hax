@@ -92,13 +92,9 @@ module CoqNamePolicy = struct
   (** Transformation applied to indexes fields name (i.e. [x.1]) *)
   let index_field_transform x = x
 
-  let field_name_transform ~struct_name x =
-   struct_name ^ "_" ^ x
-
+  let field_name_transform ~struct_name x = struct_name ^ "_" ^ x
   let enum_constructor_name_transform ~enum_name x = x
-  let struct_constructor_name_transform x : string =
-    "Build_t_" ^ x
-
+  let struct_constructor_name_transform x : string = "Build_t_" ^ x
   let constructor_prefix = ""
 end
 
@@ -140,7 +136,8 @@ let dummy_lib =
    Definition t_String := string.\n\
    Definition ToString_f_to_string (x : string) := x.\n\
    Instance Sized_any : forall {t_A}, t_Sized t_A := {}.\n\
-   Instance Clone_any : forall {t_A}, t_Clone t_A := {t_Clone_f_clone := fun x => x}.\n"
+   Instance Clone_any : forall {t_A}, t_Clone t_A := {t_Clone_f_clone := fun x \
+   => x}.\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -155,8 +152,11 @@ struct
   let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
   let default_document_for = default_string_for >> string
 
-  let concat_with ?(pre=empty) ?(post=empty) l = concat_map (fun x -> pre ^^ x ^^ post) l
-  let concat_map_with ?(pre=empty) ?(post=empty) f l = concat_map (fun x -> pre ^^ f x ^^ post) l
+  let concat_with ?(pre = empty) ?(post = empty) l =
+    concat_map (fun x -> pre ^^ x ^^ post) l
+
+  let concat_map_with ?(pre = empty) ?(post = empty) f l =
+    concat_map (fun x -> pre ^^ f x ^^ post) l
 
   let concat_spaced_doc l = concat_map_with ~pre:space (fun x -> x#p) l
 
@@ -184,14 +184,18 @@ struct
     let lemma = proof_struct (string "Lemma")
 
     let arguments name (explicivity : bool list) =
-      !^"Arguments" ^^ space ^^ name ^^ concat_map_with ~pre:space (function | true -> string "(_)" | false -> string "{_}") explicivity ^^ dot
+      !^"Arguments" ^^ space ^^ name
+      ^^ concat_map_with ~pre:space
+           (function true -> string "(_)" | false -> string "{_}")
+           explicivity
+      ^^ dot
 
     let notation pattern value =
-        !^"Notation" ^^ space ^^ string "\"" ^^ pattern ^^ string "\"" ^^ space ^^ !^":=" ^^ space ^^ value ^^ dot
+      !^"Notation" ^^ space ^^ string "\"" ^^ pattern ^^ string "\"" ^^ space
+      ^^ !^":=" ^^ space ^^ value ^^ dot
 
     let notation_name name value =
-        notation (string "'" ^^ name ^^ string "'") value
-    
+      notation (string "'" ^^ name ^^ string "'") value
   end
 
   type ('get_span_data, 'a) object_type =
@@ -241,28 +245,22 @@ struct
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
         f#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args
 
-      method expr'_App_constant ~super:_ ~constant ~generics:_ =
-        constant#p
+      method expr'_App_constant ~super:_ ~constant ~generics:_ = constant#p
 
       method expr'_App_field_projection ~super:_ ~field ~e =
         field#p ^^ space ^^ e#p
 
       method expr'_App_tuple_projection ~super:_ ~size ~nth ~e =
-        let size = match e#v.e with
-          | Construct {
-              constructor;
-              is_record;
-              is_struct;
-              fields;
-              base;
-            } ->
-            List.length fields
+        let size =
+          match e#v.e with
+          | Construct { constructor; is_record; is_struct; fields; base } ->
+              List.length fields
           | _ -> size (* TODO: Size argument incorrect? *)
         in
-        List.fold_right ~init:(e#p)
-          ~f:(fun x y -> parens(x ^^ y))
+        List.fold_right ~init:e#p
+          ~f:(fun x y -> parens (x ^^ y))
           ((if Stdlib.(nth != 0) then [ string "snd" ] else [])
-           @ List.init (size - 1 - nth) ~f:(fun _ -> string "fst"))
+          @ List.init (size - 1 - nth) ~f:(fun _ -> string "fst"))
 
       method expr'_Ascription ~super:_ ~e ~typ =
         e#p ^^ space ^^ colon ^^ space ^^ typ#p
@@ -280,9 +278,7 @@ struct
         match witness with _ -> .
 
       method expr'_Closure ~super:_ ~params ~body ~captures:_ =
-        !^"fun"
-        ^^ concat_spaced_doc params
-        ^^ space ^^ !^"=>" ^^ space
+        !^"fun" ^^ concat_spaced_doc params ^^ space ^^ !^"=>" ^^ space
         ^^ nest 2 (break 1 ^^ body#p)
 
       method expr'_Construct_inductive ~super:_ ~constructor ~is_record
@@ -290,24 +286,29 @@ struct
         let fields_or_empty add_space =
           if List.is_empty fields then empty
           else
-            add_space
-            ^^ separate_map space (fun x -> parens((snd x)#p)) fields
+            add_space ^^ separate_map space (fun x -> parens (snd x)#p) fields
         in
         if is_record && is_struct then
           match base with
           | Some x ->
-            (* Update fields *)
-            x#p ^^ concat_map_with ~pre:space (fun x -> string "<|" ^^ (fst x)#p ^^ space ^^ !^":=" ^^ space ^^ (snd x)#p ^^ space ^^ string "|>") fields
-          | None ->
-            constructor#p ^^ fields_or_empty space
+              (* Update fields *)
+              x#p
+              ^^ concat_map_with ~pre:space
+                   (fun x ->
+                     string "<|" ^^ (fst x)#p ^^ space ^^ !^":=" ^^ space
+                     ^^ (snd x)#p ^^ space ^^ string "|>")
+                   fields
+          | None -> constructor#p ^^ fields_or_empty space
         else if not is_record then
-          if is_struct
-          then constructor#p ^^ fields_or_empty space
+          if is_struct then constructor#p ^^ fields_or_empty space
           else constructor#p ^^ fields_or_empty space
         else
-          constructor#p ^^ space ^^ string "{|" ^^ space ^^
-          separate_map (semi ^^ space) (fun (ident, exp) -> ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p) fields
-           ^^ space ^^ string "|}"
+          constructor#p ^^ space ^^ string "{|" ^^ space
+          ^^ separate_map (semi ^^ space)
+               (fun (ident, exp) ->
+                 ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p)
+               fields
+          ^^ space ^^ string "|}"
 
       method expr'_Construct_tuple ~super:_ ~components =
         if List.length components == 0 then !^"tt"
@@ -355,7 +356,11 @@ struct
       method expr'_Match ~super:_ ~scrutinee ~arms =
         string "match" ^^ space ^^ scrutinee#p ^^ space ^^ string "with"
         ^^ break 1
-        ^^ concat_map_with ~pre:(string "|" ^^ space) ~post:(break 1) (fun x -> x#p) arms
+        ^^ concat_map_with
+             ~pre:(string "|" ^^ space)
+             ~post:(break 1)
+             (fun x -> x#p)
+             arms
         ^^ string "end"
 
       method expr'_QuestionMark ~super:_ ~e:_ ~return_typ:_ ~witness =
@@ -393,9 +398,10 @@ struct
       method generic_value_GType x1 = parens x1#p
 
       method generics ~params ~constraints =
-        let params_document = concat_map_with ~pre:space (fun x -> string "`" ^^ braces (x#p))  params in
-        let constraints_document = concat_spaced_doc constraints
+        let params_document =
+          concat_map_with ~pre:space (fun x -> string "`" ^^ braces x#p) params
         in
+        let constraints_document = concat_spaced_doc constraints in
         params_document ^^ constraints_document
 
       method guard ~guard:_ ~span:_ = default_document_for "guard"
@@ -429,23 +435,19 @@ struct
       method impl_ident ~goal ~name:_ = goal#p
 
       method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ =
-        ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
+        string (String.chop_prefix_exn ~prefix:"impl_" (U.Concrete_ident_view.to_definition_name ii_ident#v)) ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
       method impl_item'_IIFn ~body ~params =
         if List.length params == 0 then body#p
         else
-          string "fun" ^^ space
-          ^^ concat_spaced_doc params
-          ^^ string "=>"
+          string "fun" ^^ space ^^ concat_spaced_doc params ^^ string "=>"
           ^^ nest 2 (break 1 ^^ body#p)
 
       method impl_item'_IIType ~typ ~parent_bounds:_ = typ#p
       method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p ^^ break 1
 
       method item'_Alias ~super:_ ~name ~item =
-        CoqNotation.notation_name
-          (name#p)
-          (parens item#p)
+        CoqNotation.notation_name name#p (parens item#p)
 
       method item'_Fn ~super ~name ~generics ~body ~params ~safety:_ =
         (* TODO: Why is type not available here ? *)
@@ -459,15 +461,23 @@ struct
         in
 
         let params =
-          List.map ~f:(fun x -> match x#v with
-              | { pat = { p = PBinding {
-                  mut;
-                  mode;
-                  var;
-                  typ = _;
-                  subpat;
-                }; span : span; typ = _ }; typ; typ_span; attrs } -> x#p
-              | _ -> string "'" ^^ x#p) params
+          List.map
+            ~f:(fun x ->
+              match x#v with
+              | {
+               pat =
+                 {
+                   p = PBinding { mut; mode; var; typ = _; subpat };
+                   span : span;
+                   typ = _;
+                 };
+               typ;
+               typ_span;
+               attrs;
+              } ->
+                  x#p
+              | _ -> string "'" ^^ x#p)
+            params
         in
 
         let get_expr_of kind f : document option =
@@ -484,8 +494,7 @@ struct
         in
         let is_lemma = Attrs.lemma super.attrs in
         if is_lemma then
-          CoqNotation.lemma name#p generics#p
-            params
+          CoqNotation.lemma name#p generics#p params
             (Option.value ~default:empty requires
             ^^ space ^^ !^"->" ^^ break 1
             ^^ Option.value ~default:empty ensures)
@@ -517,7 +526,10 @@ struct
           (name#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args)
           (braces
              (nest 2
-                (concat_map_with ~pre:(break 1 ^^ name#p ^^ !^"_") (fun x -> x#p) items)
+                (concat_map_with
+                   ~pre:(break 1 ^^ string (String.drop_prefix (U.Concrete_ident_view.to_definition_name name#v) 2) ^^ !^"_")
+                   (fun x -> x#p)
+                   items)
              ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
@@ -527,26 +539,41 @@ struct
 
       method item'_Trait ~super:_ ~name ~generics ~items ~safety:_ =
         let _, params, constraints = generics#v in
-        CoqNotation.class_ name#p generics#p [] !^"Type"
+        CoqNotation.class_ name#p (concat_map_with ~pre:space
+             (fun x -> parens x#p)
+             params
+          ^^ concat_map_with ~pre:space
+               (fun x -> x#p)
+               constraints) [] !^"Type"
           (braces
-             (nest 2 (concat_map_with ~pre:(break 1) (fun x -> x#p) items) ^^ break 1))
+             (nest 2 (concat_map_with ~pre:(break 1) (fun x -> x#p) items)
+             ^^ break 1))
         ^^ break 1
-        ^^ CoqNotation.arguments name#p (List.map ~f:(fun _ -> true) params @ List.map ~f:(fun _ -> false) constraints)
+        ^^ CoqNotation.arguments name#p
+             (List.map ~f:(fun _ -> true) params
+             @ List.map ~f:(fun _ -> false) constraints)
 
       method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
-        CoqNotation.notation_name
-          (name#p)
-          ty#p
+        CoqNotation.notation_name name#p ty#p
 
-      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct
-          ~arguments =
+      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct ~arguments
+          =
         let arguments_explicity_with_ty =
-          (List.map ~f:(fun _ -> true) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
+          List.map ~f:(fun _ -> true) generics#v.params
+          @ List.map ~f:(fun _ -> false) generics#v.constraints
         in
         let arguments_explicity_without_ty =
-          (List.map ~f:(fun _ -> false) generics#v.params @ List.map ~f:(fun _ -> false) generics#v.constraints)
+          List.map ~f:(fun _ -> false) generics#v.params
+          @ List.map ~f:(fun _ -> false) generics#v.constraints
         in
-        CoqNotation.record name#p ((concat_map_with ~pre:space (fun x -> parens( self#entrypoint_generic_param x )) generics#v.params) ^^ (concat_map_with ~pre:space (fun x -> self#entrypoint_generic_constraint x ) generics#v.constraints)) [] (string "Type")
+        CoqNotation.record name#p
+          (concat_map_with ~pre:space
+             (fun x -> parens (self#entrypoint_generic_param x))
+             generics#v.params
+          ^^ concat_map_with ~pre:space
+               (fun x -> self#entrypoint_generic_constraint x)
+               generics#v.constraints)
+          [] (string "Type")
           (braces
              (nest 2
                 (concat_map
@@ -555,62 +582,112 @@ struct
                      ^^ semi)
                    arguments)
              ^^ break 1))
-        ^^ break 1 ^^ CoqNotation.arguments (!^"Build_" ^^ name#p) arguments_explicity_with_ty
-        ^^ concat_map_with ~pre:(break 1) (fun (ident, typ, attr) -> CoqNotation.arguments ident#p arguments_explicity_without_ty) arguments
+        ^^ break 1
+        ^^ CoqNotation.arguments (!^"Build_" ^^ name#p)
+             arguments_explicity_with_ty
+        ^^ concat_map_with ~pre:(break 1)
+             (fun (ident, typ, attr) ->
+               CoqNotation.arguments ident#p arguments_explicity_without_ty)
+             arguments
         ^^ break 1 ^^ !^"#[export]" ^^ space
+        ^^ (if List.is_empty arguments then empty
+            else
+              CoqNotation.instance
+                (string "settable" ^^ string "_" ^^ name#p)
+                generics#p []
+                (!^"Settable" ^^ space ^^ !^"_")
+                (string "settable!" ^^ space
+                ^^ parens
+                     (!^"Build_" ^^ name#p
+                     ^^ concat_map_with ~pre:space
+                          (fun (x : generic_param) ->
+                            match x with
+                            | { ident; _ } ->
+                                (self#_do_not_override_lazy_of_local_ident
+                                   AstPos_item'_Type_generics ident)
+                                  #p)
+                          generics#v.params)
+                ^^ space ^^ string "<"
+                ^^ separate_map (semi ^^ space)
+                     (fun (ident, typ, attr) -> ident#p)
+                     arguments
+                ^^ string ">"))
         ^^
-        (if List.is_empty arguments
-         then empty
-         else
-           CoqNotation.instance
-             (string "settable" ^^ string "_" ^^ name#p)
-             generics#p []
-             (!^"Settable" ^^ space ^^ !^"_")
-             (string "settable!" ^^ space
-              ^^ parens (!^"Build_" ^^ name#p ^^ (concat_map_with ~pre:space (fun (x : generic_param) -> match x with | { ident; _ } -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics ident)#p) generics#v.params))
-              ^^ space ^^ string "<"
-              ^^ separate_map (semi ^^ space)
-                (fun (ident, typ, attr) -> ident#p)
-                arguments
-              ^^ string ">"))
-          ^^
-          (if tuple_struct
-           then break 1 ^^
-                (CoqNotation.notation_name (string (String.drop_prefix (U.Concrete_ident_view.to_definition_name name#v) 2 )) (!^"Build_" ^^ name#p))
-           else empty)
+        if tuple_struct then
+          break 1
+          ^^ CoqNotation.notation_name
+               (string
+                  (String.drop_prefix
+                     (U.Concrete_ident_view.to_definition_name name#v)
+                     2))
+               (!^"Build_" ^^ name#p)
+        else empty
 
       (* map_def_path_item_string (fun x -> x) x#v.name *)
 
       method item'_Type_enum ~super ~name ~generics ~variants =
-        concat_map_with ~post:(break 1) (fun x ->
-            (self#item'_Type_struct ~super ~name:(
-                self#_do_not_override_lazy_of_concrete_ident
-                  AstPos_variant__arguments (
-                  Concrete_ident.Create.map_last ~f:(fun x -> x ^ "_record") x#v.name
-              )) ~generics ~tuple_struct:false ~arguments:(List.map
-                  ~f:(fun (ident, typ, attrs) ->
-                    ( self#_do_not_override_lazy_of_concrete_ident
-                        AstPos_variant__arguments ident,
-                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
-                        typ,
-                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
-                        attrs ))
-                  x#v.arguments))
-          ) (List.filter ~f:(fun x -> x#v.is_record) variants) ^^
-        CoqNotation.inductive name#p generics#p [] (string "Type")
-          (separate_map (break 1)
-             (fun x -> string "|" ^^ space ^^ x#p ^^
-                       (if x#v.is_record
-                        then
-                          (concat_map_with ~pre:space (fun (x : generic_param) -> (self#_do_not_override_lazy_of_local_ident AstPos_item'_Type_generics x.ident)#p) generics#v.params) ^^ space ^^ !^"->" ^^ space ^^ !^"_"
-                        else empty))
-             variants)
-        (* ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon *)
-        (* ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space *)
-        (* ^^ name#p *)
-        (* ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params *)
-        (* ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints *)
-        (* ^^ dot *)
+        let arguments_explicity_without_ty =
+          List.map ~f:(fun _ -> false) generics#v.params
+          @ List.map ~f:(fun _ -> false) generics#v.constraints
+        in
+
+        concat_map_with ~post:(break 1)
+          (fun x ->
+            self#item'_Type_struct ~super
+              ~name:
+                (self#_do_not_override_lazy_of_concrete_ident
+                   AstPos_variant__arguments
+                   (Concrete_ident.Create.map_last
+                      ~f:(fun x -> x ^ "_record")
+                      x#v.name))
+              ~generics ~tuple_struct:false
+              ~arguments:
+                (List.map
+                   ~f:(fun (ident, typ, attrs) ->
+                     ( self#_do_not_override_lazy_of_concrete_ident
+                         AstPos_variant__arguments ident,
+                       self#_do_not_override_lazy_of_ty
+                         AstPos_variant__arguments typ,
+                       self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
+                         attrs ))
+                   x#v.arguments))
+          (List.filter ~f:(fun x -> x#v.is_record) variants)
+        ^^ CoqNotation.inductive name#p
+             (concat_map_with ~pre:space
+                (fun x -> parens (self#entrypoint_generic_param x))
+                generics#v.params
+             ^^ concat_map_with ~pre:space
+                  (fun x -> self#entrypoint_generic_constraint x)
+                  generics#v.constraints)
+             [] (string "Type")
+             (separate_map (break 1)
+                (fun x ->
+                  string "|" ^^ space ^^ x#p
+                  ^^
+                  if x#v.is_record then
+                    concat_map_with ~pre:space
+                      (fun (x : generic_param) ->
+                        (self#_do_not_override_lazy_of_local_ident
+                           AstPos_item'_Type_generics x.ident)
+                          #p)
+                      generics#v.params
+                    ^^ space ^^ !^"->" ^^ space ^^ !^"_"
+                  else empty)
+                variants)
+        ^^ concat_map_with ~pre:(break 1)
+             (fun v ->
+               CoqNotation.arguments
+                 (self#_do_not_override_lazy_of_concrete_ident
+                    AstPos_variant__arguments v#v.name)
+                   #p
+                 arguments_explicity_without_ty)
+             variants
+      (* ^^ break 1 ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon *)
+      (* ^^ !^"clear implicits" ^^ dot ^^ break 1 ^^ !^"Arguments" ^^ space *)
+      (* ^^ name#p *)
+      (* ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params *)
+      (* ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints *)
+      (* ^^ dot *)
 
       method item'_Use ~super:_ ~path ~is_external ~rename:_ =
         if List.length path == 0 || is_external then empty
@@ -666,9 +743,7 @@ struct
         string "\"" ^^ string (Char.escaped x1) ^^ string "\"" ^^ string "%char"
 
       method literal_Float ~value ~negative ~kind:_ =
-        (if negative
-        then parens(!^"-" ^^ string value)
-        else string value)
+        (if negative then parens (!^"-" ^^ string value) else string value)
         ^^ string "%float"
 
       method literal_Int ~value ~negative ~kind:_ =
@@ -707,22 +782,23 @@ struct
 
       method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record
           ~is_struct ~fields =
-        if is_record
-        then
+        if is_record then
           constructor#p ^^ space
           ^^ parens
                (separate_map (comma ^^ space)
                   (fun field_pat -> (snd field_pat)#p)
                   fields)
-        else
-        if is_record
-        then
+        else if is_record then
           (* constructor#p ^^ *)
-          string "{|" ^^
-            separate_map (semi ^^ space) (fun (ident, exp) -> ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p) fields
+          string "{|"
+          ^^ separate_map (semi ^^ space)
+               (fun (ident, exp) ->
+                 ident#p ^^ space ^^ string ":=" ^^ space ^^ parens exp#p)
+               fields
           ^^ string "|}"
         else
-          constructor#p ^^ concat_map_with ~pre:space (fun (ident, exp) -> exp#p) fields
+          constructor#p
+          ^^ concat_map_with ~pre:space (fun (ident, exp) -> exp#p) fields
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)
@@ -851,16 +927,16 @@ struct
           (*   (fun (ident, typ, attr) -> *)
           (*     ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *)
           (*   arguments *)
-        else
-        if List.length arguments == 0 then name#p
+        else if List.length arguments == 0 then name#p
         else
           name#p ^^ space ^^ colon ^^ space
           ^^ separate_map
-            (space ^^ string "->" ^^ space)
-            (fun (ident, typ, attr) -> typ#p)
-            arguments
+               (space ^^ string "->" ^^ space)
+               (fun (ident, typ, attr) -> typ#p)
+               arguments
           ^^ space ^^ string "->" ^^ space ^^ string "_"
 
+      method quote (quote : quote) : document = empty
       method module_path_separator = "."
 
       method concrete_ident ~local:_ id : document =
@@ -899,7 +975,7 @@ let make (module M : Attrs.WITH_ITEMS) =
 
 let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
   let my_printer = make m in
-  U.group_items_by_namespace items
+  (U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
@@ -917,7 +993,31 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
          in
          let sourcemap = Some sourcemap in
          let path = mod_name ^ ".v" in
-         Types.{ path; contents; sourcemap })
+         Types.{ path; contents; sourcemap }))
+  @ [
+      Types.
+        {
+          path = "_CoqProject";
+          contents =
+            "-R ./ " ^ "TODO" ^ "\n-arg -w\n-arg all\n\n"
+            ^ String.concat ~sep:"\n"
+                (List.rev
+                   (U.group_items_by_namespace items
+                   |> Map.to_alist
+                   |> List.map ~f:(fun (ns, items) ->
+                          let mod_name =
+                            String.concat ~sep:"_"
+                              (List.map
+                                 ~f:(map_first_letter String.uppercase)
+                                 (fst ns :: snd ns))
+                          in
+                          let contents, _annotations =
+                            my_printer#entrypoint_modul items
+                          in
+                          mod_name ^ ".v")));
+          sourcemap = None;
+        };
+    ]
 
 open Phase_utils
 
