@@ -61,7 +61,10 @@ pub fn lemma(_attr: TokenStream, _item: TokenStream) -> TokenStream {
 }
 
 fn unsafe_expr() -> TokenStream {
-    quote! {}.into()
+    // `*_unsafe_expr("<code>")` are macro generating a Rust expression of any type, that will be replaced by `<code>` in the backends.
+    // This should be used solely in hax-only contextes.
+    // If this macro is used, that means the user broke this rule.
+    quote! { ::std::compile_error!("`hax_lib::unsafe_expr` has no meaning outside of hax extraction, please use it solely on hax-only places.") }.into()
 }
 
 #[proc_macro]
