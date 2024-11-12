@@ -1471,8 +1471,17 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        let has_type =
+          List.exists items ~f:(fun { ii_v; _ } ->
+              match ii_v with IIType _ -> true | _ -> false)
+        in
+        let impl_val = ctx.interface_mode && not has_type in
+        let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
+        if impl_val then
+          let v = F.AST.Val (name, typ) in
+          (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
+          @ F.decls ~fsti:false ~attrs:[ tcinst ] let_impl
+        else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
     | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
