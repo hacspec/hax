@@ -49,16 +49,16 @@ pub trait Refinement {
     type InnerType;
     fn new(x: Self::InnerType) -> Self;
     fn get(self) -> Self::InnerType;
-    fn get_mut(&mut self) -> &mut Self::InnerType;     
+    fn get_mut(&mut self) -> &mut Self::InnerType;
     fn invariant(value: Self::InnerType) -> bool;
 }
-    
+
 pub trait RefineAs<RefinedType> {
     fn into_checked(self) -> RefinedType;
 }
 
 pub mod int {
-    #[derive(Clone,Copy)]
+    #[derive(Clone, Copy)]
     pub struct Int(pub u8);
 
     impl Int {
@@ -74,8 +74,8 @@ pub mod int {
     impl Int {}
     impl Int {}
     impl Int {}
-    
-    impl Int { 
+
+    impl Int {
         pub fn pow2(self) -> Self {
             self
         }
@@ -96,7 +96,7 @@ pub mod int {
     impl Abstraction for u8 {
         type AbstractType = Int;
         fn lift(self) -> Self::AbstractType {
-                Int(0)
+            Int(0)
         }
     }
 
