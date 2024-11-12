@@ -945,7 +945,7 @@ end) : EXPR = struct
                    e =
                      Literal
                        (Int { kind = { size = S8; signedness = Unsigned }; _ }
-                       as lit);
+                        as lit);
                    _;
                  } ->
                    lit
@@ -1526,8 +1526,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         in
         let variants =
           List.map
-            ~f:
-              (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
+            ~f:(fun
+                ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
                 [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
                   data

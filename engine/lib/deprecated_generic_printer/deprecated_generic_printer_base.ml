@@ -276,85 +276,83 @@ module Make (F : Features.T) = struct
     ; items : item list fn >
   (** In the end, an printer *object* should be of the type {!print_object}. *)
 
-  class type print_class =
-    object
-      inherit print_base
-      method printer_name : string
-      method get_span_data : unit -> Annotation.t list
+  class type print_class = object
+    inherit print_base
+    method printer_name : string
+    method get_span_data : unit -> Annotation.t list
 
-      method namespace_of_concrete_ident :
-        concrete_ident -> string * string list
-      (** The namespace a concrete identifier was defined in. *)
+    method namespace_of_concrete_ident : concrete_ident -> string * string list
+    (** The namespace a concrete identifier was defined in. *)
 
-      method par_state : ast_position -> par_state
-      method concrete_ident' : under_current_ns:bool -> concrete_ident fn
-      method concrete_ident : concrete_ident fn
-      method name_of_concrete_ident : concrete_ident fn
-      method mutability : 'a. 'a mutability fn
-      method primitive_ident : primitive_ident fn
-      method local_ident : local_ident fn
-      method literal : literal_ctx -> literal fn
-      method generic_value : generic_value fn
-      method lhs : lhs fn
-      method ty_bool : document
-      method ty_char : document
-      method ty_str : document
-      method ty_int : int_kind fn
-      method ty_float : float_kind fn
-      method generic_values : generic_value list fn
-      method ty_app : concrete_ident -> generic_value list fn
-      method ty_tuple : int -> ty list fn
-      method ty : par_state -> ty fn
-      method expr' : par_state -> expr' fn
+    method par_state : ast_position -> par_state
+    method concrete_ident' : under_current_ns:bool -> concrete_ident fn
+    method concrete_ident : concrete_ident fn
+    method name_of_concrete_ident : concrete_ident fn
+    method mutability : 'a. 'a mutability fn
+    method primitive_ident : primitive_ident fn
+    method local_ident : local_ident fn
+    method literal : literal_ctx -> literal fn
+    method generic_value : generic_value fn
+    method lhs : lhs fn
+    method ty_bool : document
+    method ty_char : document
+    method ty_str : document
+    method ty_int : int_kind fn
+    method ty_float : float_kind fn
+    method generic_values : generic_value list fn
+    method ty_app : concrete_ident -> generic_value list fn
+    method ty_tuple : int -> ty list fn
+    method ty : par_state -> ty fn
+    method expr' : par_state -> expr' fn
 
-      method expr_monadic_let :
-        monad:supported_monads * F.monadic_binding ->
-        lhs:pat ->
-        rhs:expr ->
-        expr fn
+    method expr_monadic_let :
+      monad:supported_monads * F.monadic_binding ->
+      lhs:pat ->
+      rhs:expr ->
+      expr fn
 
-      method expr_let : lhs:pat -> rhs:expr -> expr fn
-      method tuple_projection : size:int -> nth:int -> expr fn
-      method field_projection : concrete_ident -> expr fn
-      method expr_app : expr -> expr list -> generic_value list fn
-      method doc_construct_tuple : document list fn
-      method expr_construct_tuple : expr list fn
-      method pat_construct_tuple : pat list fn
-      method global_ident_projector : global_ident fn
+    method expr_let : lhs:pat -> rhs:expr -> expr fn
+    method tuple_projection : size:int -> nth:int -> expr fn
+    method field_projection : concrete_ident -> expr fn
+    method expr_app : expr -> expr list -> generic_value list fn
+    method doc_construct_tuple : document list fn
+    method expr_construct_tuple : expr list fn
+    method pat_construct_tuple : pat list fn
+    method global_ident_projector : global_ident fn
 
-      method doc_construct_inductive :
-        is_record:bool ->
-        is_struct:bool ->
-        constructor:concrete_ident ->
-        base:document option ->
-        (global_ident * document) list fn
+    method doc_construct_inductive :
+      is_record:bool ->
+      is_struct:bool ->
+      constructor:concrete_ident ->
+      base:document option ->
+      (global_ident * document) list fn
 
-      method expr_construct_inductive :
-        is_record:bool ->
-        is_struct:bool ->
-        constructor:concrete_ident ->
-        base:(expr * F.construct_base) option ->
-        (global_ident * expr) list fn
+    method expr_construct_inductive :
+      is_record:bool ->
+      is_struct:bool ->
+      constructor:concrete_ident ->
+      base:(expr * F.construct_base) option ->
+      (global_ident * expr) list fn
 
-      method attr : attr fn
-      method attrs : attrs fn
-      method pat' : par_state -> pat' fn
-      method pat_ascription : typ:ty -> typ_span:span -> pat fn
-      method pat : par_state -> pat fn
-      method expr_unwrapped : par_state -> expr fn
-      method param : param fn
-      method item' : item' fn
-      method item_unwrapped : item fn
-      method generic_param' : generic_param fn
-      method generic_param : generic_param fn
-      method generic_params : generic_param list fn
-      method arm' : arm' fn
-      method arm : arm fn
-      method expr : par_state -> expr fn
-      method item : item fn
-      method quote : quote fn
-      method items : item list fn
-    end
+    method attr : attr fn
+    method attrs : attrs fn
+    method pat' : par_state -> pat' fn
+    method pat_ascription : typ:ty -> typ_span:span -> pat fn
+    method pat : par_state -> pat fn
+    method expr_unwrapped : par_state -> expr fn
+    method param : param fn
+    method item' : item' fn
+    method item_unwrapped : item fn
+    method generic_param' : generic_param fn
+    method generic_param : generic_param fn
+    method generic_params : generic_param list fn
+    method arm' : arm' fn
+    method arm : arm fn
+    method expr : par_state -> expr fn
+    method item : item fn
+    method quote : quote fn
+    method items : item list fn
+  end
 
   module type API = sig
     type aux_info

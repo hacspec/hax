@@ -121,56 +121,62 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             *)
 
       module On =
-      [%m
-      List.concat_map
-        ~f:(fun txt ->
-          (rename
-             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
-            #structure
-            [%str
-              module Placeholder : sig
-                type placeholder
-                [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+        [%m
+        List.concat_map
+          ~f:(fun txt ->
+            (rename
+               [
+                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
+               ])
+              #structure
+              [%str
+                module Placeholder : sig
+                  type placeholder
+                  [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
-                val placeholder : placeholder
-              end = struct
-                type placeholder = Placeholder
-                [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+                  val placeholder : placeholder
+                end = struct
+                  type placeholder = Placeholder
+                  [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
-                let placeholder = Placeholder
-              end
+                  let placeholder = Placeholder
+                end
 
-              include Placeholder])
-        features
-      |> B.pmod_structure]
+                include Placeholder])
+          features
+        |> B.pmod_structure]
 
       module ToFull =
-      [%m
-      List.concat_map
-        ~f:(fun txt ->
-          (rename
-             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
-            #structure
-            [%str let placeholder _ = On.placeholder])
-        features
-      |> B.pmod_structure]
+        [%m
+        List.concat_map
+          ~f:(fun txt ->
+            (rename
+               [
+                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
+               ])
+              #structure
+              [%str let placeholder _ = On.placeholder])
+          features
+        |> B.pmod_structure]
 
       module Off =
-      [%m
-      List.concat_map
-        ~f:(fun txt ->
-          (rename
-             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
-            #structure
-            [%str
-              module Placeholder = struct
-                type placeholder = |
-                [@@deriving show, yojson, hash, compare, sexp, hash, eq]
-              end
+        [%m
+        List.concat_map
+          ~f:(fun txt ->
+            (rename
+               [
+                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
+               ])
+              #structure
+              [%str
+                module Placeholder = struct
+                  type placeholder = |
+                  [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+                end
 
-              include Placeholder])
-        features
-      |> B.pmod_structure]
+                include Placeholder])
+          features
+        |> B.pmod_structure]
 
       module SUBTYPE = struct
         module type T = sig
@@ -194,69 +200,74 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
         end
 
         module Map (S : T) (Mapper : MAPPER) =
-        [%m
-        let f txt =
-          [%stri
-            let [%p B.ppat_var { loc; txt }] =
-              let kind =
-                [%e
-                  B.pexp_construct
-                    {
-                      loc;
-                      txt = Ldot (Lident "Enumeration", uppercase_first_char txt);
-                    }
-                    None]
-              in
-              let f = [%e B.pexp_ident { loc; txt = Ldot (Lident "S", txt) }] in
-              Mapper.map f kind]
-        in
-        B.pmod_structure @@ ([%stri include S] :: List.map ~f features)]
+          [%m
+          let f txt =
+            [%stri
+              let [%p B.ppat_var { loc; txt }] =
+                let kind =
+                  [%e
+                    B.pexp_construct
+                      {
+                        loc;
+                        txt =
+                          Ldot (Lident "Enumeration", uppercase_first_char txt);
+                      }
+                      None]
+                in
+                let f =
+                  [%e B.pexp_ident { loc; txt = Ldot (Lident "S", txt) }]
+                in
+                Mapper.map f kind]
+          in
+          B.pmod_structure @@ ([%stri include S] :: List.map ~f features)]
 
         module On =
-        [%m
-        List.concat_map
-          ~f:(fun txt ->
-            (rename
-               [
-                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
-               ])
-              #structure
-              [%str
-                module Placeholder = struct
-                  let placeholder _span _witness = On.placeholder
-                end
+          [%m
+          List.concat_map
+            ~f:(fun txt ->
+              (rename
+                 [
+                   ("placeholder", txt);
+                   ("Placeholder", uppercase_first_char txt);
+                 ])
+                #structure
+                [%str
+                  module Placeholder = struct
+                    let placeholder _span _witness = On.placeholder
+                  end
 
-                include Placeholder])
-          features
-        |> B.pmod_structure]
+                  include Placeholder])
+            features
+          |> B.pmod_structure]
 
         module Reject (R : sig
           val reject : 'a. unit -> 'a
         end) =
-        [%m
-        List.concat_map
-          ~f:(fun txt ->
-            (rename
-               [
-                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
-               ])
-              #structure
-              [%str
-                module Placeholder = struct
-                  let placeholder _span _witness = R.reject ()
-                end
+          [%m
+          List.concat_map
+            ~f:(fun txt ->
+              (rename
+                 [
+                   ("placeholder", txt);
+                   ("Placeholder", uppercase_first_char txt);
+                 ])
+                #structure
+                [%str
+                  module Placeholder = struct
+                    let placeholder _span _witness = R.reject ()
+                  end
 
-                include Placeholder])
-          features
-        |> B.pmod_structure]
+                  include Placeholder])
+            features
+          |> B.pmod_structure]
 
         module Id =
-        [%m
-        List.map
-          ~f:(fun txt ->
-            [%stri let [%p B.ppat_var { loc; txt }] = fun _span -> Base.Fn.id])
-          features
-        |> B.pmod_structure]
+          [%m
+          List.map
+            ~f:(fun txt ->
+              [%stri let [%p B.ppat_var { loc; txt }] = fun _span -> Base.Fn.id])
+            features
+          |> B.pmod_structure]
       end
     end]
 (* let attrs = *)

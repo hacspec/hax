@@ -188,8 +188,7 @@ module%inlined_contents Make (F : Features.T) = struct
               new_body ~span
           in
           transform_arms scrutinee remaining [ new_arm ]
-      [@@inline_ands
-        bindings_of dexpr - dexpr' - darm - darm' - dguard - dguard']
+    [@@inline_ands bindings_of dexpr - dexpr' - darm - darm' - dguard - dguard']
 
     [%%inline_defs "Item.*"]
   end

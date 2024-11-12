@@ -261,7 +261,7 @@ struct
             typ = UB.unit_typ;
           }
       | None -> h expr
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

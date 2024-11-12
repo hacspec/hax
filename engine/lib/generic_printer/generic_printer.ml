@@ -91,17 +91,16 @@ module AnnotatedString = struct
 end
 
 (** Helper class that brings imperative span  *)
-class span_helper :
-  object
-    method span_data : Annotation.t list
-    (** Get the span annotation accumulated while printing *)
+class span_helper : object
+  method span_data : Annotation.t list
+  (** Get the span annotation accumulated while printing *)
 
-    method with_span : span:span -> (unit -> document) -> document
-    (** Runs the printer `f` under a node of span `span` *)
+  method with_span : span:span -> (unit -> document) -> document
+  (** Runs the printer `f` under a node of span `span` *)
 
-    method current_span : span
-    (** Get the current span *)
-  end =
+  method current_span : span
+  (** Get the current span *)
+end =
   object (self)
     val mutable current_span = Span.default
     val mutable span_data : Annotation.t list = []
@@ -202,9 +201,9 @@ module Make (F : Features.T) = struct
       method concrete_ident ~local (id : Concrete_ident.view) : document =
         string
           (if local then id.definition
-          else
-            String.concat ~sep:self#module_path_separator
-              (id.crate :: (id.path @ [ id.definition ])))
+           else
+             String.concat ~sep:self#module_path_separator
+               (id.crate :: (id.path @ [ id.definition ])))
       (** [concrete_ident ~local id] prints a name without path if
       [local] is true, otherwise it prints the full path, separated by
       `module_path_separator`. *)

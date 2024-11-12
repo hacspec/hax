@@ -39,11 +39,10 @@ module%inlined_contents Make (F : Features.T) = struct
     include W
     include Set.M (W)
 
-    class type ['s] monoid =
-      object
-        method zero : 's
-        method plus : 's -> 's -> 's
-      end
+    class type ['s] monoid = object
+      method zero : 's
+      method plus : 's -> 's -> 's
+    end
 
     class ['s, 't] prod_monoid (fst : 's monoid)
       (snd : 't monoid) (* : ['s * 't] monoid *) =
@@ -153,8 +152,8 @@ module%inlined_contents Make (F : Features.T) = struct
   end
 
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
-    let (mut_var_list, _)
-          : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
+    let (mut_var_list, _) :
+        (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
       List.fold_left ~init:([], 0)
         ~f:(fun (y, count) (name, body) ->
           let items, count = analyse_function_body body count in

@@ -20,17 +20,17 @@ module Make
     (FA : Features.T)
     (FB : Features.T)
     (S0 : sig
-      include Features.SUBTYPE.T
+            include Features.SUBTYPE.T
 
-      type error [@@deriving show, yojson, eq]
+            type error [@@deriving show, yojson, eq]
 
-      exception E of error
+            exception E of error
 
-      val explain : error -> Features.Enumeration.t -> string
-      val metadata : Phase_utils.Metadata.t
-    end
-    with module A = FA
-     and module B = FB) =
+            val explain : error -> Features.Enumeration.t -> string
+            val metadata : Phase_utils.Metadata.t
+          end
+          with module A = FA
+           and module B = FB) =
 struct
   let metadata = S0.metadata
 

@@ -171,20 +171,20 @@ struct
             ~f:(fun (expr, { lbs; effects = effects0 }) (effects, l) ->
               ( SideEffects.plus effects0 effects,
                 (if
-                 SideEffects.reads_local_mut_only effects0
-                 && SideEffects.commute effects0 effects
-                then (lbs, expr)
-                else
-                  let var =
-                    (* if the body is a local variable, use that,
-                       otherwise get a fresh one *)
-                    match snd @@ U.collect_let_bindings expr with
-                    (* TODO: this optimization is disabled because it fails in cases like f(x, {x = 3; x}) *)
-                    | { e = LocalVar var; _ } when false -> var
-                    | _ -> fresh ()
-                  in
-                  ( lbs @ [ (U.make_var_pat var expr.typ expr.span, expr) ],
-                    { expr with e = LocalVar var } ))
+                   SideEffects.reads_local_mut_only effects0
+                   && SideEffects.commute effects0 effects
+                 then (lbs, expr)
+                 else
+                   let var =
+                     (* if the body is a local variable, use that,
+                        otherwise get a fresh one *)
+                     match snd @@ U.collect_let_bindings expr with
+                     (* TODO: this optimization is disabled because it fails in cases like f(x, {x = 3; x}) *)
+                     | { e = LocalVar var; _ } when false -> var
+                     | _ -> fresh ()
+                   in
+                   ( lbs @ [ (U.make_var_pat var expr.typ expr.span, expr) ],
+                     { expr with e = LocalVar var } ))
                 :: l ))
         in
         let lbs = List.concat_map ~f:fst l in
