@@ -17,8 +17,8 @@ mod id_table {
 
     #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
     pub struct Node<T> {
-        value: Arc<T>,
-        cache_id: u32,
+        pub value: Arc<T>,
+        pub cache_id: u32,
     }
 
     impl<T> std::ops::Deref for Node<T> {
@@ -84,6 +84,7 @@ fn def_id_to_str(def_id: &DefId) -> (Value, String) {
     } else {
         &def_id.krate
     };
+
     // Update the crate name in the json output as well.
     let mut json = serde_json::to_value(def_id).unwrap();
     json["contents"]["value"]["krate"] = Value::String(crate_name.to_owned());
@@ -97,6 +98,15 @@ fn def_id_to_str(def_id: &DefId) -> (Value, String) {
     (json, path)
 }
 
+/// Checks whether a def id refers to a macro or not.
+/// We don't want to extract macro names.
+fn is_macro(did: &DefId) -> bool {
+    let Some(last) = did.contents.value.path.last() else {
+        return false;
+    };
+    matches!(last.data, DefPathItem::MacroNs { .. })
+}
+
 fn reader_to_str(s: String) -> String {
     let json: Value = match serde_json::from_str(&s) {
         Ok(v) => v,
@@ -107,6 +117,7 @@ fn reader_to_str(s: String) -> String {
 
     let def_ids = def_ids
         .into_iter()
+        .filter(|did| !is_macro(did))
         .map(|did| {
             let (json, krate_name) = def_id_to_str(&did);
             (serde_json::to_string(&json).unwrap(), krate_name)
