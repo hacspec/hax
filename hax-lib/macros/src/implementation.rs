@@ -893,7 +893,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
             fields.len()
         );
     };
-    if field.vis != syn::Visibility::Inherited {
+    if matches!(field.vis, syn::Visibility::Inherited) {
         proc_macro_error::abort!(field.vis.span(), "This field was expected to be private");
     }
 

@@ -11,16 +11,15 @@ description = "Hax-specific helpers for Rust programs"
 
 
 [target.'cfg(hax)'.dependencies]
-num-bigint = { version = "0.4.3", default-features = false, optional = true }
-num-traits = { version = "0.2.15", default-features = false, optional = true }
+num-bigint = { version = "0.4.3", default-features = false }
+num-traits = { version = "0.2.15", default-features = false }
 
 [dependencies]
 hax-lib-macros = { workspace = true, optional = true }
 
 [features]
-default = ["macros", "hax"]
+default = ["macros"]
 macros = ["dep:hax-lib-macros"]
-hax = ["hax-lib-macros/hax", "dep:num-bigint", "dep:num-traits"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)'] }

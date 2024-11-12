@@ -13,25 +13,15 @@ description = "Hax-specific proc-macros for Rust programs"
 proc-macro = true
 
 [target.'cfg(hax)'.dependencies]
-proc-macro-error = { version = "1.0.4", optional = true }
-hax-lib-macros-types = { workspace = true, optional = true }
-paste = { version = "1.0.15", optional = true }
+proc-macro-error = { version = "1.0.4" }
+hax-lib-macros-types = { workspace = true }
+paste = { version = "1.0.15" }
+proc-macro2 = { workspace = true }
+syn = { version = "2.0", features = ["full", "visit-mut", "visit"] }
 
 [dependencies]
-proc-macro2 = { workspace = true, optional = true }
-quote = { workspace = true }
 syn = { version = "2.0", features = ["full", "visit-mut"] }
-
-[features]
-hax = [
-    "dep:paste",
-    "dep:hax-lib-macros-types",
-    "dep:proc-macro-error",
-    "dep:proc-macro2",
-    "syn/visit",
-    "syn/extra-traits",
-    "syn/parsing",
-]
+quote = { workspace = true }
 
 [dev-dependencies]
 hax-lib = { path = ".." }
