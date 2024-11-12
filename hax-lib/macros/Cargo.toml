@@ -16,11 +16,11 @@ proc-macro = true
 proc-macro-error = { version = "1.0.4" }
 hax-lib-macros-types = { workspace = true }
 paste = { version = "1.0.15" }
-proc-macro2 = { workspace = true }
 syn = { version = "2.0", features = ["full", "visit-mut", "visit"] }
 
 [dependencies]
 syn = { version = "2.0", features = ["full", "visit-mut"] }
+proc-macro2 = { workspace = true }
 quote = { workspace = true }
 
 [dev-dependencies]

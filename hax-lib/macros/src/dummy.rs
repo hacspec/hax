@@ -1,7 +1,7 @@
 mod hax_paths;
 
 use hax_paths::*;
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream, TokenTree};
 use quote::quote;
 use syn::{visit_mut::VisitMut, *};
 
@@ -136,4 +136,18 @@ pub fn attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
     AttrVisitor.visit_item_mut(&mut item);
 
     quote! { #item }.into()
+}
+
+#[proc_macro]
+pub fn int(payload: TokenStream) -> TokenStream {
+    let mut tokens = payload.into_iter().peekable();
+    let negative = matches!(tokens.peek(), Some(TokenTree::Punct(p)) if p.as_char() == '-');
+    if negative {
+        tokens.next();
+    }
+    let [lit @ TokenTree::Literal(_)] = &tokens.collect::<Vec<_>>()[..] else {
+        return quote! { ::std::compile_error!("Expected exactly one numeric literal") }.into();
+    };
+    let lit: proc_macro2::TokenStream = TokenStream::from(lit.clone()).into();
+    quote! {::hax_lib::int::Int(#lit)}.into()
 }
