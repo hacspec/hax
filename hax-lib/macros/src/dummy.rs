@@ -154,3 +154,18 @@ pub fn int(payload: TokenStream) -> TokenStream {
     let lit: proc_macro2::TokenStream = TokenStream::from(lit.clone()).into();
     quote! {::hax_lib::int::Int(#lit)}.into()
 }
+
+#[proc_macro_attribute]
+pub fn impl_fn_decoration(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    quote! { ::std::compile_error!("`impl_fn_decoration` is an internal macro and should never be used directly.") }.into()
+}
+
+#[proc_macro_attribute]
+pub fn trait_fn_decoration(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    quote! { ::std::compile_error!("`trait_fn_decoration` is an internal macro and should never be used directly.") }.into()
+}
+
+#[proc_macro]
+pub fn loop_invariant(_predicate: TokenStream) -> TokenStream {
+    quote! {}.into()
+}
