@@ -1642,7 +1642,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       generics =
                         U.concat_generics (c_generics generics)
                           (c_generics item.generics);
-                      body = c_expr body;
+                      body = c_body body;
                       params;
                       safety = csafety safety;
                     }
@@ -1652,7 +1652,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       name = item_def_id;
                       generics = c_generics generics;
                       (* does that make sense? can we have `const<T>`? *)
-                      body = c_expr e;
+                      body = c_body e;
                       params = [];
                       safety = Safe;
                     }

@@ -495,11 +495,11 @@ module Make (F : Features.T) = struct
     let bundle_of_item =
       Hashtbl.of_alist_exn (module ComparableItem) bundle_transforms
     in
-    let maybe_transform_item it =
-      match Hashtbl.find bundle_of_item it with
+    let maybe_transform_item item =
+      match Hashtbl.find bundle_of_item item with
       | Some (homogeneous_bundle, transform_bundle) ->
-          if homogeneous_bundle then [ it ] else transform_bundle it
-      | None -> [ it ]
+          if homogeneous_bundle then [ item ] else transform_bundle item
+      | None -> [ item ]
     in
     List.concat_map items ~f:maybe_transform_item
 
