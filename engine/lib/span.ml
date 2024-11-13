@@ -93,14 +93,6 @@ module Imported = struct
     "<" ^ file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
 end
 
-(* open struct *)
-(*   module DefId = struct *)
-(*       include Types *)
-(*       let def_id_of_yojson = Types.parse_def_id *)
-(*       let yojson_of_def_id = failwith "todo" *)
-(*     end *)
-(*   end *)
-
 type owner_id = OwnerId of int
 [@@deriving show, yojson, sexp, compare, eq, hash]
 
