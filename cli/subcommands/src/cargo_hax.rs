@@ -7,6 +7,7 @@ use hax_types::driver_api::*;
 use hax_types::engine_api::*;
 use is_terminal::IsTerminal;
 use serde_jsonlines::BufReadExt;
+use std::collections::HashMap;
 use std::fs;
 use std::io::BufRead;
 use std::io::Write;
@@ -188,7 +189,7 @@ impl HaxMessage {
                     format!("{}.{}", n / factor, n % factor)
                 }
                 let title = format!(
-                    "[profiling] {}: {}ms, memory={}, {} item{}{}",
+                    "hax[profiling]: {}: {}ms, memory={}, {} item{}{}",
                     data.context,
                     format_with_dot(6, data.time_ns),
                     data.memory,
@@ -199,6 +200,17 @@ impl HaxMessage {
                     } else {
                         ""
                     }
+                );
+                eprintln!("{}", renderer.render(Level::Info.title(&title)));
+            }
+            Self::Stats { errors_per_item } => {
+                let success_items = errors_per_item.iter().filter(|(_, n)| *n == 0).count();
+                let total = errors_per_item.len();
+                let title = format!(
+                    "hax: {}/{} items were successfully translated ({}% success rate)",
+                    success_items,
+                    total,
+                    (success_items * 100) / total
                 );
                 eprintln!("{}", renderer.render(Level::Info.title(&title)));
             }
@@ -285,6 +297,7 @@ fn run_engine(
         });
 
         let stdout = std::io::BufReader::new(engine_subprocess.stdout.take().unwrap());
+        let mut errors_per_item: HashMap<_, usize> = HashMap::new();
         for msg in stdout.json_lines() {
             let msg = msg.expect(
                 "Hax engine sent an invalid json value. \
@@ -298,6 +311,9 @@ fn run_engine(
                     error = true;
                     if backend.dry_run {
                         output.diagnostics.push(diagnostic.clone())
+                    }
+                    if let Some(owner_id) = &diagnostic.owner_id {
+                        *errors_per_item.entry(owner_id.clone()).or_default() += 1;
                     }
                     HaxMessage::Diagnostic {
                         diagnostic,
@@ -339,10 +355,21 @@ fn run_engine(
                 FromEngine::ProfilingData(profiling_data) => {
                     HaxMessage::ProfilingData(profiling_data).report(message_format, None)
                 }
+                FromEngine::ItemProcessed(items) => {
+                    for item in items {
+                        errors_per_item.insert(item, 0);
+                    }
+                }
                 FromEngine::Ping => {
                     send!(&ToEngine::Pong);
                 }
             }
+        }
+        if backend.stats {
+            HaxMessage::Stats {
+                errors_per_item: errors_per_item.into_iter().collect(),
+            }
+            .report(message_format, None)
         }
         drop(stdin);
     }

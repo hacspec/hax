@@ -272,7 +272,7 @@ mod serde_repr {
 
     #[derive(Serialize, Deserialize, JsonSchema, Debug)]
     pub(super) struct NodeRepr<T> {
-        cache_id: Id,
+        id: Id,
         value: Option<Arc<T>>,
     }
 
@@ -290,8 +290,8 @@ mod serde_repr {
             } else {
                 Some(self.value.clone())
             };
-            let cache_id = self.id;
-            NodeRepr { value, cache_id }
+            let id = self.id;
+            NodeRepr { value, id }
         }
     }
 
@@ -301,7 +301,7 @@ mod serde_repr {
         fn try_from(cached: NodeRepr<T>) -> Result<Self, Self::Error> {
             use serde::de::Error;
             let table = DESERIALIZATION_STATE.lock().unwrap();
-            let id = cached.cache_id;
+            let id = cached.id;
             let kind = if let Some(kind) = cached.value {
                 kind
             } else {

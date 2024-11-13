@@ -308,8 +308,14 @@ pub struct BackendOptions<E: Extension> {
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
-    /// Enables profiling for the engine
-    #[arg(short, long)]
+    /// Prints statistics about how many items have been translated
+    /// successfully by the engine.
+    #[arg(long)]
+    pub stats: bool,
+
+    /// Enables profiling for the engine: for each phase of the
+    /// engine, time and memory usage are recorded and reported.
+    #[arg(long)]
     pub profile: bool,
 
     /// Enable engine debugging: dumps the AST at each phase.
