@@ -1,0 +1,36 @@
+name: Extract Bertie
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  extract-bertie:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: ⤵ Clone Bertie repository
+        uses: actions/checkout@v4
+        with:
+          repository: cryspen/bertie
+
+      - uses: actions/checkout@v4
+        with:
+          path: hax
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: ⤵ Install hax
+        run: |
+          nix profile install ./hax
+
+      - name: 🏃 Extract fstar
+        run: ./hax-driver.py extract-fstar
