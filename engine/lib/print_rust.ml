@@ -140,6 +140,7 @@ module Raw = struct
                      ident";
                 };
             span = Span.to_thir span;
+            owner_id = Span.owner_hint span;
           };
         "print_rust_last_of_global_ident_error"
 

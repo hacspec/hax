@@ -38,14 +38,14 @@ module SubtypeToInputLanguage
              and type macro = Features.On.macro
              and type quote = Features.On.quote
              and type construct_base = Features.On.construct_base
-    (* and type as_pattern = Features.Off.as_pattern *)
-    (* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
-    (* and type arbitrary_lhs = Features.Off.arbitrary_lhs *)
-    (* and type lifetime = Features.Off.lifetime *)
-    (* and type construct_base = Features.Off.construct_base *)
-    (* and type monadic_action = Features.Off.monadic_action *)
-    (* and type monadic_binding = Features.Off.monadic_binding *)
-    (* and type block = Features.Off.block *)) =
+(* and type as_pattern = Features.Off.as_pattern *)
+(* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
+(* and type arbitrary_lhs = Features.Off.arbitrary_lhs *)
+(* and type lifetime = Features.Off.lifetime *)
+(* and type construct_base = Features.Off.construct_base *)
+(* and type monadic_action = Features.Off.monadic_action *)
+(* and type monadic_binding = Features.Off.monadic_binding *)
+(* and type block = Features.Off.block *)) =
 struct
   module FB = InputLanguage
 

@@ -286,7 +286,7 @@ struct
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
+    [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
 
     [%%inline_defs "Item.*"]
   end

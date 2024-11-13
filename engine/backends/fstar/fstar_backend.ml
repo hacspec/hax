@@ -104,7 +104,8 @@ let module_name (ns : string * string list) : string =
     (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
 
 module Make
-    (Attrs : Attrs.WITH_ITEMS) (Ctx : sig
+    (Attrs : Attrs.WITH_ITEMS)
+    (Ctx : sig
       val ctx : Context.t
     end) =
 struct
@@ -1174,11 +1175,9 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:
-                           (fun {
-                                  goal = { trait; args };
-                                  name = impl_ident_name;
-                                } ->
+                         ~f:(fun
+                             { goal = { trait; args }; name = impl_ident_name }
+                           ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in

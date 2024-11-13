@@ -30,7 +30,7 @@ module%inlined_contents Make (F : Features.T) = struct
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms "dexpr'.*" - Block] -> auto
       | Block { e; _ } -> (dexpr e).e
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end

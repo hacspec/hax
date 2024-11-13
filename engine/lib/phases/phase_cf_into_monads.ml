@@ -231,7 +231,7 @@ struct
       else
         UB.call Rust_primitives__hax__control_flow_monad__ControlFlowMonad__lift
           [ e ] e.span target_type
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     module Item = struct
       module OverrideDExpr = struct

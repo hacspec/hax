@@ -222,7 +222,7 @@ module%inlined_contents Make (FA : Features.T) = struct
             typ = dty expr.span expr.typ;
           }
       | None -> h expr
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

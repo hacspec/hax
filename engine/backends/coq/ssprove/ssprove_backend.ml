@@ -334,7 +334,7 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                                             ~f:(fun x y ->
                                               SSP.AST.App (SSP.AST.Var x, [ y ]))
                                             ((if Stdlib.(i != 0) then [ "snd" ]
-                                             else [])
+                                              else [])
                                             @ List.init
                                                 (List.length fields - 1 - i)
                                                 ~f:(fun _ -> "fst")),
@@ -437,9 +437,9 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                             [
                               SSP.AST.Value
                                 ( (if Stdlib.(j == i) then SSP.AST.Var "y"
-                                  else
-                                    SSP.AST.App
-                                      (SSP.AST.Var x, [ SSP.AST.Var "x" ])),
+                                   else
+                                     SSP.AST.App
+                                       (SSP.AST.Var x, [ SSP.AST.Var "x" ])),
                                   false,
                                   0 );
                             ] ))
@@ -534,12 +534,12 @@ end
 
 module StaticAnalysis (* : ANALYSIS *) = struct
   module FunctionDependency (* : ANALYSIS *) =
-  [%functor_application
-  Analyses.Function_dependency InputLanguage]
+    [%functor_application
+    Analyses.Function_dependency InputLanguage]
 
   module MutableVariables (* : ANALYSIS *) =
-  [%functor_application
-  Analyses.Mutable_variables InputLanguage]
+    [%functor_application
+    Analyses.Mutable_variables InputLanguage]
 
   type analysis_data = { mut_var : MutableVariables.analysis_data }
 
@@ -1470,16 +1470,16 @@ struct
           let g = pgeneric span generics in
           [
             (if List.is_empty g then
-             SSP.AST.Notation
-               ( "'" ^ pconcrete_ident name ^ "'",
-                 SSP.AST.Type (pty span ty),
-                 None )
-            else
-              SSP.AST.Definition
-                ( pconcrete_ident name,
-                  g,
-                  SSP.AST.Type (pty span ty),
-                  SSP.AST.TypeTy ));
+               SSP.AST.Notation
+                 ( "'" ^ pconcrete_ident name ^ "'",
+                   SSP.AST.Type (pty span ty),
+                   None )
+             else
+               SSP.AST.Definition
+                 ( pconcrete_ident name,
+                   g,
+                   SSP.AST.Type (pty span ty),
+                   SSP.AST.TypeTy ));
           ]
       (* record *)
       | Type
@@ -1741,11 +1741,11 @@ struct
                             (if include_extra_loc then [ loc_name ] else [])
                         in
                         (if include_extra_loc then
-                         [
-                           SSP.AST.Named
-                             (loc_name, SSP.AST.NameTy "{fset Location}");
-                         ]
-                        else [])
+                           [
+                             SSP.AST.Named
+                               (loc_name, SSP.AST.NameTy "{fset Location}");
+                           ]
+                         else [])
                         @ [
                             SSP.AST.Named
                               ( pconcrete_ident x.ti_ident,

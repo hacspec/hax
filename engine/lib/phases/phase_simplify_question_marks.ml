@@ -295,7 +295,7 @@ module%inlined_contents Make (FA : Features.T) = struct
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       QuestionMarks.extract expr |> Option.value ~default:expr
       |> [%inline_body dexpr_unwrapped]
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

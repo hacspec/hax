@@ -79,6 +79,7 @@ pub struct ProfilingData {
 
 pub mod protocol {
     use super::*;
+
     #[derive_group(Serializers)]
     #[derive(JsonSchema, Debug, Clone)]
     pub enum FromEngine {
@@ -88,6 +89,8 @@ pub mod protocol {
         PrettyPrintRust(String),
         DebugString(String),
         ProfilingData(ProfilingData),
+        /// Declares a list of items that will be processed by the engine
+        ItemProcessed(Vec<hax_frontend_exporter::DefId>),
         Exit,
         Ping,
     }

@@ -8,11 +8,30 @@ pub enum Glob {
     Many, // **
 }
 
+impl ToString for Glob {
+    fn to_string(&self) -> String {
+        match self {
+            Self::One => "*",
+            Self::Many => "**",
+        }
+        .to_string()
+    }
+}
+
 #[derive_group(Serializers)]
 #[derive(Debug, Clone, JsonSchema)]
 pub enum NamespaceChunk {
     Glob(Glob),
     Exact(String),
+}
+
+impl ToString for NamespaceChunk {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Glob(glob) => glob.to_string(),
+            Self::Exact(string) => string.to_string(),
+        }
+    }
 }
 
 impl std::convert::From<&str> for NamespaceChunk {
@@ -29,6 +48,17 @@ impl std::convert::From<&str> for NamespaceChunk {
 #[derive(Debug, Clone, JsonSchema)]
 pub struct Namespace {
     pub chunks: Vec<NamespaceChunk>,
+}
+
+impl ToString for Namespace {
+    fn to_string(&self) -> String {
+        self.chunks
+            .iter()
+            .map(NamespaceChunk::to_string)
+            .collect::<Vec<_>>()
+            .join("::")
+            .to_string()
+    }
 }
 
 impl std::convert::From<String> for Namespace {

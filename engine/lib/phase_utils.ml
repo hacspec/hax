@@ -62,8 +62,9 @@ end
 
 (** Make a monomorphic phase: a phase that transform an AST with
 feature set [F] into an AST with the same feature set [F] *)
-module MakeMonomorphicPhase (F : Features.T) (M : MAKE_MONOMORPHIC_PHASE(F).ARG) :
-  MAKE_MONOMORPHIC_PHASE(F).T = struct
+module MakeMonomorphicPhase
+    (F : Features.T)
+    (M : MAKE_MONOMORPHIC_PHASE(F).ARG) : MAKE_MONOMORPHIC_PHASE(F).T = struct
   module FA = F
   module FB = F
   module A = Ast.Make (F)
@@ -129,7 +130,8 @@ end
 
 module MakeBase
     (FA : Features.T)
-    (FB : Features.T) (M : sig
+    (FB : Features.T)
+    (M : sig
       val phase_id : Diagnostics.Phase.t
     end) =
 struct
@@ -290,8 +292,11 @@ struct
   let ditems (items : A.item list) : B.item list =
     let nth = List.length @@ Metadata.previous_phases D1'.metadata in
     (if Int.equal nth 0 then
-     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Stdlib.Obj.magic in
-     DebugBindPhase.add Before 0 (fun _ -> List.map ~f:coerce_to_full_ast items));
+       let coerce_to_full_ast : D1'.A.item -> Ast.Full.item =
+         Stdlib.Obj.magic
+       in
+       DebugBindPhase.add Before 0 (fun _ ->
+           List.map ~f:coerce_to_full_ast items));
     let items' = D1'.ditems items in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
       Stdlib.Obj.magic

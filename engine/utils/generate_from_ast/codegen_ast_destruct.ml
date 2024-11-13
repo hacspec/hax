@@ -8,7 +8,7 @@ let rec print_ty (t : Type.t) =
   else
     "("
     ^ (if List.is_empty t.args then ""
-      else "(" ^ String.concat ~sep:", " (List.map t.args ~f:print_ty) ^ ") ")
+       else "(" ^ String.concat ~sep:", " (List.map t.args ~f:print_ty) ^ ") ")
     ^ t.typ ^ ")"
 
 let print_record_or_tuple is_record x =

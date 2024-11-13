@@ -129,7 +129,7 @@ struct
           let bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls in
           App { f; args; generic_args; trait; bounds_impls }
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dbinding_mode]
+    [@@inline_ands bindings_of dexpr - dbinding_mode]
 
     let dgeneric_param (_span : span)
         ({ ident; kind; attrs; span } : A.generic_param) :

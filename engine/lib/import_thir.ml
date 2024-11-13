@@ -945,7 +945,7 @@ end) : EXPR = struct
                    e =
                      Literal
                        (Int { kind = { size = S8; signedness = Unsigned }; _ }
-                       as lit);
+                        as lit);
                    _;
                  } ->
                    lit
@@ -1441,7 +1441,9 @@ let cast_of_enum typ_name generics typ thir_span
   { v; span; ident; attrs = [] }
 
 let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
-  try c_item_unwrapped ~ident ~drop_body item
+  try
+    Span.with_owner_hint item.owner_id (fun _ ->
+        c_item_unwrapped ~ident ~drop_body item)
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
@@ -1526,8 +1528,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         in
         let variants =
           List.map
-            ~f:
-              (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
+            ~f:(fun
+                ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
                 [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
                   data

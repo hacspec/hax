@@ -582,11 +582,11 @@ let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode
     let label = "parse_table_id_node:" ^ name ^ ": " in
     match o with
     | \`Assoc alist -> begin
-          let id = match List.assoc_opt "cache_id" alist with
+          let id = match List.assoc_opt "id" alist with
             | Some (\`Int id) -> Base.Int.to_int64 id
             | Some (\`Intlit lit) -> (try Base.Int64.of_string lit with | _ -> failwith (label ^ "Base.Int64.of_string failed for " ^ lit))
             | Some bad_json -> failwith (label ^ "id was expected to be an int, got: " ^ Yojson.Safe.pretty_to_string bad_json ^ "\n\n\nfull json: " ^ Yojson.Safe.pretty_to_string o)
-            | None -> failwith (label ^ " could not find the key 'cache_id' in the following json: " ^ Yojson.Safe.pretty_to_string o)
+            | None -> failwith (label ^ " could not find the key 'id' in the following json: " ^ Yojson.Safe.pretty_to_string o)
           in
           let decode v = decode v |> Base.Option.value_exn ~message:(label ^ "could not decode value (wrong type)") in
           match List.assoc_opt "value" alist with

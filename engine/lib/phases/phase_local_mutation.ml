@@ -397,7 +397,7 @@ struct
                   else UB.make_tuple_expr ~span [ vars; e' ])
 
     and dexpr_unwrapped e = dexpr_s Instructions.zero e
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end
