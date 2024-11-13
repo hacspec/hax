@@ -56,7 +56,7 @@ Class t_Trait `{v_Self : Type} : Type :=
 Arguments t_Trait:clear implicits.
 Arguments t_Trait (_).
 
-Instance t_Trait_187936720 : t_Trait ((t_Foo)) :=
+Instance t_Trait_254780795 : t_Trait ((t_Foo)) :=
   {
   }.
 
