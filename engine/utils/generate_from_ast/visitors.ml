@@ -173,8 +173,8 @@ let collect_used_types =
        let typ = t.typ in
        self#plus
          (if String.is_prefix ~prefix:"'" typ || String.equal typ "list" then
-          self#zero
-         else Set.singleton (module String) typ)
+            self#zero
+          else Set.singleton (module String) typ)
          (super#visit_Type__t () t)
   end)
     #visit_datatypes

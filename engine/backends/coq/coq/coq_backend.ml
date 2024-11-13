@@ -86,10 +86,11 @@ let hardcoded_coq_headers =
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
-module Make (Default : sig
-  val default : string -> string
-end)
-(Attrs : Attrs.WITH_ITEMS) =
+module Make
+    (Default : sig
+      val default : string -> string
+    end)
+    (Attrs : Attrs.WITH_ITEMS) =
 struct
   open PPrint
 
@@ -648,10 +649,10 @@ struct
 
       method trait_item'_TIDefault ~params ~body ~witness:_ =
         (if List.is_empty params then empty
-        else
-          string "fun" ^^ space
-          ^^ separate_map space (fun x -> x#p) params
-          ^^ space ^^ string "=>")
+         else
+           string "fun" ^^ space
+           ^^ separate_map space (fun x -> x#p) params
+           ^^ space ^^ string "=>")
         ^^ nest 2 (break 1 ^^ body#p)
 
       method trait_item'_TIFn x1 = x1#p

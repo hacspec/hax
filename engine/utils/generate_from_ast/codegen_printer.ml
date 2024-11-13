@@ -99,14 +99,14 @@ and string_ty_of_ty' (state : state) (t : Type.t) =
   else
     "("
     ^ (if List.is_empty t.args then ""
-      else
-        "("
-        ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty' state))
-        ^ ") ")
+       else
+         "("
+         ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty' state))
+         ^ ") ")
     ^ t.typ
     ^ (if List.mem ~equal:[%eq: string] state.names_with_doc t.typ then
-       " lazy_doc"
-      else "")
+         " lazy_doc"
+       else "")
     ^ ")"
 
 and is_lazy_doc_typ (state : state) = string_ty_of_ty' state >> is_lazy_doc_typ'
@@ -203,8 +203,8 @@ let print_datatype state (dt : Datatype.t)
     in
     let body =
       (if Option.is_some (get_child_type dt.name) then
-       "\n    let super = value in"
-      else "")
+         "\n    let super = value in"
+       else "")
       ^ "\n    match value with"
       ^ String.concat ~sep:""
           (List.map

@@ -578,10 +578,10 @@ functor
                       Some
                         ("let" ^ " " ^ name ^ " " ^ ":=" ^ " "
                         ^ (if List.is_empty arguments then ""
-                          else
-                            "fun" ^ " "
-                            ^ params_to_string_typed arguments
-                            ^ " " ^ "=>" ^ " ")
+                           else
+                             "fun" ^ " "
+                             ^ params_to_string_typed arguments
+                             ^ " " ^ "=>" ^ " ")
                         ^ term_to_string_without_paren term 1
                         ^ " " ^ ":" ^ " "
                         ^ ty_to_string_without_paren ty
@@ -601,10 +601,10 @@ functor
                    | InlineDef (name, arguments, term, ty) ->
                        name ^ " " ^ ":=" ^ " " ^ "("
                        ^ (if List.is_empty arguments then ""
-                         else
-                           "fun" ^ " "
-                           ^ params_to_string_typed arguments
-                           ^ " " ^ "=>" ^ " ")
+                          else
+                            "fun" ^ " "
+                            ^ params_to_string_typed arguments
+                            ^ " " ^ "=>" ^ " ")
                        ^ term_to_string_without_paren term 1
                        ^ " " ^ ":" ^ " "
                        ^ ty_to_string_without_paren ty

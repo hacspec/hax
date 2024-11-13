@@ -164,7 +164,7 @@ module%inlined_contents Make (F : Features.T) = struct
           let kind = dloop_kind span kind in
           let state = Option.map ~f:(dloop_state span) state in
           Loop { body; control_flow; kind; state; label; witness }
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*" - ditems]
 

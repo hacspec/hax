@@ -45,7 +45,7 @@
         };
         rustc = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
-        ocamlformat = pkgs.ocamlformat_0_24_1;
+        ocamlformat = pkgs.ocamlformat_0_26_2;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
         hax-env-file = pkgs.writeText "hax-env-file" ''

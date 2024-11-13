@@ -91,7 +91,7 @@ module%inlined_contents Make (F : Features.T) = struct
           UB.M.expr_Assign ~lhs ~inner_e ~witness ~span ~typ:UB.unit_typ
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty span expr.typ; span })
-      [@@inline_ands bindings_of dexpr - dlhs - dexpr']
+    [@@inline_ands bindings_of dexpr - dlhs - dexpr']
 
     [%%inline_defs "Item.*"]
   end

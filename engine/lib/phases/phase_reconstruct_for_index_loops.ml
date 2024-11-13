@@ -87,7 +87,7 @@ module%inlined_contents Make (FA : Features.T) = struct
               witness = Features.On.for_index_loop;
             }
       | [%inline_arms "dloop_kind.*"] -> auto
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

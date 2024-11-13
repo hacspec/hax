@@ -3,7 +3,8 @@ open! Ast
 open! PPrint
 
 module Make
-    (F : Features.T) (Default : sig
+    (F : Features.T)
+    (Default : sig
       val default : string -> string
     end) =
 struct

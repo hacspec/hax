@@ -280,7 +280,7 @@ struct
       | _ ->
           let e = dexpr' span expr.e in
           B.{ e; typ = dty expr.span expr.typ; span = expr.span }
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs
     dgeneric_param + dgeneric_constraint + dgenerics + dparam + dvariant
@@ -290,7 +290,7 @@ struct
       let vars = UA.Reducers.collect_local_idents#visit_item' () item in
       out_var := UA.fresh_local_ident_in (Set.to_list vars) "out";
       [%inline_body ditem'] span item
-      [@@inline_ands "Item.*"]
+    [@@inline_ands "Item.*"]
   end
 
   include Implem
