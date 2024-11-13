@@ -8,4 +8,4 @@ edition = "2021"
 path = "src/sha256.rs"
 
 [dependencies]
-hax-lib-macros.workspace = true
+hax-lib.workspace = true

@@ -86,7 +86,7 @@ anything might happen: the function might panic, might run forever,
 erase your disk, or anything.
 
 The helper crate
-[hax-lib-macros](https://github.com/hacspec/hax/tree/main/hax-lib-macros)
+[hax-lib](https://github.com/hacspec/hax/tree/main/hax-lib)
 provdes the `requires`
 [proc-macro](https://doc.rust-lang.org/reference/procedural-macros.html)
 which lets user writting pre-conditions directly in Rust.

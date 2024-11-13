@@ -6,8 +6,8 @@ members = [
      "cli/driver",
      "test-harness",
      "hax-lib",
-     "hax-lib-macros",
-     "hax-lib-macros/types",
+     "hax-lib/macros",
+     "hax-lib/macros/types",
      "hax-lib-protocol",
      "hax-lib-protocol-macros",
      "hax-bounded-integers",
@@ -23,8 +23,8 @@ default-members = [
      "cli/driver",
      "test-harness",
      "hax-lib",
-     "hax-lib-macros",
-     "hax-lib-macros/types",
+     "hax-lib/macros",
+     "hax-lib/macros/types",
      "hax-lib-protocol",
      "hax-lib-protocol-macros",
      "engine/names",
@@ -74,8 +74,8 @@ annotate-snippets = "0.11"
 hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-alpha.1", default-features = false }
 hax-adt-into = { path = "frontend/exporter/adt-into", version = "=0.1.0-alpha.1" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options", version = "=0.1.0-alpha.1" }
-hax-lib-macros-types = { path = "hax-lib-macros/types", version = "=0.1.0-alpha.1" }
-hax-lib-macros = { path = "hax-lib-macros", version = "=0.1.0-alpha.1" }
+hax-lib-macros = { path = "hax-lib/macros", version = "=0.1.0-alpha.1" }
+hax-lib-macros-types = { path = "hax-lib/macros/types", version = "=0.1.0-alpha.1" }
 hax-lib = { path = "hax-lib", version = "=0.1.0-alpha.1" }
 hax-engine-names = { path = "engine/names", version = "=0.1.0-alpha.1" }
 hax-types = { path = "hax-types", version = "=0.1.0-alpha.1" }

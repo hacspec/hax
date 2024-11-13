@@ -1,3 +1,4 @@
+mod hax_paths;
 mod impl_fn_decoration;
 mod quote;
 mod rewrite_self;
@@ -5,6 +6,7 @@ mod syn_ext;
 mod utils;
 
 mod prelude {
+    pub use crate::hax_paths::*;
     pub use crate::syn_ext::*;
     pub use proc_macro as pm;
     pub use proc_macro2::*;
@@ -567,7 +569,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                         let prev = &idents[0..=i];
                         let refine: Option<(&mut Attribute, Expr)> =
                             field.attrs.iter_mut().find_map(|attr| {
-                                if attr.path().ends_with("refine") {
+                                if let Ok(Some(_)) = expects_refine(attr.path()) {
                                     let payload = attr.parse_args().ok()?;
                                     Some((attr, payload))
                                 } else {
@@ -891,7 +893,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
             fields.len()
         );
     };
-    if field.vis != syn::Visibility::Inherited {
+    if !matches!(field.vis, syn::Visibility::Inherited) {
         proc_macro_error::abort!(field.vis.span(), "This field was expected to be private");
     }
 
