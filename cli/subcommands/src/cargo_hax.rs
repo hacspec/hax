@@ -596,7 +596,23 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
 
 fn main() {
     let args: Vec<String> = get_args("hax");
-    let mut options = Options::parse_from(args.iter());
+    let mut options = match &args[..] {
+        [_, kw] if kw == "__json" => serde_json::from_str(
+            &std::env::var(ENV_VAR_OPTIONS_FRONTEND).unwrap_or_else(|_| {
+                panic!(
+                    "Cannot find environnement variable {}",
+                    ENV_VAR_OPTIONS_FRONTEND
+                )
+            }),
+        )
+        .unwrap_or_else(|_| {
+            panic!(
+                "Invalid value for the environnement variable {}",
+                ENV_VAR_OPTIONS_FRONTEND
+            )
+        }),
+        _ => Options::parse_from(args.iter()),
+    };
     options.normalize_paths();
 
     let (haxmeta_files, exit_code) = compute_haxmeta_files(&options);

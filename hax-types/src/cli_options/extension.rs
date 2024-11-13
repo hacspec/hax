@@ -32,7 +32,7 @@ pub struct EmptyArgsExtension {}
 #[derive(JsonSchema, Subcommand, Debug, Clone)]
 pub enum EmptySubcommandExtension {}
 
-pub trait Extension {
+pub trait Extension: 'static {
     type Options: ArgsExtensionPoint;
     type Command: SubcommandExtensionPoint;
     type BackendOptions: ArgsExtensionPoint;
