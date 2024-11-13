@@ -220,14 +220,20 @@ pub struct InclusionClause {
     pub namespace: Namespace,
 }
 
+const PREFIX_INCLUDED_TRANSITIVE: &str = "+";
+const PREFIX_INCLUDED_SHALLOW: &str = "+~";
+const PREFIX_INCLUDED_NONE: &str = "+!";
+const PREFIX_SIGNATURE_ONLY: &str = "+:";
+const PREFIX_EXCLUDED: &str = "-";
+
 impl ToString for InclusionClause {
     fn to_string(&self) -> String {
         let kind = match self.kind {
-            InclusionKind::Included(DepsKind::Transitive) => "+",
-            InclusionKind::Included(DepsKind::Shallow) => "+~",
-            InclusionKind::Included(DepsKind::None) => "+!",
-            InclusionKind::SignatureOnly => "+:",
-            InclusionKind::Excluded => "-",
+            InclusionKind::Included(DepsKind::Transitive) => PREFIX_INCLUDED_TRANSITIVE,
+            InclusionKind::Included(DepsKind::Shallow) => PREFIX_INCLUDED_SHALLOW,
+            InclusionKind::Included(DepsKind::None) => PREFIX_INCLUDED_NONE,
+            InclusionKind::SignatureOnly => PREFIX_SIGNATURE_ONLY,
+            InclusionKind::Excluded => PREFIX_EXCLUDED,
         };
         format!("{kind}{}", self.namespace.to_string())
     }
@@ -248,11 +254,11 @@ pub fn parse_inclusion_clause(
         )
     };
     let kind = match &prefix[..] {
-        "+" => InclusionKind::Included(DepsKind::Transitive),
-        "+~" => InclusionKind::Included(DepsKind::Shallow),
-        "+!" => InclusionKind::Included(DepsKind::None),
-        "+:" => InclusionKind::SignatureOnly,
-        "-" => InclusionKind::Excluded,
+        PREFIX_INCLUDED_TRANSITIVE => InclusionKind::Included(DepsKind::Transitive),
+        PREFIX_INCLUDED_SHALLOW => InclusionKind::Included(DepsKind::Shallow),
+        PREFIX_INCLUDED_NONE => InclusionKind::Included(DepsKind::None),
+        PREFIX_SIGNATURE_ONLY => InclusionKind::SignatureOnly,
+        PREFIX_EXCLUDED => InclusionKind::Excluded,
         prefix => Err(format!(
             "Expected `+`, `+~`, `+!`, `+:` or `-`, got an `{prefix}`"
         ))?,
