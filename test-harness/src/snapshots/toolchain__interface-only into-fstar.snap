@@ -35,6 +35,10 @@ open FStar.Mul
 
 type t_Bar = | Bar : t_Bar
 
+type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
+
+type t_Param (v_SIZE: usize) = { f_value:t_Array u8 v_SIZE }
+
 /// Non-inherent implementations are extracted, their bodies are not
 /// dropped. This might be a bit surprising: see
 /// https://github.com/hacspec/hax/issues/616.
@@ -46,6 +50,12 @@ val impl:Core.Convert.t_From t_Bar Prims.unit
 val impl_1:Core.Convert.t_From t_Bar u8
 
 val from__from: u8 -> Prims.Pure t_Bar Prims.l_True (fun _ -> Prims.l_True)
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+val impl_2 (#v_T: Type0) : Core.Convert.t_From (t_Holder v_T) Prims.unit
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+val impl_3 (v_SIZE: usize) : Core.Convert.t_From (t_Param v_SIZE) Prims.unit
 
 /// This item contains unsafe blocks and raw references, two features
 /// not supported by hax. Thanks to the `-i` flag and the `+:`

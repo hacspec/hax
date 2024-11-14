@@ -1478,8 +1478,8 @@ struct
         let impl_val = ctx.interface_mode && not has_type in
         let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
         if impl_val then
-          let generics_types = List.map ~f:FStarBinder.to_typ generics in
-          let val_type = F.mk_e_arrow generics_types typ in
+          let generics_binders = List.map ~f:FStarBinder.to_binder generics in
+          let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
           let v = F.AST.Val (name, val_type) in
           (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
           @ F.decls ~fsti:false ~attrs:[ tcinst ] let_impl
