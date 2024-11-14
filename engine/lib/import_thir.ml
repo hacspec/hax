@@ -1642,7 +1642,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       generics =
                         U.concat_generics (c_generics generics)
                           (c_generics item.generics);
-                      body = c_expr body;
+                      body = c_body body;
                       params;
                       safety = csafety safety;
                     }
@@ -1652,7 +1652,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       name = item_def_id;
                       generics = c_generics generics;
                       (* does that make sense? can we have `const<T>`? *)
-                      body = c_expr e;
+                      body = c_body e;
                       params = [];
                       safety = Safe;
                     }
@@ -1681,6 +1681,11 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
             items
         in
+        let has_type =
+          List.exists items ~f:(fun item ->
+              match item.kind with Type _ -> true | _ -> false)
+        in
+        let c_e = if has_type then c_expr else c_body in
         mk
         @@ Impl
              {
@@ -1711,9 +1716,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  [ U.make_unit_param span ]
                                else List.map ~f:(c_param item.span) params
                              in
-                             IIFn { body = c_expr body; params }
-                         | Const (_ty, e) ->
-                             IIFn { body = c_expr e; params = [] }
+                             IIFn { body = c_e body; params }
+                         | Const (_ty, e) -> IIFn { body = c_e e; params = [] }
                          | Type { ty; parent_bounds } ->
                              IIType
                                {

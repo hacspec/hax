@@ -45,3 +45,23 @@ impl From<u8> for Bar {
         from(x)
     }
 }
+
+pub struct Holder<T> {
+    pub(crate) value: Vec<T>,
+}
+
+impl<T> From<()> for Holder<T> {
+    fn from((): ()) -> Self {
+        Holder { value: Vec::new() }
+    }
+}
+
+pub struct Param<const SIZE: usize> {
+    pub(crate) value: [u8; SIZE],
+}
+
+impl<const SIZE: usize> From<()> for Param<SIZE> {
+    fn from((): ()) -> Self {
+        Param { value: [0; SIZE] }
+    }
+}

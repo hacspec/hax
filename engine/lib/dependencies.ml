@@ -412,7 +412,7 @@ module Make (F : Features.T) = struct
       List.map ~f bundles
     in
 
-    let transform (bundle : item list) it =
+    let transform (bundle : item list) =
       let ns : Concrete_ident.t =
         Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
       in
@@ -473,21 +473,33 @@ module Make (F : Features.T) = struct
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
         (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
       in
-      shallow_copy rename variants_renamings it
+      fun it -> shallow_copy rename variants_renamings it
     in
-    let maybe_transform_item it =
-      match
-        List.find
-          ~f:(fun bundle -> List.mem bundle it ~equal:[%eq: item])
-          mut_rec_bundles
-      with
-      | Some bundle ->
-          if
-            List.map ~f:ident_of bundle
-            |> ItemGraph.MutRec.Bundle.homogeneous_namespace
-          then [ it ]
-          else transform bundle it
-      | None -> [ it ]
+    let bundle_transforms =
+      List.concat_map mut_rec_bundles ~f:(fun bundle ->
+          let bundle_value =
+            ( List.map ~f:ident_of bundle
+              |> ItemGraph.MutRec.Bundle.homogeneous_namespace,
+              transform bundle )
+          in
+          List.map bundle ~f:(fun item -> (item, bundle_value)))
+    in
+    let module ComparableItem = struct
+      module T = struct
+        type t = item [@@deriving sexp_of, compare, hash]
+      end
+
+      include T
+      include Comparable.Make (T)
+    end in
+    let bundle_of_item =
+      Hashtbl.of_alist_exn (module ComparableItem) bundle_transforms
+    in
+    let maybe_transform_item item =
+      match Hashtbl.find bundle_of_item item with
+      | Some (homogeneous_bundle, transform_bundle) ->
+          if homogeneous_bundle then [ item ] else transform_bundle item
+      | None -> [ item ]
     in
     List.concat_map items ~f:maybe_transform_item
 
