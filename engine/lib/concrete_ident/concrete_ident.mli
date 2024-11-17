@@ -74,6 +74,3 @@ identifier points to an [Impl] block. *)
 val parent_impl : t -> t option
 (** Returns the identifier pointing to the parent `impl` block, if it
 exists. *)
-
-val remove_impl : t -> t
-(** Returns the parent *)

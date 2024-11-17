@@ -2,10 +2,10 @@
 mod test_primitives;
 mod test_sequence;
 
-mod test_struct;
 mod test_enum;
+mod test_struct;
 
-mod test_functions;
 mod test_closures;
+mod test_functions;
 
 mod test_instance;

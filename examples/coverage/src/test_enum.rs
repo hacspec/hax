@@ -1,12 +1,12 @@
 fn test() {
     {
-        enum Foo<'a, T, const N : usize> {
+        enum Foo<'a, T, const N: usize> {
             Bar(u8),
             Baz,
-            Qux {x : &'a T, y : [T; N], z : u8},
+            Qux { x: &'a T, y: [T; N], z: u8 },
         }
 
-        let x : Foo<u8, 12> = Foo::Baz;
+        let x: Foo<u8, 12> = Foo::Baz;
     }
 
     {
@@ -26,7 +26,10 @@ fn test() {
         }
 
         let mut a: AnimalB = AnimalB::Dog("Cocoa".to_string(), 37.2);
-        a = AnimalB::Cat { name: "Spotty".to_string(), weight: 2.7 };
+        a = AnimalB::Cat {
+            name: "Spotty".to_string(),
+            weight: 2.7,
+        };
     }
     {
         enum Examples {
@@ -47,10 +50,7 @@ fn test() {
         enum Enum {
             Unit = 3,
             Tuple(u16),
-            Struct {
-                a: u8,
-                b: u16,
-            } = 1,
+            Struct { a: u8, b: u16 } = 1,
         }
     }
 }

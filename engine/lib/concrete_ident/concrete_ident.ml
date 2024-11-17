@@ -651,15 +651,3 @@ let parent_impl (id : t) : t option =
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI
-
-let remove_impl old =
-  let new_parent = (parent (parent old)).def_id in
-  {
-    kind = Macro;
-    (* Field; *)
-    def_id =
-      {
-        new_parent with
-        path = new_parent.path @ [ List.last_exn old.def_id.path ];
-      };
-  }

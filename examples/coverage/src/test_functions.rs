@@ -1,11 +1,18 @@
-fn first<A, B>((value, _): (A, i32), y: B) -> A where B: Clone { value }
+fn first<A, B>((value, _): (A, i32), y: B) -> A
+where
+    B: Clone,
+{
+    value
+}
 
 // foo is generic over A and B
 
-fn foo1<A, B>(x: A, y: B) {
-}
+fn foo1<A, B>(x: A, y: B) {}
 
-fn foo2<T>(x: &[T], y: &[T;1]) where T: Clone {
+fn foo2<T>(x: &[T], y: &[T; 1])
+where
+    T: Clone,
+{
     // details elided
 }
 

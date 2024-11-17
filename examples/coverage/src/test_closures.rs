@@ -1,4 +1,4 @@
-// TODO: 
+// TODO:
 // fn test() {
 //     let add : fn(i32, i32) -> i32 = |x, y| x + y;
 //     let _ = (|x : &u8| { x + x })(&2);
