@@ -1,4 +1,4 @@
-fn test() {
+fn test_primtives() {
     // bool
     let _: bool = false;
     let _: bool = true;
