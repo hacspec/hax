@@ -390,7 +390,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
                 let method_generics = &generics[num_container_generics..];
-                (method_generics.sinto(s), Option::Some(impl_expr))
+                (method_generics.sinto(s), Some(impl_expr))
             }
             rustc_middle::ty::AssocItemContainer::ImplContainer => {
                 // Solve the trait constraints of the impl block.
@@ -399,12 +399,12 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_trait_refs =
                     solve_item_required_traits(s, container_def_id, container_generics);
                 trait_refs.extend(container_trait_refs);
-                (generics.sinto(s), Option::None)
+                (generics.sinto(s), None)
             }
         }
     } else {
         // Regular function call
-        (generics.sinto(s), Option::None)
+        (generics.sinto(s), None)
     };
 
     (def_id.sinto(s), generics, trait_refs, source)
@@ -420,44 +420,20 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
 ) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
-    use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
-    use rustc_middle::mir::{Const, Operand};
+    use rustc_middle::mir::Operand;
     use rustc_middle::ty::TyKind;
     match func {
         Operand::Constant(c) => {
-            // Regular function case
-            let c = c.deref();
-            let (def_id, generics) = match &c.const_ {
-                Const::Ty(c_ty, _c) => {
-                    // The type of the constant should be a FnDef, allowing
-                    // us to retrieve the function's identifier and instantiation.
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                Const::Val(_, c_ty) => {
-                    // Same as for the `Ty` case above
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                Const::Unevaluated(_, _) => {
-                    unimplemented!();
-                }
+            let c_ty = c.const_.ty();
+            // The type of the constant should be a FnDef, allowing us to retrieve the function's
+            // identifier and instantiation.
+            let TyKind::FnDef(def_id, generics) = c_ty.kind() else {
+                unreachable!();
             };
-
             let (fun_id, generics, trait_refs, trait_info) =
-                get_function_from_def_id_and_generics(s, def_id, generics);
+                get_function_from_def_id_and_generics(s, *def_id, *generics);
             (FunOperand::Id(fun_id), generics, trait_refs, trait_info)
         }
         Operand::Move(place) => {
