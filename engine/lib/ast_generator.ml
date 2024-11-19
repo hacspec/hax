@@ -1,3 +1,6 @@
+open! Prelude
+open Ast
+
 module ASTGenerator (F : Features.T) = struct
   module AST = Ast.Make (F)
   open AST
