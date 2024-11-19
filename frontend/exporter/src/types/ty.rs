@@ -341,11 +341,10 @@ pub struct VariantDef {
     pub name: Symbol,
     pub discr_def: DiscriminantDefinition,
     pub discr_val: DiscriminantValue,
-    /// The definitions of the fields on this variant. In case of
-    /// [tuple
-    /// structs](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-tuple-structs-without-named-fields-to-create-different-types),
+    /// The definitions of the fields on this variant. In case of [tuple
+    /// structs/variants](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-tuple-structs-without-named-fields-to-create-different-types),
     /// the fields are anonymous, otherwise fields are named.
-    pub fields: Vec<FieldDef>,
+    pub fields: IndexVec<FieldIdx, FieldDef>,
     /// Span of the definition of the variant
     pub span: Span,
 }
@@ -363,7 +362,7 @@ impl VariantDef {
             name: def.name.sinto(s),
             discr_def: def.discr.sinto(s),
             discr_val: discr_val.sinto(s),
-            fields: def.fields.raw.sinto(s),
+            fields: def.fields.sinto(s),
             span: s.base().tcx.def_span(def.def_id).sinto(s),
         }
     }

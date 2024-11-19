@@ -350,8 +350,15 @@ pub enum FullDefKind<Body> {
     // ADT parts
     /// Refers to the variant definition, [`DefKind::Ctor`] refers to its constructor if it exists.
     Variant,
-    /// Refers to the struct or enum variant's constructor.
-    Ctor(CtorOf, CtorKind),
+    /// The constructor function of a tuple/unit struct or tuple/unit enum variant.
+    #[custom_arm(RDefKind::Ctor(ctor_of, _) => get_ctor_contents(s, ctor_of.sinto(s)),)]
+    Ctor {
+        adt_def_id: DefId,
+        ctor_of: CtorOf,
+        variant_id: VariantIdx,
+        fields: IndexVec<FieldIdx, FieldDef>,
+        output_ty: Ty,
+    },
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
     /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
@@ -759,6 +766,34 @@ where
                 items,
             }
         }
+    }
+}
+
+#[cfg(feature = "rustc")]
+fn get_ctor_contents<'tcx, S, Body>(s: &S, ctor_of: CtorOf) -> FullDefKind<Body>
+where
+    S: UnderOwnerState<'tcx>,
+    Body: IsBody + TypeMappable,
+{
+    let tcx = s.base().tcx;
+    let def_id = s.owner_id();
+
+    // The def_id of the adt this ctor belongs to.
+    let adt_def_id = match ctor_of {
+        CtorOf::Struct => tcx.parent(def_id),
+        CtorOf::Variant => tcx.parent(tcx.parent(def_id)),
+    };
+    let adt_def = tcx.adt_def(adt_def_id);
+    let variant_id = adt_def.variant_index_with_ctor_id(def_id);
+    let fields = adt_def.variant(variant_id).fields.sinto(s);
+    let generic_args = ty::GenericArgs::identity_for_item(tcx, adt_def_id);
+    let output_ty = ty::Ty::new_adt(tcx, adt_def, generic_args).sinto(s);
+    FullDefKind::Ctor {
+        adt_def_id: adt_def_id.sinto(s),
+        ctor_of,
+        variant_id: variant_id.sinto(s),
+        fields,
+        output_ty,
     }
 }
 

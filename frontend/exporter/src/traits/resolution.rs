@@ -121,7 +121,7 @@ fn initial_search_predicates<'tcx>(
         use DefKind::*;
         match tcx.def_kind(def_id) {
             // These inherit some predicates from their parent.
-            AssocTy | AssocFn | AssocConst | Closure => {
+            AssocTy | AssocFn | AssocConst | Closure | Ctor(..) | Variant => {
                 let parent = tcx.parent(def_id);
                 acc_predicates(tcx, parent, predicates, pred_id);
             }
