@@ -743,6 +743,15 @@ pub struct Ty {
 }
 
 impl Ty {
+    #[cfg(feature = "rustc")]
+    pub fn new<'tcx, S: BaseState<'tcx>>(s: &S, kind: TyKind) -> Self {
+        s.with_global_cache(|cache| {
+            let table_session = &mut cache.id_table_session;
+            let kind = id_table::Node::new(kind, table_session);
+            Ty { kind }
+        })
+    }
+
     pub fn inner(&self) -> &Arc<TyKind> {
         self.kind.inner()
     }
@@ -758,15 +767,12 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx>
         if let Some(ty) = s.with_cache(|cache| cache.tys.get(self).cloned()) {
             return ty;
         }
-        let ty_kind: TyKind = self.kind().sinto(s);
-        s.with_global_cache(|cache| {
-            let table_session = &mut cache.id_table_session;
-            let cache = cache.per_item.entry(s.owner_id()).or_default();
-            let kind = id_table::Node::new(ty_kind, table_session);
-            let ty = Ty { kind };
+        let kind: TyKind = self.kind().sinto(s);
+        let ty = Ty::new(s, kind);
+        s.with_cache(|cache| {
             cache.tys.insert(*self, ty.clone());
-            ty
-        })
+        });
+        ty
     }
 }
 
