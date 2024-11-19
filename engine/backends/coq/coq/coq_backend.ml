@@ -119,7 +119,8 @@ let hardcoded_coq_headers =
    (* From Core Require Import Core. *)\n"
 
 let dummy_lib =
-  "Class t_Sized (T : Type) := { }.\n\
+  "(* TODO: Replace this dummy lib with core lib *)\n\
+   Class t_Sized (T : Type) := { }.\n\
    Definition t_u8 := Z.\n\
    Definition t_u16 := Z.\n\
    Definition t_u32 := Z.\n\
@@ -140,7 +141,8 @@ let dummy_lib =
    Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x \
    => x}.\n\
    Definition t_Slice (T : Type) := list T.\n\
-   Definition unsize {T : Type} : list T -> t_Slice T := id.\n"
+   Definition unsize {T : Type} : list T -> t_Slice T := id.\n\
+   (* / dummy lib *)\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -805,7 +807,7 @@ struct
           ^^ string "|}"
         else
           constructor#p
-          ^^ concat_map_with ~pre:space (fun (ident, exp) -> exp#p) fields
+          ^^ concat_map_with ~pre:space (fun (ident, exp) -> parens(exp#p)) fields
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)

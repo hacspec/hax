@@ -560,8 +560,6 @@ let to_debug_string = T.show
 let map_path_strings ~(f : string -> string) (cid : t) : t =
   { cid with def_id = Imported.map_path_strings ~f cid.def_id }
 
-let parent (cid : t) : t = { cid with def_id = Imported.parent cid.def_id }
-
 module DefaultNamePolicy = struct
   let reserved_words = Hash_set.create (module String)
   let index_field_transform = Fn.id

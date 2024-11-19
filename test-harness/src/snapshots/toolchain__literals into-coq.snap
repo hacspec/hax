@@ -40,6 +40,31 @@ Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
+(* From Core Require Import Core. *)
+
+(* TODO: Replace this dummy lib with core lib *)
+Class t_Sized (T : Type) := { }.
+Definition t_u8 := Z.
+Definition t_u16 := Z.
+Definition t_u32 := Z.
+Definition t_u64 := Z.
+Definition t_u128 := Z.
+Definition t_usize := Z.
+Definition t_i8 := Z.
+Definition t_i16 := Z.
+Definition t_i32 := Z.
+Definition t_i64 := Z.
+Definition t_i128 := Z.
+Definition t_isize := Z.
+Definition t_Array T (x : t_usize) := list T.
+Definition t_String := string.
+Definition ToString_f_to_string (x : string) := x.
+Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
+Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
+Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
+Definition t_Slice (T : Type) := list T.
+Definition unsize {T : Type} : list T -> t_Slice T := id.
+(* / dummy lib *)
 
 
 From Literals Require Import Hax_lib (t_int).
@@ -49,11 +74,10 @@ Record t_Foo : Type :=
   {
     Foo_f_field : t_u8;
   }.
-Arguments t_Foo:clear implicits.
-Arguments t_Foo.
 Arguments Build_t_Foo.
+Arguments Foo_f_field.
 #[export] Instance settable_t_Foo : Settable _ :=
-  settable! (@Build_t_Foo) <Foo_f_field>.
+  settable! (Build_t_Foo) <Foo_f_field>.
 
 (* NotImplementedYet *)
 
@@ -71,7 +95,7 @@ Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_u
   let _ : t_i8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
   tt.
 
-Definition fn_pointer_cast (_ : unit) : unit :=
+Definition fn_pointer_cast '(_ : unit) : unit :=
   let f : t_u32 -> t_u32 := fun x =>
     x in
   tt.
@@ -103,7 +127,7 @@ Definition math_integers (x : t_Int) `{andb (PartialOrd_f_gt (x) (impl__Int___un
 Definition null : ascii :=
   "\000"%char.
 
-Definition numeric (_ : unit) : unit :=
+Definition numeric '(_ : unit) : unit :=
   let _ : t_usize := 123 in
   let _ : t_isize := -42 in
   let _ : t_isize := 42 in
@@ -111,7 +135,7 @@ Definition numeric (_ : unit) : unit :=
   let _ : t_u128 := 22222222222222222222 in
   tt.
 
-Definition patterns (_ : unit) : unit :=
+Definition patterns '(_ : unit) : unit :=
   let _ := match 1 with
   | 2 =>
     tt
@@ -125,17 +149,23 @@ Definition patterns (_ : unit) : unit :=
     tt
   end in
   let _ := match Build_t_Foo (4) with
-  | Foo (3) =>
+  | Build_t_Foo (3) =>
     tt
   | _ =>
     tt
   end in
   tt.
 
-Definition panic_with_msg (_ : unit) : unit :=
+Definition panic_with_msg '(_ : unit) : unit :=
   never_to_any (panic_fmt (impl_2__new_const (["with msg"%string]))).
 
-Definition empty_array (_ : unit) : unit :=
+Definition empty_array '(_ : unit) : unit :=
   let _ : t_Slice t_u8 := unsize ([]) in
   tt.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Literals.v'''

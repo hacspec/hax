@@ -39,23 +39,48 @@ Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
+(* From Core Require Import Core. *)
+
+(* TODO: Replace this dummy lib with core lib *)
+Class t_Sized (T : Type) := { }.
+Definition t_u8 := Z.
+Definition t_u16 := Z.
+Definition t_u32 := Z.
+Definition t_u64 := Z.
+Definition t_u128 := Z.
+Definition t_usize := Z.
+Definition t_i8 := Z.
+Definition t_i16 := Z.
+Definition t_i32 := Z.
+Definition t_i64 := Z.
+Definition t_i128 := Z.
+Definition t_isize := Z.
+Definition t_Array T (x : t_usize) := list T.
+Definition t_String := string.
+Definition ToString_f_to_string (x : string) := x.
+Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
+Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
+Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
+Definition t_Slice (T : Type) := list T.
+Definition unsize {T : Type} : list T -> t_Slice T := id.
+(* / dummy lib *)
 
 
 Inductive t_Foo : Type :=
 | Foo_A
 | Foo_B.
-Arguments t_Foo:clear implicits.
-Arguments t_Foo.
+Arguments Foo_A.
+Arguments Foo_B.
 
 Record t_Bar : Type :=
   {
     Bar_0 : t_Foo;
   }.
-Arguments t_Bar:clear implicits.
-Arguments t_Bar.
 Arguments Build_t_Bar.
+Arguments Bar_0.
 #[export] Instance settable_t_Bar : Settable _ :=
-  settable! (@Build_t_Bar) <Bar_0>.
+  settable! (Build_t_Bar) <Bar_0>.
+Notation "'Bar'" := Build_t_Bar.
 
 Definition t_Foo_cast_to_repr (x : t_Foo) : t_isize :=
   match x with
@@ -67,15 +92,21 @@ Definition t_Foo_cast_to_repr (x : t_Foo) : t_isize :=
 
 (* NotImplementedYet *)
 
-Definition f (_ : t_u32) : t_Foo :=
+Definition f '(_ : t_u32) : t_Foo :=
   Foo_A.
 
-Definition g (_ : unit) : t_Bar :=
+Definition g '(_ : unit) : t_Bar :=
   Build_t_Bar (f (32)).
 
-Definition no_dependency_1_ (_ : unit) : unit :=
+Definition no_dependency_1_ '(_ : unit) : unit :=
   tt.
 
-Definition no_dependency_2_ (_ : unit) : unit :=
+Definition no_dependency_2_ '(_ : unit) : unit :=
   tt.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Reordering.v'''
