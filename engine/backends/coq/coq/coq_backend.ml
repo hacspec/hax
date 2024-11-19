@@ -155,10 +155,12 @@ let dummy_lib =
    Class t_From (A B : Type) := { From_f_from : B -> A }.\n\
    Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := x.\n\
    Class t_Into (A B : Type) := { Into_f_into : A -> B }.\n\
-   Instance t_Into_from_t_From {A B : Type} `{H : t_From B A} : t_Into A B := { Into_f_into x := @From_f_from B A H x }.\n\
+   Instance t_Into_from_t_From {A B : Type} `{H : t_From B A} : t_Into A B := \
+   { Into_f_into x := @From_f_from B A H x }.\n\
    Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l).\n\
-    Definition t_Option := option.\n\
-   Definition impl__map {A B} (x : t_Option A) (f : A -> B) : t_Option B := match x with | Some x => Some (f x) | None => None end.\n\
+   Definition t_Option := option.\n\
+   Definition impl__map {A B} (x : t_Option A) (f : A -> B) : t_Option B := \
+   match x with | Some x => Some (f x) | None => None end.\n\
    Definition t_Add_f_add x y := x + y.\n\
    Class Cast A B := { cast : A -> B }.\n\
    Instance cast_t_u8_t_u32 : Cast t_u8 t_u32 := {| cast x := x |}.\n\
@@ -285,7 +287,10 @@ struct
         List.fold_right ~init:e#p
           ~f:(fun x y -> parens (x ^^ y))
           ((if Stdlib.(nth != 0) then [ string "snd" ] else [])
-          @ if (size - 1 - nth) > 0 then List.init (size - 1 - nth) ~f:(fun _ -> string "fst") else [])
+          @
+          if size - 1 - nth > 0 then
+            List.init (size - 1 - nth) ~f:(fun _ -> string "fst")
+          else [])
 
       method expr'_Ascription ~super:_ ~e ~typ =
         e#p ^^ space ^^ colon ^^ space ^^ typ#p
