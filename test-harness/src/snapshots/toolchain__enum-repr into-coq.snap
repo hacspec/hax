@@ -40,6 +40,32 @@ Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
 
+(* From Core Require Import Core. *)
+
+(* TODO: Replace this dummy lib with core lib *)
+Class t_Sized (T : Type) := { }.
+Definition t_u8 := Z.
+Definition t_u16 := Z.
+Definition t_u32 := Z.
+Definition t_u64 := Z.
+Definition t_u128 := Z.
+Definition t_usize := Z.
+Definition t_i8 := Z.
+Definition t_i16 := Z.
+Definition t_i32 := Z.
+Definition t_i64 := Z.
+Definition t_i128 := Z.
+Definition t_isize := Z.
+Definition t_Array T (x : t_usize) := list T.
+Definition t_String := string.
+Definition ToString_f_to_string (x : string) := x.
+Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
+Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
+Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
+Definition t_Slice (T : Type) := list T.
+Definition unsize {T : Type} : list T -> t_Slice T := id.
+(* / dummy lib *)
+
 
 
 Definition discriminant_EnumWithRepr_ExplicitDiscr1 : t_u16 :=
@@ -53,8 +79,10 @@ Inductive t_EnumWithRepr : Type :=
 | EnumWithRepr_ExplicitDiscr2
 | EnumWithRepr_ImplicitDiscrEmptyTuple
 | EnumWithRepr_ImplicitDiscrEmptyStruct.
-Arguments t_EnumWithRepr:clear implicits.
-Arguments t_EnumWithRepr.
+Arguments EnumWithRepr_ExplicitDiscr1.
+Arguments EnumWithRepr_ExplicitDiscr2.
+Arguments EnumWithRepr_ImplicitDiscrEmptyTuple.
+Arguments EnumWithRepr_ImplicitDiscrEmptyStruct.
 
 Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
   match x with
@@ -70,7 +98,7 @@ Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
 
 (* NotImplementedYet *)
 
-Definition f (_ : unit) : t_u32 :=
+Definition f '(_ : unit) : t_u32 :=
   let v__x := cast (t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) (0)) in
   t_Add_f_add (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple))) (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct))).
 
@@ -83,3 +111,9 @@ Definition get_casted_repr (x : t_EnumWithRepr) : t_u64 :=
 Definition get_repr (x : t_EnumWithRepr) : t_u16 :=
   t_EnumWithRepr_cast_to_repr (x).
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Enum_repr.v'''
