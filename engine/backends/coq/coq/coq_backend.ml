@@ -142,6 +142,26 @@ let dummy_lib =
    => x}.\n\
    Definition t_Slice (T : Type) := list T.\n\
    Definition unsize {T : Type} : list T -> t_Slice T := id.\n\
+   Definition t_PartialEq_f_eq x y := x =? y.\n\
+   Definition t_Rem_f_rem (x y : Z) := x mod y.\n\
+   Definition assert (b : bool) (* `{H_assert : b = true} *) : unit := tt.\n\
+   Inductive globality := | t_Global.\n\
+   Definition t_Vec T (_ : globality) : Type := list T.\n\
+   Definition impl_1__append {T} l1 l2 : list T * list T := (app l1 l2, l2).\n\
+   Definition impl_1__len {A} (l : list A) := Z.of_nat (List.length l).\n\
+   Definition impl__new {A} (_ : Datatypes.unit) : list A := nil.\n\
+   Definition impl__with_capacity {A} (_ : Z)  : list A := nil.\n\
+   Definition impl_1__push {A} l (x : A) := cons x l.\n\
+   Class t_From (A B : Type) := { From_f_from : B -> A }.\n\
+   Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := x.\n\
+   Class t_Into (A B : Type) := { Into_f_into : A -> B }.\n\
+   Instance t_Into_from_t_From {A B : Type} `{H : t_From B A} : t_Into A B := { Into_f_into x := @From_f_from B A H x }.\n\
+   Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l).\n\
+    Definition t_Option := option.\n\
+   Definition impl__map {A B} (x : t_Option A) (f : A -> B) : t_Option B := match x with | Some x => Some (f x) | None => None end.\n\
+   Definition t_Add_f_add x y := x + y.\n\
+   Class Cast A B := { cast : A -> B }.\n\
+   Instance cast_t_u8_t_u32 : Cast t_u8 t_u32 := {| cast x := x |}.\n\
    (* / dummy lib *)\n"
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
@@ -265,7 +285,7 @@ struct
         List.fold_right ~init:e#p
           ~f:(fun x y -> parens (x ^^ y))
           ((if Stdlib.(nth != 0) then [ string "snd" ] else [])
-          @ List.init (size - 1 - nth) ~f:(fun _ -> string "fst"))
+          @ if (size - 1 - nth) > 0 then List.init (size - 1 - nth) ~f:(fun _ -> string "fst") else [])
 
       method expr'_Ascription ~super:_ ~e ~typ =
         e#p ^^ space ^^ colon ^^ space ^^ typ#p
@@ -1021,9 +1041,6 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
                               (List.map
                                  ~f:(map_first_letter String.uppercase)
                                  (fst ns :: snd ns))
-                          in
-                          let contents, _annotations =
-                            my_printer#entrypoint_modul items
                           in
                           mod_name ^ ".v")));
           sourcemap = None;
