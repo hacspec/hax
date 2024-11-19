@@ -410,51 +410,40 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     (def_id.sinto(s), generics, trait_refs, source)
 }
 
+/// Get a `FunOperand` from an `Operand` used in a function call.
 /// Return the [DefId] of the function referenced by an operand, with the
 /// parameters substitution.
 /// The [Operand] comes from a [TerminatorKind::Call].
-/// Only supports calls to top-level functions (which are considered as constants
-/// by rustc); doesn't support closures for now.
 #[cfg(feature = "rustc")]
 fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
-    func: &rustc_middle::mir::Operand<'tcx>,
+    op: &rustc_middle::mir::Operand<'tcx>,
 ) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
     use rustc_middle::mir::Operand;
     use rustc_middle::ty::TyKind;
-    match func {
-        Operand::Constant(c) => {
-            let c_ty = c.const_.ty();
-            // The type of the constant should be a FnDef, allowing us to retrieve the function's
-            // identifier and instantiation.
-            let TyKind::FnDef(def_id, generics) = c_ty.kind() else {
-                unreachable!();
-            };
-            let (fun_id, generics, trait_refs, trait_info) =
-                get_function_from_def_id_and_generics(s, *def_id, *generics);
-            (FunOperand::Id(fun_id), generics, trait_refs, trait_info)
+    let ty = op.ty(&s.mir().local_decls, s.base().tcx);
+    trace!("type: {:?}", ty);
+    // If the type of the value is one of the singleton types that corresponds to each function,
+    // that's enough information.
+    if let TyKind::FnDef(def_id, generics) = ty.kind() {
+        let (fun_id, generics, trait_refs, trait_info) =
+            get_function_from_def_id_and_generics(s, *def_id, *generics);
+        return (FunOperand::Id(fun_id), generics, trait_refs, trait_info);
+    }
+    match op {
+        Operand::Constant(_) => {
+            unimplemented!("{:?}", op);
         }
         Operand::Move(place) => {
-            // Closure case.
-            // The closure can not have bound variables nor trait references,
-            // so we don't need to extract generics, trait refs, etc.
-            let body = s.mir();
-            let ty = func.ty(&body.local_decls, s.base().tcx);
-            trace!("type: {:?}", ty);
-            trace!("type kind: {:?}", ty.kind());
-            let sig = match ty.kind() {
-                rustc_middle::ty::TyKind::FnPtr(sig, ..) => sig,
-                _ => unreachable!(),
-            };
-            trace!("FnPtr: {:?}", sig);
+            // Function pointer. A fn pointer cannot have bound variables or trait references, so
+            // we don't need to extract generics, trait refs, etc.
             let place = place.sinto(s);
-
             (FunOperand::Move(place), Vec::new(), Vec::new(), None)
         }
         Operand::Copy(_place) => {
-            unimplemented!("{:?}", func);
+            unimplemented!("{:?}", op);
         }
     }
 }
