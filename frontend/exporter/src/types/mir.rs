@@ -954,13 +954,13 @@ pub enum AggregateKind {
         let closure = generics.as_closure();
         let sig = closure.sig().sinto(s);
 
-        // Solve the predicates from the parent (i.e., the function which calls the closure).
+        // Solve the predicates from the parent (i.e., the item which defines the closure).
         let tcx = s.base().tcx;
         let parent_generics = closure.parent_args();
-        let generics = tcx.mk_args(parent_generics);
+        let parent_generics_ref = tcx.mk_args(parent_generics);
         // TODO: does this handle nested closures?
         let parent = tcx.generics_of(rust_id).parent.unwrap();
-        let trait_refs = solve_item_required_traits(s, parent, generics);
+        let trait_refs = solve_item_required_traits(s, parent, parent_generics_ref);
 
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
