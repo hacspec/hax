@@ -807,7 +807,9 @@ struct
           ^^ string "|}"
         else
           constructor#p
-          ^^ concat_map_with ~pre:space (fun (ident, exp) -> parens(exp#p)) fields
+          ^^ concat_map_with ~pre:space
+               (fun (ident, exp) -> parens exp#p)
+               fields
 
       method pat'_PConstruct_tuple ~super:_ ~components =
         (* TODO: Only add `'` if you are a top-level pattern *)
