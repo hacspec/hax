@@ -1350,11 +1350,18 @@ pub enum AssocKind {
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AssocItemContainer {
     TraitContainer {
-        trait_id: DefId,
+        trait_ref: TraitRef,
     },
     TraitImplContainer {
+        /// The def_id of the impl block.
         impl_id: DefId,
-        implemented_trait: DefId,
+        /// The generics applied to the impl block (that's just the identity generics).
+        impl_generics: Vec<GenericArg>,
+        /// The impl exprs applied to the impl block (again the identity).
+        impl_required_impl_exprs: Vec<ImplExpr>,
+        /// The trait ref implemented by the impl block.
+        implemented_trait_ref: TraitRef,
+        /// The def_id of the associated item (in the trait declaration) that is being implemented.
         implemented_trait_item: DefId,
         /// Whether the corresponding trait item had a default (and therefore this one overrides
         /// it).
@@ -1371,21 +1378,28 @@ fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
     item: &ty::AssocItem,
 ) -> AssocItemContainer {
     let tcx = s.base().tcx;
+    // We want to solve traits in the context of this item.
+    let state_with_id = &with_owner_id(s.base(), (), (), item.def_id);
     let container_id = item.container_id(tcx);
     match item.container {
-        ty::AssocItemContainer::TraitContainer => AssocItemContainer::TraitContainer {
-            trait_id: container_id.sinto(s),
-        },
+        ty::AssocItemContainer::TraitContainer => {
+            let trait_ref = ty::TraitRef::identity(tcx, container_id).sinto(state_with_id);
+            AssocItemContainer::TraitContainer { trait_ref }
+        }
         ty::AssocItemContainer::ImplContainer => {
             if let Some(implemented_trait_item) = item.trait_item_def_id {
-                // The trait ref that is being implemented by this `impl` block.
+                let impl_generics = ty::GenericArgs::identity_for_item(tcx, container_id);
+                let impl_required_impl_exprs =
+                    solve_item_required_traits(state_with_id, container_id, impl_generics);
                 let implemented_trait_ref = tcx
                     .impl_trait_ref(container_id)
                     .unwrap()
                     .instantiate_identity();
                 AssocItemContainer::TraitImplContainer {
                     impl_id: container_id.sinto(s),
-                    implemented_trait: implemented_trait_ref.def_id.sinto(s),
+                    impl_generics: impl_generics.sinto(state_with_id),
+                    impl_required_impl_exprs,
+                    implemented_trait_ref: implemented_trait_ref.sinto(state_with_id),
                     implemented_trait_item: implemented_trait_item.sinto(s),
                     overrides_default: tcx.defaultness(implemented_trait_item).has_value(),
                 }
