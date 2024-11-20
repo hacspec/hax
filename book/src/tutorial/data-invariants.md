@@ -40,7 +40,7 @@ elements. We dropped altogether a source of panic!
 
 Soon you want to work with a bigger finite field: say
 `F₂₃₄₇`. Representing this many `q` different elements with an Rust
-enum would be very painful... The `enum` apporach falls appart.
+enum would be very painful... The `enum` approach falls apart.
 
 ### Newtype and refinements
 Since we don't want an `enum` with 2347 elements, we have to revert to
@@ -92,5 +92,5 @@ impl Add for F {
 
 Here, F* is able to prove automatically that (1) the addition doesn't
 overflow and (2) that the invariant of `F` is preserved. The
-definition of type `F` in F* (named `t_F`) very explicitely requires
+definition of type `F` in F* (named `t_F`) very explicitly requires
 the invariant as a refinement on `v`.

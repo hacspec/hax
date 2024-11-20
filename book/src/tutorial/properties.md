@@ -18,7 +18,7 @@ fn square_ensures(x: u8) -> u8 {
 ```
 
 Such a simple post-condition is automatically proven by F\*. The
-properties of our `square` function are not fasinating. Let's study a
+properties of our `square` function are not fascinating. Let's study a
 more interesting example: [Barrett reduction](https://en.wikipedia.org/wiki/Barrett_reduction).
 
 ## A concrete example of contract: Barrett reduction
@@ -89,7 +89,7 @@ further formal verification and for documentation purposes.
 
 Consider the `encrypt` and `decrypt` functions below. Those functions
 have no precondition, don't have particularly interesting properties
-individually. However, the compostion of the two yields an useful
+individually. However, the composition of the two yields an useful
 property: encrypting a ciphertext and decrypting the result with a
 same key produces the ciphertext again. `|c| decrypt(c, key)` is the
 inverse of `|p| encrypt(p, key)`.

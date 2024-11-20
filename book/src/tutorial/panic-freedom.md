@@ -99,12 +99,12 @@ fn square_requires(x: u8) -> u8 {
 ```
 
 With this precondition, F* is able to prove panic freedom. From now
-on, it is the responsability of the clients of `square` to respect the
+on, it is the responsibility of the clients of `square` to respect the
 contact. The next step is thus be to verify, through hax extraction,
 that `square` is used correctly at every call site.
 
 ## Common panicking situations
-Mutipication is not the only panicking function provided by the Rust
+Multiplication is not the only panicking function provided by the Rust
 library: most of the other integer arithmetic operation have such
 informal assumptions.
 
