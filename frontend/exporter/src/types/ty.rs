@@ -1316,6 +1316,55 @@ pub enum PredicateKind {
     NormalizesTo(NormalizesTo),
 }
 
+/// Reflects [`ty::AssocItem`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: ty::AssocItem, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AssocItem {
+    pub def_id: DefId,
+    pub name: Symbol,
+    pub kind: AssocKind,
+    #[value(get_container_for_assoc_item(s, self))]
+    pub container: AssocItemContainer,
+    /// Whether this item has a value (e.g. this is `false` for trait methods without default
+    /// implementations).
+    #[value(self.defaultness(s.base().tcx).has_value())]
+    pub has_value: bool,
+    pub fn_has_self_parameter: bool,
+    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
+}
+
+/// Reflects [`ty::AssocKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: ty::AssocKind, state: S as _tcx)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AssocKind {
+    Const,
+    Fn,
+    Type,
+}
+
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AssocItemContainer {
+    TraitContainer {
+        trait_id: DefId,
+    },
+    TraitImplContainer {
+        impl_id: DefId,
+        implemented_trait: DefId,
+        implemented_trait_item: DefId,
+        /// Whether the corresponding trait item had a default (and therefore this one overrides
+        /// it).
+        overrides_default: bool,
+    },
+    InherentImplContainer {
+        impl_id: DefId,
+    },
+}
+
 #[cfg(feature = "rustc")]
 fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
     s: &S,
@@ -1349,25 +1398,6 @@ fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-/// Reflects [`ty::AssocItem`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: ty::AssocItem, state: S as s)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AssocItem {
-    pub def_id: DefId,
-    pub name: Symbol,
-    pub kind: AssocKind,
-    #[value(get_container_for_assoc_item(s, self))]
-    pub container: AssocItemContainer,
-    /// Whether this item has a value (e.g. this is `false` for trait methods without default
-    /// implementations).
-    #[value(self.defaultness(s.base().tcx).has_value())]
-    pub has_value: bool,
-    pub fn_has_self_parameter: bool,
-    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
-}
-
 /// Reflects [`ty::ImplTraitInTraitData`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: ty::ImplTraitInTraitData, state: S as _s)]
@@ -1381,34 +1411,4 @@ pub enum ImplTraitInTraitData {
     Impl {
         fn_def_id: DefId,
     },
-}
-
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AssocItemContainer {
-    TraitContainer {
-        trait_id: DefId,
-    },
-    TraitImplContainer {
-        impl_id: DefId,
-        implemented_trait: DefId,
-        implemented_trait_item: DefId,
-        /// Whether the corresponding trait item had a default (and therefore this one overrides
-        /// it).
-        overrides_default: bool,
-    },
-    InherentImplContainer {
-        impl_id: DefId,
-    },
-}
-
-/// Reflects [`ty::AssocKind`]
-#[derive(AdtInto)]
-#[args(<S>, from: ty::AssocKind, state: S as _tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AssocKind {
-    Const,
-    Fn,
-    Type,
 }
