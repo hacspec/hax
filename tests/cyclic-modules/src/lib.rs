@@ -178,3 +178,29 @@ pub mod late_skip_b {
         super::late_skip_a::f()
     }
 }
+
+mod encoder {
+    trait Encode {
+        fn encode();
+    }
+
+    impl<T: Encode> Encode for Option<T> {
+        fn encode() {
+            T::encode();
+        }
+    }
+
+    fn test<T: Encode>() {
+        T::encode()
+    }
+
+    pub fn foo() {
+        super::user::something();
+    }
+}
+
+mod user {
+    pub fn something() {
+        super::encoder::foo();
+    }
+}

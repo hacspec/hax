@@ -116,6 +116,63 @@ open FStar.Mul
 
 include Cyclic_modules.D.Rec_bundle_773034964 {e1 as e1}
 '''
+"Cyclic_modules.Encoder.Rec_bundle_735345648.fst" = '''
+module Cyclic_modules.Encoder.Rec_bundle_735345648
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class v_Encode (v_Self: Type0) = {
+  f_encode_pre:Prims.unit -> Type0;
+  f_encode_post:Prims.unit -> Prims.unit -> Type0;
+  f_encode:x0: Prims.unit
+    -> Prims.Pure Prims.unit (f_encode_pre x0) (fun result -> f_encode_post x0 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: v_Encode v_T)
+    : v_Encode (Core.Option.t_Option v_T) =
+  {
+    f_encode_pre = (fun (_: Prims.unit) -> true);
+    f_encode_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
+    f_encode
+    =
+    fun (_: Prims.unit) ->
+      let _:Prims.unit = f_encode #v_T #FStar.Tactics.Typeclasses.solve () in
+      ()
+  }
+
+let test (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: v_Encode v_T) (_: Prims.unit)
+    : Prims.unit = f_encode #v_T #FStar.Tactics.Typeclasses.solve ()
+
+let rec foo (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = something () in
+  ()
+
+and something (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = foo () in
+  ()
+'''
+"Cyclic_modules.Encoder.fst" = '''
+module Cyclic_modules.Encoder
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {v_Encode as v_Encode}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {f_encode_pre as f_encode_pre}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {f_encode_post as f_encode_post}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {f_encode as f_encode}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {impl as impl}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {test as test}
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {foo as foo}
+'''
 "Cyclic_modules.Enums_a.fst" = '''
 module Cyclic_modules.Enums_a
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -376,6 +433,14 @@ include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T1Rec_T1 as T1Rec_T1}
 include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T2Rec as t_T2Rec}
 
 include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T2Rec_T2 as T2Rec_T2}
+'''
+"Cyclic_modules.User.fst" = '''
+module Cyclic_modules.User
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Encoder.Rec_bundle_735345648 {something as something}
 '''
 "Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539.fst" = '''
 module Cyclic_modules.Variant_constructor_a.Rec_bundle_584097539

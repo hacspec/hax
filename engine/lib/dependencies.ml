@@ -453,6 +453,11 @@ module Make (F : Features.T) = struct
                     ( name,
                       Concrete_ident.Create.move_under ~new_parent:new_name name
                     )))
+        | Some { v = Trait { items; _ }; _ } ->
+            List.map items ~f:(fun { ti_ident; _ } ->
+                ( ti_ident,
+                  Concrete_ident.Create.move_under ~new_parent:new_name ti_ident
+                ))
         | _ -> []
       in
       let variant_and_constructors_renamings =
