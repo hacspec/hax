@@ -8,9 +8,7 @@ type t =
 [@@deriving show { with_path = false }, eq]
 
 let encode_one : t -> string * [ `Sep | `NeedsSep ] = function
-  | ShiftGenLinesResetGenCols { lines } ->
-      Stdlib.prerr_endline ("lines:::" ^ Int.to_string lines);
-      (String.make lines ';', `Sep)
+  | ShiftGenLinesResetGenCols { lines } -> (String.make lines ';', `Sep)
   | ShiftGenCols n -> (Vql.encode_base64 [ n ], `NeedsSep)
   | Full { shift_gen_col; shift_src; meta = { file_offset; name } } ->
       ( Vql.encode_base64

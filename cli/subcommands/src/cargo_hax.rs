@@ -341,7 +341,7 @@ fn run_engine(
                                     if path.is_absolute() {
                                         path
                                     } else {
-                                        manifest_dir.join(path).to_path_buf()
+                                        working_dir.join(path).to_path_buf()
                                     }
                                 })
                                 .map(|path| fs::read_to_string(path).ok())
