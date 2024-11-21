@@ -75,23 +75,32 @@ let to_points ?(init = Dual.default Location.default) : t list -> point list =
   >> snd >> List.rev
 
 let from_points : point list -> t list =
-  List.folding_map ~init:(Dual.default Location.default)
-    ~f:(fun { src; gen } (x, m) ->
+  List.folding_map
+    ~init:(Dual.default Location.default, None)
+    ~f:(fun ({ src; gen }, m0) (x, m) ->
       let d =
         Location.(Dual.{ Dual.src = x.src - src; Dual.gen = x.gen - gen })
       in
       let shift_gen_col = (if Int.(d.gen.line = 0) then d else x).gen.col in
+      let relative_m =
+        Option.map m ~f:(fun m ->
+            match m0 with
+            | Some m0 ->
+                { file_offset = m.file_offset - m0.file_offset; name = None }
+            | None -> m)
+      in
       let output =
         (if Int.(d.gen.line = 0) then []
          else [ ShiftGenLinesResetGenCols { lines = d.gen.line } ])
         @
-        match m with
+        match relative_m with
         | Some meta -> [ Full { shift_gen_col; shift_src = d.src; meta } ]
         | None when Int.(shift_gen_col = 0) -> []
+        | _ when Int.(shift_gen_col = 0) -> []
         | _ -> [ ShiftGenCols shift_gen_col ]
       in
       let x = match m with Some _ -> x | None -> { x with src } in
-      (x, output))
+      ((x, Option.first_some m m0), output))
   >> List.concat
 
 let%test _ =
