@@ -770,7 +770,7 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in
            let open Generic_printer.AnnotatedString in
-           let header = pure hardcoded_coq_headers in
+           let header = pure (hardcoded_coq_headers ^ "\n") in
            let annotated = concat header annotated in
            (to_sourcemap annotated, to_string annotated)
          in
