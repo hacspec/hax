@@ -767,13 +767,16 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
-         let contents, _annotations = my_printer#entrypoint_modul items in
-         Types.
-           {
-             path = mod_name ^ ".v";
-             contents = hardcoded_coq_headers ^ "\n" ^ contents;
-             sourcemap = None;
-           })
+         let sourcemap, contents =
+           let annotated = my_printer#entrypoint_modul items in
+           let open Generic_printer.AnnotatedString in
+           let header = pure hardcoded_coq_headers in
+           let annotated = concat header annotated in
+           (to_sourcemap annotated, to_string annotated)
+         in
+         let sourcemap = Some sourcemap in
+         let path = mod_name ^ ".v" in
+         Types.{ path; contents; sourcemap })
 
 open Phase_utils
 
