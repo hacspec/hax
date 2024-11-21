@@ -332,6 +332,27 @@ fn run_engine(
                             std::fs::write(&path, file.contents).unwrap();
                             wrote = true;
                         }
+                        if let Some(mut sourcemap) = file.sourcemap.clone() {
+                            sourcemap.sourcesContent = sourcemap
+                                .sources
+                                .iter()
+                                .map(PathBuf::from)
+                                .map(|path| {
+                                    if path.is_absolute() {
+                                        path
+                                    } else {
+                                        manifest_dir.join(path).to_path_buf()
+                                    }
+                                })
+                                .map(|path| fs::read_to_string(path).ok())
+                                .collect();
+                            let f = std::fs::File::create(path.with_file_name(format!(
+                                "{}.map",
+                                path.file_name().unwrap().to_string_lossy()
+                            )))
+                            .unwrap();
+                            serde_json::to_writer(std::io::BufWriter::new(f), &sourcemap).unwrap()
+                        }
                         HaxMessage::ProducedFile { path, wrote }.report(message_format, None)
                     }
                 }
