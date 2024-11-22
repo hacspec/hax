@@ -1,4 +1,4 @@
-type 'a t = { gen : 'a; src : 'a } [@@deriving show, eq]
+type 'a t = { gen : 'a; src : 'a } [@@deriving show, eq, yojson]
 
 let transpose ~(default : 'a t) ({ gen; src } : 'a option t) : 'a t option =
   match (gen, src) with
