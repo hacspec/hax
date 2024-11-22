@@ -9,3 +9,5 @@ mod test_closures;
 mod test_functions;
 
 mod test_instance;
+
+mod test_trait;
