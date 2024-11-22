@@ -3,15 +3,9 @@ module Core.Cmp
 open Core
 open FStar.Mul
 
-//////////////////////////////////////////////////////////
+let discriminant_Ordering_Equal: i8 = 0y
 
-let ( ~. ) = not
-
-//////////////////////////////////////////////////////////
-
-let discriminant_Ordering_Equal = 0y
-
-let discriminant_Ordering_Greater = 1y
+let discriminant_Ordering_Greater: i8 = 1y
 
 type t_Ordering =
   | Ordering_Less : t_Ordering
@@ -39,9 +33,9 @@ let impl__Ordering__reverse (self: t_Ordering) : t_Ordering =
   | Ordering_Equal  -> Ordering_Equal <: t_Ordering
   | Ordering_Greater  -> Ordering_Less <: t_Ordering
 
-let discriminant_Ordering_Less = (-1y)
+let discriminant_Ordering_Less: i8 = (-1y)
 
-let t_Ordering_cast_to_repr (x: t_Ordering) =
+let t_Ordering_cast_to_repr (x: t_Ordering) : i8 =
   match x with
   | Ordering_Less  -> discriminant_Ordering_Less
   | Ordering_Equal  -> discriminant_Ordering_Equal
@@ -86,9 +80,9 @@ let impl_1: t_PartialEq t_Ordering t_Ordering =
           (match other with
             | Ordering_Less  -> true
             | _ -> false)
-        | v_Eq ->
+        | Ordering_Equal  ->
           (match other with
-            | v_Eq -> true
+            | Ordering_Equal  -> true
             | _ -> false)
         | Ordering_Greater  ->
           match other with
@@ -104,9 +98,9 @@ let impl_1: t_PartialEq t_Ordering t_Ordering =
           (match other with
             | Ordering_Less  -> true
             | _ -> false)
-        | v_Eq ->
+        | Ordering_Equal  ->
           (match other with
-            | v_Eq -> true
+            | Ordering_Equal  -> true
             | _ -> false)
         | Ordering_Greater  ->
           match other with
@@ -139,27 +133,3 @@ class t_PartialOrd (v_Self: Type0) (v_Rhs: Type0) = {
   f_ge:x0: v_Self -> x1: v_Rhs
     -> Prims.Pure bool (f_ge_pre x0 x1) (fun result -> f_ge_post x0 x1 result)
 }
-
-//////////////////////////////////////////////////////////
-
-// TODO: Generate file, currently manually written file
-
-unfold
-let (<>.) #a #b {| t_PartialEq a b |} = f_ne #a #b
-
-unfold
-let (=.) #a #b {| t_PartialEq a b |} = f_eq #a #b
-
-unfold
-let ( <. ) #a #b {| t_PartialOrd a b |} = f_lt #a #b
-
-unfold
-let ( <=. ) #a #b {| t_PartialOrd a b |} = f_le #a #b
-
-unfold
-let ( >. ) #a #b {| t_PartialOrd a b |} = f_gt #a #b
-
-unfold
-let ( >=. ) #a #b {| t_PartialOrd a b |} = f_ge #a #b
-
-//////////////////////////////////////////////////////////
