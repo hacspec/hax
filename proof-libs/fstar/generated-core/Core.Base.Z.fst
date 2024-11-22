@@ -3,6 +3,23 @@ module Core.Base.Z
 open Core
 open FStar.Mul
 
+let z_neg (x: Core.Base.Spec.Z.t_Z) : Core.Base.Spec.Z.t_Z =
+  match x with
+  | Core.Base.Spec.Z.Z_NEG p -> Core.Base.Spec.Z.Z_POS p <: Core.Base.Spec.Z.t_Z
+  | Core.Base.Spec.Z.Z_ZERO  -> Core.Base.Spec.Z.Z_ZERO <: Core.Base.Spec.Z.t_Z
+  | Core.Base.Spec.Z.Z_POS p -> Core.Base.Spec.Z.Z_NEG p <: Core.Base.Spec.Z.t_Z
+
+let z_bitor__n_succ (x: Core.Base.Spec.Binary.Pos.t_POS) : Core.Base.Spec.Binary.Positive.t_Positive =
+  match x with
+  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Binary.Positive.xH
+  | Core.Base.Spec.Binary.Pos.POS_POS p ->
+    Core.Base.Spec.Binary.Positive.positive_from_int (Core.Base.Spec.Haxint.succ (Core.Base.Spec.Binary.Positive.positive_to_int
+              p
+            <:
+            Core.Base.Spec.Haxint.t_HaxInt)
+        <:
+        Core.Base.Spec.Haxint.t_HaxInt)
+
 let z_add__z_double (s: Core.Base.Spec.Z.t_Z) : Core.Base.Spec.Z.t_Z =
   match s with
   | Core.Base.Spec.Z.Z_ZERO  -> Core.Base.Spec.Z.Z_ZERO <: Core.Base.Spec.Z.t_Z
@@ -32,23 +49,6 @@ let z_bitor__haxint_ldiff__n_succ_double (x: Core.Base.Spec.Binary.Pos.t_POS)
     Core.Base.Spec.Binary.Pos.POS_POS (Core.Base.Spec.Binary.Positive.xI p)
     <:
     Core.Base.Spec.Binary.Pos.t_POS
-
-let z_bitor__n_succ (x: Core.Base.Spec.Binary.Pos.t_POS) : Core.Base.Spec.Binary.Positive.t_Positive =
-  match x with
-  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Binary.Positive.xH
-  | Core.Base.Spec.Binary.Pos.POS_POS p ->
-    Core.Base.Spec.Binary.Positive.positive_from_int (Core.Base.Spec.Haxint.succ (Core.Base.Spec.Binary.Positive.positive_to_int
-              p
-            <:
-            Core.Base.Spec.Haxint.t_HaxInt)
-        <:
-        Core.Base.Spec.Haxint.t_HaxInt)
-
-let z_neg (x: Core.Base.Spec.Z.t_Z) : Core.Base.Spec.Z.t_Z =
-  match x with
-  | Core.Base.Spec.Z.Z_NEG p -> Core.Base.Spec.Z.Z_POS p <: Core.Base.Spec.Z.t_Z
-  | Core.Base.Spec.Z.Z_ZERO  -> Core.Base.Spec.Z.Z_ZERO <: Core.Base.Spec.Z.t_Z
-  | Core.Base.Spec.Z.Z_POS p -> Core.Base.Spec.Z.Z_NEG p <: Core.Base.Spec.Z.t_Z
 
 let z_add__z_pred_double (s: Core.Base.Spec.Z.t_Z) : Core.Base.Spec.Z.t_Z =
   match s with

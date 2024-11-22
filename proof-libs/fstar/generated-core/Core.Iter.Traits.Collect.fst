@@ -6,7 +6,7 @@ open FStar.Mul
 class t_IntoIterator (v_Self: Type0) = {
   f_Item:Type0;
   f_IntoIter:Type0;
-  f_IntoIter_11554253487815790481:Core.Iter.Traits.Iterator.t_Iterator f_IntoIter;
+  f_IntoIter_7190679858849254189:Core.Iter.Traits.Iterator.t_Iterator f_IntoIter;
   f_into_iter_pre:v_Self -> Type0;
   f_into_iter_post:v_Self -> f_IntoIter -> Type0;
   f_into_iter:x0: v_Self
@@ -30,7 +30,7 @@ let impl
   {
     f_Item = i1.f_Item;
     f_IntoIter = v_I;
-    f_IntoIter_11554253487815790481 = FStar.Tactics.Typeclasses.solve;
+    f_IntoIter_7190679858849254189 = FStar.Tactics.Typeclasses.solve;
     f_into_iter_pre = (fun (self: v_I) -> true);
     f_into_iter_post = (fun (self: v_I) (out: v_I) -> true);
     f_into_iter = fun (self: v_I) -> self

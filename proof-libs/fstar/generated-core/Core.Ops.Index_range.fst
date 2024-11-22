@@ -8,8 +8,8 @@ type t_IndexRange = {
   f_end:usize
 }
 
-let impl__IndexRange__len (self: t_IndexRange) : usize =
-  Rust_primitives.Usize.sub self.f_end self.f_start
+let impl__IndexRange__zero_to (v_end: usize) : t_IndexRange =
+  { f_start = sz 0; f_end = v_end } <: t_IndexRange
 
 let impl__IndexRange__next_unchecked (self: t_IndexRange) : (t_IndexRange & usize) =
   let value:usize = self.f_start in
@@ -19,8 +19,8 @@ let impl__IndexRange__next_unchecked (self: t_IndexRange) : (t_IndexRange & usiz
   let hax_temp_output:usize = value in
   self, hax_temp_output <: (t_IndexRange & usize)
 
-let impl__IndexRange__zero_to (v_end: usize) : t_IndexRange =
-  { f_start = sz 0; f_end = v_end } <: t_IndexRange
+let impl__IndexRange__len (self: t_IndexRange) : usize =
+  Rust_primitives.Usize.sub self.f_end self.f_start
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1: Core.Iter.Traits.Iterator.t_Iterator t_IndexRange =

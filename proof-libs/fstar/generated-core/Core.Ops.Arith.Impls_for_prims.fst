@@ -3,1184 +3,134 @@ module Core.Ops.Arith.Impls_for_prims
 open Core
 open FStar.Mul
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Ops.Arith.t_Neg Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_neg_pre = (fun (self: Core.Primitive.t_i8) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I8
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: Core.Ops.Arith.t_Neg Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_neg_pre = (fun (self: Core.Primitive.t_i16) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I16
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_2: Core.Ops.Arith.t_Neg Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_neg_pre = (fun (self: Core.Primitive.t_i32) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I32
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_3: Core.Ops.Arith.t_Neg Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_neg_pre = (fun (self: Core.Primitive.t_i64) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I64
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_4: Core.Ops.Arith.t_Neg Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_neg_pre = (fun (self: Core.Primitive.t_i128) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_i128) (out: Core.Primitive.t_i128) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I128
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_5: Core.Ops.Arith.t_Neg Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_neg_pre = (fun (self: Core.Primitive.t_isize) -> true);
-    f_neg_post = (fun (self: Core.Primitive.t_isize) (out: Core.Primitive.t_isize) -> true);
-    f_neg
-    =
-    fun (self: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize
-      (Core.Ops.Arith.f_neg #Core.Base_interface.Int.t_I64
-          #FStar.Tactics.Typeclasses.solve
-          self.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_12: Core.Ops.Arith.t_Add Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_add_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_add
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 +! other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_13: Core.Ops.Arith.t_Add Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_add_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_14: Core.Ops.Arith.t_Add Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_add_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_15: Core.Ops.Arith.t_Add Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_add_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_16: Core.Ops.Arith.t_Add Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_add_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_add_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_17: Core.Ops.Arith.t_Add Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_add_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_add_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_24: Core.Ops.Arith.t_Sub Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_sub_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_sub
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 -! other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_25: Core.Ops.Arith.t_Sub Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_sub_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_26: Core.Ops.Arith.t_Sub Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_sub_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_27: Core.Ops.Arith.t_Sub Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_sub_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_28: Core.Ops.Arith.t_Sub Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_sub_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_sub_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_29: Core.Ops.Arith.t_Sub Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_sub_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_sub_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: Core.Ops.Arith.t_Add Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_add_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_add
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 +! other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_7: Core.Ops.Arith.t_Add Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_add_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_8: Core.Ops.Arith.t_Add Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_add_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_9: Core.Ops.Arith.t_Add Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_add_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_add_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_10: Core.Ops.Arith.t_Add Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_add_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_add_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_11: Core.Ops.Arith.t_Add Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_add_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_add_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_add
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 +! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_30: Core.Ops.Arith.t_Mul Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_mul_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_mul
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 *! other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_31: Core.Ops.Arith.t_Mul Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_mul_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_32: Core.Ops.Arith.t_Mul Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_mul_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_33: Core.Ops.Arith.t_Mul Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_mul_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_34: Core.Ops.Arith.t_Mul Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_mul_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_mul_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_35: Core.Ops.Arith.t_Mul Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_mul_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_mul_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_36: Core.Ops.Arith.t_Mul Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_mul_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_mul
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 *! other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_37: Core.Ops.Arith.t_Mul Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_mul_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_38: Core.Ops.Arith.t_Mul Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_mul_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_39: Core.Ops.Arith.t_Mul Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_mul_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_mul_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_40: Core.Ops.Arith.t_Mul Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_mul_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_mul_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_41: Core.Ops.Arith.t_Mul Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_mul_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_mul_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_mul
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 *! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_42: Core.Ops.Arith.t_Div Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_div_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_div
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 /! other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_43: Core.Ops.Arith.t_Div Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_div_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_44: Core.Ops.Arith.t_Div Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_div_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_45: Core.Ops.Arith.t_Div Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_div_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_46: Core.Ops.Arith.t_Div Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_div_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_div_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_47: Core.Ops.Arith.t_Div Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_div_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_div_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_54: Core.Ops.Arith.t_Rem Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_rem_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_rem
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 %! other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_55: Core.Ops.Arith.t_Rem Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_rem_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_56: Core.Ops.Arith.t_Rem Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_rem_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_57: Core.Ops.Arith.t_Rem Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_rem_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_58: Core.Ops.Arith.t_Rem Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_rem_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_rem_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_59: Core.Ops.Arith.t_Rem Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_rem_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_rem_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_18: Core.Ops.Arith.t_Sub Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_sub_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_sub
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 -! other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_19: Core.Ops.Arith.t_Sub Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_sub_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_20: Core.Ops.Arith.t_Sub Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_sub_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_21: Core.Ops.Arith.t_Sub Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_sub_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_sub_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_22: Core.Ops.Arith.t_Sub Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_sub_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_sub_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_23: Core.Ops.Arith.t_Sub Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_sub_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_sub_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_sub
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 -! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_48: Core.Ops.Arith.t_Div Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_div_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_div
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 /! other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_49: Core.Ops.Arith.t_Div Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_div_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_50: Core.Ops.Arith.t_Div Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_div_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_51: Core.Ops.Arith.t_Div Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_div_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_div_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_52: Core.Ops.Arith.t_Div Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_div_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_div_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_53: Core.Ops.Arith.t_Div Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_div_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_div_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_div
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 /! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_60: Core.Ops.Arith.t_Rem Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_rem_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_rem
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 %! other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_61: Core.Ops.Arith.t_Rem Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_rem_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_62: Core.Ops.Arith.t_Rem Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_rem_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_63: Core.Ops.Arith.t_Rem Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_rem_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_rem_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_64: Core.Ops.Arith.t_Rem Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_rem_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_rem_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_65: Core.Ops.Arith.t_Rem Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_rem_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_rem_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_rem
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 %! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
+include Core.Array.Rec_bundle_579704328 {impl as impl}
+
+include Core.Array.Rec_bundle_579704328 {impl_1 as impl_1}
+
+include Core.Array.Rec_bundle_579704328 {impl_2 as impl_2}
+
+include Core.Array.Rec_bundle_579704328 {impl_3 as impl_3}
+
+include Core.Array.Rec_bundle_579704328 {impl_4 as impl_4}
+
+include Core.Array.Rec_bundle_579704328 {impl_5 as impl_5}
+
+include Core.Array.Rec_bundle_579704328 {impl_12 as impl_12}
+
+include Core.Array.Rec_bundle_579704328 {impl_13 as impl_13}
+
+include Core.Array.Rec_bundle_579704328 {impl_14 as impl_14}
+
+include Core.Array.Rec_bundle_579704328 {impl_15 as impl_15}
+
+include Core.Array.Rec_bundle_579704328 {impl_16 as impl_16}
+
+include Core.Array.Rec_bundle_579704328 {impl_17 as impl_17}
+
+include Core.Array.Rec_bundle_579704328 {impl_24 as impl_24}
+
+include Core.Array.Rec_bundle_579704328 {impl_25 as impl_25}
+
+include Core.Array.Rec_bundle_579704328 {impl_26 as impl_26}
+
+include Core.Array.Rec_bundle_579704328 {impl_27 as impl_27}
+
+include Core.Array.Rec_bundle_579704328 {impl_28 as impl_28}
+
+include Core.Array.Rec_bundle_579704328 {impl_29 as impl_29}
+
+include Core.Array.Rec_bundle_579704328 {impl_6 as impl_6}
+
+include Core.Array.Rec_bundle_579704328 {impl_7 as impl_7}
+
+include Core.Array.Rec_bundle_579704328 {impl_8 as impl_8}
+
+include Core.Array.Rec_bundle_579704328 {impl_9 as impl_9}
+
+include Core.Array.Rec_bundle_579704328 {impl_10 as impl_10}
+
+include Core.Array.Rec_bundle_579704328 {impl_11 as impl_11}
+
+include Core.Array.Rec_bundle_579704328 {impl_30 as impl_30}
+
+include Core.Array.Rec_bundle_579704328 {impl_31 as impl_31}
+
+include Core.Array.Rec_bundle_579704328 {impl_32 as impl_32}
+
+include Core.Array.Rec_bundle_579704328 {impl_33 as impl_33}
+
+include Core.Array.Rec_bundle_579704328 {impl_34 as impl_34}
+
+include Core.Array.Rec_bundle_579704328 {impl_35 as impl_35}
+
+include Core.Array.Rec_bundle_579704328 {impl_36 as impl_36}
+
+include Core.Array.Rec_bundle_579704328 {impl_37 as impl_37}
+
+include Core.Array.Rec_bundle_579704328 {impl_38 as impl_38}
+
+include Core.Array.Rec_bundle_579704328 {impl_39 as impl_39}
+
+include Core.Array.Rec_bundle_579704328 {impl_40 as impl_40}
+
+include Core.Array.Rec_bundle_579704328 {impl_41 as impl_41}
+
+include Core.Array.Rec_bundle_579704328 {impl_42 as impl_42}
+
+include Core.Array.Rec_bundle_579704328 {impl_43 as impl_43}
+
+include Core.Array.Rec_bundle_579704328 {impl_44 as impl_44}
+
+include Core.Array.Rec_bundle_579704328 {impl_45 as impl_45}
+
+include Core.Array.Rec_bundle_579704328 {impl_46 as impl_46}
+
+include Core.Array.Rec_bundle_579704328 {impl_47 as impl_47}
+
+include Core.Array.Rec_bundle_579704328 {impl_54 as impl_54}
+
+include Core.Array.Rec_bundle_579704328 {impl_55 as impl_55}
+
+include Core.Array.Rec_bundle_579704328 {impl_56 as impl_56}
+
+include Core.Array.Rec_bundle_579704328 {impl_57 as impl_57}
+
+include Core.Array.Rec_bundle_579704328 {impl_58 as impl_58}
+
+include Core.Array.Rec_bundle_579704328 {impl_59 as impl_59}
+
+include Core.Array.Rec_bundle_579704328 {impl_18 as impl_18}
+
+include Core.Array.Rec_bundle_579704328 {impl_19 as impl_19}
+
+include Core.Array.Rec_bundle_579704328 {impl_20 as impl_20}
+
+include Core.Array.Rec_bundle_579704328 {impl_21 as impl_21}
+
+include Core.Array.Rec_bundle_579704328 {impl_22 as impl_22}
+
+include Core.Array.Rec_bundle_579704328 {impl_23 as impl_23}
+
+include Core.Array.Rec_bundle_579704328 {impl_48 as impl_48}
+
+include Core.Array.Rec_bundle_579704328 {impl_49 as impl_49}
+
+include Core.Array.Rec_bundle_579704328 {impl_50 as impl_50}
+
+include Core.Array.Rec_bundle_579704328 {impl_51 as impl_51}
+
+include Core.Array.Rec_bundle_579704328 {impl_52 as impl_52}
+
+include Core.Array.Rec_bundle_579704328 {impl_53 as impl_53}
+
+include Core.Array.Rec_bundle_579704328 {impl_60 as impl_60}
+
+include Core.Array.Rec_bundle_579704328 {impl_61 as impl_61}
+
+include Core.Array.Rec_bundle_579704328 {impl_62 as impl_62}
+
+include Core.Array.Rec_bundle_579704328 {impl_63 as impl_63}
+
+include Core.Array.Rec_bundle_579704328 {impl_64 as impl_64}
+
+include Core.Array.Rec_bundle_579704328 {impl_65 as impl_65}

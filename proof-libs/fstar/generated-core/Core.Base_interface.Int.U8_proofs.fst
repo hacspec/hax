@@ -133,8 +133,15 @@ let mod_mul (x y z: Core.Base_interface.Int.t_U8)
 let mod_one (x: Core.Base_interface.Int.t_U8)
     : Lemma Prims.l_True
       (ensures
-        (x %! Core.Base_interface.Int.f_ONE <: Core.Base_interface.Int.t_U8) =.
-        Core.Base_interface.Int.f_ZERO) = ()
+        (x %!
+          (Core.Base_interface.Int.f_ONE #FStar.Tactics.Typeclasses.solve
+            <:
+            Core.Base_interface.Int.t_U8)
+          <:
+          Core.Base_interface.Int.t_U8) =.
+        (Core.Base_interface.Int.f_ZERO #FStar.Tactics.Typeclasses.solve
+          <:
+          Core.Base_interface.Int.t_U8)) = ()
 
 let mod_sub (x y z: Core.Base_interface.Int.t_U8)
     : Lemma Prims.l_True

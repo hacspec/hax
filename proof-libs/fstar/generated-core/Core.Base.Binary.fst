@@ -123,7 +123,7 @@ let rec positive_add__add (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
           <:
           Core.Base.Spec.Binary.Positive.t_Positive)
 
-let rec positive_add__add_carry (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
+and positive_add__add_carry (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
     : Core.Base.Spec.Binary.Positive.t_Positive =
   match Core.Base.Spec.Binary.Positive.match_positive lhs with
   | Core.Base.Spec.Binary.Positive.POSITIVE_XH  ->

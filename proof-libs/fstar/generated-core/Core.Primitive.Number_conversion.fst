@@ -3,731 +3,86 @@ module Core.Primitive.Number_conversion
 open Core
 open FStar.Mul
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_8: Core.Convert.t_From Core.Primitive.t_u128 u128 =
-  {
-    f_from_pre = (fun (x: u128) -> true);
-    f_from_post = (fun (x: u128) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: u128) ->
-      Core.Primitive.C_u128
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #u128
-            #Core.Base.Spec.Haxint.t_HaxInt
-            #FStar.Tactics.Typeclasses.solve
-            x
-        }
-        <:
-        Core.Base_interface.Int.t_U128)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_31 as impl_31}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_9: Core.Convert.t_From u128 Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #u128
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_40 as impl_40}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_2: Core.Convert.t_From Core.Primitive.t_u16 u16 =
-  {
-    f_from_pre = (fun (x: u16) -> true);
-    f_from_post = (fun (x: u16) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: u16) ->
-      Core.Primitive.C_u16
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #u16
-            #Core.Base.Spec.Haxint.t_HaxInt
-            #FStar.Tactics.Typeclasses.solve
-            x
-        }
-        <:
-        Core.Base_interface.Int.t_U16)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl as impl}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_3: Core.Convert.t_From u16 Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #u16
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_1 as impl_1}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_4: Core.Convert.t_From Core.Primitive.t_u32 u32 =
-  {
-    f_from_pre = (fun (x: u32) -> true);
-    f_from_post = (fun (x: u32) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: u32) ->
-      Core.Primitive.C_u32
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #u32
-            #Core.Base.Spec.Haxint.t_HaxInt
-            #FStar.Tactics.Typeclasses.solve
-            x
-        }
-        <:
-        Core.Base_interface.Int.t_U32)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_2 as impl_2}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_5: Core.Convert.t_From u32 Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #u32
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_3 as impl_3}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: Core.Convert.t_From Core.Primitive.t_u64 u64 =
-  {
-    f_from_pre = (fun (x: u64) -> true);
-    f_from_post = (fun (x: u64) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: u64) ->
-      Core.Primitive.C_u64
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #u64
-            #Core.Base.Spec.Haxint.t_HaxInt
-            #FStar.Tactics.Typeclasses.solve
-            x
-        }
-        <:
-        Core.Base_interface.Int.t_U64)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_4 as impl_4}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_7: Core.Convert.t_From u64 Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #u64
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_5 as impl_5}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Convert.t_From Core.Primitive.t_u8 u8 =
-  {
-    f_from_pre = (fun (x: u8) -> true);
-    f_from_post = (fun (x: u8) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: u8) ->
-      Core.Primitive.C_u8
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #u8 #Core.Base.Spec.Haxint.t_HaxInt #FStar.Tactics.Typeclasses.solve x
-        }
-        <:
-        Core.Base_interface.Int.t_U8)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_6 as impl_6}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: Core.Convert.t_From u8 Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #u8
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_7 as impl_7}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_10: Core.Convert.t_From Core.Primitive.t_usize usize =
-  {
-    f_from_pre = (fun (x: usize) -> true);
-    f_from_post = (fun (x: usize) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: usize) ->
-      Core.Primitive.C_usize
-      ({
-          Core.Base_interface.Int.f_v
-          =
-          Core.Convert.f_into #usize
-            #Core.Base.Spec.Haxint.t_HaxInt
-            #FStar.Tactics.Typeclasses.solve
-            x
-        }
-        <:
-        Core.Base_interface.Int.t_U64)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_8 as impl_8}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_11: Core.Convert.t_From usize Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Convert.f_into #Core.Base.Spec.Haxint.t_HaxInt
-        #usize
-        #FStar.Tactics.Typeclasses.solve
-        x.Core.Primitive._0.Core.Base_interface.Int.f_v
-  }
+include Core.Array.Rec_bundle_579704328 {impl_9 as impl_9}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_31: Core.Convert.t_From Core.Primitive.t_usize Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Primitive.C_usize
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_10 as impl_10}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_40: Core.Convert.t_From Core.Primitive.t_u64 Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u64
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_11 as impl_11}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_12: Core.Convert.t_From Core.Primitive.t_u16 Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u16
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U8
-          #Core.Base_interface.Int.t_U16
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl_12 as impl_12}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_13: Core.Convert.t_From Core.Primitive.t_u32 Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u32
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U8
-          #Core.Base_interface.Int.t_U32
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_13 as impl_13}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_14: Core.Convert.t_From Core.Primitive.t_u64 Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u64
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U8
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_14 as impl_14}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_15: Core.Convert.t_From Core.Primitive.t_u128 Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u128
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U8
-          #Core.Base_interface.Int.t_U128
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_15 as impl_15}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_16: Core.Convert.t_From Core.Primitive.t_usize Core.Primitive.t_u8 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u8) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u8) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u8) ->
-      Core.Primitive.C_usize
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U8
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_16 as impl_16}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_17: Core.Convert.t_From Core.Primitive.t_u8 Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u8
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U16
-          #Core.Base_interface.Int.t_U8
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_17 as impl_17}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_18: Core.Convert.t_From Core.Primitive.t_u32 Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u32
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U16
-          #Core.Base_interface.Int.t_U32
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_18 as impl_18}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_19: Core.Convert.t_From Core.Primitive.t_u64 Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u64
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U16
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_19 as impl_19}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_20: Core.Convert.t_From Core.Primitive.t_u128 Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u128
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U16
-          #Core.Base_interface.Int.t_U128
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_20 as impl_20}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_21: Core.Convert.t_From Core.Primitive.t_usize Core.Primitive.t_u16 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u16) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u16) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u16) ->
-      Core.Primitive.C_usize
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U16
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_21 as impl_21}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_22: Core.Convert.t_From Core.Primitive.t_u8 Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u8
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U32
-          #Core.Base_interface.Int.t_U8
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_22 as impl_22}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_23: Core.Convert.t_From Core.Primitive.t_u16 Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u16
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U32
-          #Core.Base_interface.Int.t_U16
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl_23 as impl_23}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_24: Core.Convert.t_From Core.Primitive.t_u64 Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u64
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U32
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_24 as impl_24}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_25: Core.Convert.t_From Core.Primitive.t_u128 Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u128
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U32
-          #Core.Base_interface.Int.t_U128
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_25 as impl_25}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_26: Core.Convert.t_From Core.Primitive.t_usize Core.Primitive.t_u32 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u32) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u32) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u32) ->
-      Core.Primitive.C_usize
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U32
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_26 as impl_26}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_27: Core.Convert.t_From Core.Primitive.t_u8 Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u8
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U8
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_27 as impl_27}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_28: Core.Convert.t_From Core.Primitive.t_u16 Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u16
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U16
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl_28 as impl_28}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_29: Core.Convert.t_From Core.Primitive.t_u32 Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u32
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U32
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_29 as impl_29}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_30: Core.Convert.t_From Core.Primitive.t_u128 Core.Primitive.t_u64 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u64) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u64) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u128
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U128
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_30 as impl_30}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_32: Core.Convert.t_From Core.Primitive.t_u8 Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u8
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U128
-          #Core.Base_interface.Int.t_U8
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_32 as impl_32}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_33: Core.Convert.t_From Core.Primitive.t_u16 Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u16
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U128
-          #Core.Base_interface.Int.t_U16
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl_33 as impl_33}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_34: Core.Convert.t_From Core.Primitive.t_u32 Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u32
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U128
-          #Core.Base_interface.Int.t_U32
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_34 as impl_34}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_35: Core.Convert.t_From Core.Primitive.t_u64 Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: Core.Primitive.t_u64) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u64
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U128
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
+include Core.Array.Rec_bundle_579704328 {impl_35 as impl_35}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_36: Core.Convert.t_From Core.Primitive.t_usize Core.Primitive.t_u128 =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_u128) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_u128) (out: Core.Primitive.t_usize) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_u128) ->
-      Core.Primitive.C_usize
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U128
-          #Core.Base_interface.Int.t_U64
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_36 as impl_36}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_37: Core.Convert.t_From Core.Primitive.t_u8 Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: Core.Primitive.t_u8) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u8
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U8
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
+include Core.Array.Rec_bundle_579704328 {impl_37 as impl_37}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_38: Core.Convert.t_From Core.Primitive.t_u16 Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: Core.Primitive.t_u16) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u16
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U16
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
+include Core.Array.Rec_bundle_579704328 {impl_38 as impl_38}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_39: Core.Convert.t_From Core.Primitive.t_u32 Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: Core.Primitive.t_u32) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u32
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U32
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
+include Core.Array.Rec_bundle_579704328 {impl_39 as impl_39}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_41: Core.Convert.t_From Core.Primitive.t_u128 Core.Primitive.t_usize =
-  {
-    f_from_pre = (fun (x: Core.Primitive.t_usize) -> true);
-    f_from_post = (fun (x: Core.Primitive.t_usize) (out: Core.Primitive.t_u128) -> true);
-    f_from
-    =
-    fun (x: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u128
-      (Core.Convert.f_into #Core.Base_interface.Int.t_U64
-          #Core.Base_interface.Int.t_U128
-          #FStar.Tactics.Typeclasses.solve
-          x.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
+include Core.Array.Rec_bundle_579704328 {impl_41 as impl_41}

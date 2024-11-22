@@ -3,1794 +3,206 @@ module Core.Ops.Bit.Impls_for_prims
 open Core
 open FStar.Mul
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_84: Core.Ops.Bit.t_BitOr Core.Primitive.t_i8 Core.Primitive.t_i8 =
-  {
-    f_Output = Core.Primitive.t_i8;
-    f_bitor_pre = (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) (out: Core.Primitive.t_i8) -> true
-    );
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_i8) (other: Core.Primitive.t_i8) ->
-      Core.Primitive.C_i8 (self.Core.Primitive._0 |. other.Core.Primitive._0) <: Core.Primitive.t_i8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_85: Core.Ops.Bit.t_BitOr Core.Primitive.t_i16 Core.Primitive.t_i16 =
-  {
-    f_Output = Core.Primitive.t_i16;
-    f_bitor_pre = (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) (out: Core.Primitive.t_i16) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_i16) (other: Core.Primitive.t_i16) ->
-      Core.Primitive.C_i16 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_86: Core.Ops.Bit.t_BitOr Core.Primitive.t_i32 Core.Primitive.t_i32 =
-  {
-    f_Output = Core.Primitive.t_i32;
-    f_bitor_pre = (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) (out: Core.Primitive.t_i32) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_i32) (other: Core.Primitive.t_i32) ->
-      Core.Primitive.C_i32 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_87: Core.Ops.Bit.t_BitOr Core.Primitive.t_i64 Core.Primitive.t_i64 =
-  {
-    f_Output = Core.Primitive.t_i64;
-    f_bitor_pre = (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) (out: Core.Primitive.t_i64) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_i64) (other: Core.Primitive.t_i64) ->
-      Core.Primitive.C_i64 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_88: Core.Ops.Bit.t_BitOr Core.Primitive.t_i128 Core.Primitive.t_i128 =
-  {
-    f_Output = Core.Primitive.t_i128;
-    f_bitor_pre = (fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) -> true);
-    f_bitor_post
-    =
-    (fun
-        (self: Core.Primitive.t_i128)
-        (other: Core.Primitive.t_i128)
-        (out: Core.Primitive.t_i128)
-        ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_i128) (other: Core.Primitive.t_i128) ->
-      Core.Primitive.C_i128 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_i128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_89: Core.Ops.Bit.t_BitOr Core.Primitive.t_isize Core.Primitive.t_isize =
-  {
-    f_Output = Core.Primitive.t_isize;
-    f_bitor_pre = (fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) -> true);
-    f_bitor_post
-    =
-    (fun
-        (self: Core.Primitive.t_isize)
-        (other: Core.Primitive.t_isize)
-        (out: Core.Primitive.t_isize)
-        ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_isize) (other: Core.Primitive.t_isize) ->
-      Core.Primitive.C_isize (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_isize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_7: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_8: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_9: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_10: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_11: Core.Ops.Bit.t_Shr Core.Primitive.t_u8 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shr_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_12: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_13: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_14: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_15: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_16: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_17: Core.Ops.Bit.t_Shr Core.Primitive.t_u16 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shr_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_18: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_19: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_20: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_21: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_22: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_23: Core.Ops.Bit.t_Shr Core.Primitive.t_u32 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shr_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_24: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_25: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_26: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_27: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_28: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_29: Core.Ops.Bit.t_Shr Core.Primitive.t_u64 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shr_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_30: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_31: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_32: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_33: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_34: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_35: Core.Ops.Bit.t_Shr Core.Primitive.t_u128 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shr_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_36: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u8) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u8)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_37: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u16) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u16)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_38: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u32) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u32)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_39: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u64) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u64)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_40: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u128) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_41: Core.Ops.Bit.t_Shr Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shr_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_shr_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shr
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 >>! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_42: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_43: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_44: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_45: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_46: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_47: Core.Ops.Bit.t_Shl Core.Primitive.t_u8 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_shl_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u8) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_48: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_49: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_50: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_51: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_52: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_53: Core.Ops.Bit.t_Shl Core.Primitive.t_u16 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_shl_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u16) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_54: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_55: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_56: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_57: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_58: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_59: Core.Ops.Bit.t_Shl Core.Primitive.t_u32 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_shl_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u32) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_60: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_61: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_62: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_63: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_64: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_65: Core.Ops.Bit.t_Shl Core.Primitive.t_u64 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_shl_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) (out: Core.Primitive.t_u64) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_66: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_67: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_68: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_69: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u128) ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_70: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_71: Core.Ops.Bit.t_Shl Core.Primitive.t_u128 Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_shl_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_72: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u8) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u8)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_73: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u16) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u16)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_74: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u32) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u32)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_75: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u64) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u64)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_76: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u128) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_77: Core.Ops.Bit.t_Shl Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_shl_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_shl_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_shl
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 <<! other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_78: Core.Ops.Bit.t_BitOr Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_bitor_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 |. other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_79: Core.Ops.Bit.t_BitOr Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_bitor_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_80: Core.Ops.Bit.t_BitOr Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_bitor_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_81: Core.Ops.Bit.t_BitOr Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_bitor_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_bitor_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_82: Core.Ops.Bit.t_BitOr Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_bitor_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_bitor_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_83: Core.Ops.Bit.t_BitOr Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_bitor_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_bitor_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_bitor
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 |. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_90: Core.Ops.Bit.t_BitXor Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_bitxor_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 ^. other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_91: Core.Ops.Bit.t_BitXor Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_bitxor_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 ^. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_92: Core.Ops.Bit.t_BitXor Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_bitxor_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 ^. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_93: Core.Ops.Bit.t_BitXor Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_bitxor_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 ^. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_94: Core.Ops.Bit.t_BitXor Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_bitxor_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 ^. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_95: Core.Ops.Bit.t_BitXor Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_bitxor_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_bitxor_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_bitxor
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 ^. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_96: Core.Ops.Bit.t_BitAnd Core.Primitive.t_u8 Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_bitand_pre = (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) -> true);
-    f_bitand_post
-    =
-    (fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true
-    );
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_u8) (other: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 (self.Core.Primitive._0 &. other.Core.Primitive._0) <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_97: Core.Ops.Bit.t_BitAnd Core.Primitive.t_u16 Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_bitand_pre = (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) -> true);
-    f_bitand_post
-    =
-    (fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) ->
-        true);
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_u16) (other: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 (self.Core.Primitive._0 &. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_98: Core.Ops.Bit.t_BitAnd Core.Primitive.t_u32 Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_bitand_pre = (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) -> true);
-    f_bitand_post
-    =
-    (fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) ->
-        true);
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_u32) (other: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 (self.Core.Primitive._0 &. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_99: Core.Ops.Bit.t_BitAnd Core.Primitive.t_u64 Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_bitand_pre = (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) -> true);
-    f_bitand_post
-    =
-    (fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) ->
-        true);
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_u64) (other: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 (self.Core.Primitive._0 &. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_100: Core.Ops.Bit.t_BitAnd Core.Primitive.t_u128 Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_bitand_pre = (fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) -> true);
-    f_bitand_post
-    =
-    (fun
-        (self: Core.Primitive.t_u128)
-        (other: Core.Primitive.t_u128)
-        (out: Core.Primitive.t_u128)
-        ->
-        true);
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_u128) (other: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 (self.Core.Primitive._0 &. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_101: Core.Ops.Bit.t_BitAnd Core.Primitive.t_usize Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_bitand_pre = (fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) -> true);
-    f_bitand_post
-    =
-    (fun
-        (self: Core.Primitive.t_usize)
-        (other: Core.Primitive.t_usize)
-        (out: Core.Primitive.t_usize)
-        ->
-        true);
-    f_bitand
-    =
-    fun (self: Core.Primitive.t_usize) (other: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize (self.Core.Primitive._0 &. other.Core.Primitive._0)
-      <:
-      Core.Primitive.t_usize
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Ops.Bit.t_Not Core.Primitive.t_u8 =
-  {
-    f_Output = Core.Primitive.t_u8;
-    f_not_pre = (fun (self: Core.Primitive.t_u8) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_u8) (out: Core.Primitive.t_u8) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_u8) ->
-      Core.Primitive.C_u8 ~.self.Core.Primitive._0 <: Core.Primitive.t_u8
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: Core.Ops.Bit.t_Not Core.Primitive.t_u16 =
-  {
-    f_Output = Core.Primitive.t_u16;
-    f_not_pre = (fun (self: Core.Primitive.t_u16) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_u16) (out: Core.Primitive.t_u16) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_u16) ->
-      Core.Primitive.C_u16 ~.self.Core.Primitive._0 <: Core.Primitive.t_u16
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_2: Core.Ops.Bit.t_Not Core.Primitive.t_u32 =
-  {
-    f_Output = Core.Primitive.t_u32;
-    f_not_pre = (fun (self: Core.Primitive.t_u32) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_u32) (out: Core.Primitive.t_u32) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_u32) ->
-      Core.Primitive.C_u32 ~.self.Core.Primitive._0 <: Core.Primitive.t_u32
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_3: Core.Ops.Bit.t_Not Core.Primitive.t_u64 =
-  {
-    f_Output = Core.Primitive.t_u64;
-    f_not_pre = (fun (self: Core.Primitive.t_u64) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_u64) (out: Core.Primitive.t_u64) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_u64) ->
-      Core.Primitive.C_u64 ~.self.Core.Primitive._0 <: Core.Primitive.t_u64
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_4: Core.Ops.Bit.t_Not Core.Primitive.t_u128 =
-  {
-    f_Output = Core.Primitive.t_u128;
-    f_not_pre = (fun (self: Core.Primitive.t_u128) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_u128) (out: Core.Primitive.t_u128) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_u128) ->
-      Core.Primitive.C_u128 ~.self.Core.Primitive._0 <: Core.Primitive.t_u128
-  }
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_5: Core.Ops.Bit.t_Not Core.Primitive.t_usize =
-  {
-    f_Output = Core.Primitive.t_usize;
-    f_not_pre = (fun (self: Core.Primitive.t_usize) -> true);
-    f_not_post = (fun (self: Core.Primitive.t_usize) (out: Core.Primitive.t_usize) -> true);
-    f_not
-    =
-    fun (self: Core.Primitive.t_usize) ->
-      Core.Primitive.C_usize ~.self.Core.Primitive._0 <: Core.Primitive.t_usize
-  }
+include Core.Array.Rec_bundle_579704328 {impl_84 as impl_84}
+
+include Core.Array.Rec_bundle_579704328 {impl_85 as impl_85}
+
+include Core.Array.Rec_bundle_579704328 {impl_86 as impl_86}
+
+include Core.Array.Rec_bundle_579704328 {impl_87 as impl_87}
+
+include Core.Array.Rec_bundle_579704328 {impl_88 as impl_88}
+
+include Core.Array.Rec_bundle_579704328 {impl_89 as impl_89}
+
+include Core.Array.Rec_bundle_579704328 {impl_6 as impl_6}
+
+include Core.Array.Rec_bundle_579704328 {impl_7 as impl_7}
+
+include Core.Array.Rec_bundle_579704328 {impl_8 as impl_8}
+
+include Core.Array.Rec_bundle_579704328 {impl_9 as impl_9}
+
+include Core.Array.Rec_bundle_579704328 {impl_10 as impl_10}
+
+include Core.Array.Rec_bundle_579704328 {impl_11 as impl_11}
+
+include Core.Array.Rec_bundle_579704328 {impl_12 as impl_12}
+
+include Core.Array.Rec_bundle_579704328 {impl_13 as impl_13}
+
+include Core.Array.Rec_bundle_579704328 {impl_14 as impl_14}
+
+include Core.Array.Rec_bundle_579704328 {impl_15 as impl_15}
+
+include Core.Array.Rec_bundle_579704328 {impl_16 as impl_16}
+
+include Core.Array.Rec_bundle_579704328 {impl_17 as impl_17}
+
+include Core.Array.Rec_bundle_579704328 {impl_18 as impl_18}
+
+include Core.Array.Rec_bundle_579704328 {impl_19 as impl_19}
+
+include Core.Array.Rec_bundle_579704328 {impl_20 as impl_20}
+
+include Core.Array.Rec_bundle_579704328 {impl_21 as impl_21}
+
+include Core.Array.Rec_bundle_579704328 {impl_22 as impl_22}
+
+include Core.Array.Rec_bundle_579704328 {impl_23 as impl_23}
+
+include Core.Array.Rec_bundle_579704328 {impl_24 as impl_24}
+
+include Core.Array.Rec_bundle_579704328 {impl_25 as impl_25}
+
+include Core.Array.Rec_bundle_579704328 {impl_26 as impl_26}
+
+include Core.Array.Rec_bundle_579704328 {impl_27 as impl_27}
+
+include Core.Array.Rec_bundle_579704328 {impl_28 as impl_28}
+
+include Core.Array.Rec_bundle_579704328 {impl_29 as impl_29}
+
+include Core.Array.Rec_bundle_579704328 {impl_30 as impl_30}
+
+include Core.Array.Rec_bundle_579704328 {impl_31 as impl_31}
+
+include Core.Array.Rec_bundle_579704328 {impl_32 as impl_32}
+
+include Core.Array.Rec_bundle_579704328 {impl_33 as impl_33}
+
+include Core.Array.Rec_bundle_579704328 {impl_34 as impl_34}
+
+include Core.Array.Rec_bundle_579704328 {impl_35 as impl_35}
+
+include Core.Array.Rec_bundle_579704328 {impl_36 as impl_36}
+
+include Core.Array.Rec_bundle_579704328 {impl_37 as impl_37}
+
+include Core.Array.Rec_bundle_579704328 {impl_38 as impl_38}
+
+include Core.Array.Rec_bundle_579704328 {impl_39 as impl_39}
+
+include Core.Array.Rec_bundle_579704328 {impl_40 as impl_40}
+
+include Core.Array.Rec_bundle_579704328 {impl_41 as impl_41}
+
+include Core.Array.Rec_bundle_579704328 {impl_42 as impl_42}
+
+include Core.Array.Rec_bundle_579704328 {impl_43 as impl_43}
+
+include Core.Array.Rec_bundle_579704328 {impl_44 as impl_44}
+
+include Core.Array.Rec_bundle_579704328 {impl_45 as impl_45}
+
+include Core.Array.Rec_bundle_579704328 {impl_46 as impl_46}
+
+include Core.Array.Rec_bundle_579704328 {impl_47 as impl_47}
+
+include Core.Array.Rec_bundle_579704328 {impl_48 as impl_48}
+
+include Core.Array.Rec_bundle_579704328 {impl_49 as impl_49}
+
+include Core.Array.Rec_bundle_579704328 {impl_50 as impl_50}
+
+include Core.Array.Rec_bundle_579704328 {impl_51 as impl_51}
+
+include Core.Array.Rec_bundle_579704328 {impl_52 as impl_52}
+
+include Core.Array.Rec_bundle_579704328 {impl_53 as impl_53}
+
+include Core.Array.Rec_bundle_579704328 {impl_54 as impl_54}
+
+include Core.Array.Rec_bundle_579704328 {impl_55 as impl_55}
+
+include Core.Array.Rec_bundle_579704328 {impl_56 as impl_56}
+
+include Core.Array.Rec_bundle_579704328 {impl_57 as impl_57}
+
+include Core.Array.Rec_bundle_579704328 {impl_58 as impl_58}
+
+include Core.Array.Rec_bundle_579704328 {impl_59 as impl_59}
+
+include Core.Array.Rec_bundle_579704328 {impl_60 as impl_60}
+
+include Core.Array.Rec_bundle_579704328 {impl_61 as impl_61}
+
+include Core.Array.Rec_bundle_579704328 {impl_62 as impl_62}
+
+include Core.Array.Rec_bundle_579704328 {impl_63 as impl_63}
+
+include Core.Array.Rec_bundle_579704328 {impl_64 as impl_64}
+
+include Core.Array.Rec_bundle_579704328 {impl_65 as impl_65}
+
+include Core.Array.Rec_bundle_579704328 {impl_66 as impl_66}
+
+include Core.Array.Rec_bundle_579704328 {impl_67 as impl_67}
+
+include Core.Array.Rec_bundle_579704328 {impl_68 as impl_68}
+
+include Core.Array.Rec_bundle_579704328 {impl_69 as impl_69}
+
+include Core.Array.Rec_bundle_579704328 {impl_70 as impl_70}
+
+include Core.Array.Rec_bundle_579704328 {impl_71 as impl_71}
+
+include Core.Array.Rec_bundle_579704328 {impl_72 as impl_72}
+
+include Core.Array.Rec_bundle_579704328 {impl_73 as impl_73}
+
+include Core.Array.Rec_bundle_579704328 {impl_74 as impl_74}
+
+include Core.Array.Rec_bundle_579704328 {impl_75 as impl_75}
+
+include Core.Array.Rec_bundle_579704328 {impl_76 as impl_76}
+
+include Core.Array.Rec_bundle_579704328 {impl_77 as impl_77}
+
+include Core.Array.Rec_bundle_579704328 {impl_78 as impl_78}
+
+include Core.Array.Rec_bundle_579704328 {impl_79 as impl_79}
+
+include Core.Array.Rec_bundle_579704328 {impl_80 as impl_80}
+
+include Core.Array.Rec_bundle_579704328 {impl_81 as impl_81}
+
+include Core.Array.Rec_bundle_579704328 {impl_82 as impl_82}
+
+include Core.Array.Rec_bundle_579704328 {impl_83 as impl_83}
+
+include Core.Array.Rec_bundle_579704328 {impl_90 as impl_90}
+
+include Core.Array.Rec_bundle_579704328 {impl_91 as impl_91}
+
+include Core.Array.Rec_bundle_579704328 {impl_92 as impl_92}
+
+include Core.Array.Rec_bundle_579704328 {impl_93 as impl_93}
+
+include Core.Array.Rec_bundle_579704328 {impl_94 as impl_94}
+
+include Core.Array.Rec_bundle_579704328 {impl_95 as impl_95}
+
+include Core.Array.Rec_bundle_579704328 {impl_96 as impl_96}
+
+include Core.Array.Rec_bundle_579704328 {impl_97 as impl_97}
+
+include Core.Array.Rec_bundle_579704328 {impl_98 as impl_98}
+
+include Core.Array.Rec_bundle_579704328 {impl_99 as impl_99}
+
+include Core.Array.Rec_bundle_579704328 {impl_100 as impl_100}
+
+include Core.Array.Rec_bundle_579704328 {impl_101 as impl_101}
+
+include Core.Array.Rec_bundle_579704328 {impl as impl}
+
+include Core.Array.Rec_bundle_579704328 {impl_1 as impl_1}
+
+include Core.Array.Rec_bundle_579704328 {impl_2 as impl_2}
+
+include Core.Array.Rec_bundle_579704328 {impl_3 as impl_3}
+
+include Core.Array.Rec_bundle_579704328 {impl_4 as impl_4}
+
+include Core.Array.Rec_bundle_579704328 {impl_5 as impl_5}

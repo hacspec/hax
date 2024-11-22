@@ -3,16 +3,6 @@ module Core.Iter.Range
 open Core
 open FStar.Mul
 
-class t_RangeIteratorImpl (v_Self: Type0) = {
-  f_Item:Type0;
-  f_spec_next_pre:v_Self -> Type0;
-  f_spec_next_post:v_Self -> (v_Self & Core.Option.t_Option f_Item) -> Type0;
-  f_spec_next:x0: v_Self
-    -> Prims.Pure (v_Self & Core.Option.t_Option f_Item)
-        (f_spec_next_pre x0)
-        (fun result -> f_spec_next_post x0 result)
-}
-
 class t_Step (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_12866954522599331834:Core.Cmp.t_PartialOrd v_Self
@@ -29,6 +19,16 @@ class t_Step (v_Self: Type0) = {
     -> Prims.Pure (Core.Option.t_Option v_Self)
         (f_forward_checked_pre x0 x1)
         (fun result -> f_forward_checked_post x0 x1 result)
+}
+
+class t_RangeIteratorImpl (v_Self: Type0) = {
+  f_Item:Type0;
+  f_spec_next_pre:v_Self -> Type0;
+  f_spec_next_post:v_Self -> (v_Self & Core.Option.t_Option f_Item) -> Type0;
+  f_spec_next:x0: v_Self
+    -> Prims.Pure (v_Self & Core.Option.t_Option f_Item)
+        (f_spec_next_pre x0)
+        (fun result -> f_spec_next_post x0 result)
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]

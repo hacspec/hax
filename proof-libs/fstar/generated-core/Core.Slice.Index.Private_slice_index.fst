@@ -3,32 +3,22 @@ module Core.Slice.Index.Private_slice_index
 open Core
 open FStar.Mul
 
-class t_Sealed (v_Self: Type0) = { __marker_trait_t_Sealed:Prims.unit }
+include Core.Array.Rec_bundle_579704328 {v_Sealed as v_Sealed}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_2: t_Sealed (Core.Ops.Range.t_RangeTo usize) = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl as impl}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_3: t_Sealed (Core.Ops.Range.t_RangeFrom usize) = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_1 as impl_1}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_4: t_Sealed Core.Ops.Range.t_RangeFull = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_2 as impl_2}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_5: t_Sealed (Core.Ops.Range.t_RangeInclusive usize) = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_3 as impl_3}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: t_Sealed (Core.Ops.Range.t_RangeToInclusive usize) = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_4 as impl_4}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_7: t_Sealed (Core.Ops.Range.t_Bound usize & Core.Ops.Range.t_Bound usize) =
-  { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_5 as impl_5}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: t_Sealed (Core.Ops.Range.t_Range usize) = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_6 as impl_6}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_8: t_Sealed Core.Ops.Index_range.t_IndexRange = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_7 as impl_7}
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: t_Sealed Core.Primitive.t_usize = { __marker_trait = () }
+include Core.Array.Rec_bundle_579704328 {impl_8 as impl_8}

@@ -3,6 +3,12 @@ module Core.Slice
 open Core
 open FStar.Mul
 
+let impl__iter
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Clone.t_Clone v_T)
+      (self: Core.Primitive.t_Slice v_T)
+    : Core.Slice.Iter.t_Iter v_T = Core.Slice.Iter.impl__new #v_T self
+
 let impl__len
       (#v_T: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
@@ -25,9 +31,3 @@ let impl__is_empty
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Clone.t_Clone v_T)
       (self: Core.Primitive.t_Slice v_T)
     : bool = Rust_primitives.Usize.eq (impl__len #v_T self <: usize) (sz 0)
-
-let impl__iter
-      (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Clone.t_Clone v_T)
-      (self: Core.Primitive.t_Slice v_T)
-    : Core.Slice.Iter.t_Iter v_T = Core.Slice.Iter.impl__new #v_T self

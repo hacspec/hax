@@ -3,6 +3,14 @@ module Core.Base.Pos
 open Core
 open FStar.Mul
 
+let haxint_double (s: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint.t_HaxInt =
+  match Core.Base.Spec.Binary.Pos.match_pos s with
+  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO
+  | Core.Base.Spec.Binary.Pos.POS_POS p ->
+    Core.Base.Spec.Binary.Positive.positive_to_int (Core.Base.Spec.Binary.Positive.xO p
+        <:
+        Core.Base.Spec.Binary.Positive.t_Positive)
+
 let haxint_shr__half (s: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint.t_HaxInt =
   match Core.Base.Spec.Binary.Pos.match_pos s with
   | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO
@@ -13,6 +21,14 @@ let haxint_shr__half (s: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint
       Core.Base.Spec.Binary.Positive.positive_to_int p
     | Core.Base.Spec.Binary.Positive.POSITIVE_XI p ->
       Core.Base.Spec.Binary.Positive.positive_to_int p
+
+let haxint_sub__double_mask (lhs: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint.t_HaxInt =
+  match Core.Base.Spec.Binary.Pos.match_pos lhs with
+  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO
+  | Core.Base.Spec.Binary.Pos.POS_POS p ->
+    Core.Base.Spec.Binary.Positive.positive_to_int (Core.Base.Spec.Binary.Positive.xO p
+        <:
+        Core.Base.Spec.Binary.Positive.t_Positive)
 
 let haxint_sub__succ_double_mask (lhs: Core.Base.Spec.Haxint.t_HaxInt)
     : Core.Base.Spec.Haxint.t_HaxInt =
@@ -29,22 +45,6 @@ let haxint_succ_double (s: Core.Base.Spec.Haxint.t_HaxInt)
   match Core.Base.Spec.Binary.Pos.match_pos s with
   | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Binary.Positive.xH
   | Core.Base.Spec.Binary.Pos.POS_POS p -> Core.Base.Spec.Binary.Positive.xI p
-
-let haxint_double (s: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint.t_HaxInt =
-  match Core.Base.Spec.Binary.Pos.match_pos s with
-  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO
-  | Core.Base.Spec.Binary.Pos.POS_POS p ->
-    Core.Base.Spec.Binary.Positive.positive_to_int (Core.Base.Spec.Binary.Positive.xO p
-        <:
-        Core.Base.Spec.Binary.Positive.t_Positive)
-
-let haxint_sub__double_mask (lhs: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint.t_HaxInt =
-  match Core.Base.Spec.Binary.Pos.match_pos lhs with
-  | Core.Base.Spec.Binary.Pos.POS_ZERO  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO
-  | Core.Base.Spec.Binary.Pos.POS_POS p ->
-    Core.Base.Spec.Binary.Positive.positive_to_int (Core.Base.Spec.Binary.Positive.xO p
-        <:
-        Core.Base.Spec.Binary.Positive.t_Positive)
 
 let rec bitand_binary (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
     : Core.Base.Spec.Haxint.t_HaxInt =
@@ -200,9 +200,7 @@ let haxint_lt (lhs rhs: Core.Base.Spec.Haxint.t_HaxInt) : bool =
   | Core.Option.Option_Some (Core.Cmp.Ordering_Less ) -> true
   | _ -> false
 
-let rec haxint_shl__shl_helper
-      (rhs: Core.Base.Spec.Unary.t_Unary)
-      (lhs: Core.Base.Spec.Haxint.t_HaxInt)
+let rec haxint_shl__shl_helper (rhs: Core.Base.Spec.Unary.t_Unary) (lhs: Core.Base.Spec.Haxint.t_HaxInt)
     : Core.Base.Spec.Haxint.t_HaxInt =
   if
     Core.Base.Spec.Haxint.is_zero (Core.Clone.f_clone #Core.Base.Spec.Haxint.t_HaxInt
@@ -221,9 +219,7 @@ let haxint_shl (lhs rhs: Core.Base.Spec.Haxint.t_HaxInt) : Core.Base.Spec.Haxint
   haxint_shl__shl_helper (Core.Base.Spec.Unary.unary_from_int rhs <: Core.Base.Spec.Unary.t_Unary)
     lhs
 
-let rec haxint_shr__shr_helper
-      (rhs: Core.Base.Spec.Unary.t_Unary)
-      (lhs: Core.Base.Spec.Haxint.t_HaxInt)
+let rec haxint_shr__shr_helper (rhs: Core.Base.Spec.Unary.t_Unary) (lhs: Core.Base.Spec.Haxint.t_HaxInt)
     : Core.Base.Spec.Haxint.t_HaxInt =
   if
     Core.Base.Spec.Haxint.is_zero (Core.Clone.f_clone #Core.Base.Spec.Haxint.t_HaxInt
@@ -428,7 +424,7 @@ let rec haxint_sub__sub_binary (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positi
     | Core.Base.Spec.Binary.Positive.POSITIVE_XI q ->
       haxint_sub__double_mask (haxint_sub__sub_binary p q <: Core.Base.Spec.Haxint.t_HaxInt)
 
-let rec haxint_sub__sub_carry (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
+and haxint_sub__sub_carry (lhs rhs: Core.Base.Spec.Binary.Positive.t_Positive)
     : Core.Base.Spec.Haxint.t_HaxInt =
   match Core.Base.Spec.Binary.Positive.match_positive lhs with
   | Core.Base.Spec.Binary.Positive.POSITIVE_XH  -> Core.Base.Spec.Haxint.v_HaxInt_ZERO

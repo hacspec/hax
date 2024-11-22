@@ -9,6 +9,15 @@ let hd__panic_cold_explicit (_: Prims.unit) : Rust_primitives.Hax.t_Never =
 let set_index__set_index_unary__panic_cold_explicit (_: Prims.unit) : Rust_primitives.Hax.t_Never =
   Core.Panicking.panic_explicit ()
 
+let is_empty
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
+      (s: Core.Base.Spec.Seq.t_Seq v_T)
+    : bool =
+  match Core.Base.Spec.Seq.match_list #v_T s with
+  | Core.Base.Spec.Seq.LIST_NIL  -> true
+  | Core.Base.Spec.Seq.LIST_CONS _ _ -> false
+
 let hd
       (#v_T: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
@@ -18,15 +27,6 @@ let hd
   | Core.Base.Spec.Seq.LIST_NIL  ->
     Rust_primitives.Hax.never_to_any (hd__panic_cold_explicit () <: Rust_primitives.Hax.t_Never)
   | Core.Base.Spec.Seq.LIST_CONS hd _ -> hd
-
-let is_empty
-      (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
-      (s: Core.Base.Spec.Seq.t_Seq v_T)
-    : bool =
-  match Core.Base.Spec.Seq.match_list #v_T s with
-  | Core.Base.Spec.Seq.LIST_NIL  -> true
-  | Core.Base.Spec.Seq.LIST_CONS _ _ -> false
 
 let tl
       (#v_T: Type0)
