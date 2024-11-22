@@ -6,36 +6,66 @@
 
 ./src/Core_Marker.v
 
-./src/Core_Option.v
-./src/Core_Cmp.v
+./src/Core_Panicking.v
 
-./src/Core_Base_Int.v
-./src/Core_Base_Int_Base_spec.v
-./src/Core_Base_Int_Base_impl.v
-
-./src/Core_Coerce.v
-./src/Core_Convert.v
 
 ./src/Core_Ops_Arith.v
 ./src/Core_Ops_Bit.v
+./src/Core_Ops_Index.v
+./src/Core_Ops_Function.v
 
-./src/Core_Ops.v
+./src/Core_Option.v
+./src/Core_Cmp.v
 
-./src/Core_Int.v
+./src/Core_Result.v
 
-./src/Core_Base_Seq.v
-./src/Core_Base_Seq_Base_spec.v
+./src/Core_Base_Int.v
+./src/Core_Base_Int_Base_src.v
+# ./src/Core_Base_Int_Base_impl.v
 
-./src/Core_Panicking.v
+# ./src/Core_Coerce.v
+# ./src/Core_Convert.v
 
-./src/Core_Base_Seq_Base_impl.v
+# ./src/Core_Int.v
 
-./src/Core_Primitive.v
+# ./src/Core_Base_Seq.v
+# ./src/Core_Base_Seq_Base_src.v
 
-./src/Core_Base_Int_Number_conversion.v
+# ./src/Core_Base_Seq_Base_impl.v
 
-./src/Core_Array.v
+# ./src/Core_Primitive.v
 
-./src/Core_Intrinsics.v
+# ./src/Core_Base_Int_Number_conversion.v
 
-./src/Core_Num.v
+# ./src/Core_Iter_Traits_Iterator.v
+# ./src/Core_Iter_Traits_Collect.v
+# ./src/Core_Iter_Traits_Exact_size.v
+
+# ./src/Core_Ops_Index_range.v
+# ./src/Core_Ops.v
+
+# ./src/Core_Array_Iter.v
+# ./src/Core_Array.v
+
+# ./src/Core_Intrinsics.v
+
+# ./src/Core_Ops_Range.v
+
+# ./src/Core_Iter_Range.v
+# ./src/Core_Range.v
+
+# ./src/Core_Iter.v
+# ./src/Core_Range_Legacy.v
+
+# ./src/Core_Range_Iter.v
+
+# ./src/Core_Slice.v
+# ./src/Core_Slice_Index_Private_slice_index.v
+# ./src/Core_Slice_Index.v
+
+# ./src/Core_Num.v
+
+# # Extra
+
+# ./src/Core.v
+
