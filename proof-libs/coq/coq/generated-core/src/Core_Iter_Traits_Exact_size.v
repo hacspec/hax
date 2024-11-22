@@ -5,17 +5,10 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Clone.
-Export Clone.
+Require Import Iterator.
+Export Iterator.
 
-Class t_Copy := {
-}.
-
-Class t_Destruct := {
-}.
-
-Class t_Sized := {
-}.
-
-Class t_Tuple := {
+Class t_ExactSizeIterator := {
+  f_len : (Self -> uint_size) ;
+  f_is_empty : (Self -> bool) ;
 }.

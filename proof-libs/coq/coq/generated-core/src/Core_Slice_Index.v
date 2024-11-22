@@ -5,19 +5,18 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Sized.
-Export Sized.
+Require Import ops.
+Export ops.
 
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
+Require Import Slice.
+Export Slice.
 
 (*Not implemented yet? todo(item)*)
+
+(*item error backend*)
+
+(*item error backend*)
+
+(*item error backend*)
+
+(*item error backend*)

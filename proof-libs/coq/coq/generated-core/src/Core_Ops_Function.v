@@ -5,19 +5,17 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Sized.
-Export Sized.
+Require Import Tuple.
+Export Tuple.
 
 (*item error backend*)
 
-(*item error backend*)
+Class t_FnMut (Self : _) := {
+  f_call_mut : (Self -> Args -> Self × _) ;
+}.
 
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
-
-(*item error backend*)
+Class t_Fn (Self : _) := {
+  f_call : (Self -> Args -> _) ;
+}.
 
 (*Not implemented yet? todo(item)*)

@@ -5,17 +5,17 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Clone.
-Export Clone.
+Require Import Step.
+Export Step.
 
-Class t_Copy := {
+Class t_TrustedFused := {
 }.
 
-Class t_Destruct := {
+Class t_FusedIterator := {
 }.
 
-Class t_Sized := {
+Class t_TrustedLen := {
 }.
 
-Class t_Tuple := {
+Class t_TrustedStep := {
 }.

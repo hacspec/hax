@@ -5,17 +5,7 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Clone.
-Export Clone.
-
-Class t_Copy := {
-}.
-
-Class t_Destruct := {
-}.
-
-Class t_Sized := {
-}.
-
-Class t_Tuple := {
+Record t_Range (Idx : _) : Type := {
+  f_start : Idx;
+  f_end : Idx;
 }.

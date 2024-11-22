@@ -5,17 +5,8 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Require Import Clone.
-Export Clone.
+Require Import Super.
+Export Super.
 
-Class t_Copy := {
-}.
-
-Class t_Destruct := {
-}.
-
-Class t_Sized := {
-}.
-
-Class t_Tuple := {
-}.
+Definition abstract_concretize_cancel (x : t_I16_t) : unit :=
+  tt.
