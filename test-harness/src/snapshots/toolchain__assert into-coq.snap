@@ -38,44 +38,19 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
-
-(* From Core Require Import Core. *)
-
-(* TODO: Replace this dummy lib with core lib *)
-Class t_Sized (T : Type) := { }.
-Definition t_u8 := Z.
-Definition t_u16 := Z.
-Definition t_u32 := Z.
-Definition t_u64 := Z.
-Definition t_u128 := Z.
-Definition t_usize := Z.
-Definition t_i8 := Z.
-Definition t_i16 := Z.
-Definition t_i32 := Z.
-Definition t_i64 := Z.
-Definition t_i128 := Z.
-Definition t_isize := Z.
-Definition t_Array T (x : t_usize) := list T.
-Definition t_String := string.
-Definition ToString_f_to_string (x : string) := x.
-Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
-Definition t_Slice (T : Type) := list T.
-Definition unsize {T : Type} : list T -> t_Slice T := id.
-(* / dummy lib *)
+From Core Require Import Core.
 
 
 (* NotImplementedYet *)
 
 Definition asserts '(_ : unit) : unit :=
-  let _ := assert (true) in
-  let _ := assert (t_PartialEq_f_eq (1) (1)) in
-  let _ := match (2,2) with
+  let _ := assert ((true : bool)) in
+  let _ := assert (t_PartialEq_f_eq ((1 : t_i32)) ((1 : t_i32))) in
+  let _ := match ((2 : t_i32),(2 : t_i32)) with
   | (left_val,right_val) =>
     assert (t_PartialEq_f_eq (left_val) (right_val))
   end in
-  let _ := match (1,2) with
+  let _ := match ((1 : t_i32),(2 : t_i32)) with
   | (left_val,right_val) =>
     assert (negb (t_PartialEq_f_eq (left_val) (right_val)))
   end in

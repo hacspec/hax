@@ -39,32 +39,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
-
-(* From Core Require Import Core. *)
-
-(* TODO: Replace this dummy lib with core lib *)
-Class t_Sized (T : Type) := { }.
-Definition t_u8 := Z.
-Definition t_u16 := Z.
-Definition t_u32 := Z.
-Definition t_u64 := Z.
-Definition t_u128 := Z.
-Definition t_usize := Z.
-Definition t_i8 := Z.
-Definition t_i16 := Z.
-Definition t_i32 := Z.
-Definition t_i64 := Z.
-Definition t_i128 := Z.
-Definition t_isize := Z.
-Definition t_Array T (x : t_usize) := list T.
-Definition t_String := string.
-Definition ToString_f_to_string (x : string) := x.
-Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
-Definition t_Slice (T : Type) := list T.
-Definition unsize {T : Type} : list T -> t_Slice T := id.
-(* / dummy lib *)
+From Core Require Import Core.
 
 
 Inductive t_E : Type :=
@@ -76,9 +51,9 @@ Arguments E_B.
 Definition t_E_cast_to_repr (x : t_E) : t_isize :=
   match x with
   | E_A =>
-    0
+    (0 : t_isize)
   | E_B =>
-    1
+    (1 : t_isize)
   end.
 
 (* NotImplementedYet *)
@@ -95,7 +70,7 @@ Definition deep (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   | (1
   | 2,Option_Some (3
   | 4)) =>
-    0
+    (0 : t_i32)
   | (x,_) =>
     x
   end.
@@ -118,7 +93,7 @@ Definition equivalent (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   | (1,Option_Some (4))
   | (2,Option_Some (3))
   | (2,Option_Some (4)) =>
-    0
+    (0 : t_i32)
   | (x,_) =>
     x
   end.
@@ -127,11 +102,11 @@ Definition nested (x : t_Option ((t_i32))) : t_i32 :=
   match x with
   | Option_Some (1
   | 2) =>
-    1
+    (1 : t_i32)
   | Option_Some (x) =>
     x
   | Option_None =>
-    0
+    (0 : t_i32)
   end.
 '''
 _CoqProject = '''

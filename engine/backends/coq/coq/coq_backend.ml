@@ -366,7 +366,8 @@ struct
         string "let" ^^ space ^^ lhs#p ^^ space ^^ string ":=" ^^ space ^^ rhs#p
         ^^ space ^^ string "in" ^^ break 1 ^^ body#p
 
-      method expr'_Literal ~super:_ x2 = x2#p
+      method expr'_Literal ~super x2 =
+        parens(x2#p ^^ space ^^ colon ^^ space ^^ (self#_do_not_override_lazy_of_ty AstPos_expr'_Literal_x0 super.typ)#p)
       method expr'_LocalVar ~super:_ x2 = x2#p
 
       method expr'_Loop ~super:_ ~body ~kind ~state ~control_flow ~label:_
@@ -781,10 +782,8 @@ struct
         ^^ string "%float"
 
       method literal_Int ~value ~negative ~kind =
-        parens
           ((if negative then !^"-" else empty)
-          ^^ string value ^^ colon ^^ space ^^ !^"t_"
-          ^^ string (show_int_kind kind))
+          ^^ string value)
 
       method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
