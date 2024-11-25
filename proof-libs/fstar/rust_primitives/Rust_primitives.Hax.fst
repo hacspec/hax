@@ -6,8 +6,6 @@ open Rust_primitives.Arrays
 type t_Never = False
 let never_to_any #t: t_Never -> t = (fun _ -> match () with)
 
-let dropped_body #t: t = assert(false)
-
 let repeat #a (x: a) (len: usize): t_Array a len = 
   FStar.Seq.create (v len) x
 

@@ -9,3 +9,4 @@ let impl__map_err #e1 #e2 (x: t_Result 't e1) (f: e1 -> e2): t_Result 't e2
   | Result_Ok v -> Result_Ok v
   | Result_Err e -> Result_Err (f e)
 
+let impl__expect #t #e (x: t_Result t e {Result_Ok? x}) (y: string): t = Result_Ok?.v x
