@@ -1,71 +1,139 @@
 -R src/ Core
+-R spec/ Core
+-R phase_library/ Core
 -arg -w
 -arg all
 
 ./src/Core_Clone.v
-
 ./src/Core_Marker.v
 
 ./src/Core_Panicking.v
 
-
-./src/Core_Ops_Arith.v
-./src/Core_Ops_Bit.v
-./src/Core_Ops_Index.v
-./src/Core_Ops_Function.v
-
 ./src/Core_Option.v
 ./src/Core_Cmp.v
 
+./spec/Core_Base_Spec_Haxint.v
+./spec/Core_Base_Spec_Unary.v
+
+./spec/Core_Base_Spec_Binary_Positive.v
+./spec/Core_Base_Spec_Binary_Pos.v
+
+./spec/Core_Base_Spec_Binary.v
+
+./spec/Core_Base_Spec_Z.v
+
+./spec/Core_Base_Spec_Seq.v
+
+./spec/Core_Base_Spec_Constants.v
+
+./spec/Core_Base_Spec.v
+
+./src/Core_Base_Binary.v
+./src/Core_Base_Pos.v
+./src/Core_Base_Z.v
+
+./src/Core_Base_Seq.v
+
+./src/Core_Base.v
+
+./src/Core_Convert.v
+
+./src/Core_Ops_Index.v
+
+./src/Core_Ops_Bit.v
+./src/Core_Ops_Arith.v
+
+./src/Core_Ops_Range.v
+
+./src/Core_Ops.v
+
+./src/Core_Base_interface_Coerce.v
+
+./src/Core_Base_interface_Int.v
+
+./src/Core_Base_interface.v
+
+./src/Core_Num_Uint_macros.v # Empty
+./src/Core_Num_Int_macros.v # Empty
+
 ./src/Core_Result.v
 
-./src/Core_Base_Int.v
-./src/Core_Base_Int_Base_src.v
-# ./src/Core_Base_Int_Base_impl.v
-
-# ./src/Core_Coerce.v
-# ./src/Core_Convert.v
-
-# ./src/Core_Int.v
-
-# ./src/Core_Base_Seq.v
-# ./src/Core_Base_Seq_Base_src.v
-
-# ./src/Core_Base_Seq_Base_impl.v
+./phase_library/ControlFlow.v
 
 # ./src/Core_Primitive.v
 
-# ./src/Core_Base_Int_Number_conversion.v
+./src/Core_Array_Rec_bundle_579704328.v
 
-# ./src/Core_Iter_Traits_Iterator.v
-# ./src/Core_Iter_Traits_Collect.v
-# ./src/Core_Iter_Traits_Exact_size.v
+# ./src/Core_Num.v # Broken?
 
-# ./src/Core_Ops_Index_range.v
-# ./src/Core_Ops.v
-
-# ./src/Core_Array_Iter.v
-# ./src/Core_Array.v
-
-# ./src/Core_Intrinsics.v
-
-# ./src/Core_Ops_Range.v
-
-# ./src/Core_Iter_Range.v
-# ./src/Core_Range.v
-
-# ./src/Core_Iter.v
-# ./src/Core_Range_Legacy.v
-
-# ./src/Core_Range_Iter.v
-
-# ./src/Core_Slice.v
-# ./src/Core_Slice_Index_Private_slice_index.v
-# ./src/Core_Slice_Index.v
-
-# ./src/Core_Num.v
 
 # # Extra
 
-# ./src/Core.v
-
+# Core_Slice_Iter_Macros.v
+# Core_Slice_Iter.v
+# Core_Slice_Index_Private_slice_index.v
+# Core_Slice_Index.v
+# Core_Slice.v
+# Core_Result.v
+# Core_Primitive_Number_conversion_i.v
+# Core_Primitive_Number_conversion.v
+# Core_Primitive.v
+# ----- Core_Panicking.v
+# ----- Core_Option.v
+# ----- Core_Ops_Range.v
+# Core_Ops_Index_range.v
+# ----- Core_Ops_Index.v
+# Core_Ops_Function.v
+# Core_Ops_Bit_Impls_for_prims.v
+# ----- Core_Ops_Bit.v
+# Core_Ops_Arith_Impls_for_prims.v
+# ----- Core_Ops_Arith.v
+# ----- Core_Ops.v
+# Core_Num_Uint_macros.v
+# Core_Num_Int_macros.v
+# Core_Num.v
+# ----- Core_Marker.v
+# Core_Iter_Traits_Marker.v
+# Core_Iter_Traits_Iterator.v
+# Core_Iter_Traits_Exact_size.v
+# Core_Iter_Traits_Collect.v
+# Core_Iter_Traits.v
+# Core_Iter_Range.v
+# Core_Iter.v
+# Core_Intrinsics.v
+# Core_Fmt.v
+# ----- Core_Convert.v
+# ----- Core_Cmp.v
+# ----- Core_Clone.v
+# Core_Base_interface_Int_U8_proofs.v
+# Core_Base_interface_Int_U64_proofs.v
+# Core_Base_interface_Int_U32_proofs.v
+# Core_Base_interface_Int_U16_proofs.v
+# Core_Base_interface_Int_U128_proofs.v
+# Core_Base_interface_Int_I8_proofs.v
+# Core_Base_interface_Int_I64_proofs.v
+# Core_Base_interface_Int_I32_proofs.v
+# Core_Base_interface_Int_I16_proofs.v
+# Core_Base_interface_Int_I128_proofs.v
+# ----- Core_Base_interface_Int.v
+# ----- Core_Base_interface_Coerce.v
+# Core_Base_interface.v
+# ----- Core_Base_Z.v
+# ----- Core_Base_Spec_Z.v
+# ----- Core_Base_Spec_Unary.v
+# ----- Core_Base_Spec_Seq.v
+# ----- Core_Base_Spec_Haxint.v
+# ----- Core_Base_Spec_Constants.v
+# ----- Core_Base_Spec_Binary_Positive.v
+# ----- Core_Base_Spec_Binary_Pos.v
+# ----- Core_Base_Spec_Binary.v
+# ----- Core_Base_Spec.v
+# ----- Core_Base_Seq.v
+# ----- Core_Base_Pos.v
+# Core_Base_Number_conversion.v
+# ----- Core_Base_Binary.v
+# ----- Core_Base.v
+# Core_Array_Rec_bundle_579704328.v
+# Core_Array_Iter.v
+# Core_Array.v
+# Core.v

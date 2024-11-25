@@ -12,12 +12,13 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-From Core Require Import Core_Base_interface_Int.
-Export Core_Base_interface_Int.
+From Core Require Import Core_Base_Spec_Binary.
+Export Core_Base_Spec_Binary.
 
-From Core Require Import Core_Base_interface_Coerce.
-Export Core_Base_interface_Coerce.
+Notation "'t_Z'" := Z.
+Notation "'Z_NEG'" := Zneg.
+Notation "'Z_ZERO'" := Z0.
+Notation "'Z_POS'" := Zpos.
 
-(* NotImplementedYet *)
-
-(* NotImplementedYet *)
+Definition v_Z_ONE : t_Z := 1%Z.
+Definition v_Z_TWO : t_Z := 2%Z.

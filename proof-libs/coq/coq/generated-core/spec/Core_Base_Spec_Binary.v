@@ -12,11 +12,11 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-From Core Require Import Core_Base_interface_Int.
-Export Core_Base_interface_Int.
+From Core Require Import Core_Base_Spec_Binary_Pos.
+Export Core_Base_Spec_Binary_Pos.
 
-From Core Require Import Core_Base_interface_Coerce.
-Export Core_Base_interface_Coerce.
+From Core Require Import Core_Base_Spec_Binary_Positive.
+Export Core_Base_Spec_Binary_Positive.
 
 (* NotImplementedYet *)
 

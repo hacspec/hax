@@ -12,12 +12,14 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-From Core Require Import Core_Base_interface_Int.
-Export Core_Base_interface_Int.
+From Core Require Import Core_Base_Spec_Haxint.
+Export Core_Base_Spec_Haxint.
 
-From Core Require Import Core_Base_interface_Coerce.
-Export Core_Base_interface_Coerce.
+From Core Require Import Core_Base_Spec_Binary_Positive.
+Export Core_Base_Spec_Binary_Positive.
 
-(* NotImplementedYet *)
+Notation "'t_POS'" := N.
+Notation "'POS_ZERO'" := N0.
+Notation "'POS_POS'" := Npos.
 
-(* NotImplementedYet *)
+Definition match_pos (s : t_HaxInt) : t_POS := s.

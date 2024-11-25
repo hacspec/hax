@@ -12,12 +12,13 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-From Core Require Import Core_Base_interface_Int.
-Export Core_Base_interface_Int.
+Notation "'t_Seq'" := list.
 
-From Core Require Import Core_Base_interface_Coerce.
-Export Core_Base_interface_Coerce.
+Notation "'t_LIST'" := list.
+Notation "'LIST_NIL'" := nil.
+Notation "'LIST_CONS'" := cons.
 
-(* NotImplementedYet *)
+Notation "'nil'" := nil.
+Notation "'cons'" := (fun x y => cons y x).
 
-(* NotImplementedYet *)
+Definition match_list {T} (x : t_Seq T) : t_LIST T := x.

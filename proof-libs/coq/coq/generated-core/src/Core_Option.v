@@ -12,57 +12,14 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-(* TODO: Replace this dummy lib with core lib *)
-Class t_Sized (T : Type) := { }.
-Definition t_u8 := Z.
-Definition t_u16 := Z.
-Definition t_u32 := Z.
-Definition t_u64 := Z.
-Definition t_u128 := Z.
-Definition t_usize := Z.
-Definition t_i8 := Z.
-Definition t_i16 := Z.
-Definition t_i32 := Z.
-Definition t_i64 := Z.
-Definition t_i128 := Z.
-Definition t_isize := Z.
-Definition t_Array T (x : t_usize) := list T.
-Definition t_String := string.
-Definition ToString_f_to_string (x : string) := x.
-Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
-Definition t_Slice (T : Type) := list T.
-Definition unsize {T : Type} : list T -> t_Slice T := id.
-Definition t_PartialEq_f_eq x y := x =? y.
-Definition t_Rem_f_rem (x y : Z) := x mod y.
-Definition assert (b : bool) (* `{H_assert : b = true} *) : unit := tt.
-Inductive globality := | t_Global.
-Definition t_Vec T (_ : globality) : Type := list T.
-Definition impl_1__append {T} l1 l2 : list T * list T := (app l1 l2, l2).
-Definition impl_1__len {A} (l : list A) := Z.of_nat (List.length l).
-Definition impl__new {A} (_ : Datatypes.unit) : list A := nil.
-Definition impl__with_capacity {A} (_ : Z)  : list A := nil.
-Definition impl_1__push {A} l (x : A) := cons x l.
-Class t_From (A B : Type) := { From_f_from : B -> A }.
-Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := x.
-Class t_Into (A B : Type) := { Into_f_into : A -> B }.
-Instance t_Into_from_t_From {A B : Type} `{H : t_From B A} : t_Into A B := { Into_f_into x := @From_f_from B A H x }.
-Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l).
-Definition t_Option := option.
-Definition impl__map {A B} (x : t_Option A) (f : A -> B) : t_Option B := match x with | Some x => Some (f x) | None => None end.
-Definition t_Add_f_add x y := x + y.
-Class Cast A B := { cast : A -> B }.
-Instance cast_t_u8_t_u32 : Cast t_u8 t_u32 := {| cast x := x |}.
-(* / dummy lib *)
+From Core Require Import Core_Clone.
+Export Core_Clone.
 
+From Core Require Import Core_Marker (t_Sized).
+Export Core_Marker (t_Sized).
 
-
-From Core Require Import Core_Panicking (t_panic).
-Export Core_Panicking (t_panic).
-
-From Core Require Import Core_Panicking (t_panic_display).
-Export Core_Panicking (t_panic_display).
+From Core Require Import Core_Panicking (panic).
+Export Core_Panicking (panic).
 
 Inductive t_Option (v_T : Type) `{t_Sized (v_T)} : Type :=
 | Option_None
@@ -72,7 +29,7 @@ Arguments Option_Some {_} {_}.
 
 Instance t_Clone_390068633 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_Clone ((t_Option ((v_T)))) :=
   {
-    Clone_impl_f_clone := fun  (self : t_Option ((v_T)))=>
+    Clone_f_clone := fun  (self : t_Option ((v_T)))=>
       match self with
       | Option_Some (x) =>
         Option_Some (Clone_f_clone (x))
@@ -89,32 +46,32 @@ Definition impl_1__is_some `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T
     false
   end.
 
-Definition impl_1__map `{v_T : Type} `{v_U : Type} `{v_F : Type} `{t_Sized (v_T)} `{t_Sized (v_U)} `{t_Sized (v_F)} `{t_FnOnce (v_F) ((v_T))} `{_.(FnOnce_f_Output) = v_U} (self : t_Option ((v_T))) (f : v_F) : t_Option ((v_U)) :=
-  match self with
-  | Option_Some (x) =>
-    Option_Some (FnOnce_f_call_once (f) ((x)))
-  | Option_None =>
-    Option_None
-  end.
+(* Definition impl_1__map `{v_T : Type} `{v_U : Type} `{v_F : Type} `{t_Sized (v_T)} `{t_Sized (v_U)} `{t_Sized (v_F)} `{t_FnOnce (v_F) ((v_T))} `{_.(FnOnce_f_Output) = v_U} (self : t_Option ((v_T))) (f : v_F) : t_Option ((v_U)) := *)
+(*   match self with *)
+(*   | Option_Some (x) => *)
+(*     Option_Some (FnOnce_f_call_once (f) ((x))) *)
+(*   | Option_None => *)
+(*     Option_None *)
+(*   end. *)
 
-Definition unwrap_failed '(_ : unit) : t_Never :=
-  panic ("called `Option::unwrap()` on a `None` value"%string).
+(* Definition unwrap_failed '(_ : unit) : t_Never := *)
+(*   panic ("called `Option::unwrap()` on a `None` value"%string). *)
 
-Definition impl_1__unwrap `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T))) `{impl_1__is_some (self___) = true} : v_T :=
-  match self with
-  | Option_Some (val) =>
-    val
-  | Option_None =>
-    never_to_any (unwrap_failed (tt))
-  end.
+(* Definition impl_1__unwrap `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T))) `{impl_1__is_some (self___) = true} : v_T := *)
+(*   match self with *)
+(*   | Option_Some (val) => *)
+(*     val *)
+(*   | Option_None => *)
+(*     never_to_any (unwrap_failed (tt)) *)
+(*   end. *)
 
-Definition expect_failed (msg : string) : t_Never :=
-  panic_display (msg).
+(* Definition expect_failed (msg : string) : t_Never := *)
+(*   panic (msg). *)
 
-Definition impl_1__expect `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T))) (msg : string) : v_T :=
-  match self with
-  | Option_Some (val) =>
-    val
-  | Option_None =>
-    never_to_any (expect_failed (msg))
-  end.
+(* Definition impl_1__expect `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T))) (msg : string) : v_T := *)
+(*   match self with *)
+(*   | Option_Some (val) => *)
+(*     val *)
+(*   | Option_None => *)
+(*     never_to_any (expect_failed (msg)) *)
+(*   end. *)

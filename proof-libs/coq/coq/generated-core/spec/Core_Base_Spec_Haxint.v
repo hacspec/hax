@@ -12,12 +12,13 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-From Core Require Import Core_Base_interface_Int.
-Export Core_Base_interface_Int.
+Notation "'t_HaxInt'" := N.
 
-From Core Require Import Core_Base_interface_Coerce.
-Export Core_Base_interface_Coerce.
+Definition v_HaxInt_ONE : t_HaxInt := 1.
+Definition v_HaxInt_TWO : t_HaxInt := 2.
+Definition v_HaxInt_ZERO : t_HaxInt := 0.
 
-(* NotImplementedYet *)
+Definition div2 (s : t_HaxInt) : t_HaxInt := s / 2.
 
-(* NotImplementedYet *)
+Definition is_zero (s : t_HaxInt) : bool := match s with | N0 => true | _ => false end.
+

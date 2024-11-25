@@ -12,102 +12,62 @@ Import RecordSetNotations.
 
 (* From Core Require Import Core. *)
 
-(* TODO: Replace this dummy lib with core lib *)
-Class t_Sized (T : Type) := { }.
-Definition t_u8 := Z.
-Definition t_u16 := Z.
-Definition t_u32 := Z.
-Definition t_u64 := Z.
-Definition t_u128 := Z.
-Definition t_usize := Z.
-Definition t_i8 := Z.
-Definition t_i16 := Z.
-Definition t_i32 := Z.
-Definition t_i64 := Z.
-Definition t_i128 := Z.
-Definition t_isize := Z.
-Definition t_Array T (x : t_usize) := list T.
-Definition t_String := string.
-Definition ToString_f_to_string (x : string) := x.
-Instance Sized_any : forall {t_A}, t_Sized t_A := {}.
-Class t_Clone (T : Type) := { Clone_f_clone : T -> T }.
-Instance Clone_any : forall {t_A}, t_Clone t_A := {Clone_f_clone := fun x => x}.
-Definition t_Slice (T : Type) := list T.
-Definition unsize {T : Type} : list T -> t_Slice T := id.
-Definition t_PartialEq_f_eq x y := x =? y.
-Definition t_Rem_f_rem (x y : Z) := x mod y.
-Definition assert (b : bool) (* `{H_assert : b = true} *) : unit := tt.
-Inductive globality := | t_Global.
-Definition t_Vec T (_ : globality) : Type := list T.
-Definition impl_1__append {T} l1 l2 : list T * list T := (app l1 l2, l2).
-Definition impl_1__len {A} (l : list A) := Z.of_nat (List.length l).
-Definition impl__new {A} (_ : Datatypes.unit) : list A := nil.
-Definition impl__with_capacity {A} (_ : Z)  : list A := nil.
-Definition impl_1__push {A} l (x : A) := cons x l.
-Class t_From (A B : Type) := { From_f_from : B -> A }.
-Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := x.
-Class t_Into (A B : Type) := { Into_f_into : A -> B }.
-Instance t_Into_from_t_From {A B : Type} `{H : t_From B A} : t_Into A B := { Into_f_into x := @From_f_from B A H x }.
-Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l).
-Definition t_Option := option.
-Definition impl__map {A B} (x : t_Option A) (f : A -> B) : t_Option B := match x with | Some x => Some (f x) | None => None end.
-Definition t_Add_f_add x y := x + y.
-Class Cast A B := { cast : A -> B }.
-Instance cast_t_u8_t_u32 : Cast t_u8 t_u32 := {| cast x := x |}.
-(* / dummy lib *)
+(* From Core Require Import Core_Ops_Arith (t_Add). *)
+(* Export Core_Ops_Arith (t_Add). *)
+
+(* From Core Require Import Core_Ops_Arith (t_Div). *)
+(* Export Core_Ops_Arith (t_Div). *)
+
+(* From Core Require Import Core_Ops_Arith (t_Mul). *)
+(* Export Core_Ops_Arith (t_Mul). *)
+
+(* From Core Require Import Core_Ops_Arith (t_Neg). *)
+(* Export Core_Ops_Arith (t_Neg). *)
+
+(* From Core Require Import Core_Ops_Arith (t_Rem). *)
+(* Export Core_Ops_Arith (t_Rem). *)
+
+(* From Core Require Import Core_Ops_Arith (t_Sub). *)
+(* Export Core_Ops_Arith (t_Sub). *)
+
+From Core Require Import Core_Ops_Arith.
+Export Core_Ops_Arith.
 
 
 
-From Core Require Import Self_Arith (t_Add).
-Export Self_Arith (t_Add).
+(* From Core Require Import Core_Ops_Bit (t_BitAnd). *)
+(* Export Core_Ops_Bit (t_BitAnd). *)
 
-From Core Require Import Self_Arith (t_Div).
-Export Self_Arith (t_Div).
+(* From Core Require Import Core_Ops_Bit (t_BitOr). *)
+(* Export Core_Ops_Bit (t_BitOr). *)
 
-From Core Require Import Self_Arith (t_Mul).
-Export Self_Arith (t_Mul).
+(* From Core Require Import Core_Ops_Bit (t_BitXor). *)
+(* Export Core_Ops_Bit (t_BitXor). *)
 
-From Core Require Import Self_Arith (t_Neg).
-Export Self_Arith (t_Neg).
+(* From Core Require Import Core_Ops_Bit (t_Not). *)
+(* Export Core_Ops_Bit (t_Not). *)
 
-From Core Require Import Self_Arith (t_Rem).
-Export Self_Arith (t_Rem).
+(* From Core Require Import Core_Ops_Bit (t_Shl). *)
+(* Export Core_Ops_Bit (t_Shl). *)
 
-From Core Require Import Self_Arith (t_Sub).
-Export Self_Arith (t_Sub).
+(* From Core Require Import Core_Ops_Bit (t_Shr). *)
+(* Export Core_Ops_Bit (t_Shr). *)
 
-
-
-From Core Require Import Self_Bit (t_BitAnd).
-Export Self_Bit (t_BitAnd).
-
-From Core Require Import Self_Bit (t_BitOr).
-Export Self_Bit (t_BitOr).
-
-From Core Require Import Self_Bit (t_BitXor).
-Export Self_Bit (t_BitXor).
-
-From Core Require Import Self_Bit (t_Not).
-Export Self_Bit (t_Not).
-
-From Core Require Import Self_Bit (t_Shl).
-Export Self_Bit (t_Shl).
-
-From Core Require Import Self_Bit (t_Shr).
-Export Self_Bit (t_Shr).
+From Core Require Import Core_Ops_Bit.
+Export Core_Ops_Bit.
 
 
 
-From Core Require Import Self_Index (t_Index).
-Export Self_Index (t_Index).
+From Core Require Import Core_Ops_Index (t_Index).
+Export Core_Ops_Index (t_Index).
 
 
 
-From Core Require Import Self_Range (t_Range).
-Export Self_Range (t_Range).
+From Core Require Import Core_Ops_Range.
+Export Core_Ops_Range.
 
-From Core Require Import Self_Index_range (t_IndexRange).
-Export Self_Index_range (t_IndexRange).
+(* From Core Require Import Core_Ops_Index_range (t_IndexRange). *)
+(* Export Core_Ops_Index_range (t_IndexRange). *)
 
 (* NotImplementedYet *)
 
