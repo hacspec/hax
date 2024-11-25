@@ -781,7 +781,10 @@ struct
         ^^ string "%float"
 
       method literal_Int ~value ~negative ~kind =
-        parens((if negative then !^"-" else empty) ^^ string value ^^ colon ^^ space ^^ !^"t_" ^^ string (show_int_kind kind))
+        parens
+          ((if negative then !^"-" else empty)
+          ^^ string value ^^ colon ^^ space ^^ !^"t_"
+          ^^ string (show_int_kind kind))
 
       method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
@@ -1023,7 +1026,7 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in
            let open Generic_printer.AnnotatedString in
-           let header = pure (hardcoded_coq_headers) in
+           let header = pure hardcoded_coq_headers in
            let annotated = concat header annotated in
            (to_sourcemap annotated, to_string annotated)
          in
