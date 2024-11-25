@@ -26,6 +26,8 @@ let impl_1__len #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) =
   assert (n <= maxint usize_inttype);
   mk_int #usize_inttype (Seq.length v)
 
+let impl_1__as_slice #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) : t_Slice t = admit()
+
 let from_elem #a (item: a) (len: usize) = Seq.create (v len) item
 
 open Rust_primitives.Hax

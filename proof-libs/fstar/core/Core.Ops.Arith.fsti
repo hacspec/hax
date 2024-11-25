@@ -46,3 +46,16 @@ class t_SubAssign self rhs = {
   f_sub_assign: x:self -> y:rhs -> Pure self (f_sub_assign_pre x y) (fun r -> f_sub_assign_post x y r);
 }
 
+class t_MulAssign self rhs = {
+   f_mul_assign_pre: self -> rhs -> bool;
+   f_mul_assign_post: self -> rhs -> self -> bool;
+   f_mul_assign: x:self -> y:rhs -> Pure self (f_mul_assign_pre x y) (fun r -> f_mul_assign_post x y r);
+}
+
+class t_DivAssign self rhs = {
+   f_div_assign_pre: self -> rhs -> bool;
+   f_div_assign_post: self -> rhs -> self -> bool;
+   f_div_assign: x:self -> y:rhs -> Pure self (f_div_assign_pre x y) (fun r -> f_div_assign_post x y r);
+}
+
+

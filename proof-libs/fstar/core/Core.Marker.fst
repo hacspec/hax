@@ -1,5 +1,8 @@
 module Core.Marker
 
+type t_PhantomData (t:Type0) = 
+     | PhantomData: t_PhantomData t
+
 class t_Sized (h: Type) = {
   dummy_field: unit
 }
