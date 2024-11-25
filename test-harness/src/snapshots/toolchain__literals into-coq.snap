@@ -60,14 +60,14 @@ Definition v_CONSTANT : t_Foo :=
   Build_t_Foo ((3 : t_u8)).
 
 Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_usize) : unit :=
-  let _ : t_u64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (x64)) (cast (xs)) in
-  let _ : t_u32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (x32)) (cast (x64))) (cast (xs)) in
-  let _ : t_u16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (x16)) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_u8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (x8) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_u64 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (x64)) (cast (xs)) in
+  let _ : t_u32 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (x32)) (cast (x64))) (cast (xs)) in
+  let _ : t_u16 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (x16)) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_u8 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (x8) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i64 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i32 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i16 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i8 := Add_f_add (Add_f_add (Add_f_add (Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
   tt.
 
 Definition fn_pointer_cast '(_ : unit) : unit :=

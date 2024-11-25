@@ -74,7 +74,7 @@ Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
 Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
   match match x with
   | Option_Some (v) =>
-    match t_PartialOrd_f_gt (v) ((0 : t_i32)) with
+    match PartialOrd_f_gt (v) ((0 : t_i32)) with
     | true =>
       Option_Some (v)
     | _ =>
@@ -124,7 +124,7 @@ Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i
   | _ =>
     match match x with
     | Option_Some (Result_Ok (v)) =>
-      match Option_Some (t_Add_f_add (v) ((1 : t_i32))) with
+      match Option_Some (Add_f_add (v) ((1 : t_i32))) with
       | Option_Some (1) =>
         Option_Some ((0 : t_i32))
       | _ =>

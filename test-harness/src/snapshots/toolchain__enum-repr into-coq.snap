@@ -65,19 +65,19 @@ Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
   | EnumWithRepr_ExplicitDiscr2 =>
     discriminant_EnumWithRepr_ExplicitDiscr2
   | EnumWithRepr_ImplicitDiscrEmptyTuple =>
-    t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((1 : t_u16))
+    Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((1 : t_u16))
   | EnumWithRepr_ImplicitDiscrEmptyStruct =>
-    t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((2 : t_u16))
+    Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((2 : t_u16))
   end.
 
 (* NotImplementedYet *)
 
 Definition f '(_ : unit) : t_u32 :=
-  let v__x := cast (t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((0 : t_u16))) in
-  t_Add_f_add (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple))) (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct))).
+  let v__x := cast (Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) ((0 : t_u16))) in
+  Add_f_add (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple))) (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct))).
 
 Definition ff__CONST : t_u16 :=
-  cast (t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr1) ((0 : t_u16))).
+  cast (Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr1) ((0 : t_u16))).
 
 Definition get_casted_repr (x : t_EnumWithRepr) : t_u64 :=
   cast (t_EnumWithRepr_cast_to_repr (x)).

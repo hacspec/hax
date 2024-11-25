@@ -984,15 +984,15 @@ struct
         string
           (match id.definition with
           | "not" -> "negb"
-          | "eq" -> "t_PartialEq_f_eq"
-          | "lt" -> "t_PartialOrd_f_lt"
-          | "gt" -> "t_PartialOrd_f_gt"
-          | "le" -> "t_PartialOrd_f_le"
-          | "ge" -> "t_PartialOrd_f_ge"
-          | "rem" -> "t_Rem_f_rem"
-          | "add" -> "t_Add_f_add"
-          | "mul" -> "t_Mul_f_mul"
-          | "div" -> "t_Div_f_div"
+          | "eq" -> "PartialEq_f_eq"
+          | "lt" -> "PartialOrd_f_lt"
+          | "gt" -> "PartialOrd_f_gt"
+          | "le" -> "PartialOrd_f_le"
+          | "ge" -> "PartialOrd_f_ge"
+          | "rem" -> "Rem_f_rem"
+          | "add" -> "Add_f_add"
+          | "mul" -> "Mul_f_mul"
+          | "div" -> "Div_f_div"
           | x -> x)
     end
 

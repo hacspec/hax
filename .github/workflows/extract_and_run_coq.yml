@@ -37,8 +37,8 @@ jobs:
 
       - name: build and run coq on tests
         env:
-          FILES: assert attribute-opaque constructor-as-closure enum-repr enum-struct-variant even
-          NOT_SUPPORTED_FILES: attributes cli conditional-match cyclic-modules dyn functions
+          FILES: assert attribute-opaque enum-struct-variant
+          NOT_SUPPORTED_FILES: attributes cli conditional-match constructor-as-closure cyclic-modules enum-repr even dyn functions
         run: |
           for f in $FILES; do \
             cd hax/tests/$f && \
