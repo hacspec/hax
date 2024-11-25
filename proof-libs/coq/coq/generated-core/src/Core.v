@@ -61,6 +61,8 @@ Export Core_Primitive.
 
 (* NotImplementedYet *)
 
+From Core Require Import Core_Option.
+Export Core_Option.
 
 From Core Require Import NumberNotation.
 Export NumberNotation.

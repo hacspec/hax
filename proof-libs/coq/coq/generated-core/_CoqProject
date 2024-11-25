@@ -9,6 +9,8 @@
 
 ./src/Core_Panicking.v
 
+./src/Core_Ops_Function.v
+
 ./src/Core_Option.v
 ./src/Core_Cmp.v
 

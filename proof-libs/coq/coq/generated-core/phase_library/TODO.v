@@ -22,3 +22,14 @@ Definition repeat {v_T} (a : v_T) b : t_Array v_T b := List.repeat a (N.to_nat (
 
 Definition t_String := string.
 Definition ToString_f_to_string (x : string) : string := x.
+
+Definition assert (b : bool) (* `{H_assert : b = true} *) : unit := tt.
+(* Inductive globality := | t_Global. *)
+(* Definition t_Vec T (_ : globality) : Type := list T. *)
+(* Definition impl_1__append {T} l1 l2 : list T * list T := (app l1 l2, l2). *)
+(* Definition impl_1__len {A} (l : list A) := Z.of_nat (List.length l). *)
+(* Definition impl__new {A} (_ : Datatypes.unit) : list A := nil. *)
+(* Definition impl__with_capacity {A} (_ : Z)  : list A := nil. *)
+(* Definition impl_1__push {A} l (x : A) := cons l x. *)
+(* Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := {| x |}. *)
+(* Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l). *)

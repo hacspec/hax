@@ -21,6 +21,9 @@ Export Core_Marker (t_Sized).
 From Core Require Import Core_Panicking (panic).
 Export Core_Panicking (panic).
 
+From Core Require Import Core_Ops_Function.
+Export Core_Ops_Function.
+
 Inductive t_Option (v_T : Type) `{t_Sized (v_T)} : Type :=
 | Option_None
 | Option_Some : v_T -> _.
@@ -46,13 +49,17 @@ Definition impl_1__is_some `{v_T : Type} `{t_Sized (v_T)} (self : t_Option ((v_T
     false
   end.
 
-(* Definition impl_1__map `{v_T : Type} `{v_U : Type} `{v_F : Type} `{t_Sized (v_T)} `{t_Sized (v_U)} `{t_Sized (v_F)} `{t_FnOnce (v_F) ((v_T))} `{_.(FnOnce_f_Output) = v_U} (self : t_Option ((v_T))) (f : v_F) : t_Option ((v_U)) := *)
-(*   match self with *)
-(*   | Option_Some (x) => *)
-(*     Option_Some (FnOnce_f_call_once (f) ((x))) *)
-(*   | Option_None => *)
-(*     Option_None *)
-(*   end. *)
+Program Definition impl__map `{v_T : Type} `{v_U : Type} `{v_F : Type} `{t_Sized (v_T)} `{t_Sized (v_U)} `{t_Sized (v_F)} `{t_FnOnce (v_F) ((v_T))} `{_.(FnOnce_f_Output) = v_U} (self : t_Option ((v_T))) (f : v_F) : t_Option ((v_U)) :=
+  match self with
+  | Option_Some (x) =>
+    Option_Some _ (* (FnOnce_f_call_once (f) ((x))) *)
+  | Option_None =>
+    Option_None
+  end.
+Next Obligation.
+  refine (FnOnce_f_call_once (f) ((x))).
+Defined.
+Fail Next Obligation.
 
 (* Definition unwrap_failed '(_ : unit) : t_Never := *)
 (*   panic ("called `Option::unwrap()` on a `None` value"%string). *)
