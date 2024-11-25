@@ -29,6 +29,13 @@ jobs:
           nix-shell --packages coq coqPackages.coq-record-update --run "make"
 
       - name: build and run coq on tests
+        working-directory: hax/proof-libs/coq/coq/generated-core
+        run: |
+          nix-shell --packages coq coqPackages.coq-record-update --run "coq_makefile -f _CoqProject -o Makefile" && \
+          nix-shell --packages coq coqPackages.coq-record-update --run "make"
+          nix-shell --packages coq coqPackages.coq-record-update --run "make install"
+
+      - name: build and run coq on tests
         env:
           FILES: assert attribute-opaque constructor-as-closure enum-repr enum-struct-variant even
           NOT_SUPPORTED_FILES: attributes cli conditional-match cyclic-modules dyn functions
