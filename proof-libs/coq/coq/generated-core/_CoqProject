@@ -60,12 +60,17 @@
 
 ./phase_library/ControlFlow.v
 
-# ./src/Core_Primitive.v
-
+# Bundles: Core_Primitive.v,
 ./src/Core_Array_Rec_bundle_579704328.v
+
+./src/Core_Primitive.v
 
 # ./src/Core_Num.v # Broken?
 
+./phase_library/NumberNotation.v
+./phase_library/TODO.v
+
+./src/Core.v
 
 # # Extra
 
@@ -74,7 +79,7 @@
 # Core_Slice_Index_Private_slice_index.v
 # Core_Slice_Index.v
 # Core_Slice.v
-# Core_Result.v
+# ----- Core_Result.v
 # Core_Primitive_Number_conversion_i.v
 # Core_Primitive_Number_conversion.v
 # Core_Primitive.v
@@ -89,8 +94,8 @@
 # Core_Ops_Arith_Impls_for_prims.v
 # ----- Core_Ops_Arith.v
 # ----- Core_Ops.v
-# Core_Num_Uint_macros.v
-# Core_Num_Int_macros.v
+# ----- Core_Num_Uint_macros.v
+# ----- Core_Num_Int_macros.v
 # Core_Num.v
 # ----- Core_Marker.v
 # Core_Iter_Traits_Marker.v
