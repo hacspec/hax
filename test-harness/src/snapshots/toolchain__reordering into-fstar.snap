@@ -26,28 +26,78 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Reordering.No_alpha_sorting.fst" = '''
+module Reordering.No_alpha_sorting
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let u01 (_: Prims.unit) : Prims.unit = ()
+
+let r02 (_: Prims.unit) : Prims.unit = ()
+
+let b03 (_: Prims.unit) : Prims.unit = ()
+
+let f04 (_: Prims.unit) : Prims.unit = ()
+
+let h05 (_: Prims.unit) : Prims.unit = ()
+
+let i06 (_: Prims.unit) : Prims.unit = ()
+
+let c07 (_: Prims.unit) : Prims.unit = ()
+
+let k08 (_: Prims.unit) : Prims.unit = ()
+
+let d09 (_: Prims.unit) : Prims.unit = ()
+
+let e10 (_: Prims.unit) : Prims.unit = ()
+
+let g11 (_: Prims.unit) : Prims.unit = ()
+
+let j12 (_: Prims.unit) : Prims.unit = ()
+
+let o13 (_: Prims.unit) : Prims.unit = ()
+
+let a14 (_: Prims.unit) : Prims.unit = ()
+
+let q15 (_: Prims.unit) : Prims.unit = ()
+
+let m16 (_: Prims.unit) : Prims.unit = ()
+
+let l17 (_: Prims.unit) : Prims.unit = ()
+
+let n18 (_: Prims.unit) : Prims.unit = ()
+
+let v19 (_: Prims.unit) : Prims.unit = ()
+
+let s20 (_: Prims.unit) : Prims.unit = ()
+
+let p21 (_: Prims.unit) : Prims.unit = ()
+
+let t22 (_: Prims.unit) : Prims.unit = ()
+'''
 "Reordering.fst" = '''
 module Reordering
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
+let no_dependency_1_ (_: Prims.unit) : Prims.unit = ()
+
+let no_dependency_2_ (_: Prims.unit) : Prims.unit = ()
+
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
 
+let f (_: u32) : t_Foo = Foo_A <: t_Foo
+
 type t_Bar = | Bar : t_Foo -> t_Bar
+
+let g (_: Prims.unit) : t_Bar = Bar (f 32ul) <: t_Bar
 
 let t_Foo_cast_to_repr (x: t_Foo) : isize =
   match x with
   | Foo_A  -> isz 0
   | Foo_B  -> isz 1
-
-let f (_: u32) : t_Foo = Foo_A <: t_Foo
-
-let g (_: Prims.unit) : t_Bar = Bar (f 32ul) <: t_Bar
-
-let no_dependency_1_ (_: Prims.unit) : Prims.unit = ()
-
-let no_dependency_2_ (_: Prims.unit) : Prims.unit = ()
 '''
