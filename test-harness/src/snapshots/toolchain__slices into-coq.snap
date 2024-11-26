@@ -54,7 +54,7 @@ Definition r#unsized '(_ : t_Array (t_Slice t_u8) ((1 : t_usize))) : unit :=
   tt.
 
 Definition sized (x : t_Array (t_Array (t_u8) ((4 : t_usize))) ((1 : t_usize))) : unit :=
-  r#unsized ([unsize (index (x) ((0 : t_usize)))]).
+  r#unsized ([unsize (Index_f_index (x) ((0 : t_usize)))]).
 '''
 _CoqProject = '''
 -R ./ TODO

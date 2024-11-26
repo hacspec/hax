@@ -1,4 +1,3 @@
-
 // // This function borrows a slice.
 // fn analyze_slice(slice: &[i32]) {
 //     let _ = slice[0];

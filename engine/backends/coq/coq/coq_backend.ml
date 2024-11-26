@@ -623,7 +623,7 @@ struct
              ^^ break 1))
         ^^ break 1
         ^^ CoqNotation.arguments (!^"Build_" ^^ name#p)
-          arguments_explicity_without_ty (* arguments_explicity_with_ty *)
+             arguments_explicity_without_ty (* arguments_explicity_with_ty *)
         ^^ concat_map_with ~pre:(break 1)
              (fun (ident, typ, attr) ->
                CoqNotation.arguments ident#p arguments_explicity_without_ty)
