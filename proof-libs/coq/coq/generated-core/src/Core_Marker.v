@@ -31,6 +31,13 @@ Class t_Sized (v_Self : Type) : Type :=
   }.
 Arguments t_Sized (_).
 
+Record t_PhantomData (v_T : Type) `{t_Sized (v_T)} : Type :=
+  {
+  }.
+Arguments Build_t_PhantomData {_} {_}.
+#[export]
+Notation "'PhantomData'" := Build_t_PhantomData.
+
 Class t_Tuple (v_Self : Type) : Type :=
   {
   }.

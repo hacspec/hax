@@ -33,3 +33,11 @@ Definition assert (b : bool) (* `{H_assert : b = true} *) : unit := tt.
 (* Definition impl_1__push {A} l (x : A) := cons l x. *)
 (* Definition impl__to_vec {T} (x : t_Slice T) : t_Vec T t_Global := {| x |}. *)
 (* Definition from_elem {A} (x : A) (l : Z) := repeat x (Z.to_nat l). *)
+
+Fixpoint build_range (l : nat) (f : nat) (a : list t_usize) : list t_usize :=
+  match f with
+  | 0%nat => a
+  | (S n)%nat => build_range (S l) n (cons a (Build_t_usize (Build_t_U64 (unary_to_int l))))
+  end.
+
+Definition fold_range {A : Type} (l : t_usize) (u : t_usize) (_ : A -> t_usize -> bool) (x : A) (f : A -> t_usize -> A) : A := List.fold_left f (build_range (unary_from_int (U64_f_v (usize_0 l))) (unary_from_int (U64_f_v (usize_0 (Sub_f_sub u l)))) nil) x.

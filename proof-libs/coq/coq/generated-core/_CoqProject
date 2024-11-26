@@ -47,6 +47,10 @@
 
 ./src/Core_Ops_Range.v
 
+./src/Core_Iter_Traits_Iterator.v
+
+./src/Core_Ops_Index_range.v
+
 ./src/Core_Ops.v
 
 ./src/Core_Base_interface_Coerce.v
@@ -65,26 +69,37 @@
 # Bundles: Core_Primitive.v,
 ./src/Core_Array_Rec_bundle_579704328.v
 
-./src/Core_Primitive.v
+# ./src/Core_Primitive_Number_conversion.v
+# ./src/Core_Primitive_Number_conversion_i.v
 
-# ./src/Core_Num.v # Broken?
+./src/Core_Primitive.v
 
 ./phase_library/NumberNotation.v
 ./phase_library/TODO.v
+
+./src/Core_Intrinsics.v
+
+./src/Core_Num.v # Broken?
+
+./src/Core_Slice_Iter.v
+./src/Core_Slice.v
+
+./src/Core_Array_Iter.v
+./src/Core_Array.v
 
 ./src/Core.v
 
 # # Extra
 
 # Core_Slice_Iter_Macros.v
-# Core_Slice_Iter.v
+# ----- Core_Slice_Iter.v
 # Core_Slice_Index_Private_slice_index.v
 # Core_Slice_Index.v
-# Core_Slice.v
+# ----- Core_Slice.v
 # ----- Core_Result.v
-# Core_Primitive_Number_conversion_i.v
-# Core_Primitive_Number_conversion.v
-# Core_Primitive.v
+# ----- Core_Primitive_Number_conversion_i.v
+# ----- Core_Primitive_Number_conversion.v
+# ----- Core_Primitive.v
 # ----- Core_Panicking.v
 # ----- Core_Option.v
 # ----- Core_Ops_Range.v
@@ -98,7 +113,7 @@
 # ----- Core_Ops.v
 # ----- Core_Num_Uint_macros.v
 # ----- Core_Num_Int_macros.v
-# Core_Num.v
+# ----- Core_Num.v
 # ----- Core_Marker.v
 # Core_Iter_Traits_Marker.v
 # Core_Iter_Traits_Iterator.v
@@ -107,7 +122,7 @@
 # Core_Iter_Traits.v
 # Core_Iter_Range.v
 # Core_Iter.v
-# Core_Intrinsics.v
+# ----- Core_Intrinsics.v
 # Core_Fmt.v
 # ----- Core_Convert.v
 # ----- Core_Cmp.v
@@ -124,7 +139,7 @@
 # Core_Base_interface_Int_I128_proofs.v
 # ----- Core_Base_interface_Int.v
 # ----- Core_Base_interface_Coerce.v
-# Core_Base_interface.v
+# ----- Core_Base_interface.v
 # ----- Core_Base_Z.v
 # ----- Core_Base_Spec_Z.v
 # ----- Core_Base_Spec_Unary.v
@@ -140,7 +155,7 @@
 # Core_Base_Number_conversion.v
 # ----- Core_Base_Binary.v
 # ----- Core_Base.v
-# Core_Array_Rec_bundle_579704328.v
-# Core_Array_Iter.v
-# Core_Array.v
-# Core.v
+# ----- Core_Array_Rec_bundle_579704328.v
+# ----- Core_Array_Iter.v
+# ----- Core_Array.v
+# ----- Core.v

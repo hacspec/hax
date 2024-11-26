@@ -30,7 +30,7 @@ Arguments i128_0.
   settable! (Build_t_i128) <i128_0>.
 Notation "'i128'" := Build_t_i128.
 
-Instance t_Clone_173398349 : t_Clone ((t_i128)) :=
+#[global] Instance t_Clone_173398349 : t_Clone ((t_i128)) :=
   {
     Clone_f_clone := fun  (self : t_i128)=> self;
   }.
@@ -45,7 +45,7 @@ Arguments i16_0.
   settable! (Build_t_i16) <i16_0>.
 Notation "'i16'" := Build_t_i16.
 
-Instance t_Clone_192670426 : t_Clone ((t_i16)) :=
+#[global] Instance t_Clone_192670426 : t_Clone ((t_i16)) :=
   {
     Clone_f_clone := fun  (self : t_i16)=>
       Build_t_i16 (Clone_f_clone (i16_0 self));
@@ -61,7 +61,7 @@ Arguments i32_0.
   settable! (Build_t_i32) <i32_0>.
 Notation "'i32'" := Build_t_i32.
 
-Instance t_Clone_502683757 : t_Clone ((t_i32)) :=
+#[global] Instance t_Clone_502683757 : t_Clone ((t_i32)) :=
   {
     Clone_f_clone := fun  (self : t_i32)=>
       Build_t_i32 (Clone_f_clone (i32_0 self));
@@ -77,7 +77,7 @@ Arguments i64_0.
   settable! (Build_t_i64) <i64_0>.
 Notation "'i64'" := Build_t_i64.
 
-Instance t_Clone_208076318 : t_Clone ((t_i64)) :=
+#[global] Instance t_Clone_208076318 : t_Clone ((t_i64)) :=
   {
     Clone_f_clone := fun  (self : t_i64)=>
       Build_t_i64 (Clone_f_clone (i64_0 self));
@@ -93,7 +93,7 @@ Arguments i8_0.
   settable! (Build_t_i8) <i8_0>.
 Notation "'i8'" := Build_t_i8.
 
-Instance t_Clone_654126073 : t_Clone ((t_i8)) :=
+#[global] Instance t_Clone_654126073 : t_Clone ((t_i8)) :=
   {
     Clone_f_clone := fun  (self : t_i8)=>
       Build_t_i8 (Clone_f_clone (i8_0 self));
@@ -109,19 +109,19 @@ Arguments isize_0.
   settable! (Build_t_isize) <isize_0>.
 Notation "'isize'" := Build_t_isize.
 
-Instance t_Clone_36465747 : t_Clone ((t_isize)) :=
+#[global] Instance t_Clone_36465747 : t_Clone ((t_isize)) :=
   {
     Clone_f_clone := fun  (self : t_isize)=>
       Build_t_isize (Clone_f_clone (isize_0 self));
   }.
 
-Instance t_From_200584765 : t_From ((t_isize)) ((t_i64)) :=
+#[global] Instance t_From_200584765 : t_From ((t_isize)) ((t_i64)) :=
   {
     From_f_from := fun  (x : t_i64)=>
       Build_t_isize (Into_f_into (i64_0 x));
   }.
 
-Instance t_From_705632684 : t_From ((t_i64)) ((t_isize)) :=
+#[global] Instance t_From_705632684 : t_From ((t_i64)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Build_t_i64 (Into_f_into (isize_0 x));
@@ -223,13 +223,13 @@ Definition from_le418743864 (x : t_usize) : t_usize :=
 Definition to_le946822077 (self : t_usize) : t_usize :=
   self.
 
-Instance t_From_1035345737 : t_From ((t_usize)) ((t_u64)) :=
+#[global] Instance t_From_1035345737 : t_From ((t_usize)) ((t_u64)) :=
   {
     From_f_from := fun  (x : t_u64)=>
       Build_t_usize (Into_f_into (u64_0 x));
   }.
 
-Instance t_From_478985084 : t_From ((t_u64)) ((t_usize)) :=
+#[global] Instance t_From_478985084 : t_From ((t_u64)) ((t_usize)) :=
   {
     From_f_from := fun  (x : t_usize)=>
       Build_t_u64 (Into_f_into (usize_0 x));
@@ -240,11 +240,11 @@ Class v_Sealed (v_Self : Type) : Type :=
   }.
 Arguments v_Sealed (_).
 
-Instance v_Sealed_639968800 : v_Sealed ((t_usize)) :=
+#[global] Instance v_Sealed_639968800 : v_Sealed ((t_usize)) :=
   {
   }.
 
-Instance v_Sealed_740757788 : v_Sealed ((t_Range ((t_usize)))) :=
+#[global] Instance v_Sealed_740757788 : v_Sealed ((t_Range ((t_usize)))) :=
   {
   }.
 
@@ -384,37 +384,37 @@ Definition v_MAX750570916 : t_usize :=
 Definition v_MIN861571008 : t_usize :=
   Build_t_usize (Constants_f_MIN).
 
-Instance t_Clone_832469823 : t_Clone ((t_u8)) :=
+#[global] Instance t_Clone_832469823 : t_Clone ((t_u8)) :=
   {
     Clone_f_clone := fun  (self : t_u8)=>
       Build_t_u8 (Clone_f_clone (u8_0 self));
   }.
 
-Instance t_Clone_562622454 : t_Clone ((t_u16)) :=
+#[global] Instance t_Clone_562622454 : t_Clone ((t_u16)) :=
   {
     Clone_f_clone := fun  (self : t_u16)=>
       Build_t_u16 (Clone_f_clone (u16_0 self));
   }.
 
-Instance t_Clone_1034302141 : t_Clone ((t_u32)) :=
+#[global] Instance t_Clone_1034302141 : t_Clone ((t_u32)) :=
   {
     Clone_f_clone := fun  (self : t_u32)=>
       Build_t_u32 (Clone_f_clone (u32_0 self));
   }.
 
-Instance t_Clone_189576787 : t_Clone ((t_u64)) :=
+#[global] Instance t_Clone_189576787 : t_Clone ((t_u64)) :=
   {
     Clone_f_clone := fun  (self : t_u64)=>
       Build_t_u64 (Clone_f_clone (u64_0 self));
   }.
 
-Instance t_Clone_296673181 : t_Clone ((t_u128)) :=
+#[global] Instance t_Clone_296673181 : t_Clone ((t_u128)) :=
   {
     Clone_f_clone := fun  (self : t_u128)=>
       Build_t_u128 (Clone_f_clone (u128_0 self));
   }.
 
-Instance t_Clone_466142540 : t_Clone ((t_usize)) :=
+#[global] Instance t_Clone_466142540 : t_Clone ((t_usize)) :=
   {
     Clone_f_clone := fun  (self : t_usize)=>
       Build_t_usize (Clone_f_clone (usize_0 self));
@@ -427,7 +427,7 @@ Class v_SliceIndex (v_Self : Type) (v_T : Type) `{v_Sealed (v_Self)} : Type :=
   }.
 Arguments v_SliceIndex (_) (_) {_}.
 
-Instance t_PartialEq_234431236 : t_PartialEq ((t_u8)) ((t_u8)) :=
+#[global] Instance t_PartialEq_234431236 : t_PartialEq ((t_u8)) ((t_u8)) :=
   {
     PartialEq_f_eq := fun  (self : t_u8) (rhs : t_u8)=>
       PartialEq_f_eq (u8_0 self) (u8_0 rhs);
@@ -435,7 +435,7 @@ Instance t_PartialEq_234431236 : t_PartialEq ((t_u8)) ((t_u8)) :=
       negb (PartialEq_f_eq (u8_0 self) (u8_0 rhs));
   }.
 
-Instance t_PartialOrd_835131600 : t_PartialOrd ((t_u8)) ((t_u8)) :=
+#[global] Instance t_PartialOrd_835131600 : t_PartialOrd ((t_u8)) ((t_u8)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_u8) (rhs : t_u8)=>
       PartialOrd_f_partial_cmp (u8_0 self) (u8_0 rhs);
@@ -471,7 +471,7 @@ Instance t_PartialOrd_835131600 : t_PartialOrd ((t_u8)) ((t_u8)) :=
       end;
   }.
 
-Instance t_PartialEq_965259828 : t_PartialEq ((t_u16)) ((t_u16)) :=
+#[global] Instance t_PartialEq_965259828 : t_PartialEq ((t_u16)) ((t_u16)) :=
   {
     PartialEq_f_eq := fun  (self : t_u16) (rhs : t_u16)=>
       PartialEq_f_eq (u16_0 self) (u16_0 rhs);
@@ -479,7 +479,7 @@ Instance t_PartialEq_965259828 : t_PartialEq ((t_u16)) ((t_u16)) :=
       negb (PartialEq_f_eq (u16_0 self) (u16_0 rhs));
   }.
 
-Instance t_PartialOrd_116974173 : t_PartialOrd ((t_u16)) ((t_u16)) :=
+#[global] Instance t_PartialOrd_116974173 : t_PartialOrd ((t_u16)) ((t_u16)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_u16) (rhs : t_u16)=>
       PartialOrd_f_partial_cmp (u16_0 self) (u16_0 rhs);
@@ -515,7 +515,7 @@ Instance t_PartialOrd_116974173 : t_PartialOrd ((t_u16)) ((t_u16)) :=
       end;
   }.
 
-Instance t_PartialEq_739399974 : t_PartialEq ((t_u32)) ((t_u32)) :=
+#[global] Instance t_PartialEq_739399974 : t_PartialEq ((t_u32)) ((t_u32)) :=
   {
     PartialEq_f_eq := fun  (self : t_u32) (rhs : t_u32)=>
       PartialEq_f_eq (u32_0 self) (u32_0 rhs);
@@ -523,7 +523,7 @@ Instance t_PartialEq_739399974 : t_PartialEq ((t_u32)) ((t_u32)) :=
       negb (PartialEq_f_eq (u32_0 self) (u32_0 rhs));
   }.
 
-Instance t_PartialOrd_553141371 : t_PartialOrd ((t_u32)) ((t_u32)) :=
+#[global] Instance t_PartialOrd_553141371 : t_PartialOrd ((t_u32)) ((t_u32)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_u32) (rhs : t_u32)=>
       PartialOrd_f_partial_cmp (u32_0 self) (u32_0 rhs);
@@ -559,7 +559,7 @@ Instance t_PartialOrd_553141371 : t_PartialOrd ((t_u32)) ((t_u32)) :=
       end;
   }.
 
-Instance t_PartialEq_464367537 : t_PartialEq ((t_u64)) ((t_u64)) :=
+#[global] Instance t_PartialEq_464367537 : t_PartialEq ((t_u64)) ((t_u64)) :=
   {
     PartialEq_f_eq := fun  (self : t_u64) (rhs : t_u64)=>
       PartialEq_f_eq (u64_0 self) (u64_0 rhs);
@@ -567,7 +567,7 @@ Instance t_PartialEq_464367537 : t_PartialEq ((t_u64)) ((t_u64)) :=
       negb (PartialEq_f_eq (u64_0 self) (u64_0 rhs));
   }.
 
-Instance t_PartialOrd_207997255 : t_PartialOrd ((t_u64)) ((t_u64)) :=
+#[global] Instance t_PartialOrd_207997255 : t_PartialOrd ((t_u64)) ((t_u64)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_u64) (rhs : t_u64)=>
       PartialOrd_f_partial_cmp (u64_0 self) (u64_0 rhs);
@@ -603,7 +603,7 @@ Instance t_PartialOrd_207997255 : t_PartialOrd ((t_u64)) ((t_u64)) :=
       end;
   }.
 
-Instance t_PartialEq_876938738 : t_PartialEq ((t_u128)) ((t_u128)) :=
+#[global] Instance t_PartialEq_876938738 : t_PartialEq ((t_u128)) ((t_u128)) :=
   {
     PartialEq_f_eq := fun  (self : t_u128) (rhs : t_u128)=>
       PartialEq_f_eq (u128_0 self) (u128_0 rhs);
@@ -611,7 +611,7 @@ Instance t_PartialEq_876938738 : t_PartialEq ((t_u128)) ((t_u128)) :=
       negb (PartialEq_f_eq (u128_0 self) (u128_0 rhs));
   }.
 
-Instance t_PartialOrd_566729496 : t_PartialOrd ((t_u128)) ((t_u128)) :=
+#[global] Instance t_PartialOrd_566729496 : t_PartialOrd ((t_u128)) ((t_u128)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_u128) (rhs : t_u128)=>
       PartialOrd_f_partial_cmp (u128_0 self) (u128_0 rhs);
@@ -647,7 +647,7 @@ Instance t_PartialOrd_566729496 : t_PartialOrd ((t_u128)) ((t_u128)) :=
       end;
   }.
 
-Instance t_PartialEq_1011013145 : t_PartialEq ((t_usize)) ((t_usize)) :=
+#[global] Instance t_PartialEq_1011013145 : t_PartialEq ((t_usize)) ((t_usize)) :=
   {
     PartialEq_f_eq := fun  (self : t_usize) (rhs : t_usize)=>
       PartialEq_f_eq (usize_0 self) (usize_0 rhs);
@@ -655,7 +655,7 @@ Instance t_PartialEq_1011013145 : t_PartialEq ((t_usize)) ((t_usize)) :=
       negb (PartialEq_f_eq (usize_0 self) (usize_0 rhs));
   }.
 
-Instance t_PartialOrd_917114071 : t_PartialOrd ((t_usize)) ((t_usize)) :=
+#[global] Instance t_PartialOrd_917114071 : t_PartialOrd ((t_usize)) ((t_usize)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_usize) (rhs : t_usize)=>
       PartialOrd_f_partial_cmp (usize_0 self) (usize_0 rhs);
@@ -691,7 +691,7 @@ Instance t_PartialOrd_917114071 : t_PartialOrd ((t_usize)) ((t_usize)) :=
       end;
   }.
 
-Instance t_PartialEq_515285814 : t_PartialEq ((t_i8)) ((t_i8)) :=
+#[global] Instance t_PartialEq_515285814 : t_PartialEq ((t_i8)) ((t_i8)) :=
   {
     PartialEq_f_eq := fun  (self : t_i8) (rhs : t_i8)=>
       PartialEq_f_eq (i8_0 self) (i8_0 rhs);
@@ -699,7 +699,7 @@ Instance t_PartialEq_515285814 : t_PartialEq ((t_i8)) ((t_i8)) :=
       negb (PartialEq_f_eq (i8_0 self) (i8_0 rhs));
   }.
 
-Instance t_PartialOrd_610141491 : t_PartialOrd ((t_i8)) ((t_i8)) :=
+#[global] Instance t_PartialOrd_610141491 : t_PartialOrd ((t_i8)) ((t_i8)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_i8) (rhs : t_i8)=>
       PartialOrd_f_partial_cmp (i8_0 self) (i8_0 rhs);
@@ -735,7 +735,7 @@ Instance t_PartialOrd_610141491 : t_PartialOrd ((t_i8)) ((t_i8)) :=
       end;
   }.
 
-Instance t_PartialEq_341364762 : t_PartialEq ((t_i16)) ((t_i16)) :=
+#[global] Instance t_PartialEq_341364762 : t_PartialEq ((t_i16)) ((t_i16)) :=
   {
     PartialEq_f_eq := fun  (self : t_i16) (rhs : t_i16)=>
       PartialEq_f_eq (i16_0 self) (i16_0 rhs);
@@ -743,7 +743,7 @@ Instance t_PartialEq_341364762 : t_PartialEq ((t_i16)) ((t_i16)) :=
       negb (PartialEq_f_eq (i16_0 self) (i16_0 rhs));
   }.
 
-Instance t_PartialOrd_685280672 : t_PartialOrd ((t_i16)) ((t_i16)) :=
+#[global] Instance t_PartialOrd_685280672 : t_PartialOrd ((t_i16)) ((t_i16)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_i16) (rhs : t_i16)=>
       PartialOrd_f_partial_cmp (i16_0 self) (i16_0 rhs);
@@ -779,7 +779,7 @@ Instance t_PartialOrd_685280672 : t_PartialOrd ((t_i16)) ((t_i16)) :=
       end;
   }.
 
-Instance t_PartialEq_335582486 : t_PartialEq ((t_i32)) ((t_i32)) :=
+#[global] Instance t_PartialEq_335582486 : t_PartialEq ((t_i32)) ((t_i32)) :=
   {
     PartialEq_f_eq := fun  (self : t_i32) (rhs : t_i32)=>
       PartialEq_f_eq (i32_0 self) (i32_0 rhs);
@@ -787,7 +787,7 @@ Instance t_PartialEq_335582486 : t_PartialEq ((t_i32)) ((t_i32)) :=
       negb (PartialEq_f_eq (i32_0 self) (i32_0 rhs));
   }.
 
-Instance t_PartialOrd_776800970 : t_PartialOrd ((t_i32)) ((t_i32)) :=
+#[global] Instance t_PartialOrd_776800970 : t_PartialOrd ((t_i32)) ((t_i32)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_i32) (rhs : t_i32)=>
       PartialOrd_f_partial_cmp (i32_0 self) (i32_0 rhs);
@@ -823,7 +823,7 @@ Instance t_PartialOrd_776800970 : t_PartialOrd ((t_i32)) ((t_i32)) :=
       end;
   }.
 
-Instance t_PartialEq_1019995697 : t_PartialEq ((t_i64)) ((t_i64)) :=
+#[global] Instance t_PartialEq_1019995697 : t_PartialEq ((t_i64)) ((t_i64)) :=
   {
     PartialEq_f_eq := fun  (self : t_i64) (rhs : t_i64)=>
       PartialEq_f_eq (i64_0 self) (i64_0 rhs);
@@ -831,7 +831,7 @@ Instance t_PartialEq_1019995697 : t_PartialEq ((t_i64)) ((t_i64)) :=
       negb (PartialEq_f_eq (i64_0 self) (i64_0 rhs));
   }.
 
-Instance t_PartialOrd_354028907 : t_PartialOrd ((t_i64)) ((t_i64)) :=
+#[global] Instance t_PartialOrd_354028907 : t_PartialOrd ((t_i64)) ((t_i64)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_i64) (rhs : t_i64)=>
       PartialOrd_f_partial_cmp (i64_0 self) (i64_0 rhs);
@@ -867,7 +867,7 @@ Instance t_PartialOrd_354028907 : t_PartialOrd ((t_i64)) ((t_i64)) :=
       end;
   }.
 
-Instance t_PartialEq_476424898 : t_PartialEq ((t_i128)) ((t_i128)) :=
+#[global] Instance t_PartialEq_476424898 : t_PartialEq ((t_i128)) ((t_i128)) :=
   {
     PartialEq_f_eq := fun  (self : t_i128) (rhs : t_i128)=>
       PartialEq_f_eq (i128_0 self) (i128_0 rhs);
@@ -875,7 +875,7 @@ Instance t_PartialEq_476424898 : t_PartialEq ((t_i128)) ((t_i128)) :=
       negb (PartialEq_f_eq (i128_0 self) (i128_0 rhs));
   }.
 
-Instance t_PartialOrd_532073533 : t_PartialOrd ((t_i128)) ((t_i128)) :=
+#[global] Instance t_PartialOrd_532073533 : t_PartialOrd ((t_i128)) ((t_i128)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_i128) (rhs : t_i128)=>
       PartialOrd_f_partial_cmp (i128_0 self) (i128_0 rhs);
@@ -911,7 +911,7 @@ Instance t_PartialOrd_532073533 : t_PartialOrd ((t_i128)) ((t_i128)) :=
       end;
   }.
 
-Instance t_PartialEq_675022234 : t_PartialEq ((t_isize)) ((t_isize)) :=
+#[global] Instance t_PartialEq_675022234 : t_PartialEq ((t_isize)) ((t_isize)) :=
   {
     PartialEq_f_eq := fun  (self : t_isize) (rhs : t_isize)=>
       PartialEq_f_eq (isize_0 self) (isize_0 rhs);
@@ -919,7 +919,7 @@ Instance t_PartialEq_675022234 : t_PartialEq ((t_isize)) ((t_isize)) :=
       negb (PartialEq_f_eq (isize_0 self) (isize_0 rhs));
   }.
 
-Instance t_PartialOrd_661215608 : t_PartialOrd ((t_isize)) ((t_isize)) :=
+#[global] Instance t_PartialOrd_661215608 : t_PartialOrd ((t_isize)) ((t_isize)) :=
   {
     PartialOrd_f_partial_cmp := fun  (self : t_isize) (rhs : t_isize)=>
       PartialOrd_f_partial_cmp (isize_0 self) (isize_0 rhs);
@@ -1189,175 +1189,175 @@ Definition signum91486536 (self : t_isize) : t_isize :=
     else
       Into_f_into (1).
 
-Instance t_From_202441647 : t_From ((t_isize)) ((t_isize)) :=
+#[global] Instance t_From_202441647 : t_From ((t_isize)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Into_f_into (I64_f_v (isize_0 x));
   }.
 
-Instance t_From_100016775 : t_From ((t_i16)) ((t_i8)) :=
+#[global] Instance t_From_100016775 : t_From ((t_i16)) ((t_i8)) :=
   {
     From_f_from := fun  (x : t_i8)=>
       Build_t_i16 (Into_f_into (i8_0 x));
   }.
 
-Instance t_From_964712142 : t_From ((t_i32)) ((t_i8)) :=
+#[global] Instance t_From_964712142 : t_From ((t_i32)) ((t_i8)) :=
   {
     From_f_from := fun  (x : t_i8)=>
       Build_t_i32 (Into_f_into (i8_0 x));
   }.
 
-Instance t_From_512166668 : t_From ((t_i64)) ((t_i8)) :=
+#[global] Instance t_From_512166668 : t_From ((t_i64)) ((t_i8)) :=
   {
     From_f_from := fun  (x : t_i8)=>
       Build_t_i64 (Into_f_into (i8_0 x));
   }.
 
-Instance t_From_95828634 : t_From ((t_i128)) ((t_i8)) :=
+#[global] Instance t_From_95828634 : t_From ((t_i128)) ((t_i8)) :=
   {
     From_f_from := fun  (x : t_i8)=>
       Build_t_i128 (Into_f_into (i8_0 x));
   }.
 
-Instance t_From_48986939 : t_From ((t_isize)) ((t_i8)) :=
+#[global] Instance t_From_48986939 : t_From ((t_isize)) ((t_i8)) :=
   {
     From_f_from := fun  (x : t_i8)=>
       Build_t_isize (Into_f_into (i8_0 x));
   }.
 
-Instance t_From_325010041 : t_From ((t_i8)) ((t_i16)) :=
+#[global] Instance t_From_325010041 : t_From ((t_i8)) ((t_i16)) :=
   {
     From_f_from := fun  (x : t_i16)=>
       Build_t_i8 (Into_f_into (i16_0 x));
   }.
 
-Instance t_From_64357194 : t_From ((t_i32)) ((t_i16)) :=
+#[global] Instance t_From_64357194 : t_From ((t_i32)) ((t_i16)) :=
   {
     From_f_from := fun  (x : t_i16)=>
        Build_t_i32 (Into_f_into (i16_0 x));
   }.
 
-Instance t_From_840335964 : t_From ((t_i64)) ((t_i16)) :=
+#[global] Instance t_From_840335964 : t_From ((t_i64)) ((t_i16)) :=
   {
     From_f_from := fun  (x : t_i16)=>
       Build_t_i64 (Into_f_into (i16_0 x));
   }.
 
-Instance t_From_601385454 : t_From ((t_i128)) ((t_i16)) :=
+#[global] Instance t_From_601385454 : t_From ((t_i128)) ((t_i16)) :=
   {
     From_f_from := fun  (x : t_i16)=>
       Build_t_i128 (Into_f_into (i16_0 x));
   }.
 
-Instance t_From_755383497 : t_From ((t_isize)) ((t_i16)) :=
+#[global] Instance t_From_755383497 : t_From ((t_isize)) ((t_i16)) :=
   {
     From_f_from := fun  (x : t_i16)=>
       Build_t_isize (Into_f_into (i16_0 x));
   }.
 
-Instance t_From_926112880 : t_From ((t_i8)) ((t_i32)) :=
+#[global] Instance t_From_926112880 : t_From ((t_i8)) ((t_i32)) :=
   {
     From_f_from := fun  (x : t_i32)=>
       Build_t_i8 (Into_f_into (i32_0 x));
   }.
 
-Instance t_From_81353160 : t_From ((t_i16)) ((t_i32)) :=
+#[global] Instance t_From_81353160 : t_From ((t_i16)) ((t_i32)) :=
   {
     From_f_from := fun  (x : t_i32)=>
       Build_t_i16 (Into_f_into (i32_0 x));
   }.
 
-Instance t_From_549703007 : t_From ((t_i64)) ((t_i32)) :=
+#[global] Instance t_From_549703007 : t_From ((t_i64)) ((t_i32)) :=
   {
     From_f_from := fun  (x : t_i32)=>
       Build_t_i64 (Into_f_into (i32_0 x));
   }.
 
-Instance t_From_1001458175 : t_From ((t_i128)) ((t_i32)) :=
+#[global] Instance t_From_1001458175 : t_From ((t_i128)) ((t_i32)) :=
   {
     From_f_from := fun  (x : t_i32)=>
       Build_t_i128 (Into_f_into (i32_0 x));
   }.
 
-Instance t_From_329934859 : t_From ((t_isize)) ((t_i32)) :=
+#[global] Instance t_From_329934859 : t_From ((t_isize)) ((t_i32)) :=
   {
     From_f_from := fun  (x : t_i32)=>
       Build_t_isize (Into_f_into (i32_0 x));
   }.
 
-Instance t_From_381441019 : t_From ((t_i8)) ((t_i64)) :=
+#[global] Instance t_From_381441019 : t_From ((t_i8)) ((t_i64)) :=
   {
     From_f_from := fun  (x : t_i64)=>
       Build_t_i8 (Into_f_into (i64_0 x));
   }.
 
-Instance t_From_728811179 : t_From ((t_i16)) ((t_i64)) :=
+#[global] Instance t_From_728811179 : t_From ((t_i16)) ((t_i64)) :=
   {
     From_f_from := fun  (x : t_i64)=>
       Build_t_i16 (Into_f_into (i64_0 x));
   }.
 
-Instance t_From_1003839356 : t_From ((t_i32)) ((t_i64)) :=
+#[global] Instance t_From_1003839356 : t_From ((t_i32)) ((t_i64)) :=
   {
     From_f_from := fun  (x : t_i64)=>
       Build_t_i32 (Into_f_into (i64_0 x));
   }.
 
-Instance t_From_625109732 : t_From ((t_i128)) ((t_i64)) :=
+#[global] Instance t_From_625109732 : t_From ((t_i128)) ((t_i64)) :=
   {
     From_f_from := fun  (x : t_i64)=>
       Build_t_i128 (Into_f_into (i64_0 x));
   }.
 
-Instance t_From_34424521 : t_From ((t_i8)) ((t_i128)) :=
+#[global] Instance t_From_34424521 : t_From ((t_i8)) ((t_i128)) :=
   {
     From_f_from := fun  (x : t_i128)=>
       Build_t_i8 (Into_f_into (i128_0 x));
   }.
 
-Instance t_From_603602239 : t_From ((t_i16)) ((t_i128)) :=
+#[global] Instance t_From_603602239 : t_From ((t_i16)) ((t_i128)) :=
   {
     From_f_from := fun  (x : t_i128)=>
       Build_t_i16 (Into_f_into (i128_0 x));
   }.
 
-Instance t_From_479038908 : t_From ((t_i32)) ((t_i128)) :=
+#[global] Instance t_From_479038908 : t_From ((t_i32)) ((t_i128)) :=
   {
     From_f_from := fun  (x : t_i128)=>
       Build_t_i32 (Into_f_into (i128_0 x));
   }.
 
-Instance t_From_299745195 : t_From ((t_i64)) ((t_i128)) :=
+#[global] Instance t_From_299745195 : t_From ((t_i64)) ((t_i128)) :=
   {
     From_f_from := fun  (x : t_i128)=>
       Build_t_i64 (Into_f_into (i128_0 x));
   }.
 
-Instance t_From_615821455 : t_From ((t_isize)) ((t_i128)) :=
+#[global] Instance t_From_615821455 : t_From ((t_isize)) ((t_i128)) :=
   {
     From_f_from := fun  (x : t_i128)=>
       Build_t_isize (Into_f_into (i128_0 x));
   }.
 
-Instance t_From_376191918 : t_From ((t_i8)) ((t_isize)) :=
+#[global] Instance t_From_376191918 : t_From ((t_i8)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Build_t_i8 (Into_f_into (isize_0 x));
   }.
 
-Instance t_From_649927535 : t_From ((t_i16)) ((t_isize)) :=
+#[global] Instance t_From_649927535 : t_From ((t_i16)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Build_t_i16 (Into_f_into (isize_0 x));
   }.
 
-Instance t_From_395262437 : t_From ((t_i32)) ((t_isize)) :=
+#[global] Instance t_From_395262437 : t_From ((t_i32)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Build_t_i32 (Into_f_into (isize_0 x));
   }.
 
-Instance t_From_218237752 : t_From ((t_i128)) ((t_isize)) :=
+#[global] Instance t_From_218237752 : t_From ((t_i128)) ((t_isize)) :=
   {
     From_f_from := fun  (x : t_isize)=>
       Build_t_i128 (Into_f_into (isize_0 x));
@@ -1633,32 +1633,32 @@ Definition wrapping_abs347300819 (self : t_isize) : t_isize :=
   else
     self.
 
-Instance f_into_t_u8 : t_From t_u8 N :=
+#[global] Instance f_into_t_u8 : t_From t_u8 N :=
   {
     From_f_from (x : N) := Build_t_u8 (Build_t_U8 x)
   }.
 
-Instance f_into_t_u16 : t_From t_u16 N :=
+#[global] Instance f_into_t_u16 : t_From t_u16 N :=
   {
     From_f_from (x : N) := Build_t_u16 (Build_t_U16 x)
   }.
 
-Instance f_into_t_u32 : t_From t_u32 N :=
+#[global] Instance f_into_t_u32 : t_From t_u32 N :=
   {
     From_f_from (x : N) := Build_t_u32 (Build_t_U32 x)
   }.
 
-Instance f_into_t_u64 : t_From t_u64 N :=
+#[global] Instance f_into_t_u64 : t_From t_u64 N :=
   {
     From_f_from (x : N) := Build_t_u64 (Build_t_U64 x)
   }.
 
-Instance f_into_t_u128 : t_From t_u128 N :=
+#[global] Instance f_into_t_u128 : t_From t_u128 N :=
   {
     From_f_from (x : N) := Build_t_u128 (Build_t_U128 x)
   }.
 
-Instance f_into_t_usize : t_From t_usize N :=
+#[global] Instance f_into_t_usize : t_From t_usize N :=
   {
     From_f_from (x : N) := Build_t_usize (Build_t_U64 x)
   }.
@@ -1730,7 +1730,7 @@ Definition overflowing_add682280407 (self : t_usize) (rhs : t_usize) : (t_usize*
   add_with_overflow_usize (self) (rhs).
 
 Check t_Neg.
-Instance t_Neg_125588538 : t_Neg ((t_i8)) :=
+#[global] Instance t_Neg_125588538 : t_Neg ((t_i8)) :=
   {
     Neg_f_Output := t_i8;
     Neg_f_neg := fun  (self : t_i8)=>
@@ -1745,7 +1745,7 @@ Definition abs945505614 (self : t_i8) : t_i8 :=
   else
     self.
 
-Instance t_Neg_977573626 : t_Neg ((t_i16)) :=
+#[global] Instance t_Neg_977573626 : t_Neg ((t_i16)) :=
   {
     Neg_f_Output := t_i16;
     Neg_f_neg := fun  (self : t_i16)=>
@@ -1760,7 +1760,7 @@ Definition abs581170970 (self : t_i16) : t_i16 :=
   else
     self.
 
-Instance t_Neg_289824503 : t_Neg ((t_i32)) :=
+#[global] Instance t_Neg_289824503 : t_Neg ((t_i32)) :=
   {
     Neg_f_Output := t_i32;
     Neg_f_neg := fun  (self : t_i32)=>
@@ -1775,7 +1775,7 @@ Definition abs590464694 (self : t_i32) : t_i32 :=
   else
     self.
 
-Instance t_Neg_895800448 : t_Neg ((t_i64)) :=
+#[global] Instance t_Neg_895800448 : t_Neg ((t_i64)) :=
   {
     Neg_f_Output := t_i64;
     Neg_f_neg := fun  (self : t_i64)=>
@@ -1790,7 +1790,7 @@ Definition abs654781043 (self : t_i64) : t_i64 :=
   else
     self.
 
-Instance t_Neg_830237431 : t_Neg ((t_i128)) :=
+#[global] Instance t_Neg_830237431 : t_Neg ((t_i128)) :=
   {
     Neg_f_Output := t_i128;
     Neg_f_neg := fun  (self : t_i128)=>
@@ -1805,7 +1805,7 @@ Definition abs204417539 (self : t_i128) : t_i128 :=
   else
     self.
 
-Instance t_Neg_693499423 : t_Neg ((t_isize)) :=
+#[global] Instance t_Neg_693499423 : t_Neg ((t_isize)) :=
   {
     Neg_f_Output := t_isize;
     Neg_f_neg := fun  (self : t_isize)=>
@@ -1820,211 +1820,211 @@ Definition abs220926056 (self : t_isize) : t_isize :=
   else
     self.
 
-Instance t_BitOr_174929276 : t_BitOr ((t_i8)) ((t_i8)) :=
+#[global] Instance t_BitOr_174929276 : t_BitOr ((t_i8)) ((t_i8)) :=
   {
     BitOr_f_Output := t_i8;
     BitOr_f_bitor := fun  (self : t_i8) (other : t_i8)=>
       Build_t_i8 (BitOr_f_bitor (i8_0 self) (i8_0 other));
   }.
 
-Instance t_BitOr_162600380 : t_BitOr ((t_i16)) ((t_i16)) :=
+#[global] Instance t_BitOr_162600380 : t_BitOr ((t_i16)) ((t_i16)) :=
   {
     BitOr_f_Output := t_i16;
     BitOr_f_bitor := fun  (self : t_i16) (other : t_i16)=>
       Build_t_i16 (BitOr_f_bitor (i16_0 self) (i16_0 other));
   }.
 
-Instance t_BitOr_64689421 : t_BitOr ((t_i32)) ((t_i32)) :=
+#[global] Instance t_BitOr_64689421 : t_BitOr ((t_i32)) ((t_i32)) :=
   {
     BitOr_f_Output := t_i32;
     BitOr_f_bitor := fun  (self : t_i32) (other : t_i32)=>
       Build_t_i32 (BitOr_f_bitor (i32_0 self) (i32_0 other));
   }.
 
-Instance t_BitOr_348780956 : t_BitOr ((t_i64)) ((t_i64)) :=
+#[global] Instance t_BitOr_348780956 : t_BitOr ((t_i64)) ((t_i64)) :=
   {
     BitOr_f_Output := t_i64;
     BitOr_f_bitor := fun  (self : t_i64) (other : t_i64)=>
       Build_t_i64 (BitOr_f_bitor (i64_0 self) (i64_0 other));
   }.
 
-Instance t_BitOr_643690063 : t_BitOr ((t_i128)) ((t_i128)) :=
+#[global] Instance t_BitOr_643690063 : t_BitOr ((t_i128)) ((t_i128)) :=
   {
     BitOr_f_Output := t_i128;
     BitOr_f_bitor := fun  (self : t_i128) (other : t_i128)=>
       Build_t_i128 (BitOr_f_bitor (i128_0 self) (i128_0 other));
   }.
 
-Instance t_BitOr_1027404433 : t_BitOr ((t_isize)) ((t_isize)) :=
+#[global] Instance t_BitOr_1027404433 : t_BitOr ((t_isize)) ((t_isize)) :=
   {
     BitOr_f_Output := t_isize;
     BitOr_f_bitor := fun  (self : t_isize) (other : t_isize)=>
       Build_t_isize (BitOr_f_bitor (isize_0 self) (isize_0 other));
   }.
 
-Instance t_From_124503227 : t_From ((t_u16)) ((t_u8)) :=
+#[global] Instance t_From_124503227 : t_From ((t_u16)) ((t_u8)) :=
   {
     From_f_from := fun  (x : t_u8)=>
       Build_t_u16 (Into_f_into (u8_0 x));
   }.
 
-Instance t_From_499390246 : t_From ((t_u32)) ((t_u8)) :=
+#[global] Instance t_From_499390246 : t_From ((t_u32)) ((t_u8)) :=
   {
     From_f_from := fun  (x : t_u8)=>
       Build_t_u32 (Into_f_into (u8_0 x));
   }.
 
-Instance t_From_1040523499 : t_From ((t_u64)) ((t_u8)) :=
+#[global] Instance t_From_1040523499 : t_From ((t_u64)) ((t_u8)) :=
   {
     From_f_from := fun  (x : t_u8)=>
       Build_t_u64 (Into_f_into (u8_0 x));
   }.
 
-Instance t_From_827336555 : t_From ((t_u128)) ((t_u8)) :=
+#[global] Instance t_From_827336555 : t_From ((t_u128)) ((t_u8)) :=
   {
     From_f_from := fun  (x : t_u8)=>
       Build_t_u128 (Into_f_into (u8_0 x));
   }.
 
-Instance t_From_1002852925 : t_From ((t_usize)) ((t_u8)) :=
+#[global] Instance t_From_1002852925 : t_From ((t_usize)) ((t_u8)) :=
   {
     From_f_from := fun  (x : t_u8)=>
       Build_t_usize (Into_f_into (u8_0 x));
   }.
 
-Instance t_From_476851440 : t_From ((t_u8)) ((t_u16)) :=
+#[global] Instance t_From_476851440 : t_From ((t_u8)) ((t_u16)) :=
   {
     From_f_from := fun  (x : t_u16)=>
       Build_t_u8 (Into_f_into (u16_0 x));
   }.
 
-Instance t_From_590504350 : t_From ((t_u32)) ((t_u16)) :=
+#[global] Instance t_From_590504350 : t_From ((t_u32)) ((t_u16)) :=
   {
     From_f_from := fun  (x : t_u16)=>
       Build_t_u32 (Into_f_into (u16_0 x));
   }.
 
-Instance t_From_786143320 : t_From ((t_u64)) ((t_u16)) :=
+#[global] Instance t_From_786143320 : t_From ((t_u64)) ((t_u16)) :=
   {
     From_f_from := fun  (x : t_u16)=>
       Build_t_u64 (Into_f_into (u16_0 x));
   }.
 
-Instance t_From_98507156 : t_From ((t_u128)) ((t_u16)) :=
+#[global] Instance t_From_98507156 : t_From ((t_u128)) ((t_u16)) :=
   {
     From_f_from := fun  (x : t_u16)=>
       Build_t_u128 (Into_f_into (u16_0 x));
   }.
 
-Instance t_From_427149512 : t_From ((t_usize)) ((t_u16)) :=
+#[global] Instance t_From_427149512 : t_From ((t_usize)) ((t_u16)) :=
   {
     From_f_from := fun  (x : t_u16)=>
       Build_t_usize (Into_f_into (u16_0 x));
   }.
 
-Instance t_From_306676060 : t_From ((t_u8)) ((t_u32)) :=
+#[global] Instance t_From_306676060 : t_From ((t_u8)) ((t_u32)) :=
   {
     From_f_from := fun  (x : t_u32)=>
       Build_t_u8 (Into_f_into (u32_0 x));
   }.
 
-Instance t_From_55624543 : t_From ((t_u16)) ((t_u32)) :=
+#[global] Instance t_From_55624543 : t_From ((t_u16)) ((t_u32)) :=
   {
     From_f_from := fun  (x : t_u32)=>
       Build_t_u16 (Into_f_into (u32_0 x));
   }.
 
-Instance t_From_863285405 : t_From ((t_u64)) ((t_u32)) :=
+#[global] Instance t_From_863285405 : t_From ((t_u64)) ((t_u32)) :=
   {
     From_f_from := fun  (x : t_u32)=>
       Build_t_u64 (Into_f_into (u32_0 x));
   }.
 
-Instance t_From_675130423 : t_From ((t_u128)) ((t_u32)) :=
+#[global] Instance t_From_675130423 : t_From ((t_u128)) ((t_u32)) :=
   {
     From_f_from := fun  (x : t_u32)=>
       Build_t_u128 (Into_f_into (u32_0 x));
   }.
 
-Instance t_From_295642421 : t_From ((t_usize)) ((t_u32)) :=
+#[global] Instance t_From_295642421 : t_From ((t_usize)) ((t_u32)) :=
   {
     From_f_from := fun  (x : t_u32)=>
       Build_t_usize (Into_f_into (u32_0 x));
   }.
 
-Instance t_From_690942554 : t_From ((t_u8)) ((t_u64)) :=
+#[global] Instance t_From_690942554 : t_From ((t_u8)) ((t_u64)) :=
   {
     From_f_from := fun  (x : t_u64)=>
       Build_t_u8 (Into_f_into (u64_0 x));
   }.
 
-Instance t_From_956877210 : t_From ((t_u16)) ((t_u64)) :=
+#[global] Instance t_From_956877210 : t_From ((t_u16)) ((t_u64)) :=
   {
     From_f_from := fun  (x : t_u64)=>
       Build_t_u16 (Into_f_into (u64_0 x));
   }.
 
-Instance t_From_124072492 : t_From ((t_u32)) ((t_u64)) :=
+#[global] Instance t_From_124072492 : t_From ((t_u32)) ((t_u64)) :=
   {
     From_f_from := fun  (x : t_u64)=>
       Build_t_u32 (Into_f_into (u64_0 x));
   }.
 
-Instance t_From_882228220 : t_From ((t_u128)) ((t_u64)) :=
+#[global] Instance t_From_882228220 : t_From ((t_u128)) ((t_u64)) :=
   {
     From_f_from := fun  (x : t_u64)=>
       Build_t_u128 (Into_f_into (u64_0 x));
   }.
 
-Instance t_From_1060762174 : t_From ((t_u8)) ((t_u128)) :=
+#[global] Instance t_From_1060762174 : t_From ((t_u8)) ((t_u128)) :=
   {
     From_f_from := fun  (x : t_u128)=>
       Build_t_u8 (Into_f_into (u128_0 x));
   }.
 
-Instance t_From_437123664 : t_From ((t_u16)) ((t_u128)) :=
+#[global] Instance t_From_437123664 : t_From ((t_u16)) ((t_u128)) :=
   {
     From_f_from := fun  (x : t_u128)=>
       Build_t_u16 (Into_f_into (u128_0 x));
   }.
 
-Instance t_From_685712174 : t_From ((t_u32)) ((t_u128)) :=
+#[global] Instance t_From_685712174 : t_From ((t_u32)) ((t_u128)) :=
   {
     From_f_from := fun  (x : t_u128)=>
       Build_t_u32 (Into_f_into (u128_0 x));
   }.
 
-Instance t_From_239215567 : t_From ((t_u64)) ((t_u128)) :=
+#[global] Instance t_From_239215567 : t_From ((t_u64)) ((t_u128)) :=
   {
     From_f_from := fun  (x : t_u128)=>
       Build_t_u64 (Into_f_into (u128_0 x));
   }.
 
-Instance t_From_583993496 : t_From ((t_usize)) ((t_u128)) :=
+#[global] Instance t_From_583993496 : t_From ((t_usize)) ((t_u128)) :=
   {
     From_f_from := fun  (x : t_u128)=>
       Build_t_usize (Into_f_into (u128_0 x));
   }.
 
-Instance t_From_1069835847 : t_From ((t_u8)) ((t_usize)) :=
+#[global] Instance t_From_1069835847 : t_From ((t_u8)) ((t_usize)) :=
   {
     From_f_from := fun  (x : t_usize)=>
       Build_t_u8 (Into_f_into (usize_0 x));
   }.
 
-Instance t_From_976343396 : t_From ((t_u16)) ((t_usize)) :=
+#[global] Instance t_From_976343396 : t_From ((t_u16)) ((t_usize)) :=
   {
     From_f_from := fun  (x : t_usize)=>
       Build_t_u16 (Into_f_into (usize_0 x));
   }.
 
-Instance t_From_448121712 : t_From ((t_u32)) ((t_usize)) :=
+#[global] Instance t_From_448121712 : t_From ((t_u32)) ((t_usize)) :=
   {
     From_f_from := fun  (x : t_usize)=>
       Build_t_u32 (Into_f_into (usize_0 x));
   }.
 
-Instance t_From_448032498 : t_From ((t_u128)) ((t_usize)) :=
+#[global] Instance t_From_448032498 : t_From ((t_u128)) ((t_usize)) :=
   {
     From_f_from := fun  (x : t_usize)=>
       Build_t_u128 (Into_f_into (usize_0 x));
@@ -2138,84 +2138,84 @@ Definition wrapping_add427637036 (self : t_usize) (rhs : t_usize) : t_usize :=
 Definition wrapping_mul680896953 (self : t_usize) (rhs : t_usize) : t_usize :=
   wrapping_mul_usize (self) (rhs).
 
-Instance t_Add_695878175 : t_Add ((t_i8)) ((t_i8)) :=
+#[global] Instance t_Add_695878175 : t_Add ((t_i8)) ((t_i8)) :=
   {
     Add_f_Output := t_i8;
     Add_f_add := fun  (self : t_i8) (other : t_i8)=>
       Build_t_i8 (Add_f_add (i8_0 self) (i8_0 other));
   }.
 
-Instance t_Add_877139857 : t_Add ((t_i16)) ((t_i16)) :=
+#[global] Instance t_Add_877139857 : t_Add ((t_i16)) ((t_i16)) :=
   {
     Add_f_Output := t_i16;
     Add_f_add := fun  (self : t_i16) (other : t_i16)=>
       Build_t_i16 (Add_f_add (i16_0 self) (i16_0 other));
   }.
 
-Instance t_Add_426581780 : t_Add ((t_i32)) ((t_i32)) :=
+#[global] Instance t_Add_426581780 : t_Add ((t_i32)) ((t_i32)) :=
   {
     Add_f_Output := t_i32;
     Add_f_add := fun  (self : t_i32) (other : t_i32)=>
       Build_t_i32 (Add_f_add (i32_0 self) (i32_0 other));
   }.
 
-Instance t_Add_113633409 : t_Add ((t_i64)) ((t_i64)) :=
+#[global] Instance t_Add_113633409 : t_Add ((t_i64)) ((t_i64)) :=
   {
     Add_f_Output := t_i64;
     Add_f_add := fun  (self : t_i64) (other : t_i64)=>
       Build_t_i64 (Add_f_add (i64_0 self) (i64_0 other));
   }.
 
-Instance t_Add_788236527 : t_Add ((t_i128)) ((t_i128)) :=
+#[global] Instance t_Add_788236527 : t_Add ((t_i128)) ((t_i128)) :=
   {
     Add_f_Output := t_i128;
     Add_f_add := fun  (self : t_i128) (other : t_i128)=>
       Build_t_i128 (Add_f_add (i128_0 self) (i128_0 other));
   }.
 
-Instance t_Add_247333017 : t_Add ((t_isize)) ((t_isize)) :=
+#[global] Instance t_Add_247333017 : t_Add ((t_isize)) ((t_isize)) :=
   {
     Add_f_Output := t_isize;
     Add_f_add := fun  (self : t_isize) (other : t_isize)=>
       Build_t_isize (Add_f_add (isize_0 self) (isize_0 other));
   }.
 
-Instance t_Sub_756206062 : t_Sub ((t_i8)) ((t_i8)) :=
+#[global] Instance t_Sub_756206062 : t_Sub ((t_i8)) ((t_i8)) :=
   {
     Sub_f_Output := t_i8;
     Sub_f_sub := fun  (self : t_i8) (other : t_i8)=>
       Build_t_i8 (Sub_f_sub (i8_0 self) (i8_0 other));
   }.
 
-Instance t_Sub_618838212 : t_Sub ((t_i16)) ((t_i16)) :=
+#[global] Instance t_Sub_618838212 : t_Sub ((t_i16)) ((t_i16)) :=
   {
     Sub_f_Output := t_i16;
     Sub_f_sub := fun  (self : t_i16) (other : t_i16)=>
       Build_t_i16 (Sub_f_sub (i16_0 self) (i16_0 other));
   }.
 
-Instance t_Sub_44574118 : t_Sub ((t_i32)) ((t_i32)) :=
+#[global] Instance t_Sub_44574118 : t_Sub ((t_i32)) ((t_i32)) :=
   {
     Sub_f_Output := t_i32;
     Sub_f_sub := fun  (self : t_i32) (other : t_i32)=>
       Build_t_i32 (Sub_f_sub (i32_0 self) (i32_0 other));
   }.
 
-Instance t_Sub_287793174 : t_Sub ((t_i64)) ((t_i64)) :=
+#[global] Instance t_Sub_287793174 : t_Sub ((t_i64)) ((t_i64)) :=
   {
     Sub_f_Output := t_i64;
     Sub_f_sub := fun  (self : t_i64) (other : t_i64)=>
       Build_t_i64 (Sub_f_sub (i64_0 self) (i64_0 other));
   }.
 
-Instance t_Sub_837338145 : t_Sub ((t_i128)) ((t_i128)) :=
+#[global] Instance t_Sub_837338145 : t_Sub ((t_i128)) ((t_i128)) :=
   {
     Sub_f_Output := t_i128;
     Sub_f_sub := fun  (self : t_i128) (other : t_i128)=>
       Build_t_i128 (Sub_f_sub (i128_0 self) (i128_0 other));
   }.
 
-Instance t_Sub_22961567 : t_Sub ((t_isize)) ((t_isize)) :=
+#[global] Instance t_Sub_22961567 : t_Sub ((t_isize)) ((t_isize)) :=
   {
     Sub_f_Output := t_isize;
     Sub_f_sub := fun  (self : t_isize) (other : t_isize)=>
@@ -2276,133 +2276,133 @@ Definition wrapping_sub813101882 (self : t_usize) (rhs : t_usize) : t_usize :=
 Definition wrapping_neg342773446 (self : t_usize) : t_usize :=
   wrapping_sub813101882 (Build_t_usize (Constants_f_ZERO)) (self).
 
-Instance t_Add_63222257 : t_Add ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Add_63222257 : t_Add ((t_u8)) ((t_u8)) :=
   {
     Add_f_Output := t_u8;
     Add_f_add := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (Add_f_add (u8_0 self) (u8_0 other));
   }.
 
-Instance t_Add_568595401 : t_Add ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Add_568595401 : t_Add ((t_u16)) ((t_u16)) :=
   {
     Add_f_Output := t_u16;
     Add_f_add := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (Add_f_add (u16_0 self) (u16_0 other));
   }.
 
-Instance t_Add_99427071 : t_Add ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Add_99427071 : t_Add ((t_u32)) ((t_u32)) :=
   {
     Add_f_Output := t_u32;
     Add_f_add := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (Add_f_add (u32_0 self) (u32_0 other));
   }.
 
-Instance t_Add_963057404 : t_Add ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Add_963057404 : t_Add ((t_u64)) ((t_u64)) :=
   {
     Add_f_Output := t_u64;
     Add_f_add := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (Add_f_add (u64_0 self) (u64_0 other));
   }.
 
-Instance t_Add_258013445 : t_Add ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Add_258013445 : t_Add ((t_u128)) ((t_u128)) :=
   {
     Add_f_Output := t_u128;
     Add_f_add := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (Add_f_add (u128_0 self) (u128_0 other));
   }.
 
-Instance t_Add_192585125 : t_Add ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Add_192585125 : t_Add ((t_usize)) ((t_usize)) :=
   {
     Add_f_Output := t_usize;
     Add_f_add := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (Add_f_add (usize_0 self) (usize_0 other));
   }.
 
-Instance t_Mul_307943337 : t_Mul ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Mul_307943337 : t_Mul ((t_u8)) ((t_u8)) :=
   {
     Mul_f_Output := t_u8;
     Mul_f_mul := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (Mul_f_mul (u8_0 self) (u8_0 other));
   }.
 
-Instance t_Mul_579880302 : t_Mul ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Mul_579880302 : t_Mul ((t_u16)) ((t_u16)) :=
   {
     Mul_f_Output := t_u16;
     Mul_f_mul := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (Mul_f_mul (u16_0 self) (u16_0 other));
   }.
 
-Instance t_Mul_969448321 : t_Mul ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Mul_969448321 : t_Mul ((t_u32)) ((t_u32)) :=
   {
     Mul_f_Output := t_u32;
     Mul_f_mul := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (Mul_f_mul (u32_0 self) (u32_0 other));
   }.
 
-Instance t_Mul_572333733 : t_Mul ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Mul_572333733 : t_Mul ((t_u64)) ((t_u64)) :=
   {
     Mul_f_Output := t_u64;
     Mul_f_mul := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (Mul_f_mul (u64_0 self) (u64_0 other));
   }.
 
-Instance t_Mul_904691459 : t_Mul ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Mul_904691459 : t_Mul ((t_u128)) ((t_u128)) :=
   {
     Mul_f_Output := t_u128;
     Mul_f_mul := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (Mul_f_mul (u128_0 self) (u128_0 other));
   }.
 
-Instance t_Mul_490480124 : t_Mul ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Mul_490480124 : t_Mul ((t_usize)) ((t_usize)) :=
   {
     Mul_f_Output := t_usize;
     Mul_f_mul := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (Mul_f_mul (usize_0 self) (usize_0 other));
   }.
 
-Instance t_Mul_542253756 : t_Mul ((t_i8)) ((t_i8)) :=
+#[global] Instance t_Mul_542253756 : t_Mul ((t_i8)) ((t_i8)) :=
   {
     Mul_f_Output := t_i8;
     Mul_f_mul := fun  (self : t_i8) (other : t_i8)=>
       Build_t_i8 (Mul_f_mul (i8_0 self) (i8_0 other));
   }.
 
-Instance t_Mul_586956420 : t_Mul ((t_i16)) ((t_i16)) :=
+#[global] Instance t_Mul_586956420 : t_Mul ((t_i16)) ((t_i16)) :=
   {
     Mul_f_Output := t_i16;
     Mul_f_mul := fun  (self : t_i16) (other : t_i16)=>
       Build_t_i16 (Mul_f_mul (i16_0 self) (i16_0 other));
   }.
 
-Instance t_Mul_622712365 : t_Mul ((t_i32)) ((t_i32)) :=
+#[global] Instance t_Mul_622712365 : t_Mul ((t_i32)) ((t_i32)) :=
   {
     Mul_f_Output := t_i32;
     Mul_f_mul := fun  (self : t_i32) (other : t_i32)=>
       Build_t_i32 (Mul_f_mul (i32_0 self) (i32_0 other));
   }.
 
-Instance t_Mul_167399285 : t_Mul ((t_i64)) ((t_i64)) :=
+#[global] Instance t_Mul_167399285 : t_Mul ((t_i64)) ((t_i64)) :=
   {
     Mul_f_Output := t_i64;
     Mul_f_mul := fun  (self : t_i64) (other : t_i64)=>
       Build_t_i64 (Mul_f_mul (i64_0 self) (i64_0 other));
   }.
 
-Instance t_Mul_264435207 : t_Mul ((t_i128)) ((t_i128)) :=
+#[global] Instance t_Mul_264435207 : t_Mul ((t_i128)) ((t_i128)) :=
   {
     Mul_f_Output := t_i128;
     Mul_f_mul := fun  (self : t_i128) (other : t_i128)=>
       Build_t_i128 (Mul_f_mul (i128_0 self) (i128_0 other));
   }.
 
-Instance t_Mul_9915144 : t_Mul ((t_isize)) ((t_isize)) :=
+#[global] Instance t_Mul_9915144 : t_Mul ((t_isize)) ((t_isize)) :=
   {
     Mul_f_Output := t_isize;
     Mul_f_mul := fun  (self : t_isize) (other : t_isize)=>
       Build_t_isize (Mul_f_mul (isize_0 self) (isize_0 other));
   }.
 
-Instance t_Div_23426959 : t_Div ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Div_23426959 : t_Div ((t_u8)) ((t_u8)) :=
   {
     Div_f_Output := t_u8;
     Div_f_div := fun  (self : t_u8) (other : t_u8)=>
@@ -2415,7 +2415,7 @@ Definition wrapping_div660080892 (self : t_u8) (rhs : t_u8) : t_u8 :=
 Definition wrapping_div_euclid481233436 (self : t_u8) (rhs : t_u8) : t_u8 :=
   Div_f_div (self) (rhs).
 
-Instance t_Div_469212879 : t_Div ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Div_469212879 : t_Div ((t_u16)) ((t_u16)) :=
   {
     Div_f_Output := t_u16;
     Div_f_div := fun  (self : t_u16) (other : t_u16)=>
@@ -2428,7 +2428,7 @@ Definition wrapping_div366977334 (self : t_u16) (rhs : t_u16) : t_u16 :=
 Definition wrapping_div_euclid22267888 (self : t_u16) (rhs : t_u16) : t_u16 :=
   Div_f_div (self) (rhs).
 
-Instance t_Div_248596974 : t_Div ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Div_248596974 : t_Div ((t_u32)) ((t_u32)) :=
   {
     Div_f_Output := t_u32;
     Div_f_div := fun  (self : t_u32) (other : t_u32)=>
@@ -2441,7 +2441,7 @@ Definition wrapping_div931150450 (self : t_u32) (rhs : t_u32) : t_u32 :=
 Definition wrapping_div_euclid606291997 (self : t_u32) (rhs : t_u32) : t_u32 :=
   Div_f_div (self) (rhs).
 
-Instance t_Div_901268642 : t_Div ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Div_901268642 : t_Div ((t_u64)) ((t_u64)) :=
   {
     Div_f_Output := t_u64;
     Div_f_div := fun  (self : t_u64) (other : t_u64)=>
@@ -2454,7 +2454,7 @@ Definition wrapping_div168427046 (self : t_u64) (rhs : t_u64) : t_u64 :=
 Definition wrapping_div_euclid321252086 (self : t_u64) (rhs : t_u64) : t_u64 :=
   Div_f_div (self) (rhs).
 
-Instance t_Div_868602092 : t_Div ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Div_868602092 : t_Div ((t_u128)) ((t_u128)) :=
   {
     Div_f_Output := t_u128;
     Div_f_div := fun  (self : t_u128) (other : t_u128)=>
@@ -2467,7 +2467,7 @@ Definition wrapping_div692427683 (self : t_u128) (rhs : t_u128) : t_u128 :=
 Definition wrapping_div_euclid926334515 (self : t_u128) (rhs : t_u128) : t_u128 :=
   Div_f_div (self) (rhs).
 
-Instance t_Div_740920454 : t_Div ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Div_740920454 : t_Div ((t_usize)) ((t_usize)) :=
   {
     Div_f_Output := t_usize;
     Div_f_div := fun  (self : t_usize) (other : t_usize)=>
@@ -2480,7 +2480,7 @@ Definition wrapping_div905768546 (self : t_usize) (rhs : t_usize) : t_usize :=
 Definition wrapping_div_euclid90317722 (self : t_usize) (rhs : t_usize) : t_usize :=
   Div_f_div (self) (rhs).
 
-Instance t_Rem_485335443 : t_Rem ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Rem_485335443 : t_Rem ((t_u8)) ((t_u8)) :=
   {
     Rem_f_Output := t_u8;
     Rem_f_rem := fun  (self : t_u8) (other : t_u8)=>
@@ -2493,7 +2493,7 @@ Definition wrapping_rem984569721 (self : t_u8) (rhs : t_u8) : t_u8 :=
 Definition wrapping_rem_euclid946579345 (self : t_u8) (rhs : t_u8) : t_u8 :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Rem_780488465 : t_Rem ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Rem_780488465 : t_Rem ((t_u16)) ((t_u16)) :=
   {
     Rem_f_Output := t_u16;
     Rem_f_rem := fun  (self : t_u16) (other : t_u16)=>
@@ -2506,7 +2506,7 @@ Definition wrapping_rem378598035 (self : t_u16) (rhs : t_u16) : t_u16 :=
 Definition wrapping_rem_euclid602402638 (self : t_u16) (rhs : t_u16) : t_u16 :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Rem_734014529 : t_Rem ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Rem_734014529 : t_Rem ((t_u32)) ((t_u32)) :=
   {
     Rem_f_Output := t_u32;
     Rem_f_rem := fun  (self : t_u32) (other : t_u32)=>
@@ -2519,7 +2519,7 @@ Definition wrapping_rem292009099 (self : t_u32) (rhs : t_u32) : t_u32 :=
 Definition wrapping_rem_euclid1020271291 (self : t_u32) (rhs : t_u32) : t_u32 :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Rem_455480749 : t_Rem ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Rem_455480749 : t_Rem ((t_u64)) ((t_u64)) :=
   {
     Rem_f_Output := t_u64;
     Rem_f_rem := fun  (self : t_u64) (other : t_u64)=>
@@ -2532,7 +2532,7 @@ Definition wrapping_rem390602260 (self : t_u64) (rhs : t_u64) : t_u64 :=
 Definition wrapping_rem_euclid839264546 (self : t_u64) (rhs : t_u64) : t_u64 :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Rem_412060686 : t_Rem ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Rem_412060686 : t_Rem ((t_u128)) ((t_u128)) :=
   {
     Rem_f_Output := t_u128;
     Rem_f_rem := fun  (self : t_u128) (other : t_u128)=>
@@ -2545,7 +2545,7 @@ Definition wrapping_rem332379920 (self : t_u128) (rhs : t_u128) : t_u128 :=
 Definition wrapping_rem_euclid646122423 (self : t_u128) (rhs : t_u128) : t_u128 :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Rem_796467486 : t_Rem ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Rem_796467486 : t_Rem ((t_usize)) ((t_usize)) :=
   {
     Rem_f_Output := t_usize;
     Rem_f_rem := fun  (self : t_usize) (other : t_usize)=>
@@ -2558,651 +2558,651 @@ Definition wrapping_rem333089373 (self : t_usize) (rhs : t_usize) : t_usize :=
 Definition wrapping_rem_euclid769656504 (self : t_usize) (rhs : t_usize) : t_usize :=
   Rem_f_rem (self) (rhs).
 
-Instance t_Shr_1061808511 : t_Shr ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Shr_1061808511 : t_Shr ((t_u8)) ((t_u8)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_590944100 : t_Shr ((t_u8)) ((t_u16)) :=
+#[global] Instance t_Shr_590944100 : t_Shr ((t_u8)) ((t_u16)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_u16)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_267395304 : t_Shr ((t_u8)) ((t_u32)) :=
+#[global] Instance t_Shr_267395304 : t_Shr ((t_u8)) ((t_u32)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_u32)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_922719969 : t_Shr ((t_u8)) ((t_u64)) :=
+#[global] Instance t_Shr_922719969 : t_Shr ((t_u8)) ((t_u64)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_u64)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_138723873 : t_Shr ((t_u8)) ((t_u128)) :=
+#[global] Instance t_Shr_138723873 : t_Shr ((t_u8)) ((t_u128)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_u128)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_558887005 : t_Shr ((t_u8)) ((t_usize)) :=
+#[global] Instance t_Shr_558887005 : t_Shr ((t_u8)) ((t_usize)) :=
   {
     Shr_f_Output := t_u8;
     Shr_f_shr := fun  (self : t_u8) (other : t_usize)=>
       Build_t_u8 (Shr_f_shr (u8_0 self) (usize_0 other));
   }.
 
-Instance t_Shr_170693446 : t_Shr ((t_u16)) ((t_u8)) :=
+#[global] Instance t_Shr_170693446 : t_Shr ((t_u16)) ((t_u8)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_u8)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_899863737 : t_Shr ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Shr_899863737 : t_Shr ((t_u16)) ((t_u16)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_290867596 : t_Shr ((t_u16)) ((t_u32)) :=
+#[global] Instance t_Shr_290867596 : t_Shr ((t_u16)) ((t_u32)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_u32)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_630800316 : t_Shr ((t_u16)) ((t_u64)) :=
+#[global] Instance t_Shr_630800316 : t_Shr ((t_u16)) ((t_u64)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_u64)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_51138976 : t_Shr ((t_u16)) ((t_u128)) :=
+#[global] Instance t_Shr_51138976 : t_Shr ((t_u16)) ((t_u128)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_u128)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_82567397 : t_Shr ((t_u16)) ((t_usize)) :=
+#[global] Instance t_Shr_82567397 : t_Shr ((t_u16)) ((t_usize)) :=
   {
     Shr_f_Output := t_u16;
     Shr_f_shr := fun  (self : t_u16) (other : t_usize)=>
       Build_t_u16 (Shr_f_shr (u16_0 self) (usize_0 other));
   }.
 
-Instance t_Shr_430948219 : t_Shr ((t_u32)) ((t_u8)) :=
+#[global] Instance t_Shr_430948219 : t_Shr ((t_u32)) ((t_u8)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_u8)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_157675832 : t_Shr ((t_u32)) ((t_u16)) :=
+#[global] Instance t_Shr_157675832 : t_Shr ((t_u32)) ((t_u16)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_u16)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_708845947 : t_Shr ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Shr_708845947 : t_Shr ((t_u32)) ((t_u32)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_1060262347 : t_Shr ((t_u32)) ((t_u64)) :=
+#[global] Instance t_Shr_1060262347 : t_Shr ((t_u32)) ((t_u64)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_u64)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_372764217 : t_Shr ((t_u32)) ((t_u128)) :=
+#[global] Instance t_Shr_372764217 : t_Shr ((t_u32)) ((t_u128)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_u128)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_534962338 : t_Shr ((t_u32)) ((t_usize)) :=
+#[global] Instance t_Shr_534962338 : t_Shr ((t_u32)) ((t_usize)) :=
   {
     Shr_f_Output := t_u32;
     Shr_f_shr := fun  (self : t_u32) (other : t_usize)=>
       Build_t_u32 (Shr_f_shr (u32_0 self) (usize_0 other));
   }.
 
-Instance t_Shr_45695168 : t_Shr ((t_u64)) ((t_u8)) :=
+#[global] Instance t_Shr_45695168 : t_Shr ((t_u64)) ((t_u8)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_u8)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_1027310629 : t_Shr ((t_u64)) ((t_u16)) :=
+#[global] Instance t_Shr_1027310629 : t_Shr ((t_u64)) ((t_u16)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_u16)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_357793917 : t_Shr ((t_u64)) ((t_u32)) :=
+#[global] Instance t_Shr_357793917 : t_Shr ((t_u64)) ((t_u32)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_u32)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_1038705817 : t_Shr ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Shr_1038705817 : t_Shr ((t_u64)) ((t_u64)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_567649567 : t_Shr ((t_u64)) ((t_u128)) :=
+#[global] Instance t_Shr_567649567 : t_Shr ((t_u64)) ((t_u128)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_u128)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_380280894 : t_Shr ((t_u64)) ((t_usize)) :=
+#[global] Instance t_Shr_380280894 : t_Shr ((t_u64)) ((t_usize)) :=
   {
     Shr_f_Output := t_u64;
     Shr_f_shr := fun  (self : t_u64) (other : t_usize)=>
       Build_t_u64 (Shr_f_shr (u64_0 self) (usize_0 other));
   }.
 
-Instance t_Shr_555027554 : t_Shr ((t_u128)) ((t_u8)) :=
+#[global] Instance t_Shr_555027554 : t_Shr ((t_u128)) ((t_u8)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_u8)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_225523666 : t_Shr ((t_u128)) ((t_u16)) :=
+#[global] Instance t_Shr_225523666 : t_Shr ((t_u128)) ((t_u16)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_u16)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_910916464 : t_Shr ((t_u128)) ((t_u32)) :=
+#[global] Instance t_Shr_910916464 : t_Shr ((t_u128)) ((t_u32)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_u32)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_137291592 : t_Shr ((t_u128)) ((t_u64)) :=
+#[global] Instance t_Shr_137291592 : t_Shr ((t_u128)) ((t_u64)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_u64)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_1070013296 : t_Shr ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Shr_1070013296 : t_Shr ((t_u128)) ((t_u128)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_1009428374 : t_Shr ((t_u128)) ((t_usize)) :=
+#[global] Instance t_Shr_1009428374 : t_Shr ((t_u128)) ((t_usize)) :=
   {
     Shr_f_Output := t_u128;
     Shr_f_shr := fun  (self : t_u128) (other : t_usize)=>
       Build_t_u128 (Shr_f_shr (u128_0 self) (usize_0 other));
   }.
 
-Instance t_Shr_94723353 : t_Shr ((t_usize)) ((t_u8)) :=
+#[global] Instance t_Shr_94723353 : t_Shr ((t_usize)) ((t_u8)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_u8)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (u8_0 other));
   }.
 
-Instance t_Shr_18219058 : t_Shr ((t_usize)) ((t_u16)) :=
+#[global] Instance t_Shr_18219058 : t_Shr ((t_usize)) ((t_u16)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_u16)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (u16_0 other));
   }.
 
-Instance t_Shr_14441839 : t_Shr ((t_usize)) ((t_u32)) :=
+#[global] Instance t_Shr_14441839 : t_Shr ((t_usize)) ((t_u32)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_u32)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (u32_0 other));
   }.
 
-Instance t_Shr_642676920 : t_Shr ((t_usize)) ((t_u64)) :=
+#[global] Instance t_Shr_642676920 : t_Shr ((t_usize)) ((t_u64)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_u64)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (u64_0 other));
   }.
 
-Instance t_Shr_65876869 : t_Shr ((t_usize)) ((t_u128)) :=
+#[global] Instance t_Shr_65876869 : t_Shr ((t_usize)) ((t_u128)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_u128)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (u128_0 other));
   }.
 
-Instance t_Shr_833436714 : t_Shr ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Shr_833436714 : t_Shr ((t_usize)) ((t_usize)) :=
   {
     Shr_f_Output := t_usize;
     Shr_f_shr := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (Shr_f_shr (usize_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_161455974 : t_Shl ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Shl_161455974 : t_Shl ((t_u8)) ((t_u8)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_861055562 : t_Shl ((t_u8)) ((t_u16)) :=
+#[global] Instance t_Shl_861055562 : t_Shl ((t_u8)) ((t_u16)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_u16)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_479938796 : t_Shl ((t_u8)) ((t_u32)) :=
+#[global] Instance t_Shl_479938796 : t_Shl ((t_u8)) ((t_u32)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_u32)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_373462431 : t_Shl ((t_u8)) ((t_u64)) :=
+#[global] Instance t_Shl_373462431 : t_Shl ((t_u8)) ((t_u64)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_u64)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_356733585 : t_Shl ((t_u8)) ((t_u128)) :=
+#[global] Instance t_Shl_356733585 : t_Shl ((t_u8)) ((t_u128)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_u128)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_138823384 : t_Shl ((t_u8)) ((t_usize)) :=
+#[global] Instance t_Shl_138823384 : t_Shl ((t_u8)) ((t_usize)) :=
   {
     Shl_f_Output := t_u8;
     Shl_f_shl := fun  (self : t_u8) (other : t_usize)=>
       Build_t_u8 (Shl_f_shl (u8_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_492599436 : t_Shl ((t_u16)) ((t_u8)) :=
+#[global] Instance t_Shl_492599436 : t_Shl ((t_u16)) ((t_u8)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_u8)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_254997522 : t_Shl ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Shl_254997522 : t_Shl ((t_u16)) ((t_u16)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_840888059 : t_Shl ((t_u16)) ((t_u32)) :=
+#[global] Instance t_Shl_840888059 : t_Shl ((t_u16)) ((t_u32)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_u32)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_1017206779 : t_Shl ((t_u16)) ((t_u64)) :=
+#[global] Instance t_Shl_1017206779 : t_Shl ((t_u16)) ((t_u64)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_u64)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_751151164 : t_Shl ((t_u16)) ((t_u128)) :=
+#[global] Instance t_Shl_751151164 : t_Shl ((t_u16)) ((t_u128)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_u128)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_303578486 : t_Shl ((t_u16)) ((t_usize)) :=
+#[global] Instance t_Shl_303578486 : t_Shl ((t_u16)) ((t_usize)) :=
   {
     Shl_f_Output := t_u16;
     Shl_f_shl := fun  (self : t_u16) (other : t_usize)=>
       Build_t_u16 (Shl_f_shl (u16_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_186069032 : t_Shl ((t_u32)) ((t_u8)) :=
+#[global] Instance t_Shl_186069032 : t_Shl ((t_u32)) ((t_u8)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_u8)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_320616735 : t_Shl ((t_u32)) ((t_u16)) :=
+#[global] Instance t_Shl_320616735 : t_Shl ((t_u32)) ((t_u16)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_u16)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_325940784 : t_Shl ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Shl_325940784 : t_Shl ((t_u32)) ((t_u32)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_398883535 : t_Shl ((t_u32)) ((t_u64)) :=
+#[global] Instance t_Shl_398883535 : t_Shl ((t_u32)) ((t_u64)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_u64)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_700909976 : t_Shl ((t_u32)) ((t_u128)) :=
+#[global] Instance t_Shl_700909976 : t_Shl ((t_u32)) ((t_u128)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_u128)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_475027367 : t_Shl ((t_u32)) ((t_usize)) :=
+#[global] Instance t_Shl_475027367 : t_Shl ((t_u32)) ((t_usize)) :=
   {
     Shl_f_Output := t_u32;
     Shl_f_shl := fun  (self : t_u32) (other : t_usize)=>
       Build_t_u32 (Shl_f_shl (u32_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_620046856 : t_Shl ((t_u64)) ((t_u8)) :=
+#[global] Instance t_Shl_620046856 : t_Shl ((t_u64)) ((t_u8)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_u8)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_158077515 : t_Shl ((t_u64)) ((t_u16)) :=
+#[global] Instance t_Shl_158077515 : t_Shl ((t_u64)) ((t_u16)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_u16)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_1071441050 : t_Shl ((t_u64)) ((t_u32)) :=
+#[global] Instance t_Shl_1071441050 : t_Shl ((t_u64)) ((t_u32)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_u32)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_581241894 : t_Shl ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Shl_581241894 : t_Shl ((t_u64)) ((t_u64)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_916302310 : t_Shl ((t_u64)) ((t_u128)) :=
+#[global] Instance t_Shl_916302310 : t_Shl ((t_u64)) ((t_u128)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_u128)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_59609547 : t_Shl ((t_u64)) ((t_usize)) :=
+#[global] Instance t_Shl_59609547 : t_Shl ((t_u64)) ((t_usize)) :=
   {
     Shl_f_Output := t_u64;
     Shl_f_shl := fun  (self : t_u64) (other : t_usize)=>
       Build_t_u64 (Shl_f_shl (u64_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_308574333 : t_Shl ((t_u128)) ((t_u8)) :=
+#[global] Instance t_Shl_308574333 : t_Shl ((t_u128)) ((t_u8)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_u8)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_966677877 : t_Shl ((t_u128)) ((t_u16)) :=
+#[global] Instance t_Shl_966677877 : t_Shl ((t_u128)) ((t_u16)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_u16)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_38932717 : t_Shl ((t_u128)) ((t_u32)) :=
+#[global] Instance t_Shl_38932717 : t_Shl ((t_u128)) ((t_u32)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_u32)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_108085956 : t_Shl ((t_u128)) ((t_u64)) :=
+#[global] Instance t_Shl_108085956 : t_Shl ((t_u128)) ((t_u64)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_u64)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_489587677 : t_Shl ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Shl_489587677 : t_Shl ((t_u128)) ((t_u128)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_837150634 : t_Shl ((t_u128)) ((t_usize)) :=
+#[global] Instance t_Shl_837150634 : t_Shl ((t_u128)) ((t_usize)) :=
   {
     Shl_f_Output := t_u128;
     Shl_f_shl := fun  (self : t_u128) (other : t_usize)=>
       Build_t_u128 (Shl_f_shl (u128_0 self) (usize_0 other));
   }.
 
-Instance t_Shl_736165651 : t_Shl ((t_usize)) ((t_u8)) :=
+#[global] Instance t_Shl_736165651 : t_Shl ((t_usize)) ((t_u8)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_u8)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (u8_0 other));
   }.
 
-Instance t_Shl_740886741 : t_Shl ((t_usize)) ((t_u16)) :=
+#[global] Instance t_Shl_740886741 : t_Shl ((t_usize)) ((t_u16)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_u16)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (u16_0 other));
   }.
 
-Instance t_Shl_683246358 : t_Shl ((t_usize)) ((t_u32)) :=
+#[global] Instance t_Shl_683246358 : t_Shl ((t_usize)) ((t_u32)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_u32)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (u32_0 other));
   }.
 
-Instance t_Shl_436746920 : t_Shl ((t_usize)) ((t_u64)) :=
+#[global] Instance t_Shl_436746920 : t_Shl ((t_usize)) ((t_u64)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_u64)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (u64_0 other));
   }.
 
-Instance t_Shl_527409353 : t_Shl ((t_usize)) ((t_u128)) :=
+#[global] Instance t_Shl_527409353 : t_Shl ((t_usize)) ((t_u128)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_u128)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (u128_0 other));
   }.
 
-Instance t_Shl_982380013 : t_Shl ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Shl_982380013 : t_Shl ((t_usize)) ((t_usize)) :=
   {
     Shl_f_Output := t_usize;
     Shl_f_shl := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (Shl_f_shl (usize_0 self) (usize_0 other));
   }.
 
-Instance t_BitOr_669654947 : t_BitOr ((t_u8)) ((t_u8)) :=
+#[global] Instance t_BitOr_669654947 : t_BitOr ((t_u8)) ((t_u8)) :=
   {
     BitOr_f_Output := t_u8;
     BitOr_f_bitor := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (BitOr_f_bitor (u8_0 self) (u8_0 other));
   }.
 
-Instance t_BitOr_892941557 : t_BitOr ((t_u16)) ((t_u16)) :=
+#[global] Instance t_BitOr_892941557 : t_BitOr ((t_u16)) ((t_u16)) :=
   {
     BitOr_f_Output := t_u16;
     BitOr_f_bitor := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (BitOr_f_bitor (u16_0 self) (u16_0 other));
   }.
 
-Instance t_BitOr_991330847 : t_BitOr ((t_u32)) ((t_u32)) :=
+#[global] Instance t_BitOr_991330847 : t_BitOr ((t_u32)) ((t_u32)) :=
   {
     BitOr_f_Output := t_u32;
     BitOr_f_bitor := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (BitOr_f_bitor (u32_0 self) (u32_0 other));
   }.
 
-Instance t_BitOr_692971983 : t_BitOr ((t_u64)) ((t_u64)) :=
+#[global] Instance t_BitOr_692971983 : t_BitOr ((t_u64)) ((t_u64)) :=
   {
     BitOr_f_Output := t_u64;
     BitOr_f_bitor := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (BitOr_f_bitor (u64_0 self) (u64_0 other));
   }.
 
-Instance t_BitOr_227319538 : t_BitOr ((t_u128)) ((t_u128)) :=
+#[global] Instance t_BitOr_227319538 : t_BitOr ((t_u128)) ((t_u128)) :=
   {
     BitOr_f_Output := t_u128;
     BitOr_f_bitor := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (BitOr_f_bitor (u128_0 self) (u128_0 other));
   }.
 
-Instance t_BitOr_669787696 : t_BitOr ((t_usize)) ((t_usize)) :=
+#[global] Instance t_BitOr_669787696 : t_BitOr ((t_usize)) ((t_usize)) :=
   {
     BitOr_f_Output := t_usize;
     BitOr_f_bitor := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (BitOr_f_bitor (usize_0 self) (usize_0 other));
   }.
 
-Instance t_BitXor_327788827 : t_BitXor ((t_u8)) ((t_u8)) :=
+#[global] Instance t_BitXor_327788827 : t_BitXor ((t_u8)) ((t_u8)) :=
   {
     BitXor_f_Output := t_u8;
     BitXor_f_bitxor := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (BitXor_f_bitxor (u8_0 self) (u8_0 other));
   }.
 
-Instance t_BitXor_661040931 : t_BitXor ((t_u16)) ((t_u16)) :=
+#[global] Instance t_BitXor_661040931 : t_BitXor ((t_u16)) ((t_u16)) :=
   {
     BitXor_f_Output := t_u16;
     BitXor_f_bitxor := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (BitXor_f_bitxor (u16_0 self) (u16_0 other));
   }.
 
-Instance t_BitXor_222957020 : t_BitXor ((t_u32)) ((t_u32)) :=
+#[global] Instance t_BitXor_222957020 : t_BitXor ((t_u32)) ((t_u32)) :=
   {
     BitXor_f_Output := t_u32;
     BitXor_f_bitxor := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (BitXor_f_bitxor (u32_0 self) (u32_0 other));
   }.
 
-Instance t_BitXor_530545977 : t_BitXor ((t_u64)) ((t_u64)) :=
+#[global] Instance t_BitXor_530545977 : t_BitXor ((t_u64)) ((t_u64)) :=
   {
     BitXor_f_Output := t_u64;
     BitXor_f_bitxor := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (BitXor_f_bitxor (u64_0 self) (u64_0 other));
   }.
 
-Instance t_BitXor_112780081 : t_BitXor ((t_u128)) ((t_u128)) :=
+#[global] Instance t_BitXor_112780081 : t_BitXor ((t_u128)) ((t_u128)) :=
   {
     BitXor_f_Output := t_u128;
     BitXor_f_bitxor := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (BitXor_f_bitxor (u128_0 self) (u128_0 other));
   }.
 
-Instance t_BitXor_969810999 : t_BitXor ((t_usize)) ((t_usize)) :=
+#[global] Instance t_BitXor_969810999 : t_BitXor ((t_usize)) ((t_usize)) :=
   {
     BitXor_f_Output := t_usize;
     BitXor_f_bitxor := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (BitXor_f_bitxor (usize_0 self) (usize_0 other));
   }.
 
-Instance t_BitAnd_126469303 : t_BitAnd ((t_u8)) ((t_u8)) :=
+#[global] Instance t_BitAnd_126469303 : t_BitAnd ((t_u8)) ((t_u8)) :=
   {
     BitAnd_f_Output := t_u8;
     BitAnd_f_bitand := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (BitAnd_f_bitand (u8_0 self) (u8_0 other));
   }.
 
-Instance t_BitAnd_531525101 : t_BitAnd ((t_u16)) ((t_u16)) :=
+#[global] Instance t_BitAnd_531525101 : t_BitAnd ((t_u16)) ((t_u16)) :=
   {
     BitAnd_f_Output := t_u16;
     BitAnd_f_bitand := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (BitAnd_f_bitand (u16_0 self) (u16_0 other));
   }.
 
-Instance t_BitAnd_24728760 : t_BitAnd ((t_u32)) ((t_u32)) :=
+#[global] Instance t_BitAnd_24728760 : t_BitAnd ((t_u32)) ((t_u32)) :=
   {
     BitAnd_f_Output := t_u32;
     BitAnd_f_bitand := fun  (self : t_u32) (other : t_u32)=>
       Build_t_u32 (BitAnd_f_bitand (u32_0 self) (u32_0 other));
   }.
 
-Instance t_BitAnd_35845574 : t_BitAnd ((t_u64)) ((t_u64)) :=
+#[global] Instance t_BitAnd_35845574 : t_BitAnd ((t_u64)) ((t_u64)) :=
   {
     BitAnd_f_Output := t_u64;
     BitAnd_f_bitand := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (BitAnd_f_bitand (u64_0 self) (u64_0 other));
   }.
 
-Instance t_BitAnd_396424214 : t_BitAnd ((t_u128)) ((t_u128)) :=
+#[global] Instance t_BitAnd_396424214 : t_BitAnd ((t_u128)) ((t_u128)) :=
   {
     BitAnd_f_Output := t_u128;
     BitAnd_f_bitand := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (BitAnd_f_bitand (u128_0 self) (u128_0 other));
   }.
 
-Instance t_BitAnd_652458180 : t_BitAnd ((t_usize)) ((t_usize)) :=
+#[global] Instance t_BitAnd_652458180 : t_BitAnd ((t_usize)) ((t_usize)) :=
   {
     BitAnd_f_Output := t_usize;
     BitAnd_f_bitand := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (BitAnd_f_bitand (usize_0 self) (usize_0 other));
   }.
 
-Instance t_Sub_81344668 : t_Sub ((t_u8)) ((t_u8)) :=
+#[global] Instance t_Sub_81344668 : t_Sub ((t_u8)) ((t_u8)) :=
   {
     Sub_f_Output := t_u8;
     Sub_f_sub := fun  (self : t_u8) (other : t_u8)=>
       Build_t_u8 (Sub_f_sub (u8_0 self) (u8_0 other));
   }.
 
-Instance t_Sub_1011801854 : t_Sub ((t_u16)) ((t_u16)) :=
+#[global] Instance t_Sub_1011801854 : t_Sub ((t_u16)) ((t_u16)) :=
   {
     Sub_f_Output := t_u16;
     Sub_f_sub := fun  (self : t_u16) (other : t_u16)=>
       Build_t_u16 (Sub_f_sub (u16_0 self) (u16_0 other));
   }.
 
-Instance t_Sub_1070652436 : t_Sub ((t_u32)) ((t_u32)) :=
+#[global] Instance t_Sub_1070652436 : t_Sub ((t_u32)) ((t_u32)) :=
   {
     Sub_f_Output := t_u32;
     Sub_f_sub := fun  (self : t_u32) (other : t_u32)=>
@@ -3341,42 +3341,42 @@ Program Definition rotate_right442734174 (self : t_usize) (n : t_u32) : t_usize 
   ControlFlow_Continue (never_to_any (_ (* hoist12 *)))).
 Fail Next Obligation.
 
-Instance t_Sub_788323603 : t_Sub ((t_u64)) ((t_u64)) :=
+#[global] Instance t_Sub_788323603 : t_Sub ((t_u64)) ((t_u64)) :=
   {
     Sub_f_Output := t_u64;
     Sub_f_sub := fun  (self : t_u64) (other : t_u64)=>
       Build_t_u64 (Sub_f_sub (u64_0 self) (u64_0 other));
   }.
 
-Instance t_Sub_1046324685 : t_Sub ((t_u128)) ((t_u128)) :=
+#[global] Instance t_Sub_1046324685 : t_Sub ((t_u128)) ((t_u128)) :=
   {
     Sub_f_Output := t_u128;
     Sub_f_sub := fun  (self : t_u128) (other : t_u128)=>
       Build_t_u128 (Sub_f_sub (u128_0 self) (u128_0 other));
   }.
 
-Instance t_Sub_1064369889 : t_Sub ((t_usize)) ((t_usize)) :=
+#[global] Instance t_Sub_1064369889 : t_Sub ((t_usize)) ((t_usize)) :=
   {
     Sub_f_Output := t_usize;
     Sub_f_sub := fun  (self : t_usize) (other : t_usize)=>
       Build_t_usize (Sub_f_sub (usize_0 self) (usize_0 other));
   }.
 
-(* Definition bswap_u128 (x : t_u128) : t_u128 := *)
-(*   let count : t_u128 := Into_f_into (0) in *)
-(*   let count := fold_range (0) (Into_f_into (v_BITS136999051)) (fun count _ => *)
-(*     true) (count) (fun count i => *)
-(*     let low_bit : t_u128 := Into_f_into (BitAnd_f_bitand (Shr_f_shr (Clone_f_clone (x)) (Into_f_into (i))) (Into_f_into (1))) in *)
-(*     let count := Add_f_add (Shl_f_shl (count) (Into_f_into (1))) (low_bit) in *)
+(* Program Definition bswap_u128 (x : t_u128) : t_u128 := *)
+(*   let count : t_u128 := Into_f_into (0%N) in *)
+(*   let count := fold_range (Build_t_usize (Build_t_U64 0%N)) (Into_f_into (v_BITS136999051)) (fun count _ => *)
+(*     true) (count) (fun (count : t_u128) (i : t_usize) => *)
+(*     let low_bit : t_u128 := (* Into_f_into *) (BitAnd_f_bitand (t_BitAnd := _ : t_BitAnd t_u128 t_u128) (Shr_f_shr (Clone_f_clone (x)) (Into_f_into (i))) (Into_f_into (1%N) : t_u128)) in *)
+(*     let count : t_u128 := Add_f_add (t_Add := t_Add_258013445 : t_Add t_u128 t_u128) (Shl_f_shl (t_Shl := t_Shl_38932717 : t_Shl t_u128 t_u32)  (count) (Into_f_into (1%N) : t_u32)) (low_bit) in *)
 (*     count) in *)
 (*   count. *)
 
-(* Definition bswap_u16 (x : t_u16) : t_u16 := *)
+(* Program Definition bswap_u16 (x : t_u16) : t_u16 := *)
 (*   let count : t_u16 := Into_f_into (0) in *)
-(*   let count := fold_range (0) (Into_f_into (v_BITS277333551)) (fun count _ => *)
-(*     true) (count) (fun count i => *)
-(*     let low_bit : t_u16 := Into_f_into (BitAnd_f_bitand (Shr_f_shr (Clone_f_clone (x)) (Into_f_into (i))) (Into_f_into (1))) in *)
-(*     let count := Add_f_add (Shl_f_shl (count) (Into_f_into (1))) (low_bit) in *)
+(*   let count := fold_range (Build_t_usize (Build_t_U64 0%N)) (Into_f_into (v_BITS277333551)) (fun count _ => *)
+(*     true) (count) (fun (count : t_u16) (i : t_usize) => *)
+(*     let low_bit : t_u16 := (* Into_f_into *) (BitAnd_f_bitand (t_BitAnd := _ : t_BitAnd t_u16 t_u16) (Shr_f_shr (Clone_f_clone (x)) (Into_f_into (i))) (Into_f_into (1%N) : t_u16)) in *)
+(*     let count := Add_f_add (t_Add := _ : t_Add _ _) (Shl_f_shl (count) (Into_f_into (1))) (low_bit) in *)
 (*     count) in *)
 (*   count. *)
 
@@ -3776,49 +3776,49 @@ Instance t_Sub_1064369889 : t_Sub ((t_usize)) ((t_usize)) :=
 (*   run (let hoist30 := ControlFlow_Break (cttz_usize (self)) in *)
 (*   ControlFlow_Continue (never_to_any (hoist30))). *)
 
-Instance t_Div_345870802 : t_Div ((t_i8)) ((t_i8)) :=
+#[global] Instance t_Div_345870802 : t_Div ((t_i8)) ((t_i8)) :=
   {
     Div_f_Output := t_i8;
     Div_f_div := fun  (self : t_i8) (other : t_i8)=>
       Build_t_i8 (Div_f_div (i8_0 self) (i8_0 other));
   }.
 
-Instance t_Div_69196905 : t_Div ((t_i16)) ((t_i16)) :=
+#[global] Instance t_Div_69196905 : t_Div ((t_i16)) ((t_i16)) :=
   {
     Div_f_Output := t_i16;
     Div_f_div := fun  (self : t_i16) (other : t_i16)=>
       Build_t_i16 (Div_f_div (i16_0 self) (i16_0 other));
   }.
 
-Instance t_Div_222178666 : t_Div ((t_i32)) ((t_i32)) :=
+#[global] Instance t_Div_222178666 : t_Div ((t_i32)) ((t_i32)) :=
   {
     Div_f_Output := t_i32;
     Div_f_div := fun  (self : t_i32) (other : t_i32)=>
       Build_t_i32 (Div_f_div (i32_0 self) (i32_0 other));
   }.
 
-Instance t_Div_551701934 : t_Div ((t_i64)) ((t_i64)) :=
+#[global] Instance t_Div_551701934 : t_Div ((t_i64)) ((t_i64)) :=
   {
     Div_f_Output := t_i64;
     Div_f_div := fun  (self : t_i64) (other : t_i64)=>
       Build_t_i64 (Div_f_div (i64_0 self) (i64_0 other));
   }.
 
-Instance t_Div_650346214 : t_Div ((t_i128)) ((t_i128)) :=
+#[global] Instance t_Div_650346214 : t_Div ((t_i128)) ((t_i128)) :=
   {
     Div_f_Output := t_i128;
     Div_f_div := fun  (self : t_i128) (other : t_i128)=>
       Build_t_i128 (Div_f_div (i128_0 self) (i128_0 other));
   }.
 
-Instance t_Div_911978922 : t_Div ((t_isize)) ((t_isize)) :=
+#[global] Instance t_Div_911978922 : t_Div ((t_isize)) ((t_isize)) :=
   {
     Div_f_Output := t_isize;
     Div_f_div := fun  (self : t_isize) (other : t_isize)=>
       Build_t_isize (Div_f_div (isize_0 self) (isize_0 other));
   }.
 
-Instance t_Rem_580678374 : t_Rem ((t_i8)) ((t_i8)) :=
+#[global] Instance t_Rem_580678374 : t_Rem ((t_i8)) ((t_i8)) :=
   {
     Rem_f_Output := t_i8;
     Rem_f_rem := fun  (self : t_i8) (other : t_i8)=>
@@ -3834,7 +3834,7 @@ Definition rem_euclid622298453 (self : t_i8) (rhs : t_i8) : t_i8 :=
   else
     r.
 
-Instance t_Rem_532407972 : t_Rem ((t_i16)) ((t_i16)) :=
+#[global] Instance t_Rem_532407972 : t_Rem ((t_i16)) ((t_i16)) :=
   {
     Rem_f_Output := t_i16;
     Rem_f_rem := fun  (self : t_i16) (other : t_i16)=>
@@ -3850,7 +3850,7 @@ Definition rem_euclid158017644 (self : t_i16) (rhs : t_i16) : t_i16 :=
   else
     r.
 
-Instance t_Rem_406274620 : t_Rem ((t_i32)) ((t_i32)) :=
+#[global] Instance t_Rem_406274620 : t_Rem ((t_i32)) ((t_i32)) :=
   {
     Rem_f_Output := t_i32;
     Rem_f_rem := fun  (self : t_i32) (other : t_i32)=>
@@ -3866,7 +3866,7 @@ Definition rem_euclid881249982 (self : t_i32) (rhs : t_i32) : t_i32 :=
   else
     r.
 
-Instance t_Rem_296096507 : t_Rem ((t_i64)) ((t_i64)) :=
+#[global] Instance t_Rem_296096507 : t_Rem ((t_i64)) ((t_i64)) :=
   {
     Rem_f_Output := t_i64;
     Rem_f_rem := fun  (self : t_i64) (other : t_i64)=>
@@ -3882,7 +3882,7 @@ Definition rem_euclid1057082210 (self : t_i64) (rhs : t_i64) : t_i64 :=
   else
     r.
 
-Instance t_Rem_773614977 : t_Rem ((t_i128)) ((t_i128)) :=
+#[global] Instance t_Rem_773614977 : t_Rem ((t_i128)) ((t_i128)) :=
   {
     Rem_f_Output := t_i128;
     Rem_f_rem := fun  (self : t_i128) (other : t_i128)=>
@@ -3898,7 +3898,7 @@ Definition rem_euclid254910751 (self : t_i128) (rhs : t_i128) : t_i128 :=
   else
     r.
 
-Instance t_Rem_136872616 : t_Rem ((t_isize)) ((t_isize)) :=
+#[global] Instance t_Rem_136872616 : t_Rem ((t_isize)) ((t_isize)) :=
   {
     Rem_f_Output := t_isize;
     Rem_f_rem := fun  (self : t_isize) (other : t_isize)=>
@@ -3914,7 +3914,7 @@ Definition rem_euclid828379367 (self : t_isize) (rhs : t_isize) : t_isize :=
   else
     r.
 
-Instance t_Not_500984294 : t_Not ((t_u8)) :=
+#[global] Instance t_Not_500984294 : t_Not ((t_u8)) :=
   {
     Not_f_Output := t_u8;
     Not_f_not := fun  (self : t_u8)=>
@@ -3930,7 +3930,7 @@ Instance t_Not_500984294 : t_Not ((t_u8)) :=
 (* Definition trailing_ones359778731 (self : t_u8) : t_u32 := *)
 (*   trailing_zeros572929871 (Not_f_not (self)). *)
 
-Instance t_Not_560691647 : t_Not ((t_u16)) :=
+#[global] Instance t_Not_560691647 : t_Not ((t_u16)) :=
   {
     Not_f_Output := t_u16;
     Not_f_not := fun  (self : t_u16)=>
@@ -3946,7 +3946,7 @@ Instance t_Not_560691647 : t_Not ((t_u16)) :=
 (* Definition trailing_ones903944727 (self : t_u16) : t_u32 := *)
 (*   trailing_zeros421474733 (Not_f_not (self)). *)
 
-Instance t_Not_220208504 : t_Not ((t_u32)) :=
+#[global] Instance t_Not_220208504 : t_Not ((t_u32)) :=
   {
     Not_f_Output := t_u32;
     Not_f_not := fun  (self : t_u32)=>
@@ -3962,7 +3962,7 @@ Instance t_Not_220208504 : t_Not ((t_u32)) :=
 (* Definition trailing_ones223371510 (self : t_u32) : t_u32 := *)
 (*   trailing_zeros1061560720 (Not_f_not (self)). *)
 
-Instance t_Not_655044209 : t_Not ((t_u64)) :=
+#[global] Instance t_Not_655044209 : t_Not ((t_u64)) :=
   {
     Not_f_Output := t_u64;
     Not_f_not := fun  (self : t_u64)=>
@@ -3978,7 +3978,7 @@ Instance t_Not_655044209 : t_Not ((t_u64)) :=
 (* Definition trailing_ones601201120 (self : t_u64) : t_u32 := *)
 (*   trailing_zeros188346231 (Not_f_not (self)). *)
 
-Instance t_Not_851738617 : t_Not ((t_u128)) :=
+#[global] Instance t_Not_851738617 : t_Not ((t_u128)) :=
   {
     Not_f_Output := t_u128;
     Not_f_not := fun  (self : t_u128)=>
@@ -3994,7 +3994,7 @@ Instance t_Not_851738617 : t_Not ((t_u128)) :=
 (* Definition trailing_ones705845381 (self : t_u128) : t_u32 := *)
 (*   trailing_zeros821715250 (Not_f_not (self)). *)
 
-Instance t_Not_677551814 : t_Not ((t_usize)) :=
+#[global] Instance t_Not_677551814 : t_Not ((t_usize)) :=
   {
     Not_f_Output := t_usize;
     Not_f_not := fun  (self : t_usize)=>
@@ -4022,7 +4022,7 @@ Notation "'TryFromSliceError'" := Build_t_TryFromSliceError.
 
 Definition t_Seq (v_T : Type) `{t_Sized (v_T)} : Type := list v_T.
 
-Instance t_Clone_640571940 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_Clone ((t_Seq ((v_T)))) :=
+#[global] Instance t_Clone_640571940 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_Clone ((t_Seq ((v_T)))) :=
   {
     Clone_f_clone := fun  (self : t_Seq ((v_T)))=>
       self;
@@ -4058,7 +4058,7 @@ Arguments Array_f_v {_} {_} {_}.
 #[export] Instance settable_t_Array `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} : Settable _ :=
   settable! (@Build_t_Array v_T v_N _) <Array_f_v>.
 
-Instance t_Clone_962303223 `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_Clone ((t_Array ((v_T)) (v_N))) :=
+#[global] Instance t_Clone_962303223 `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_Clone ((t_Array ((v_T)) (v_N))) :=
   {
     Clone_f_clone := fun  (self : t_Array ((v_T)) (v_N))=>
       Build_t_Array (Clone_f_clone (Array_f_v self));
@@ -4067,12 +4067,14 @@ Instance t_Clone_962303223 `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_C
 Definition cast `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Clone (v_T)} (self : t_Array ((v_T)) (v_N)) : t_Slice ((v_T)) :=
   Array_f_v self.
 
-(* Instance t_Index_927562605 `{v_T : Type} `{v_I : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Sized (v_I)} `{t_Clone (v_T)} `{t_Index (t_Slice ((v_T))) (v_I)} : t_Index ((t_Array ((v_T)) (v_N))) ((v_I)) := *)
-(*   { *)
-(*     Index_f_Output := Index_f_Output; *)
-(*     Index_f_index := fun  (self : t_Array ((v_T)) (v_N)) (index : v_I)=> *)
-(*       Index_f_index (cast (self)) (index); *)
-(*   }. *)
+From Core Require Import Core_Ops_Index.
+
+Instance t_Index_927562605 `{v_T : Type} `{v_I : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Sized (v_I)} `{t_Clone (v_T)} `{t_Index (t_Slice ((v_T))) (v_I)} : t_Index ((t_Array ((v_T)) (v_N))) ((v_I)) :=
+  {
+    Index_f_Output := Index_f_Output;
+    Index_f_index := fun  (self : t_Array ((v_T)) (v_N)) (index : v_I)=>
+      Index_f_index (cast (self)) (index);
+  }.
 
 (* Instance t_From_684363179 `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Clone (v_T)} : t_From ((t_Array (v_T) (v_N))) ((t_Array ((v_T)) (v_N))) := *)
 (*   { *)
@@ -4085,7 +4087,7 @@ Definition cast `{v_T : Type} `{v_N : t_usize} `{t_Sized (v_T)} `{t_Clone (v_T)}
 (*       end; *)
 (*   }. *)
 
-Instance t_Index_324031838 `{v_T : Type} `{v_I : Type} `{t_Sized (v_T)} `{t_Sized (v_I)} `{v_SliceIndex (v_I) (t_Slice ((v_T)))} : t_Index ((t_Slice ((v_T)))) ((v_I)) :=
+#[global] Instance t_Index_324031838 `{v_T : Type} `{v_I : Type} `{t_Sized (v_T)} `{t_Sized (v_I)} `{v_SliceIndex (v_I) (t_Slice ((v_T)))} : t_Index ((t_Slice ((v_T)))) ((v_I)) :=
   {
     Index_f_Output := SliceIndex_f_Output;
     Index_f_index := fun  (self : t_Slice ((v_T))) (index : v_I)=>
@@ -4542,10 +4544,24 @@ Definition match_list `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} (s : t_Seq
 (*       end; *)
 (*   }. *)
 
-(* Instance v_SliceIndex_622480125 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : v_SliceIndex ((t_usize)) ((t_Slice ((v_T)))) := *)
-(*   { *)
-(*     SliceIndex_f_Output := v_T; *)
-(*     SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=> *)
-(*       let x : t_usize := Into_f_into (U64_f_v usize_0 self) in *)
-(*       Index_f_index (Seq_f_v Slice_f_v slice) (x); *)
-(*   }. *)
+
+Check t_Index.
+Check (t_Index_324031838 (v_T := nat) (v_I := t_usize)).
+Instance v_SliceIndex_622480125 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : v_SliceIndex ((t_usize)) ((t_Slice ((v_T)))).
+econstructor.
+Unshelve.
+2: exact v_T.
+refine (let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in _).
+refine (
+    SliceIndex_f_Output := v_T;
+    SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=>
+      let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in
+      Index_f_index (t_Index := _) (slice) (x);
+  }).
+
+  {
+    SliceIndex_f_Output := v_T;
+    SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=>
+      let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in
+      Index_f_index (t_Index := _) (slice) (x);
+  }.

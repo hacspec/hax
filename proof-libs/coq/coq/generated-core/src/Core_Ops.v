@@ -58,8 +58,8 @@ Export Core_Ops_Bit.
 
 
 
-From Core Require Import Core_Ops_Index (t_Index).
-Export Core_Ops_Index (t_Index).
+From Core Require Import Core_Ops_Index.
+Export Core_Ops_Index.
 
 
 

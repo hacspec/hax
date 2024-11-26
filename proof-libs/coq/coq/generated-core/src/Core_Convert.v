@@ -15,25 +15,25 @@ Import RecordSetNotations.
 From Core Require Import Core_Marker.
 Export Core_Marker.
 
-Class t_From (v_Self : Type) (v_T : Type) `{t_Sized (v_Self)} `{t_Sized (v_T)} : Type :=
+Class t_From (v_Self : Type) (v_T : Type) (* `{t_Sized (v_Self)} `{t_Sized (v_T)} *) : Type :=
   {
     From_f_from : v_T -> v_Self;
   }.
-Arguments t_From (_) (_) {_} {_}.
+Arguments t_From (_) (_) (* {_} {_} *).
 
-Instance t_From_46353410 `{v_T : Type} `{t_Sized (v_T)} : t_From ((v_T)) ((v_T)) :=
+#[global] Instance t_From_46353410 `{v_T : Type} (* `{t_Sized (v_T)} *) : t_From ((v_T)) ((v_T)) :=
   {
     From_f_from := fun  (t : v_T)=>
       t;
   }.
 
-Class t_Into (v_Self : Type) (v_T : Type) `{t_Sized (v_Self)} `{t_Sized (v_T)} : Type :=
+Class t_Into (v_Self : Type) (v_T : Type) (* `{t_Sized (v_Self)} `{t_Sized (v_T)} *) : Type :=
   {
     Into_f_into : v_Self -> v_T;
   }.
-Arguments t_Into (_) (_) {_} {_}.
+Arguments t_Into (_) (_) (* {_} {_} *).
 
-#[global] Instance t_Into_730689925 `{v_T : Type} `{v_U : Type} `{t_Sized (v_T)} `{t_Sized (v_U)} `{t_From (v_U) (v_T)} : t_Into ((v_T)) ((v_U)) :=
+#[global] Instance t_Into_730689925 `{v_T : Type} `{v_U : Type} (* `{t_Sized (v_T)} `{t_Sized (v_U)} *) `{t_From (v_U) (v_T)} : t_Into ((v_T)) ((v_U)) :=
   {
     Into_f_into := fun  (self : v_T)=>
       From_f_from (self);
