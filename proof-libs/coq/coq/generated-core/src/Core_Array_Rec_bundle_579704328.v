@@ -4545,23 +4545,10 @@ Definition match_list `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} (s : t_Seq
 (*   }. *)
 
 
-Check t_Index.
-Check (t_Index_324031838 (v_T := nat) (v_I := t_usize)).
-Instance v_SliceIndex_622480125 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : v_SliceIndex ((t_usize)) ((t_Slice ((v_T)))).
-econstructor.
-Unshelve.
-2: exact v_T.
-refine (let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in _).
-refine (
-    SliceIndex_f_Output := v_T;
-    SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=>
-      let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in
-      Index_f_index (t_Index := _) (slice) (x);
-  }).
-
-  {
-    SliceIndex_f_Output := v_T;
-    SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=>
-      let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in
-      Index_f_index (t_Index := _) (slice) (x);
-  }.
+(* Instance v_SliceIndex_622480125 `{v_T : Type} `{t_Sized (v_T)} `{t_Clone (v_T)} : v_SliceIndex ((t_usize)) ((t_Slice ((v_T)))) := *)
+(*   { *)
+(*     SliceIndex_f_Output := v_T; *)
+(*     SliceIndex_f_index := fun  (self : t_usize) (slice : t_Slice ((v_T)))=> *)
+(*       let x : t_usize := Into_f_into (U64_f_v (usize_0 self)) in *)
+(*       Index_f_index (t_Index := _) (slice) (x); *)
+(*   }. *)
