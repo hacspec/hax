@@ -623,7 +623,7 @@ struct
              ^^ break 1))
         ^^ break 1
         ^^ CoqNotation.arguments (!^"Build_" ^^ name#p)
-             arguments_explicity_with_ty
+          arguments_explicity_without_ty (* arguments_explicity_with_ty *)
         ^^ concat_map_with ~pre:(break 1)
              (fun (ident, typ, attr) ->
                CoqNotation.arguments ident#p arguments_explicity_without_ty)
@@ -991,8 +991,10 @@ struct
           | "ge" -> "PartialOrd_f_ge"
           | "rem" -> "Rem_f_rem"
           | "add" -> "Add_f_add"
+          | "sub" -> "Sub_f_sub"
           | "mul" -> "Mul_f_mul"
           | "div" -> "Div_f_div"
+          | "index" -> "Index_f_index"
           | x -> x)
     end
 

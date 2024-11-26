@@ -389,7 +389,6 @@ name = "kyber_compress"
 version = "0.1.0"
 dependencies = [
  "hax-lib",
- "hax-lib-macros",
 ]
 
 [[package]]
@@ -737,7 +736,7 @@ dependencies = [
 name = "sha256"
 version = "0.1.0"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib",
 ]
 
 [[package]]
