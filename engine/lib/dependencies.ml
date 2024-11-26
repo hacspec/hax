@@ -53,8 +53,34 @@ module Make (F : Features.T) = struct
       end) in
       raw_associated_item >> List.map ~f:(snd >> item_of_uid)
 
+    (** `Ordered_concrete_ident` is just like `Concrete_ident`, but
+    the semantics of comparing two concrete idents is now defined in
+    term of which comes first in `CTX.items`. If we compare items not
+    present in `CTX.items` we revert to `Concrete_ident.compare`. *)
+    module Ordered_concrete_ident = struct
+      include Concrete_ident
+
+      open struct
+        let order : t -> int option =
+          let table : (t, int) Hashtbl.t =
+            let table = Hashtbl.create (module Concrete_ident) in
+            List.iteri CTX.items ~f:(fun i item ->
+                Hashtbl.set ~key:item.ident ~data:i table);
+            table
+          in
+          Hashtbl.find table
+      end
+
+      let compare (a : t) (b : t) =
+        match (order a, order b) with
+        | Some a, Some b -> Int.compare a b
+        | Some _, None -> 1
+        | None, Some _ -> -1
+        | _ -> Concrete_ident.compare a b
+    end
+
     module ItemGraph = struct
-      module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
+      module G = Graph.Persistent.Digraph.Concrete (Ordered_concrete_ident)
       module Topological = Graph.Topological.Make_stable (G)
       module Oper = Graph.Oper.P (G)
 
@@ -171,7 +197,7 @@ module Make (F : Features.T) = struct
         module Bundle = struct
           type t = Concrete_ident.t list
 
-          module G = Graph.Persistent.Graph.Concrete (Concrete_ident)
+          module G = Graph.Persistent.Graph.Concrete (Ordered_concrete_ident)
           module CC = Graph.Components.Undirected (G)
 
           let cycles g = CC.components_list g
