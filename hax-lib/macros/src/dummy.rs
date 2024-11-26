@@ -29,6 +29,7 @@ identity_proc_macro_attribute!(
     process_init,
     process_write,
     process_read,
+    opaque,
     opaque_type,
     refinement_type,
     fstar_replace,

@@ -130,8 +130,8 @@ pub enum AttrPayload {
     PVConstructor,
     PVHandwritten,
     TraitMethodNoPrePost,
-    /// Make a type opaque
-    OpaqueType,
+    /// Make something opaque
+    Erased,
 }
 
 pub const HAX_TOOL: &str = "_hax";

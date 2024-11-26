@@ -874,6 +874,26 @@ struct
       | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
+    let is_erased =
+      Attrs.find_unique_attr e.attrs
+        ~f:([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
+      |> Option.is_some
+    in
+    let erased_impl name ty attrs =
+      let name' = F.id_prime name in
+
+      [
+        F.decl ~quals:[ Assumption ] ~fsti:false ~attrs
+        @@ F.AST.Assume (name', ty);
+        F.decl ~fsti:false
+        @@ F.AST.TopLevelLet
+             ( NoLetQualifier,
+               [
+                 ( F.pat @@ F.AST.PatVar (name, None, []),
+                   F.term @@ F.AST.Var (F.lid_of_id @@ name') );
+               ] );
+      ]
+    in
     match e.v with
     | Alias { name; item } ->
         (* These should come from bundled items (in the case of cyclic module dependencies).
@@ -938,7 +958,10 @@ struct
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
-        if interface_mode then [ impl; intf ] else [ full ]
+
+        if is_erased then intf :: erased_impl name arrow_typ []
+        else if interface_mode then [ impl; intf ]
+        else [ full ]
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -971,10 +994,7 @@ struct
                             |> List.map ~f:to_pattern) ),
                    ty );
                ] )
-    | Type { name; generics; _ }
-      when Attrs.find_unique_attr e.attrs
-             ~f:([%eq: Types.ha_payload] OpaqueType >> Fn.flip Option.some_if ())
-           |> Option.is_some ->
+    | Type { name; generics; _ } when is_erased ->
         if not ctx.interface_mode then
           Error.raise
           @@ {
@@ -1471,18 +1491,13 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        let has_type =
-          List.exists items ~f:(fun { ii_v; _ } ->
-              match ii_v with IIType _ -> true | _ -> false)
-        in
-        let impl_val = ctx.interface_mode && not has_type in
         let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
-        if impl_val then
+        if is_erased then
           let generics_binders = List.map ~f:FStarBinder.to_binder generics in
           let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
           let v = F.AST.Val (name, val_type) in
           (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
-          @ F.decls ~fsti:false ~attrs:[ tcinst ] let_impl
+          @ erased_impl name val_type [ tcinst ]
         else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
     | Quote { quote; _ } ->
         let fstar_opts =
@@ -1529,8 +1544,7 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item ~signature_only (bo : BackendOptions.t) m items
-    (item : item) :
+let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
@@ -1548,8 +1562,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
     |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
   in
   let interface_mode =
-    signature_only
-    || not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
+    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1560,21 +1573,18 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         line_width = bo.line_width;
       }
   in
-  let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
+  let mk_impl i = `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
   let no_impl =
-    signature_only
-    || [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
+    [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
   in
   Print.pitem item
   |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
        | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
-       | `VerbatimIntf (s, nl) ->
-           [ ((if interface_mode then `Intf s else `Impl s), nl) ]
-       | `VerbatimImpl (s, nl) ->
-           [ ((if interface_mode then `Impl s else `Impl s), nl) ]
+       | `VerbatimIntf (s, nl) -> [ (mk_intf s, nl) ]
+       | `VerbatimImpl (s, nl) -> [ (`Impl s, nl) ]
        | `Comment s ->
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
@@ -1582,8 +1592,8 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
-let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
-    items : string * string =
+let string_of_items ~mod_name ~bundles (bo : BackendOptions.t) m items :
+    string * string =
   let collect_trait_goal_idents =
     object
       inherit [_] Visitors.reduce as super
@@ -1656,7 +1666,7 @@ let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
     List.concat_map
       ~f:(fun item ->
         let recursivity_prefix = get_recursivity_prefix item in
-        let strs = strings_of_item ~signature_only bo m items item in
+        let strs = strings_of_item bo m items item in
         match (recursivity_prefix, item.v) with
         | FirstMutRec, Fn _ ->
             replace_in_strs ~pattern:"let" ~with_:"let rec" strs
@@ -1709,20 +1719,8 @@ let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.concat_map ~f:(fun (ns, items) ->
-         let signature_only =
-           let is_dropped_body =
-             Concrete_ident.eq_name Rust_primitives__hax__dropped_body
-           in
-           let contains_dropped_body =
-             U.Reducers.collect_concrete_idents#visit_item ()
-             >> Set.exists ~f:is_dropped_body
-           in
-           List.exists ~f:contains_dropped_body items
-         in
          let mod_name = module_name ns in
-         let impl, intf =
-           string_of_items ~signature_only ~mod_name ~bundles bo m items
-         in
+         let impl, intf = string_of_items ~mod_name ~bundles bo m items in
          let make ~ext body =
            if String.is_empty body then None
            else

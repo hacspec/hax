@@ -621,9 +621,18 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
 /// type without revealing its definition.
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn opaque_type(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+#[deprecated(note = "Please use 'opaque' instead")]
+pub fn opaque_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    opaque(attr, item)
+}
+
+/// Mark a struct or an enum opaque: the extraction will assume the
+/// type without revealing its definition.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn opaque(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: Item = parse_macro_input!(item);
-    let attr = AttrPayload::OpaqueType;
+    let attr = AttrPayload::Erased;
     quote! {#attr #item}.into()
 }
 

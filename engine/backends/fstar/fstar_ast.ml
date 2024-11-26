@@ -9,6 +9,7 @@ module Ident = FStar_Ident
 
 let dummyRange = Range.dummyRange
 let id ident = Ident.mk_ident (ident, dummyRange)
+let id_prime (ident : Ident.ident) = id (ident.idText ^ "'")
 
 let lid path =
   let init, last = List.(drop_last_exn path, last_exn path) in
