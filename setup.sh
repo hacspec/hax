@@ -18,6 +18,16 @@ while [ $# -gt 0 ]; do
     --no-cleanup)
         CLEANUP_WORKSPACE=off
         ;;
+    --help)
+        echo "hax setup script"
+        echo ""
+        echo "Usage: $0 [OPTIONS]"
+        echo ""
+        echo "Options:"
+        echo ' -j <JOBS>     The number of opam jobs to run in parallel'
+        echo ' --no-cleanup  Disables the default behavior that runs `cargo clean` and `dune clean`'
+        exit
+        ;;
     esac
     shift
 done
