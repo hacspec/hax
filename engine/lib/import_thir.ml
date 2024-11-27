@@ -1456,10 +1456,11 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   else
     let span = Span.of_thir item.span in
     let attrs = c_item_attrs item.attributes in
-    let erased_by_user =
+    let erased_by_user attrs =
       Attr_payloads.payloads attrs
       |> List.exists ~f:(fst >> [%matches? (Erased : Types.ha_payload)])
     in
+    let item_erased_by_user = erased_by_user attrs in
     let erased_by_type_only =
       type_only
       &&
@@ -1473,11 +1474,11 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       | _ -> false
     in
     let attrs =
-      if erased_by_type_only && not erased_by_user then
+      if erased_by_type_only && not item_erased_by_user then
         Attr_payloads.to_attr Erased span :: attrs
       else attrs
     in
-    let erased = erased_by_user || erased_by_type_only in
+    let erased = item_erased_by_user || erased_by_type_only in
 
     let mk_one v = { span; v; ident; attrs } in
     let mk v = [ mk_one v ] in
@@ -1657,6 +1658,10 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
         List.map
           ~f:(fun (item : Thir.impl_item) ->
             let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
+            let sub_item_erased =
+              erased_by_user (c_item_attrs item.attributes)
+            in
+            let c_body = if sub_item_erased then c_expr_drop_body else c_body in
 
             let v =
               match (item.kind : Thir.impl_item_kind) with
