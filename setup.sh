@@ -19,7 +19,7 @@ while [ $# -gt 0 ]; do
 done
 
 # Warns if we're building in a dirty checkout of hax: while hacking on
-# hax, we should really be using the `./.utils/rebuild.sh`
+# hax, we should really be using `just build`.
 warn_if_dirty() {
     (
         cd "$SCRIPTPATH"
