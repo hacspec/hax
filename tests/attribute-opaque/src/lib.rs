@@ -1,10 +1,10 @@
-#[hax_lib::opaque_type]
+#[hax_lib::opaque]
 struct OpaqueStruct<const X: usize, T, U> {
     field: [T; X],
     other_field: U,
 }
 
-#[hax_lib::opaque_type]
+#[hax_lib::opaque]
 enum OpaqueEnum<const X: usize, T, U> {
     A([T; X]),
     B(U),

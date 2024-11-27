@@ -1456,11 +1456,14 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   else
     let span = Span.of_thir item.span in
     let attrs = c_item_attrs item.attributes in
+    (* this is true if the user explicilty requested to erase using the `opaque` macro *)
     let erased_by_user attrs =
       Attr_payloads.payloads attrs
       |> List.exists ~f:(fst >> [%matches? (Erased : Types.ha_payload)])
     in
     let item_erased_by_user = erased_by_user attrs in
+    (* This is true if the item should be erased because we are in type-only mode
+       (Only certain kinds of items are erased in this case). *)
     let erased_by_type_only =
       type_only
       &&
@@ -1473,6 +1476,8 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
           true
       | _ -> false
     in
+    (* If the item is erased in type-only mode we need to add the Erased attribute.
+       It is already present if the item is erased by user. *)
     let attrs =
       if erased_by_type_only && not item_erased_by_user then
         Attr_payloads.to_attr Erased span :: attrs
@@ -1718,6 +1723,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
         let items =
           if erased then
             [
+              (* Dummy associated item *)
               {
                 ii_span = Span.of_thir item.span;
                 ii_generics = { params = []; constraints = [] };

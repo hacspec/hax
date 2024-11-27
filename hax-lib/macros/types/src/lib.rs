@@ -130,7 +130,7 @@ pub enum AttrPayload {
     PVConstructor,
     PVHandwritten,
     TraitMethodNoPrePost,
-    /// Make something opaque
+    /// Make an item opaque
     Erased,
 }
 
