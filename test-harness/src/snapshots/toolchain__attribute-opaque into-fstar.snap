@@ -71,6 +71,4 @@ class t_T (v_Self: Type0) = {
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 val impl_T_for_u8:t_T u8
-
-val c:u8
 '''

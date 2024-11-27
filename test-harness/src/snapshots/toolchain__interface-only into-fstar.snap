@@ -38,14 +38,6 @@ open FStar.Mul
 /// modifier, `f` is still extractable as an interface.
 /// Expressions within type are still extracted, as well as pre- and
 /// post-conditions.
-val f (x: u8)
-    : Prims.Pure (t_Array u8 (sz 4))
-      (requires x <. 254uy)
-      (ensures
-        fun r ->
-          let r:t_Array u8 (sz 4) = r in
-          (r.[ sz 0 ] <: u8) >. x)
-
 assume
 val f': x: u8
   -> Prims.Pure (t_Array u8 (sz 4))
@@ -80,8 +72,6 @@ assume
 val impl_1': Core.Convert.t_From t_Bar u8
 
 let impl_1 = impl_1'
-
-val from__from: u8 -> t_Bar
 
 assume
 val from__from': u8 -> t_Bar

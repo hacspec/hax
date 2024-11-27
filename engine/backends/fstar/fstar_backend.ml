@@ -959,9 +959,11 @@ struct
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
 
-        if is_erased then intf :: erased_impl name arrow_typ []
-        else if interface_mode then [ impl; intf ]
-        else [ full ]
+        let erased = erased_impl name arrow_typ [] in
+        let impl, full =
+          if is_erased then (erased, erased) else ([ impl ], [ full ])
+        in
+        if interface_mode then intf :: impl else full
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
