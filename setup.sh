@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
         echo ""
         echo "Options:"
         echo ' -j <JOBS>     The number of opam jobs to run in parallel'
-        echo ' --no-cleanup  Disables the default behavior that runs `cargo clean` and `dune clean`'
+        echo ' --no-cleanup  Disables the default behavior that runs `cargo clean` and `opam clean`'
         exit
         ;;
     esac
@@ -38,7 +38,7 @@ cleanup_workspace() {
     cargo clean
     (
         cd engine
-        dune clean
+        opam clean
     )
 }
 
