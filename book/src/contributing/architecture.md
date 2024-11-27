@@ -11,7 +11,7 @@ The frontend is responsible for extracting and exporting Rust code's abstract sy
 
 ### `hax-frontend-exporter` Library
 
-This library mirrors the internal types of the Rust compiler (`rustc`) that constitute the **HIR** (High-Level Intermediate Representation), **THIR** (Typed High-Level Intermediate Representation), and **MIR** (Mid-Level Intermediate Representation) ASTs. It extends them with additional information such as attributes, trait implementations, and removes IDs indirections.
+This library mirrors the internal types of the Rust compiler (`rustc`) that constitute the **HIR** (High-Level Intermediate Representation), **THIR** (Typed High-Level Intermediate Representation), and **MIR** (Mid-Level Intermediate Representation) ASTs. It extends them with additional information such as attributes, trait implementations, and removes ID indirections.
 
 **`SInto` Trait:** The library defines an entry point for translating a given `rustc` value to its mirrored hax version using the `SInto` trait (stateful `into`). For a value `x` of type `T` from `rustc`, if `T` is mirrored by hax, then `x.sinto(s)` produces an augmented and simplified "hax-ified" AST for `x`. Here, `s` represents the state holding information about the translation process.
 
