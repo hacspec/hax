@@ -26,7 +26,7 @@ jobs:
         run: |
           nix-shell --packages coq coqPackages.coq-record-update --run "coq_makefile -f _CoqProject -o Makefile" && \
           nix-shell --packages coq coqPackages.coq-record-update --run "make" && \
-          nix-shell --packages coq coqPackages.coq-record-update --run "make install"
+          nix-shell --packages coq coqPackages.coq-record-update --run "sudo make install"
 
       - name: run coq - coverage
         working-directory: hax/examples/coverage/proofs/coq/extraction
