@@ -17,28 +17,3 @@ enum Foo {
     A,
     B,
 }
-
-mod no_alpha_sorting {
-    fn u01() {}
-    fn r02() {}
-    fn b03() {}
-    fn f04() {}
-    fn h05() {}
-    fn i06() {}
-    fn c07() {}
-    fn k08() {}
-    fn d09() {}
-    fn e10() {}
-    fn g11() {}
-    fn j12() {}
-    fn o13() {}
-    fn a14() {}
-    fn q15() {}
-    fn m16() {}
-    fn l17() {}
-    fn n18() {}
-    fn v19() {}
-    fn s20() {}
-    fn p21() {}
-    fn t22() {}
-}

@@ -42,8 +42,6 @@ Import RecordSetNotations.
 
 
 
-(* NotImplementedYet *)
-
 Inductive t_E : Type :=
 | E_A
 | E_B.
@@ -58,6 +56,8 @@ Definition t_E_cast_to_repr (x : t_E) : t_isize :=
     1
   end.
 
+(* NotImplementedYet *)
+
 Definition bar (x : t_E) : unit :=
   match x with
   | E_A
@@ -65,33 +65,11 @@ Definition bar (x : t_E) : unit :=
     tt
   end.
 
-Definition nested (x : t_Option ((t_i32))) : t_i32 :=
-  match x with
-  | Option_Some (1
-  | 2) =>
-    1
-  | Option_Some (x) =>
-    x
-  | Option_None =>
-    0
-  end.
-
 Definition deep (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   match x with
   | (1
   | 2,Option_Some (3
   | 4)) =>
-    0
-  | (x,_) =>
-    x
-  end.
-
-Definition equivalent (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
-  match x with
-  | (1,Option_Some (3))
-  | (1,Option_Some (4))
-  | (2,Option_Some (3))
-  | (2,Option_Some (4)) =>
     0
   | (x,_) =>
     x
@@ -107,5 +85,27 @@ Definition deep_capture (x : t_Result (((t_i32*t_i32))) (((t_i32*t_i32)))) : t_i
   | Result_Ok ((x,_))
   | Result_Err ((x,_)) =>
     x
+  end.
+
+Definition equivalent (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
+  match x with
+  | (1,Option_Some (3))
+  | (1,Option_Some (4))
+  | (2,Option_Some (3))
+  | (2,Option_Some (4)) =>
+    0
+  | (x,_) =>
+    x
+  end.
+
+Definition nested (x : t_Option ((t_i32))) : t_i32 :=
+  match x with
+  | Option_Some (1
+  | 2) =>
+    1
+  | Option_Some (x) =>
+    x
+  | Option_None =>
+    0
   end.
 '''

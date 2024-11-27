@@ -42,7 +42,11 @@ Import RecordSetNotations.
 
 
 
-(* NotImplementedYet *)
+Definition discriminant_EnumWithRepr_ExplicitDiscr1 : t_u16 :=
+  1.
+
+Definition discriminant_EnumWithRepr_ExplicitDiscr2 : t_u16 :=
+  5.
 
 Inductive t_EnumWithRepr : Type :=
 | EnumWithRepr_ExplicitDiscr1
@@ -51,12 +55,6 @@ Inductive t_EnumWithRepr : Type :=
 | EnumWithRepr_ImplicitDiscrEmptyStruct.
 Arguments t_EnumWithRepr:clear implicits.
 Arguments t_EnumWithRepr.
-
-Definition discriminant_EnumWithRepr_ExplicitDiscr1 : t_u16 :=
-  1.
-
-Definition discriminant_EnumWithRepr_ExplicitDiscr2 : t_u16 :=
-  5.
 
 Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
   match x with
@@ -70,6 +68,8 @@ Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
     t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) (2)
   end.
 
+(* NotImplementedYet *)
+
 Definition f (_ : unit) : t_u32 :=
   let v__x := cast (t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr2) (0)) in
   t_Add_f_add (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple))) (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct))).
@@ -77,9 +77,9 @@ Definition f (_ : unit) : t_u32 :=
 Definition ff__CONST : t_u16 :=
   cast (t_Add_f_add (discriminant_EnumWithRepr_ExplicitDiscr1) (0)).
 
-Definition get_repr (x : t_EnumWithRepr) : t_u16 :=
-  t_EnumWithRepr_cast_to_repr (x).
-
 Definition get_casted_repr (x : t_EnumWithRepr) : t_u64 :=
   cast (t_EnumWithRepr_cast_to_repr (x)).
+
+Definition get_repr (x : t_EnumWithRepr) : t_u16 :=
+  t_EnumWithRepr_cast_to_repr (x).
 '''

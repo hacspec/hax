@@ -122,31 +122,31 @@ module Cyclic_modules.Enums_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {t_T240131830 as t_T}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_T240131830 as t_T}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T240131830_A as T_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_A as T_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T240131830_B as T_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_B as T_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T240131830_C as T_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_C as T_C}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T240131830_D as T_D}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_D as T_D}
 '''
-"Cyclic_modules.Enums_b.Rec_bundle_902271266.fst" = '''
-module Cyclic_modules.Enums_b.Rec_bundle_902271266
+"Cyclic_modules.Enums_b.Rec_bundle_994866580.fst" = '''
+module Cyclic_modules.Enums_b.Rec_bundle_994866580
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-type t_U =
-  | U_A : t_U
-  | U_B : t_U
-  | U_C : Alloc.Vec.t_Vec t_T240131830 Alloc.Alloc.t_Global -> t_U
-
-and t_T366415196 =
+type t_T366415196 =
   | T366415196_A : t_T366415196
   | T366415196_B : t_T366415196
   | T366415196_C : Alloc.Vec.t_Vec t_T240131830 Alloc.Alloc.t_Global -> t_T366415196
+
+and t_U =
+  | U_A : t_U
+  | U_B : t_U
+  | U_C : Alloc.Vec.t_Vec t_T240131830 Alloc.Alloc.t_Global -> t_U
 
 and t_T240131830 =
   | T240131830_A : t_T240131830
@@ -162,23 +162,23 @@ module Cyclic_modules.Enums_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {t_U as t_U}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_T366415196 as t_T}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {U_A as U_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_A as T_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {U_B as U_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_B as T_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {U_C as U_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_C as T_C}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {t_T366415196 as t_T}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_U as t_U}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T366415196_A as T_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_A as U_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T366415196_B as T_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_B as U_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {T366415196_C as T_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_C as U_C}
 
-include Cyclic_modules.Enums_b.Rec_bundle_902271266 {f as f}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {f as f}
 '''
 "Cyclic_modules.Late_skip_a.fst" = '''
 module Cyclic_modules.Late_skip_a
@@ -186,10 +186,10 @@ module Cyclic_modules.Late_skip_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Late_skip_b.Rec_bundle_862592093 {f749016415 as f}
+include Cyclic_modules.Late_skip_b.Rec_bundle_447022631 {f749016415 as f}
 '''
-"Cyclic_modules.Late_skip_b.Rec_bundle_862592093.fst" = '''
-module Cyclic_modules.Late_skip_b.Rec_bundle_862592093
+"Cyclic_modules.Late_skip_b.Rec_bundle_447022631.fst" = '''
+module Cyclic_modules.Late_skip_b.Rec_bundle_447022631
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -205,7 +205,7 @@ module Cyclic_modules.Late_skip_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Late_skip_b.Rec_bundle_862592093 {f377825240 as f}
+include Cyclic_modules.Late_skip_b.Rec_bundle_447022631 {f377825240 as f}
 '''
 "Cyclic_modules.M1.fst" = '''
 module Cyclic_modules.M1
@@ -213,19 +213,19 @@ module Cyclic_modules.M1
 open Core
 open FStar.Mul
 
-include Cyclic_modules.M2.Rec_bundle_423840416 {a as a}
+include Cyclic_modules.M2.Rec_bundle_489499412 {a as a}
 '''
-"Cyclic_modules.M2.Rec_bundle_423840416.fst" = '''
-module Cyclic_modules.M2.Rec_bundle_423840416
+"Cyclic_modules.M2.Rec_bundle_489499412.fst" = '''
+module Cyclic_modules.M2.Rec_bundle_489499412
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-let d (_: Prims.unit) : Prims.unit = ()
-
 let c (_: Prims.unit) : Prims.unit = ()
 
 let a (_: Prims.unit) : Prims.unit = c ()
+
+let d (_: Prims.unit) : Prims.unit = ()
 
 let b (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = a () in
@@ -237,11 +237,11 @@ module Cyclic_modules.M2
 open Core
 open FStar.Mul
 
-include Cyclic_modules.M2.Rec_bundle_423840416 {d as d}
+include Cyclic_modules.M2.Rec_bundle_489499412 {c as c}
 
-include Cyclic_modules.M2.Rec_bundle_423840416 {c as c}
+include Cyclic_modules.M2.Rec_bundle_489499412 {d as d}
 
-include Cyclic_modules.M2.Rec_bundle_423840416 {b as b}
+include Cyclic_modules.M2.Rec_bundle_489499412 {b as b}
 '''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec

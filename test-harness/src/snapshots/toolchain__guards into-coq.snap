@@ -43,34 +43,6 @@ Import RecordSetNotations.
 
 (* NotImplementedYet *)
 
-Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
-  match x with
-  | Option_None =>
-    0
-  | _ =>
-    match match x with
-    | Option_Some (v) =>
-      match v with
-      | Result_Ok (y) =>
-        Option_Some (y)
-      | _ =>
-        Option_None
-      end
-    | _ =>
-      Option_None
-    end with
-    | Option_Some (x) =>
-      x
-    | Option_None =>
-      match x with
-      | Option_Some (Result_Err (y)) =>
-        y
-      | _ =>
-        1
-      end
-    end
-  end.
-
 Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | Option_None =>
@@ -89,6 +61,52 @@ Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
     end with
     | Option_Some (y) =>
       y
+    | Option_None =>
+      match x with
+      | Option_Some (Result_Err (y)) =>
+        y
+      | _ =>
+        1
+      end
+    end
+  end.
+
+Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
+  match match x with
+  | Option_Some (v) =>
+    match t_PartialOrd_f_gt (v) (0) with
+    | true =>
+      Option_Some (v)
+    | _ =>
+      Option_None
+    end
+  | _ =>
+    Option_None
+  end with
+  | Option_Some (x) =>
+    x
+  | Option_None =>
+    0
+  end.
+
+Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
+  match x with
+  | Option_None =>
+    0
+  | _ =>
+    match match x with
+    | Option_Some (v) =>
+      match v with
+      | Result_Ok (y) =>
+        Option_Some (y)
+      | _ =>
+        Option_None
+      end
+    | _ =>
+      Option_None
+    end with
+    | Option_Some (x) =>
+      x
     | Option_None =>
       match x with
       | Option_Some (Result_Err (y)) =>
@@ -140,23 +158,5 @@ Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i
         end
       end
     end
-  end.
-
-Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
-  match match x with
-  | Option_Some (v) =>
-    match t_PartialOrd_f_gt (v) (0) with
-    | true =>
-      Option_Some (v)
-    | _ =>
-      Option_None
-    end
-  | _ =>
-    Option_None
-  end with
-  | Option_Some (x) =>
-    x
-  | Option_None =>
-    0
   end.
 '''
