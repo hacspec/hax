@@ -995,27 +995,14 @@ struct
                    ty );
                ] )
     | Type { name; generics; _ } when is_erased ->
-        if not ctx.interface_mode then
-          Error.raise
-          @@ {
-               kind =
-                 AttributeRejected
-                   {
-                     reason =
-                       "a type cannot be opaque if its module is not extracted \
-                        as an interface";
-                   };
-               span = e.span;
-             }
-        else
-          let generics = FStarBinder.of_generics e.span generics in
-          let ty = F.type0_term in
-          let arrow_typ =
-            F.term
-            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
-          in
-          let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
-          [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
+        let generics = FStarBinder.of_generics e.span generics in
+        let ty = F.type0_term in
+        let arrow_typ =
+          F.term
+          @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
+        in
+        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+        [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
     | Type
         {
           name;
