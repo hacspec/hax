@@ -52,10 +52,7 @@ The internal AST is defined using a **functor** that takes a list of type-level 
 
 Features are for instances, mutation, loops, unsafe code. The enumeration [`Features.Enumeration`](https://hacspec.org/hax/engine/hax-engine/Hax_engine/Features/Enumeration/index.html) lists all those features.
 
-**Feature Witnesses:**
-
-- On relevant AST nodes, feature witnesses are included to enforce constraints at the type level.
-- **Example:** In the `loop` expression constructor, a witness of type `F.loop` is used, where `F` represents the current feature set. If `F.loop` is an empty type, constructing a `loop` expression is prohibited, ensuring that loops are disallowed in contexts where they are not supported.
+**Feature Witnesses:** On relevant AST nodes, feature witnesses are included to enforce constraints at the type level. For example, in the `loop` expression constructor, a witness of type `F.loop` is used, where `F` represents the current feature set. If `F.loop` is an empty type, constructing a `loop` expression is prohibited, ensuring that loops are disallowed in contexts where they are not supported.
 
 ### Transformation Phases
 
