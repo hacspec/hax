@@ -9,11 +9,11 @@ Hax is a software pipeline designed to transform Rust code into various formal v
 
 The frontend is responsible for extracting and exporting Rust code's abstract syntax trees (ASTs) in a format suitable for processing by the engine (or by other tools).
 
-### `hax-frontend-exporter` Library
+### [`hax-frontend-exporter` Library](https://hacspec.org/hax/frontend/hax_frontend_exporter/index.html)
 
 This library mirrors the internal types of the Rust compiler (`rustc`) that constitute the **HIR** (High-Level Intermediate Representation), **THIR** (Typed High-Level Intermediate Representation), and **MIR** (Mid-Level Intermediate Representation) ASTs. It extends them with additional information such as attributes, trait implementations, and removes ID indirections.
 
-**`SInto` Trait:** The library defines an entry point for translating a given `rustc` value to its mirrored hax version using the `SInto` trait (stateful `into`). For a value `x` of type `T` from `rustc`, if `T` is mirrored by hax, then `x.sinto(s)` produces an augmented and simplified "hax-ified" AST for `x`. Here, `s` represents the state holding information about the translation process.
+**`SInto` Trait:** The library defines an entry point for translating a given `rustc` value to its mirrored hax version using the [`SInto`](https://hacspec.org/hax/frontend/hax_frontend_exporter/trait.SInto.html) trait (stateful `into`). For a value `x` of type `T` from `rustc`, if `T` is mirrored by hax, then `x.sinto(s)` produces an augmented and simplified "hax-ified" AST for `x`. Here, `s` represents the state holding information about the translation process.
 
 ### `hax-driver` Binary
 
@@ -37,20 +37,20 @@ This library mirrors the internal types of the Rust compiler (`rustc`) that cons
 6. **Interactive Communication:** Engages in interactive communication with the engine.
 7. **User Reporting:** Outputs results and diagnostics to the user.
 
-## The Engine (OCaml)
+## The Engine (OCaml - [documentation](https://hacspec.org/hax/engine/hax-engine/index.html))
 
 The engine processes the transformed ASTs and options provided via JSON input from `stdin`. It performs several key functions to convert the hax-ified Rust code into the target backend language.
 
 ### Importing and Simplifying ASTs
 
-- **AST Importation:** Imports the hax-ified Rust THIR AST.
-- **Internal AST Conversion:** Converts the imported AST into a simplified and opinionated internal AST designed for ease of transformation and analysis.
+- **AST Importation:** Imports the hax-ified Rust THIR AST. This is module [`Import_thir`](https://hacspec.org/hax/engine/hax-engine/Hax_engine/Import_thir/index.html).
+- **Internal AST Conversion:** Converts the imported AST into a simplified and opinionated internal AST designed for ease of transformation and analysis. This is mostly the functor [`Ast.Make`](https://hacspec.org/hax/engine/hax-engine/Hax_engine/Ast/Make/index.html).
 
 ### Internal AST and Features
 
 The internal AST is defined using a **functor** that takes a list of type-level booleans, referred to as **features**, and produces the AST types accordingly.
 
-Features are for instances, mutation, loops, unsafe code. A full list is available in `engine/lib/features.ml`.
+Features are for instances, mutation, loops, unsafe code. The enumeration [`Features.Enumeration`](https://hacspec.org/hax/engine/hax-engine/Hax_engine/Features/Enumeration/index.html) lists all those features.
 
 **Feature Witnesses:**
 
@@ -76,7 +76,7 @@ After completing the transformation phases:
 
 ### Communication Protocol
 
-The engine communicates asynchronously with the frontend using a protocol defined in `hax_types::engine_api::protocol`. This communication includes:
+The engine communicates asynchronously with the frontend using a protocol defined in [`hax_types::engine_api::protocol`](https://hacspec.org/hax/frontend/hax_types/engine_api/protocol/index.html). This communication includes:
 
 - **Diagnostic Data:** Sending error messages, warnings, and other diagnostics.
 - **Profiling Information:** Providing performance metrics and profiling data.
