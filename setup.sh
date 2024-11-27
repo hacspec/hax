@@ -110,16 +110,16 @@ install_ocaml_engine() {
     )
 }
 
-if [ "$CLEANUP_WORKSPACE" = "on" ]; then
-    cleanup_workspace
-fi
-
 warn_if_dirty
 
 for binary in opam node rustup jq; do
     ensure_binary_available $binary
 done
 ensure_node_is_recent_enough
+
+if [ "$CLEANUP_WORKSPACE" = "on" ]; then
+    cleanup_workspace
+fi
 
 install_rust_binaries
 install_ocaml_engine
