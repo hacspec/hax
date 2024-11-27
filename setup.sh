@@ -5,6 +5,7 @@ set -eu
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 opam_jobs=4
+CLEANUP_WORKSPACE=on
 
 # Parse command line arguments.
 all_args=("$@")
@@ -14,9 +15,22 @@ while [ $# -gt 0 ]; do
         opam_jobs=$2
         shift
         ;;
+    --no-cleanup)
+        CLEANUP_WORKSPACE=off
+        ;;
     esac
     shift
 done
+
+# Cleanup the cargo and dune workspace, to make sure we are in a clean
+# state
+cleanup_workspace() {
+    cargo clean
+    (
+        cd engine
+        dune clean
+    )
+}
 
 # Warns if we're building in a dirty checkout of hax: while hacking on
 # hax, we should really be using `just build`.
@@ -85,6 +99,10 @@ install_ocaml_engine() {
         opam install --yes ./engine
     )
 }
+
+if [ "$CLEANUP_WORKSPACE" = "on" ]; then
+    cleanup_workspace
+fi
 
 warn_if_dirty
 
