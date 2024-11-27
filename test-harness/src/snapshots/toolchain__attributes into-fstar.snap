@@ -92,6 +92,8 @@ open FStar.Mul
 
 unfold type t_Int = int
 
+unfold let add x y = x + y
+
 unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
   {
     f_Output = t_Int;
@@ -99,8 +101,6 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
     f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
     f_sub = fun (self: t_Int) (other: t_Int) -> self + other
   }
-
-unfold let add x y = x + y
 '''
 "Attributes.Nested_refinement_elim.fst" = '''
 module Attributes.Nested_refinement_elim
@@ -118,11 +118,16 @@ module Attributes.Newtype_pattern
 open Core
 open FStar.Mul
 
+let v_MAX: usize = sz 10
+
 type t_SafeIndex = { f_i:f_i: usize{f_i <. v_MAX} }
 
-let impl__SafeIndex__as_usize (self: t_SafeIndex) : usize = self.f_i
+let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
+  if i <. v_MAX
+  then Core.Option.Option_Some ({ f_i = i } <: t_SafeIndex) <: Core.Option.t_Option t_SafeIndex
+  else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 
-let v_MAX: usize = sz 10
+let impl__SafeIndex__as_usize (self: t_SafeIndex) : usize = self.f_i
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
@@ -132,11 +137,6 @@ let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIn
     f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true);
     f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
   }
-
-let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
-  if i <. v_MAX
-  then Core.Option.Option_Some ({ f_i = i } <: t_SafeIndex) <: Core.Option.t_Option t_SafeIndex
-  else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 '''
 "Attributes.Pre_post_on_traits_and_impls.fst" = '''
 module Attributes.Pre_post_on_traits_and_impls
@@ -160,13 +160,6 @@ class t_Operation (v_Self: Type0) = {
             Hax_lib.Int.t_Int) =
           (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int) };
   f_double:x0: u8 -> Prims.Pure u8 (f_double_pre x0) (fun result -> f_double_post x0 result)
-}
-
-class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
-  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
-  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
-  f_method:x0: v_Self -> x1: u8
-    -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
 }
 
 type t_ViaAdd = | ViaAdd : t_ViaAdd
@@ -206,6 +199,13 @@ let impl_1: t_Operation t_ViaMul =
         (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int));
     f_double = fun (x: u8) -> x *! 2uy
   }
+
+class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
+  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
+  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
+  f_method:x0: v_Self -> x1: u8
+    -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
+}
 
 let test
       (#v_T: Type0)
@@ -247,9 +247,9 @@ module Attributes.Refined_indexes
 open Core
 open FStar.Mul
 
-type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
-
 let v_MAX: usize = sz 10
+
+type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
 
 /// Triple dash comment
 (** Multiline double star comment Maecenas blandit accumsan feugiat.
@@ -288,27 +288,20 @@ module Attributes.Refinement_types
 open Core
 open FStar.Mul
 
-/// Example of a specific constraint on a value
-let t_CompressionFactor = x: u8{x =. 4uy || x =. 5uy || x =. 10uy || x =. 11uy}
-
 let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
 
-/// A field element
-let t_FieldElement = x: u16{x <=. 2347us}
+let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
+  (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
 
 /// Even `u8` numbers. Constructing pub Even values triggers static
 /// proofs in the extraction.
 let t_Even = x: u8{(x %! 2uy <: u8) =. 0uy}
 
-/// A modular mutliplicative inverse
-let t_ModInverse (v_MOD: u32) =
-  n:
-  u32
-    { (((cast (n <: u32) <: u128) *! (cast (v_MOD <: u32) <: u128) <: u128) %!
-        (cast (v_MOD <: u32) <: u128)
-        <:
-        u128) =.
-      pub_u128 1 }
+let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
+  x +! x <: t_Even
+
+let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
+  x +! x <: t_Even
 
 /// A string that contains no space.
 let t_NoE =
@@ -330,14 +323,21 @@ let t_NoE =
       in
       ~.out }
 
-let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
-  x +! x <: t_Even
+/// A modular mutliplicative inverse
+let t_ModInverse (v_MOD: u32) =
+  n:
+  u32
+    { (((cast (n <: u32) <: u128) *! (cast (v_MOD <: u32) <: u128) <: u128) %!
+        (cast (v_MOD <: u32) <: u128)
+        <:
+        u128) =.
+      pub_u128 1 }
 
-let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
+/// A field element
+let t_FieldElement = x: u16{x <=. 2347us}
 
-let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
-  x +! x <: t_Even
+/// Example of a specific constraint on a value
+let t_CompressionFactor = x: u8{x =. 4uy || x =. 5uy || x =. 10uy || x =. 11uy}
 '''
 "Attributes.Requires_mut.fst" = '''
 module Attributes.Requires_mut
@@ -417,6 +417,12 @@ module Attributes.Verifcation_status
 open Core
 open FStar.Mul
 
+#push-options "--admit_smt_queries true"
+
+let a_function_which_only_laxes (_: Prims.unit) : Prims.unit = Hax_lib.v_assert false
+
+#pop-options
+
 let a_panicfree_function (_: Prims.unit)
     : Prims.Pure u8
       Prims.l_True
@@ -441,12 +447,6 @@ let another_panicfree_function (_: Prims.unit)
   let nothing:i32 = 0l in
   let still_not_much:i32 = not_much +! nothing in
   admit () (* Panic freedom *)
-
-#push-options "--admit_smt_queries true"
-
-let a_function_which_only_laxes (_: Prims.unit) : Prims.unit = Hax_lib.v_assert false
-
-#pop-options
 '''
 "Attributes.fst" = '''
 module Attributes
@@ -454,36 +454,7 @@ module Attributes
 open Core
 open FStar.Mul
 
-type t_Foo = {
-  f_x:u32;
-  f_y:f_y: u32{f_y >. 3ul};
-  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
-}
-
-let inlined_code__V: u8 = 12uy
-
-let issue_844_ (v__x: u8)
-    : Prims.Pure u8
-      Prims.l_True
-      (ensures
-        fun v__x_future ->
-          let v__x_future:u8 = v__x_future in
-          true) = v__x
-
 let u32_max: u32 = 90000ul
-
-let swap_and_mut_req_ens (x y: u32)
-    : Prims.Pure (u32 & u32 & u32)
-      (requires x <. 40ul && y <. 300ul)
-      (ensures
-        fun temp_0_ ->
-          let x_future, y_future, result:(u32 & u32 & u32) = temp_0_ in
-          x_future =. y && y_future =. x && result =. (x +! y <: u32)) =
-  let x0:u32 = x in
-  let x:u32 = y in
-  let y:u32 = x0 in
-  let hax_temp_output:u32 = x +! y in
-  x, y, hax_temp_output <: (u32 & u32 & u32)
 
 /// A doc comment on `add3`
 ///another doc comment on add3
@@ -498,11 +469,40 @@ let add3 (x y z: u32)
                 let _:Prims.unit = temp_0_ in
                 result >. 32ul <: bool)) = (x +! y <: u32) +! z
 
+let swap_and_mut_req_ens (x y: u32)
+    : Prims.Pure (u32 & u32 & u32)
+      (requires x <. 40ul && y <. 300ul)
+      (ensures
+        fun temp_0_ ->
+          let x_future, y_future, result:(u32 & u32 & u32) = temp_0_ in
+          x_future =. y && y_future =. x && result =. (x +! y <: u32)) =
+  let x0:u32 = x in
+  let x:u32 = y in
+  let y:u32 = x0 in
+  let hax_temp_output:u32 = x +! y in
+  x, y, hax_temp_output <: (u32 & u32 & u32)
+
+let issue_844_ (v__x: u8)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun v__x_future ->
+          let v__x_future:u8 = v__x_future in
+          true) = v__x
+
 let add3_lemma (x: u32)
     : Lemma Prims.l_True
       (ensures
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
+
+type t_Foo = {
+  f_x:u32;
+  f_y:f_y: u32{f_y >. 3ul};
+  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
+}
+
+let inlined_code__V: u8 = 12uy
 
 let before_inlined_code = "example before"
 
