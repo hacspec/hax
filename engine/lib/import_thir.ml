@@ -1478,10 +1478,13 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
     in
     (* If the item is erased in type-only mode we need to add the Erased attribute.
        It is already present if the item is erased by user. *)
-    let attrs =
-      if erased_by_type_only && not item_erased_by_user then
+    let attrs_with_erased erased_by_type_only erased_by_user attrs =
+      if erased_by_type_only && not erased_by_user then
         Attr_payloads.to_attr Erased span :: attrs
       else attrs
+    in
+    let attrs =
+      attrs_with_erased erased_by_type_only item_erased_by_user attrs
     in
     let erased = item_erased_by_user || erased_by_type_only in
 
@@ -1663,8 +1666,11 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
         List.map
           ~f:(fun (item : Thir.impl_item) ->
             let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
-            let sub_item_erased =
-              erased_by_user (c_item_attrs item.attributes)
+            let attrs = c_item_attrs item.attributes in
+            let sub_item_erased_by_user = erased_by_user attrs in
+            let sub_item_erased = sub_item_erased_by_user || type_only in
+            let attrs =
+              attrs_with_erased type_only sub_item_erased_by_user attrs
             in
             let c_body = if sub_item_erased then c_expr_drop_body else c_body in
 
@@ -1702,7 +1708,6 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
                      (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
             in
             let ident = Concrete_ident.of_def_id Value item.owner_id in
-            let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
     | Impl
