@@ -270,20 +270,20 @@ module Make (F : Features.T) = struct
     let g =
       ItemGraph.of_items ~original_items:items items |> ItemGraph.Oper.mirror
     in
-    let lookup (name : concrete_ident) =
-      List.find ~f:(ident_of >> Concrete_ident.equal name) items
-    in
+    let closure = ItemGraph.Oper.transitive_closure ~reflexive:true g in
     let items' =
-      ItemGraph.Topological.fold List.cons g []
-      |> List.filter_map ~f:lookup |> List.rev
-    in
-    assert (
-      let of_list =
-        List.map ~f:ident_of >> Set.of_list (module Concrete_ident)
+      let compare a b =
+        let a, b = (a.ident, b.ident) in
+        let ab = ItemGraph.G.mem_edge closure a b in
+        let ba = ItemGraph.G.mem_edge closure b a in
+        match (ab, ba) with
+        | true, false -> -1
+        | false, true -> 1
+        | true, true -> 0
+        | false, false -> 0
       in
-      let items = of_list items in
-      let items' = of_list items' in
-      Set.equal items items');
+      List.stable_sort ~compare items
+    in
     items'
 
   let filter_by_inclusion_clauses' ~original_items
