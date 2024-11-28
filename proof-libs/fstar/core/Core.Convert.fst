@@ -72,4 +72,10 @@ class t_AsRef self t = {
   f_as_ref: self -> t;
 }
 
+instance as_ref_id a: t_AsRef a a = {
+  f_as_ref_pre = (fun _ -> true);
+  f_as_ref_post = (fun _ _ -> true);
+  f_as_ref = (fun x -> x)
+}
+
 type t_Infallible = _:unit{False}
