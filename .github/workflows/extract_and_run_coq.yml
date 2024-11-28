@@ -13,6 +13,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: ⤵ Install hax
+        working-directory: hax
         run: |
           nix build .\#coq-coverage-example
 
