@@ -31,4 +31,4 @@ impl T for u8 {
 }
 
 #[hax_lib::opaque]
-const c: u8 = { 0 + 0 };
+const c: u8 = 0 + 0;

@@ -23,19 +23,70 @@ info:
       - +**
 ---
 exit = 0
-stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
+stderr = '''
+warning: use of deprecated macro `hax_lib::opaque_type`: Please use 'opaque' instead
+ --> attribute-opaque/src/lib.rs:1:3
+  |
+1 | #[hax_lib::opaque_type]
+  |   ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated macro `hax_lib::opaque_type`: Please use 'opaque' instead
+ --> attribute-opaque/src/lib.rs:7:3
+  |
+7 | #[hax_lib::opaque_type]
+  |   ^^^^^^^^^^^^^^^^^^^^
+
+warning: `attribute-opaque` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
 
 [stdout.files]
+"Attribute_opaque.fst" = '''
+module Attribute_opaque
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_T_for_u8': t_T u8
+
+let impl_T_for_u8 = impl_T_for_u8'
+
+assume
+val c': u8
+
+let c = c'
+
+assume
+val f': x: bool -> y: bool -> Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
+
+let f = f'
+'''
 "Attribute_opaque.fsti" = '''
 module Attribute_opaque
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
+class t_T (v_Self: Type0) = {
+  f_d_pre:Prims.unit -> Type0;
+  f_d_post:Prims.unit -> Prims.unit -> Type0;
+  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
+}
+
 val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
 
 val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+val impl_T_for_u8:t_T u8
+
+val c:u8
+
+val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
 '''
