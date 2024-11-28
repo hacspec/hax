@@ -35,11 +35,6 @@ module Attribute_opaque
 open Core
 open FStar.Mul
 
-assume
-val f': x: bool -> y: bool -> Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
-
-let f = f'
-
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_T_for_u8': t_T u8
@@ -50,6 +45,11 @@ assume
 val c': u8
 
 let c = c'
+
+assume
+val f': x: bool -> y: bool -> Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
+
+let f = f'
 '''
 "Attribute_opaque.fsti" = '''
 module Attribute_opaque
@@ -57,18 +57,18 @@ module Attribute_opaque
 open Core
 open FStar.Mul
 
-val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
-
-val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
-
-val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
-
 class t_T (v_Self: Type0) = {
   f_d_pre:Prims.unit -> Type0;
   f_d_post:Prims.unit -> Prims.unit -> Type0;
   f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
 }
 
+val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
+
+val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 val impl_T_for_u8:t_T u8
+
+val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
 '''
