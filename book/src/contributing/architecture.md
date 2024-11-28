@@ -63,7 +63,7 @@ The engine executes a sequence of **phases**, which are determined based on the 
 1. **Input:** Takes a list of items from an AST with specific feature constraints.
 2. **Output:** Transforms these items into a new AST type, potentially enabling or disabling features through type-level changes.
 
-The phases can be found in the `engin/lib/phases/` folder.
+The phases can be found in the [`Phases`](https://hacspec.org/hax/engine/hax-engine/Hax_engine/Phases/index.html) module.
 
 ### Backend Code Generation
 
