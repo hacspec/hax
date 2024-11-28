@@ -42,6 +42,7 @@ Import RecordSetNotations.
 From Core Require Import Core.
 
 
+
 From Literals Require Import Hax_lib (t_int).
 Export Hax_lib (t_int).
 
@@ -100,7 +101,7 @@ Definition math_integers (x : t_Int) `{andb (PartialOrd_f_gt (x) (impl__Int___un
   impl__Int__to_u8 (Add_f_add (x) (Mul_f_mul (x) (x))).
 
 Definition null : ascii :=
-  "\000"%char.
+  ("\000"%char : ascii).
 
 Definition numeric '(_ : unit) : unit :=
   let _ : t_usize := (123 : t_usize) in

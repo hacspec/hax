@@ -41,6 +41,7 @@ Import RecordSetNotations.
 From Core Require Import Core.
 
 
+
 Inductive t_Foo : Type :=
 | Foo_A
 | Foo_B.
