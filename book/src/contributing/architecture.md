@@ -5,6 +5,8 @@ Hax is a software pipeline designed to transform Rust code into various formal v
 1. **The Frontend** (written in Rust)
 2. **The Engine** (written in OCaml)
 
+The frontend hooks into the Rust compiler, producing a abstract syntax tree for a given crate. The engine then takes this AST in input, applies various transformation, to reach in the end the language of the backend: F*, Coq...
+
 ## The Frontend (Rust)
 
 The frontend is responsible for extracting and exporting Rust code's abstract syntax trees (ASTs) in a format suitable for processing by the engine (or by other tools).
