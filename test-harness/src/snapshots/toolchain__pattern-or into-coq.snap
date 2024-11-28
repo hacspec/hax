@@ -42,6 +42,7 @@ Import RecordSetNotations.
 From Core Require Import Core.
 
 
+
 Inductive t_E : Type :=
 | E_A
 | E_B.
