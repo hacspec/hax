@@ -315,6 +315,10 @@ let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
 let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
     mk_int #t (0 - (v a))
 
+val neg_equiv_lemma: #t:inttype{signed t /\ not (I128? t)}
+  -> a:int_t t{range (0 - v a) t}
+  -> Lemma (neg a == sub #t (mk_int 0) a /\
+          (lognot a = sub (neg a) (mk_int 1)))
 
 ///
 /// Operators available for all machine integers
