@@ -54,7 +54,7 @@ all:
 	$(MAKE) verify
 
 # Default hax invocation
-HAX_CLI = "cargo hax into fstar"
+HAX_CLI = "cargo hax into fstar --z3rlimit 40"
 
 # If $HACL_HOME doesn't exist, clone it
 ${HACL_HOME}:
