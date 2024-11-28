@@ -641,10 +641,12 @@ struct
                      ^^ concat_map_with ~pre:space
                           (fun (x : generic_param) ->
                             match x with
-                            | { ident; _ } ->
-                                (self#_do_not_override_lazy_of_local_ident
-                                   AstPos_item'_Type_generics ident)
-                                  #p)
+                              | { ident; _ } ->
+                                let idx = (self#_do_not_override_lazy_of_local_ident
+                                             AstPos_item'_Type_generics ident)
+                                          #p
+                                in
+                                parens(idx ^^ space ^^ !^":=" ^^ space ^^ idx) )
                           generics#v.params)
                 ^^ space ^^ string "<"
                 ^^ separate_map (semi ^^ space)
