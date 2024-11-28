@@ -33,11 +33,20 @@ module Interface_only
 open Core
 open FStar.Mul
 
+/// This item contains unsafe blocks and raw references, two features
+/// not supported by hax. Thanks to the `-i` flag and the `+:`
+/// modifier, `f` is still extractable as an interface.
+/// Expressions within type are still extracted, as well as pre- and
+/// post-conditions.
+val f (x: u8)
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires x <. 254uy)
+      (ensures
+        fun r ->
+          let r:t_Array u8 (sz 4) = r in
+          (r.[ sz 0 ] <: u8) >. x)
+
 type t_Bar = | Bar : t_Bar
-
-type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
-
-type t_Param (v_SIZE: usize) = { f_value:t_Array u8 v_SIZE }
 
 /// Non-inherent implementations are extracted, their bodies are not
 /// dropped. This might be a bit surprising: see
@@ -51,22 +60,13 @@ val impl_1:Core.Convert.t_From t_Bar u8
 
 val from__from: u8 -> Prims.Pure t_Bar Prims.l_True (fun _ -> Prims.l_True)
 
+type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 val impl_2 (#v_T: Type0) : Core.Convert.t_From (t_Holder v_T) Prims.unit
 
+type t_Param (v_SIZE: usize) = { f_value:t_Array u8 v_SIZE }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 val impl_3 (v_SIZE: usize) : Core.Convert.t_From (t_Param v_SIZE) Prims.unit
-
-/// This item contains unsafe blocks and raw references, two features
-/// not supported by hax. Thanks to the `-i` flag and the `+:`
-/// modifier, `f` is still extractable as an interface.
-/// Expressions within type are still extracted, as well as pre- and
-/// post-conditions.
-val f (x: u8)
-    : Prims.Pure (t_Array u8 (sz 4))
-      (requires x <. 254uy)
-      (ensures
-        fun r ->
-          let r:t_Array u8 (sz 4) = r in
-          (r.[ sz 0 ] <: u8) >. x)
 '''
