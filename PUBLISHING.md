@@ -5,6 +5,9 @@
 There is only the package `hax-engine`, that includes a binary and a
 number of libraries.
 
+We have no particular release procedure for the engine: we don't plan
+on publishing it to opam.
+
 ## Rust
 
 This repository is divided into several crates, some to be published,
