@@ -15,6 +15,7 @@
     - [F*]()
     - [Coq]()
     - [`libcore`]()
+- [AST](contributing/ast_ebnf.md)
 - [Troubleshooting/FAQ](faq/intro.md)
     - [Command line usage]()
        - [The include flag: which items should be extracted, and how?](faq/include-flags.md)
