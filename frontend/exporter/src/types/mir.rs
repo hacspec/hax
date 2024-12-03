@@ -390,7 +390,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
                 let method_generics = &generics[num_container_generics..];
-                (method_generics.sinto(s), Option::Some(impl_expr))
+                (method_generics.sinto(s), Some(impl_expr))
             }
             rustc_middle::ty::AssocItemContainer::ImplContainer => {
                 // Solve the trait constraints of the impl block.
@@ -399,86 +399,51 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_trait_refs =
                     solve_item_required_traits(s, container_def_id, container_generics);
                 trait_refs.extend(container_trait_refs);
-                (generics.sinto(s), Option::None)
+                (generics.sinto(s), None)
             }
         }
     } else {
         // Regular function call
-        (generics.sinto(s), Option::None)
+        (generics.sinto(s), None)
     };
 
     (def_id.sinto(s), generics, trait_refs, source)
 }
 
+/// Get a `FunOperand` from an `Operand` used in a function call.
 /// Return the [DefId] of the function referenced by an operand, with the
 /// parameters substitution.
 /// The [Operand] comes from a [TerminatorKind::Call].
-/// Only supports calls to top-level functions (which are considered as constants
-/// by rustc); doesn't support closures for now.
 #[cfg(feature = "rustc")]
 fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
-    func: &rustc_middle::mir::Operand<'tcx>,
+    op: &rustc_middle::mir::Operand<'tcx>,
 ) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
-    use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
-    use rustc_middle::mir::{Const, Operand};
+    use rustc_middle::mir::Operand;
     use rustc_middle::ty::TyKind;
-    match func {
-        Operand::Constant(c) => {
-            // Regular function case
-            let c = c.deref();
-            let (def_id, generics) = match &c.const_ {
-                Const::Ty(c_ty, _c) => {
-                    // The type of the constant should be a FnDef, allowing
-                    // us to retrieve the function's identifier and instantiation.
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                Const::Val(_, c_ty) => {
-                    // Same as for the `Ty` case above
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                Const::Unevaluated(_, _) => {
-                    unimplemented!();
-                }
-            };
-
-            let (fun_id, generics, trait_refs, trait_info) =
-                get_function_from_def_id_and_generics(s, def_id, generics);
-            (FunOperand::Id(fun_id), generics, trait_refs, trait_info)
+    let ty = op.ty(&s.mir().local_decls, s.base().tcx);
+    trace!("type: {:?}", ty);
+    // If the type of the value is one of the singleton types that corresponds to each function,
+    // that's enough information.
+    if let TyKind::FnDef(def_id, generics) = ty.kind() {
+        let (fun_id, generics, trait_refs, trait_info) =
+            get_function_from_def_id_and_generics(s, *def_id, *generics);
+        return (FunOperand::Id(fun_id), generics, trait_refs, trait_info);
+    }
+    match op {
+        Operand::Constant(_) => {
+            unimplemented!("{:?}", op);
         }
         Operand::Move(place) => {
-            // Closure case.
-            // The closure can not have bound variables nor trait references,
-            // so we don't need to extract generics, trait refs, etc.
-            let body = s.mir();
-            let ty = func.ty(&body.local_decls, s.base().tcx);
-            trace!("type: {:?}", ty);
-            trace!("type kind: {:?}", ty.kind());
-            let sig = match ty.kind() {
-                rustc_middle::ty::TyKind::FnPtr(sig, ..) => sig,
-                _ => unreachable!(),
-            };
-            trace!("FnPtr: {:?}", sig);
+            // Function pointer. A fn pointer cannot have bound variables or trait references, so
+            // we don't need to extract generics, trait refs, etc.
             let place = place.sinto(s);
-
             (FunOperand::Move(place), Vec::new(), Vec::new(), None)
         }
         Operand::Copy(_place) => {
-            unimplemented!("{:?}", func);
+            unimplemented!("{:?}", op);
         }
     }
 }
@@ -978,13 +943,13 @@ pub enum AggregateKind {
         let closure = generics.as_closure();
         let sig = closure.sig().sinto(s);
 
-        // Solve the predicates from the parent (i.e., the function which calls the closure).
+        // Solve the predicates from the parent (i.e., the item which defines the closure).
         let tcx = s.base().tcx;
         let parent_generics = closure.parent_args();
-        let generics = tcx.mk_args(parent_generics);
+        let parent_generics_ref = tcx.mk_args(parent_generics);
         // TODO: does this handle nested closures?
         let parent = tcx.generics_of(rust_id).parent.unwrap();
-        let trait_refs = solve_item_required_traits(s, parent, generics);
+        let trait_refs = solve_item_required_traits(s, parent, parent_generics_ref);
 
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]

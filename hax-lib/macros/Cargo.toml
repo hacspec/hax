@@ -1,0 +1,30 @@
+[package]
+name = "hax-lib-macros"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme = "README.md"
+description = "Hax-specific proc-macros for Rust programs"
+
+[lib]
+proc-macro = true
+
+[target.'cfg(hax)'.dependencies]
+proc-macro-error = { version = "1.0.4" }
+hax-lib-macros-types = { workspace = true }
+paste = { version = "1.0.15" }
+syn = { version = "2.0", features = ["full", "visit-mut", "visit"] }
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "visit-mut"] }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+
+[dev-dependencies]
+hax-lib = { path = ".." }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)', 'cfg(doc_cfg)'] }

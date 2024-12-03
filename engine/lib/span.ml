@@ -93,26 +93,61 @@ module Imported = struct
     "<" ^ file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
 end
 
-type t = { id : int; data : Imported.span list }
+type owner_id = OwnerId of int
 [@@deriving show, yojson, sexp, compare, eq, hash]
 
-let display { id = _; data } =
+let owner_id_list = ref []
+
+let fresh_owner_id (owner : Types.def_id) : owner_id =
+  let next_id = OwnerId (List.length !owner_id_list) in
+  owner_id_list := owner :: !owner_id_list;
+  next_id
+
+(** This state changes the behavior of `of_thir`: the hint placed into
+this state will be inserted automatically by `of_thir`. The field
+`owner_hint` shall be used solely for reporting to the user, not for
+any logic within the engine. *)
+let state_owner_hint : owner_id option ref = ref None
+
+let with_owner_hint (type t) (owner : Types.def_id) (f : unit -> t) : t =
+  let previous = !state_owner_hint in
+  state_owner_hint := Some (fresh_owner_id owner);
+  let result = f () in
+  state_owner_hint := previous;
+  result
+
+type t = { id : int; data : Imported.span list; owner_hint : owner_id option }
+[@@deriving show, yojson, sexp, compare, eq, hash]
+
+let display { id = _; data; _ } =
   match data with
   | [] -> "<dummy>"
   | [ span ] -> Imported.display_span span
   | spans -> List.map ~f:Imported.display_span spans |> String.concat ~sep:"∪"
 
 let of_thir span =
-  { data = [ Imported.span_of_thir span ]; id = FreshId.make () }
+  {
+    data = [ Imported.span_of_thir span ];
+    id = FreshId.make ();
+    owner_hint = !state_owner_hint;
+  }
 
 let to_thir { data; _ } = List.map ~f:Imported.span_to_thir data
 
 let union_list spans =
   let data = List.concat_map ~f:(fun { data; _ } -> data) spans in
-  { data; id = FreshId.make () }
+  let owner_hint = List.hd spans |> Option.bind ~f:(fun s -> s.owner_hint) in
+  { data; id = FreshId.make (); owner_hint }
 
 let union x y = union_list [ x; y ]
-let dummy () = { id = FreshId.make (); data = [] }
+
+let dummy () =
+  { id = FreshId.make (); data = []; owner_hint = !state_owner_hint }
+
 let id_of { id; _ } = id
 let refresh_id span = { span with id = FreshId.make () }
-let default = { id = 0; data = [] }
+let default = { id = 0; data = []; owner_hint = None }
+
+let owner_hint span =
+  span.owner_hint
+  |> Option.bind ~f:(fun (OwnerId id) -> List.nth !owner_id_list id)

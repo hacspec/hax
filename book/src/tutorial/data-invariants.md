@@ -25,11 +25,12 @@ Rust alone already can solve our representation issues with
 define the `enum` type `F3` which has only three constructor: `F3`
 represent exactly the elements of `F₃`, not more, not less.
 
-```rust,noplaypen
-{{#include sources.rs:F3}}
-```
-```ocaml
-{{#include Sources.fst:F3}}
+```rust,editable
+enum F3 {
+    E1,
+    E2,
+    E3,
+}
 ```
 
 With `F3`, there doesn't exist illegal values at all: we can now
@@ -39,7 +40,7 @@ elements. We dropped altogether a source of panic!
 
 Soon you want to work with a bigger finite field: say
 `F₂₃₄₇`. Representing this many `q` different elements with an Rust
-enum would be very painful... The `enum` apporach falls appart.
+enum would be very painful... The `enum` approach falls apart.
 
 ### Newtype and refinements
 Since we don't want an `enum` with 2347 elements, we have to revert to
@@ -53,11 +54,14 @@ one `u16` field `v`. Notice the refinment annotation on `v`: the
 extraction of this type `F` via hax will result in a type enforcing
 `v` small enough.
 
-```rust,noplaypen
-{{#include sources.rs:F}}
-```
-```ocaml
-{{#include Sources.fst:F}}
+```rust,editable
+pub const Q: u16 = 2347;
+
+#[hax_lib::attributes]
+pub struct F {
+    #[hax_lib::refine(v < Q)]
+    pub v: u16,
+}
 ```
 
 In Rust, we can now define functions that operates on type `F`,
@@ -65,14 +69,28 @@ assuming they are in bounds with respect to `F₂₃₄₇`: every such
 assumption will be checked and enforced by the proof assistant. As an
 example, below is the implementation of the addition for type `F`.
 
-```rust,noplaypen
-{{#include sources.rs:AddF}}
-```
-```ocaml
-{{#include Sources.fst:AddF}}
+```rust,editable
+# pub const Q: u16 = 2347;
+# 
+# #[hax_lib::attributes]
+# pub struct F {
+#     #[hax_lib::refine(v < Q)]
+#     pub v: u16,
+# }
+
+use core::ops::Add;
+
+impl Add for F {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self {
+            v: (self.v + rhs.v) % Q,
+        }
+    }
+}
 ```
 
 Here, F* is able to prove automatically that (1) the addition doesn't
 overflow and (2) that the invariant of `F` is preserved. The
-definition of type `F` in F* (named `t_F`) very explicitely requires
+definition of type `F` in F* (named `t_F`) very explicitly requires
 the invariant as a refinement on `v`.

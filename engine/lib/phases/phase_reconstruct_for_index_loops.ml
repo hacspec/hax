@@ -11,7 +11,7 @@ module%inlined_contents Make (FA : Features.T) = struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarForIndexLoops
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -87,7 +87,7 @@ module%inlined_contents Make (FA : Features.T) = struct
               witness = Features.On.for_index_loop;
             }
       | [%inline_arms "dloop_kind.*"] -> auto
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

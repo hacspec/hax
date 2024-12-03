@@ -10,6 +10,7 @@ pub struct Diagnostics {
     pub kind: Kind,
     pub span: Vec<hax_frontend_exporter::Span>,
     pub context: String,
+    pub owner_id: Option<hax_frontend_exporter::DefId>,
 }
 
 impl std::fmt::Display for Diagnostics {

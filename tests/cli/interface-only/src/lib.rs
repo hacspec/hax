@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 
-use hax_lib as hax;
-
 /// This item contains unsafe blocks and raw references, two features
 /// not supported by hax. Thanks to the `-i` flag and the `+:`
 /// modifier, `f` is still extractable as an interface.
 ///
 /// Expressions within type are still extracted, as well as pre- and
 /// post-conditions.
-#[hax::requires(x < 254)]
-#[hax::ensures(|r| r[0] > x)]
+#[hax_lib::requires(x < 254)]
+#[hax_lib::ensures(|r| r[0] > x)]
 fn f(x: u8) -> [u8; 4] {
     let y = x as *const i8;
 
@@ -45,5 +43,25 @@ impl From<u8> for Bar {
             Bar
         }
         from(x)
+    }
+}
+
+pub struct Holder<T> {
+    pub(crate) value: Vec<T>,
+}
+
+impl<T> From<()> for Holder<T> {
+    fn from((): ()) -> Self {
+        Holder { value: Vec::new() }
+    }
+}
+
+pub struct Param<const SIZE: usize> {
+    pub(crate) value: [u8; SIZE],
+}
+
+impl<const SIZE: usize> From<()> for Param<SIZE> {
+    fn from((): ()) -> Self {
+        Param { value: [0; SIZE] }
     }
 }

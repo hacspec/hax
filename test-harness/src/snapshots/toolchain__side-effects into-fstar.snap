@@ -27,6 +27,58 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Side_effects.Issue_1083_.fst" = '''
+module Side_effects.Issue_1083_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_MyFrom (v_Self: Type0) (v_T: Type0) = {
+  f_my_from_pre:v_T -> Type0;
+  f_my_from_post:v_T -> v_Self -> Type0;
+  f_my_from:x0: v_T -> Prims.Pure v_Self (f_my_from_pre x0) (fun result -> f_my_from_post x0 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_MyFrom u16 u8 =
+  {
+    f_my_from_pre = (fun (x: u8) -> true);
+    f_my_from_post = (fun (x: u8) (out: u16) -> true);
+    f_my_from = fun (x: u8) -> cast (x <: u8) <: u16
+  }
+
+let f (x: u8) : Core.Result.t_Result u16 u16 =
+  match Core.Result.Result_Err 1uy <: Core.Result.t_Result Prims.unit u8 with
+  | Core.Result.Result_Ok _ ->
+    Core.Result.Result_Ok (f_my_from #u16 #u8 #FStar.Tactics.Typeclasses.solve x)
+    <:
+    Core.Result.t_Result u16 u16
+  | Core.Result.Result_Err err ->
+    Core.Result.Result_Err (Core.Convert.f_from #u16 #u8 #FStar.Tactics.Typeclasses.solve err)
+    <:
+    Core.Result.t_Result u16 u16
+'''
+"Side_effects.Issue_1089_.fst" = '''
+module Side_effects.Issue_1089_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let test (x y: Core.Option.t_Option i32) : Core.Option.t_Option i32 =
+  match
+    Core.Option.impl__map #i32
+      #(Core.Option.t_Option i32)
+      x
+      (fun i ->
+          let i:i32 = i in
+          match y with
+          | Core.Option.Option_Some hoist1 ->
+            Core.Option.Option_Some (i +! hoist1 <: i32) <: Core.Option.t_Option i32
+          | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option i32)
+  with
+  | Core.Option.Option_Some some -> some
+  | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option i32
+'''
 "Side_effects.fst" = '''
 module Side_effects
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -154,9 +206,9 @@ let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
 let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
     : Core.Result.t_Result i8 u32 =
   match y with
-  | Core.Result.Result_Ok hoist1 -> Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32
+  | Core.Result.Result_Ok hoist5 -> Core.Result.Result_Ok hoist5 <: Core.Result.t_Result i8 u32
   | Core.Result.Result_Err err ->
-    Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+    Core.Result.Result_Err (Core.Convert.f_from #u32 #u16 #FStar.Tactics.Typeclasses.solve err)
     <:
     Core.Result.t_Result i8 u32
 
@@ -170,12 +222,12 @@ let early_returns (x: u32) : u32 =
       match true with
       | true -> 34ul
       | _ ->
-        let x, hoist5:(u32 & u32) = x, 3ul <: (u32 & u32) in
-        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x
+        let x, hoist9:(u32 & u32) = x, 3ul <: (u32 & u32) in
+        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist9 <: u32) x
     else
       let x:u32 = x +! 9ul in
-      let x, hoist5:(u32 & u32) = x, x +! 1ul <: (u32 & u32) in
-      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x
+      let x, hoist9:(u32 & u32) = x, x +! 1ul <: (u32 & u32) in
+      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist9 <: u32) x
 
 /// Exercise local mutation with control flow and loops
 let local_mutation (x: u32) : u32 =
@@ -203,7 +255,7 @@ let local_mutation (x: u32) : u32 =
     in
     Core.Num.impl__u32__wrapping_add x y
   else
-    let (x, y), hoist15:((u32 & u32) & u32) =
+    let (x, y), hoist19:((u32 & u32) & u32) =
       match x with
       | 12ul ->
         let y:u32 = Core.Num.impl__u32__wrapping_add x y in
@@ -215,7 +267,7 @@ let local_mutation (x: u32) : u32 =
         ((u32 & u32) & u32)
       | _ -> (x, y <: (u32 & u32)), 0ul <: ((u32 & u32) & u32)
     in
-    let x:u32 = hoist15 in
+    let x:u32 = hoist19 in
     Core.Num.impl__u32__wrapping_add x y
 
 /// Combine `?` and early return
@@ -223,39 +275,39 @@ let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
   if x >. 123uy
   then
     match Core.Result.Result_Err (B <: t_B) <: Core.Result.t_Result t_A t_B with
-    | Core.Result.Result_Ok hoist16 -> Core.Result.Result_Ok hoist16 <: Core.Result.t_Result t_A t_B
+    | Core.Result.Result_Ok hoist20 -> Core.Result.Result_Ok hoist20 <: Core.Result.t_Result t_A t_B
     | Core.Result.Result_Err err -> Core.Result.Result_Err err <: Core.Result.t_Result t_A t_B
   else Core.Result.Result_Ok (A <: t_A) <: Core.Result.t_Result t_A t_B
 
 /// Test question mark on `Option`s with some control flow
 let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.Option.t_Option u8 =
   match x with
-  | Core.Option.Option_Some hoist22 ->
-    if hoist22 >. 10uy
+  | Core.Option.Option_Some hoist26 ->
+    if hoist26 >. 10uy
     then
       match x with
-      | Core.Option.Option_Some hoist24 ->
+      | Core.Option.Option_Some hoist28 ->
         (match
-            Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist24 3uy)
+            Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist28 3uy)
             <:
             Core.Option.t_Option u8
           with
-          | Core.Option.Option_Some hoist30 ->
-            (match hoist30 with
+          | Core.Option.Option_Some hoist34 ->
+            (match hoist34 with
               | 3uy ->
                 (match Core.Option.Option_None <: Core.Option.t_Option u8 with
                   | Core.Option.Option_Some some ->
                     let v:u8 = some in
                     (match x with
-                      | Core.Option.Option_Some hoist31 ->
+                      | Core.Option.Option_Some hoist35 ->
                         (match y with
-                          | Core.Option.Option_Some hoist32 ->
+                          | Core.Option.Option_Some hoist36 ->
                             Core.Option.Option_Some
                             (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
-                                    hoist31
+                                    hoist35
                                   <:
                                   u8)
-                                hoist32)
+                                hoist36)
                             <:
                             Core.Option.t_Option u8
                           | Core.Option.Option_None  ->
@@ -265,18 +317,18 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                   | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option u8)
               | 4uy ->
                 (match z with
-                  | Core.Option.Option_Some hoist19 ->
-                    let v:u8 = 4uy +! (if hoist19 >. 4uL <: bool then 0uy else 3uy) in
+                  | Core.Option.Option_Some hoist23 ->
+                    let v:u8 = 4uy +! (if hoist23 >. 4uL <: bool then 0uy else 3uy) in
                     (match x with
-                      | Core.Option.Option_Some hoist31 ->
+                      | Core.Option.Option_Some hoist35 ->
                         (match y with
-                          | Core.Option.Option_Some hoist32 ->
+                          | Core.Option.Option_Some hoist36 ->
                             Core.Option.Option_Some
                             (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
-                                    hoist31
+                                    hoist35
                                   <:
                                   u8)
-                                hoist32)
+                                hoist36)
                             <:
                             Core.Option.t_Option u8
                           | Core.Option.Option_None  ->
@@ -287,14 +339,14 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
               | _ ->
                 let v:u8 = 12uy in
                 match x with
-                | Core.Option.Option_Some hoist31 ->
+                | Core.Option.Option_Some hoist35 ->
                   (match y with
-                    | Core.Option.Option_Some hoist32 ->
+                    | Core.Option.Option_Some hoist36 ->
                       Core.Option.Option_Some
-                      (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v hoist31
+                      (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v hoist35
                             <:
                             u8)
-                          hoist32)
+                          hoist36)
                       <:
                       Core.Option.t_Option u8
                     | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option u8
@@ -304,30 +356,30 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
       | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option u8
     else
       (match x with
-        | Core.Option.Option_Some hoist27 ->
+        | Core.Option.Option_Some hoist31 ->
           (match y with
-            | Core.Option.Option_Some hoist26 ->
+            | Core.Option.Option_Some hoist30 ->
               (match
-                  Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist27 hoist26)
+                  Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist31 hoist30)
                   <:
                   Core.Option.t_Option u8
                 with
-                | Core.Option.Option_Some hoist30 ->
-                  (match hoist30 with
+                | Core.Option.Option_Some hoist34 ->
+                  (match hoist34 with
                     | 3uy ->
                       (match Core.Option.Option_None <: Core.Option.t_Option u8 with
                         | Core.Option.Option_Some some ->
                           let v:u8 = some in
                           (match x with
-                            | Core.Option.Option_Some hoist31 ->
+                            | Core.Option.Option_Some hoist35 ->
                               (match y with
-                                | Core.Option.Option_Some hoist32 ->
+                                | Core.Option.Option_Some hoist36 ->
                                   Core.Option.Option_Some
                                   (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
-                                          hoist31
+                                          hoist35
                                         <:
                                         u8)
-                                      hoist32)
+                                      hoist36)
                                   <:
                                   Core.Option.t_Option u8
                                 | Core.Option.Option_None  ->
@@ -338,18 +390,18 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                           Core.Option.Option_None <: Core.Option.t_Option u8)
                     | 4uy ->
                       (match z with
-                        | Core.Option.Option_Some hoist19 ->
-                          let v:u8 = 4uy +! (if hoist19 >. 4uL <: bool then 0uy else 3uy) in
+                        | Core.Option.Option_Some hoist23 ->
+                          let v:u8 = 4uy +! (if hoist23 >. 4uL <: bool then 0uy else 3uy) in
                           (match x with
-                            | Core.Option.Option_Some hoist31 ->
+                            | Core.Option.Option_Some hoist35 ->
                               (match y with
-                                | Core.Option.Option_Some hoist32 ->
+                                | Core.Option.Option_Some hoist36 ->
                                   Core.Option.Option_Some
                                   (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
-                                          hoist31
+                                          hoist35
                                         <:
                                         u8)
-                                      hoist32)
+                                      hoist36)
                                   <:
                                   Core.Option.t_Option u8
                                 | Core.Option.Option_None  ->
@@ -361,15 +413,15 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                     | _ ->
                       let v:u8 = 12uy in
                       match x with
-                      | Core.Option.Option_Some hoist31 ->
+                      | Core.Option.Option_Some hoist35 ->
                         (match y with
-                          | Core.Option.Option_Some hoist32 ->
+                          | Core.Option.Option_Some hoist36 ->
                             Core.Option.Option_Some
                             (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
-                                    hoist31
+                                    hoist35
                                   <:
                                   u8)
-                                hoist32)
+                                hoist36)
                             <:
                             Core.Option.t_Option u8
                           | Core.Option.Option_None  ->
@@ -397,7 +449,7 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
         <:
         Core.Result.t_Result u32 u32
       | Core.Result.Result_Err err ->
-        Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+        Core.Result.Result_Err (Core.Convert.f_from #u32 #u8 #FStar.Tactics.Typeclasses.solve err)
         <:
         Core.Result.t_Result u32 u32
     else
@@ -409,8 +461,8 @@ let simplifiable_question_mark (c: bool) (x: Core.Option.t_Option i32) : Core.Op
   if c
   then
     match x with
-    | Core.Option.Option_Some hoist36 ->
-      let a:i32 = hoist36 +! 10l in
+    | Core.Option.Option_Some hoist40 ->
+      let a:i32 = hoist40 +! 10l in
       let b:i32 = 20l in
       Core.Option.Option_Some (a +! b) <: Core.Option.t_Option i32
     | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option i32

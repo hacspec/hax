@@ -23,6 +23,10 @@ pub enum HaxMessage {
     WarnExperimentalBackend {
         backend: Backend<()>,
     } = 4,
+    ProfilingData(crate::engine_api::ProfilingData) = 5,
+    Stats {
+        errors_per_item: Vec<(hax_frontend_exporter::DefId, usize)>,
+    } = 6,
 }
 
 impl HaxMessage {

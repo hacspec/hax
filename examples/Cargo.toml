@@ -5,12 +5,11 @@ members = [
     "sha256",
     "barrett",
     "kyber_compress",
-    "proverif-psk"
-]
+    "proverif-psk",
+    "coq-example"]
 resolver = "2"
 
 [workspace.dependencies]
-hax-lib-macros = { path = "../hax-lib-macros" }
 hax-lib = { path = "../hax-lib" }
 hax-bounded-integers = { path = "../hax-bounded-integers" }
 

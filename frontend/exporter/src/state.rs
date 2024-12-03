@@ -194,7 +194,7 @@ mod types {
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
-    pub type Binder<'tcx> = rustc_middle::ty::Binder<'tcx, ()>;
+    pub type UnitBinder<'tcx> = rustc_middle::ty::Binder<'tcx, ()>;
 }
 
 mk!(
@@ -203,7 +203,7 @@ mk!(
         thir: {'tcx} types::RcThir,
         mir: {'tcx} types::RcMir,
         owner_id: {} rustc_hir::def_id::DefId,
-        binder: {'tcx} types::Binder,
+        binder: {'tcx} types::UnitBinder,
     }
 );
 
@@ -212,7 +212,7 @@ pub use self::types::*;
 pub type StateWithBase<'tcx> = State<Base<'tcx>, (), (), (), ()>;
 pub type StateWithOwner<'tcx> = State<Base<'tcx>, (), (), rustc_hir::def_id::DefId, ()>;
 pub type StateWithBinder<'tcx> =
-    State<Base<'tcx>, (), (), rustc_hir::def_id::DefId, types::Binder<'tcx>>;
+    State<Base<'tcx>, (), (), rustc_hir::def_id::DefId, types::UnitBinder<'tcx>>;
 pub type StateWithThir<'tcx> =
     State<Base<'tcx>, types::RcThir<'tcx>, (), rustc_hir::def_id::DefId, ()>;
 pub type StateWithMir<'tcx> =

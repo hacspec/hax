@@ -208,12 +208,13 @@ fn solve_item_traits_inner<'tcx, S: UnderOwnerState<'tcx>>(
     generics: ty::GenericArgsRef<'tcx>,
     predicates: impl Iterator<Item = ty::Clause<'tcx>>,
 ) -> Vec<ImplExpr> {
+    use crate::rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let param_env = s.param_env();
 
     predicates
         .filter_map(|clause| clause.as_trait_clause())
-        .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+        .map(|clause| clause.to_poly_trait_ref())
         // Substitute the item generics
         .map(|trait_ref| ty::EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
         // We unfortunately don't have a way to normalize without erasing regions.

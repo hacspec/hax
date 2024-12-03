@@ -11,7 +11,7 @@ module%inlined_contents Make (FA : Features.T) = struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarQuestionMarks
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -87,9 +87,10 @@ module%inlined_contents Make (FA : Features.T) = struct
         let* impl = expect_residual_impl_result impl in
         let*? _ = [%eq: ty] error_src error_dest |> not in
         let from_typ = TArrow ([ error_src ], error_dest) in
+        let impl_generic_args = [ GType error_dest; GType error_src ] in
         Some
-          (UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-             [ e ] e.span from_typ)
+          (UA.call ~impl_generic_args ~kind:(AssociatedItem Value) ~impl
+             Core__convert__From__from [ e ] e.span from_typ)
 
       (** [map_err e error_dest impl] creates the expression
       [e.map_err(from)] with the proper types and impl
@@ -294,7 +295,7 @@ module%inlined_contents Make (FA : Features.T) = struct
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       QuestionMarks.extract expr |> Option.value ~default:expr
       |> [%inline_body dexpr_unwrapped]
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

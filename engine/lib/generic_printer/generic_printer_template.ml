@@ -3,7 +3,8 @@ open! Ast
 open! PPrint
 
 module Make
-    (F : Features.T) (Default : sig
+    (F : Features.T)
+    (Default : sig
       val default : string -> string
     end) =
 struct
@@ -232,9 +233,6 @@ struct
 
       method item'_TyAlias ~super:_ ~name:_ ~generics:_ ~ty:_ =
         default_document_for "item'_TyAlias"
-
-      method item'_Type ~super:_ ~name:_ ~generics:_ ~variants:_ ~is_struct:_ =
-        default_document_for "item'_Type"
 
       method item'_Type_enum ~super:_ ~name:_ ~generics:_ ~variants:_ =
         default_document_for "item'_Type_enum"

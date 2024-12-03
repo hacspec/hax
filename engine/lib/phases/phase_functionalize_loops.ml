@@ -25,7 +25,7 @@ struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.FunctionalizeLoops
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -286,7 +286,7 @@ struct
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
+    [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
 
     [%%inline_defs "Item.*"]
   end

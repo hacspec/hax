@@ -104,7 +104,8 @@ let module_name (ns : string * string list) : string =
     (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
 
 module Make
-    (Attrs : Attrs.WITH_ITEMS) (Ctx : sig
+    (Attrs : Attrs.WITH_ITEMS)
+    (Ctx : sig
       val ctx : Context.t
     end) =
 struct
@@ -164,7 +165,8 @@ struct
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
     | Float _ ->
-        Error.unimplemented ~issue_id:230 ~details:"pliteral: Float" span
+        Error.unimplemented ~issue_id:464
+          ~details:"Matching on f32 or f64 literals is not yet supported." span
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
@@ -179,6 +181,13 @@ struct
     | Int { value; kind = { size = S128; signedness = sn }; negative } ->
         let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
         wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | Float { value; negative; _ } ->
+        F.mk_e_app
+          (F.term_of_lid [ "mk_float" ])
+          [
+            mk_const
+              (F.Const.Const_string (pnegative negative ^ value, F.dummyRange));
+          ]
     | _ -> mk_const @@ pliteral span e
 
   let pconcrete_ident (id : concrete_ident) =
@@ -310,7 +319,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat _ -> Error.unimplemented ~issue_id:230 ~details:"pty: Float" span
+    | TFloat _ -> F.term_of_lid [ "float" ]
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
@@ -1166,11 +1175,9 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:
-                           (fun {
-                                  goal = { trait; args };
-                                  name = impl_ident_name;
-                                } ->
+                         ~f:(fun
+                             { goal = { trait; args }; name = impl_ident_name }
+                           ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
@@ -1464,8 +1471,19 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        let has_type =
+          List.exists items ~f:(fun { ii_v; _ } ->
+              match ii_v with IIType _ -> true | _ -> false)
+        in
+        let impl_val = ctx.interface_mode && not has_type in
+        let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
+        if impl_val then
+          let generics_binders = List.map ~f:FStarBinder.to_binder generics in
+          let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
+          let v = F.AST.Val (name, val_type) in
+          (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
+          @ F.decls ~fsti:false ~attrs:[ tcinst ] let_impl
+        else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
     | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
@@ -1761,6 +1779,7 @@ module TransformToInputLanguage =
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
+  |> Phases.Bundle_cycles
   |> SubtypeToInputLanguage
   |> Identity
   ]

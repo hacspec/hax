@@ -45,7 +45,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.DropMatchGuards
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module UA = Ast_utils.Make (F)
@@ -188,8 +188,7 @@ module%inlined_contents Make (F : Features.T) = struct
               new_body ~span
           in
           transform_arms scrutinee remaining [ new_arm ]
-      [@@inline_ands
-        bindings_of dexpr - dexpr' - darm - darm' - dguard - dguard']
+    [@@inline_ands bindings_of dexpr - dexpr' - darm - darm' - dguard - dguard']
 
     [%%inline_defs "Item.*"]
   end

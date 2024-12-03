@@ -22,7 +22,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.DropReturnBreakContinue
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -118,6 +118,18 @@ module%inlined_contents Make (F : Features.T) = struct
                  in exit nodes. **)
       end
 
+    let closure_visitor =
+      let module Visitors = Ast_visitors.Make (F) in
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_expr' () e =
+          match e with
+          | Closure ({ body; _ } as closure) ->
+              Closure { closure with body = visitor#visit_expr None body }
+          | _ -> super#visit_expr' () e
+      end
+
     [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr' (span : span) (expr : A.expr') : B.expr' =
@@ -152,12 +164,13 @@ module%inlined_contents Make (F : Features.T) = struct
           let kind = dloop_kind span kind in
           let state = Option.map ~f:(dloop_state span) state in
           Loop { body; control_flow; kind; state; label; witness }
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*" - ditems]
 
     let ditems (items : A.item list) : B.item list =
-      List.concat_map items ~f:(visitor#visit_item None >> ditem)
+      List.concat_map items
+        ~f:(visitor#visit_item None >> closure_visitor#visit_item () >> ditem)
   end
 
   include Implem

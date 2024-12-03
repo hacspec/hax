@@ -13,7 +13,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.TransformHaxLibInline
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -156,7 +156,7 @@ module%inlined_contents Make (F : Features.T) = struct
           in
           Some { contents; witness = Features.On.quote }
       | _ -> None
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*" - ditems]
 
@@ -199,10 +199,10 @@ module%inlined_contents Make (F : Features.T) = struct
                          item_ident = item.ident;
                          position =
                            (if replace then `Replace
-                           else
-                             match position with
-                             | After -> `After
-                             | Before -> `Before);
+                            else
+                              match position with
+                              | After -> `After
+                              | Before -> `Before);
                        }
                      in
                      Quote { quote; origin }

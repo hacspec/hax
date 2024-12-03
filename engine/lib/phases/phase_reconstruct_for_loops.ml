@@ -15,7 +15,7 @@ struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.ResugarForLoops
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -261,7 +261,7 @@ struct
             typ = UB.unit_typ;
           }
       | None -> h expr
-      [@@inline_ands bindings_of dexpr]
+    [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

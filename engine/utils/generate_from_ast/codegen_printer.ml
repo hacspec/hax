@@ -27,6 +27,7 @@ let is_hidden_method =
       "pat'_PConstruct";
       "expr'_GlobalVar";
       "variant";
+      "item'_Type";
     ]
   in
   List.mem ~equal:[%eq: string] list
@@ -98,14 +99,14 @@ and string_ty_of_ty' (state : state) (t : Type.t) =
   else
     "("
     ^ (if List.is_empty t.args then ""
-      else
-        "("
-        ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty' state))
-        ^ ") ")
+       else
+         "("
+         ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty' state))
+         ^ ") ")
     ^ t.typ
     ^ (if List.mem ~equal:[%eq: string] state.names_with_doc t.typ then
-       " lazy_doc"
-      else "")
+         " lazy_doc"
+       else "")
     ^ ")"
 
 and is_lazy_doc_typ (state : state) = string_ty_of_ty' state >> is_lazy_doc_typ'
@@ -202,8 +203,8 @@ let print_datatype state (dt : Datatype.t)
     in
     let body =
       (if Option.is_some (get_child_type dt.name) then
-       "\n    let super = value in"
-      else "")
+         "\n    let super = value in"
+       else "")
       ^ "\n    match value with"
       ^ String.concat ~sep:""
           (List.map
@@ -382,23 +383,23 @@ module Make (F : Features.T) = struct
      %s
    end
 
-   type ('get_span_data, 'a) object_type = <
-        get_span_data : 'get_span_data;
+   type ('span_data, 'a) object_type = <
+        span_data : 'span_data;
         %s
      >
 
-   let map (type get_span_data) (type a) (type b)
-           (f: ((get_span_data, a) object_type -> a) -> b)
+   let map (type span_data) (type a) (type b)
+           (f: ((span_data, a) object_type -> a) -> b)
            : (unit, b) object_type = object
-        method get_span_data: unit = ()
+        method span_data: unit = ()
         %s
      end
 
-   let map_get_span_data (type a) (type b) (type t)
+   let map_span_data (type a) (type b) (type t)
           (obj: (a, t) object_type)
-          (get_span_data: b)          
+          (span_data: b)          
           : (b, t) object_type = object
-        method get_span_data: b = get_span_data
+        method span_data: b = span_data
         %s
      end
 end

@@ -12,7 +12,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.DropReferences
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module UA = Ast_utils.Make (F)
@@ -30,7 +30,7 @@ module%inlined_contents Make (F : Features.T) = struct
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms "dexpr'.*" - Block] -> auto
       | Block { e; _ } -> (dexpr e).e
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end

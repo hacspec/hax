@@ -1,6 +1,6 @@
 open Prelude
 
-type t = { line : int; col : int } [@@deriving eq]
+type t = { line : int; col : int } [@@deriving eq, yojson]
 
 let show { line; col } =
   "(" ^ Int.to_string line ^ ":" ^ Int.to_string col ^ ")"

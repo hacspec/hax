@@ -945,7 +945,7 @@ end) : EXPR = struct
                    e =
                      Literal
                        (Int { kind = { size = S8; signedness = Unsigned }; _ }
-                       as lit);
+                        as lit);
                    _;
                  } ->
                    lit
@@ -1310,7 +1310,7 @@ let make ~krate : (module EXPR) =
   (module M)
 
 let c_trait_item (item : Thir.trait_item) : trait_item =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
   let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
@@ -1441,7 +1441,9 @@ let cast_of_enum typ_name generics typ thir_span
   { v; span; ident; attrs = [] }
 
 let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
-  try c_item_unwrapped ~ident ~drop_body item
+  try
+    Span.with_owner_hint item.owner_id (fun _ ->
+        c_item_unwrapped ~ident ~drop_body item)
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
@@ -1449,7 +1451,7 @@ let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
     [ make_hax_error_item span ident error ]
 
 and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+  let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
@@ -1526,8 +1528,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         in
         let variants =
           List.map
-            ~f:
-              (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
+            ~f:(fun
+                ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
                 [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
                   data
@@ -1640,7 +1642,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       generics =
                         U.concat_generics (c_generics generics)
                           (c_generics item.generics);
-                      body = c_expr body;
+                      body = c_body body;
                       params;
                       safety = csafety safety;
                     }
@@ -1650,7 +1652,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       name = item_def_id;
                       generics = c_generics generics;
                       (* does that make sense? can we have `const<T>`? *)
-                      body = c_expr e;
+                      body = c_body e;
                       params = [];
                       safety = Safe;
                     }
@@ -1679,6 +1681,11 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
             items
         in
+        let has_type =
+          List.exists items ~f:(fun item ->
+              match item.kind with Type _ -> true | _ -> false)
+        in
+        let c_e = if has_type then c_expr else c_body in
         mk
         @@ Impl
              {
@@ -1709,9 +1716,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  [ U.make_unit_param span ]
                                else List.map ~f:(c_param item.span) params
                              in
-                             IIFn { body = c_expr body; params }
-                         | Const (_ty, e) ->
-                             IIFn { body = c_expr e; params = [] }
+                             IIFn { body = c_e body; params }
+                         | Const (_ty, e) -> IIFn { body = c_e e; params = [] }
                          | Type { ty; parent_bounds } ->
                              IIType
                                {
@@ -1758,15 +1764,21 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
         let def_id = item.owner_id in
         let def_id : Types.def_id =
-          {
-            def_id with
-            path =
-              def_id.path
-              @ [
-                  Types.
-                    { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
-                ];
-          }
+          let value =
+            {
+              def_id.contents.value with
+              path =
+                def_id.contents.value.path
+                @ [
+                    Types.
+                      {
+                        data = ValueNs "DUMMY";
+                        disambiguator = MyInt64.of_int 0;
+                      };
+                  ];
+            }
+          in
+          { contents = { def_id.contents with value } }
         in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
     | Union _ ->

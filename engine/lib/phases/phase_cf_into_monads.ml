@@ -20,7 +20,7 @@ struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.CfIntoMonads
+        let phase_id = [%auto_phase_name auto]
       end)
 
   module Implem : ImplemT.T = struct
@@ -231,7 +231,7 @@ struct
       else
         UB.call Rust_primitives__hax__control_flow_monad__ControlFlowMonad__lift
           [ e ] e.span target_type
-      [@@inline_ands bindings_of dexpr - dexpr']
+    [@@inline_ands bindings_of dexpr - dexpr']
 
     module Item = struct
       module OverrideDExpr = struct

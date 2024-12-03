@@ -47,6 +47,7 @@ impl Session {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Value {
     Ty(Arc<TyKind>),
+    DefId(Arc<DefIdContents>),
 }
 
 impl SupportedType<Value> for TyKind {
@@ -56,6 +57,19 @@ impl SupportedType<Value> for TyKind {
     fn from_types(t: &Value) -> Option<Arc<Self>> {
         match t {
             Value::Ty(value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl SupportedType<Value> for DefIdContents {
+    fn to_types(value: Arc<Self>) -> Value {
+        Value::DefId(value)
+    }
+    fn from_types(t: &Value) -> Option<Arc<Self>> {
+        match t {
+            Value::DefId(value) => Some(value.clone()),
+            _ => None,
         }
     }
 }
@@ -67,6 +81,13 @@ impl SupportedType<Value> for TyKind {
 pub struct Node<T: 'static + SupportedType<Value>> {
     id: Id,
     value: Arc<T>,
+}
+
+impl<T: SupportedType<Value>> std::ops::Deref for Node<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        self.value.as_ref()
+    }
 }
 
 /// Hax relies on hashes being deterministic for predicates
@@ -158,13 +179,14 @@ impl Session {
     }
 }
 
-impl<T: Sync + Send + Clone + 'static + SupportedType<Value>> Node<T> {
+impl<T: Sync + Send + 'static + SupportedType<Value>> Node<T> {
     pub fn new(value: T, session: &mut Session) -> Self {
         let id = session.fresh_id();
-        let kind = Arc::new(value);
-        session.table.0.insert(id.clone(), kind.clone());
-        Self { id, value: kind }
+        let value = Arc::new(value);
+        session.table.0.insert(id.clone(), value.clone());
+        Self { id, value }
     }
+
     pub fn inner(&self) -> &Arc<T> {
         &self.value
     }
@@ -250,7 +272,7 @@ mod serde_repr {
 
     #[derive(Serialize, Deserialize, JsonSchema, Debug)]
     pub(super) struct NodeRepr<T> {
-        cache_id: Id,
+        id: Id,
         value: Option<Arc<T>>,
     }
 
@@ -268,8 +290,8 @@ mod serde_repr {
             } else {
                 Some(self.value.clone())
             };
-            let cache_id = self.id;
-            NodeRepr { value, cache_id }
+            let id = self.id;
+            NodeRepr { value, id }
         }
     }
 
@@ -279,7 +301,7 @@ mod serde_repr {
         fn try_from(cached: NodeRepr<T>) -> Result<Self, Self::Error> {
             use serde::de::Error;
             let table = DESERIALIZATION_STATE.lock().unwrap();
-            let id = cached.cache_id;
+            let id = cached.id;
             let kind = if let Some(kind) = cached.value {
                 kind
             } else {

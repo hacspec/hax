@@ -10,6 +10,25 @@ use std::process::{Command, Stdio};
 mod hax_frontend_exporter_def_id;
 use hax_frontend_exporter_def_id::*;
 
+mod id_table {
+    //! Shim to make `def_id.rs` build. Replaces the `id_table` interner with a plain `Arc`.
+    use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
+
+    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+    pub struct Node<T> {
+        pub value: Arc<T>,
+        pub id: u32,
+    }
+
+    impl<T> std::ops::Deref for Node<T> {
+        type Target = T;
+        fn deref(&self) -> &Self::Target {
+            self.value.as_ref()
+        }
+    }
+}
+
 /// Name of the current crate
 const HAX_ENGINE_NAMES_CRATE: &str = "hax_engine_names";
 /// Path `a::b` needs to be compiled to a OCaml variant name, `::` is
@@ -40,7 +59,7 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
         | DefPathItem::ValueNs(s)
         | DefPathItem::MacroNs(s)
         | DefPathItem::LifetimeNs(s) => s,
-        DefPathItem::CrateRoot => "CrateRoot".into(),
+        DefPathItem::CrateRoot { name } => uppercase_first_letter(&name),
         DefPathItem::Impl => "Impl".into(),
         DefPathItem::ForeignMod => "ForeignMod".into(),
         DefPathItem::Use => "Use".into(),
@@ -53,23 +72,39 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
     }
 }
 
-fn disambiguated_def_path_item_to_str(defpath: DisambiguatedDefPathItem) -> String {
-    let data = def_path_item_to_str(defpath.data);
+fn disambiguated_def_path_item_to_str(defpath: &DisambiguatedDefPathItem) -> String {
+    let data = def_path_item_to_str(defpath.data.clone());
     let disambiguator = disambiguator_to_str(defpath.disambiguator);
     format!("{data}{disambiguator}")
 }
 
-fn def_id_to_str(DefId { krate, path, .. }: &mut DefId) -> String {
-    if krate == HAX_ENGINE_NAMES_CRATE {
-        *krate = "rust_primitives".into();
+fn def_id_to_str(def_id: &DefId) -> (Value, String) {
+    let crate_name = if def_id.krate == HAX_ENGINE_NAMES_CRATE {
+        "rust_primitives"
+    } else {
+        &def_id.krate
     };
-    let path = path
-        .clone()
+
+    // Update the crate name in the json output as well.
+    let mut json = serde_json::to_value(def_id).unwrap();
+    json["contents"]["value"]["krate"] = Value::String(crate_name.to_owned());
+
+    let crate_name = uppercase_first_letter(crate_name);
+    let path = [crate_name]
         .into_iter()
-        .map(disambiguated_def_path_item_to_str)
+        .chain(def_id.path.iter().map(disambiguated_def_path_item_to_str))
         .collect::<Vec<String>>()
         .join(SEPARATOR);
-    format!("{}{SEPARATOR}{path}", uppercase_first_letter(&krate))
+    (json, path)
+}
+
+/// Checks whether a def id refers to a macro or not.
+/// We don't want to extract macro names.
+fn is_macro(did: &DefId) -> bool {
+    let Some(last) = did.contents.value.path.last() else {
+        return false;
+    };
+    matches!(last.data, DefPathItem::MacroNs { .. })
 }
 
 fn reader_to_str(s: String) -> String {
@@ -82,9 +117,10 @@ fn reader_to_str(s: String) -> String {
 
     let def_ids = def_ids
         .into_iter()
-        .map(|mut did| {
-            let krate_name = def_id_to_str(&mut did);
-            (serde_json::to_string(&did).unwrap(), krate_name)
+        .filter(|did| !is_macro(did))
+        .map(|did| {
+            let (json, krate_name) = def_id_to_str(&did);
+            (serde_json::to_string(&json).unwrap(), krate_name)
         })
         .collect::<Vec<_>>();
 

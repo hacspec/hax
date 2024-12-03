@@ -49,15 +49,19 @@ fmt:
   cd engine && dune fmt
 
 # Run hax tests: each test crate has a snapshot, so that we track changes in extracted code. If a snapshot changed, please review them with `just test-review`.
-test:
-  cargo test --test toolchain
+test *FLAGS:
+  cargo test --test toolchain {{FLAGS}}
 
-_test:
-  CARGO_TESTS_ASSUME_BUILT=1 cargo test --test toolchain
+_test *FLAGS:
+  CARGO_TESTS_ASSUME_BUILT=1 cargo test --test toolchain {{FLAGS}}
 
 # Review snapshots
 test-review: (_ensure_command_in_path "cargo-insta" "Insta (https://insta.rs)")
   cargo insta review
+
+# Serve the book
+book: (_ensure_command_in_path "mdbook" "mdBook (https://rust-lang.github.io/mdBook/)")
+  cd book && mdbook serve
 
 # Check the coherency between issues labeled `marked-unimplemented` on GitHub and issues mentionned in the engine in the `Unimplemented {issue_id: ...}` errors.
 @check-issues:

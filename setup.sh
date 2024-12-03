@@ -5,6 +5,7 @@ set -eu
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 opam_jobs=4
+CLEANUP_WORKSPACE=on
 
 # Parse command line arguments.
 all_args=("$@")
@@ -14,12 +15,35 @@ while [ $# -gt 0 ]; do
         opam_jobs=$2
         shift
         ;;
+    --no-cleanup)
+        CLEANUP_WORKSPACE=off
+        ;;
+    --help)
+        echo "hax setup script"
+        echo ""
+        echo "Usage: $0 [OPTIONS]"
+        echo ""
+        echo "Options:"
+        echo ' -j <JOBS>     The number of opam jobs to run in parallel'
+        echo ' --no-cleanup  Disables the default behavior that runs `cargo clean` and `opam clean`'
+        exit
+        ;;
     esac
     shift
 done
 
+# Cleanup the cargo and dune workspace, to make sure we are in a clean
+# state
+cleanup_workspace() {
+    cargo clean
+    (
+        cd engine
+        opam clean
+    )
+}
+
 # Warns if we're building in a dirty checkout of hax: while hacking on
-# hax, we should really be using the `./.utils/rebuild.sh`
+# hax, we should really be using `just build`.
 warn_if_dirty() {
     (
         cd "$SCRIPTPATH"
@@ -92,6 +116,10 @@ for binary in opam node rustup jq; do
     ensure_binary_available $binary
 done
 ensure_node_is_recent_enough
+
+if [ "$CLEANUP_WORKSPACE" = "on" ]; then
+    cleanup_workspace
+fi
 
 install_rust_binaries
 install_ocaml_engine

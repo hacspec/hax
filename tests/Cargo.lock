@@ -35,7 +35,6 @@ name = "attribute-opaque"
 version = "0.1.0"
 dependencies = [
  "hax-lib",
- "hax-lib-macros",
  "serde",
 ]
 
@@ -224,6 +223,9 @@ dependencies = [
 [[package]]
 name = "cyclic-modules"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "dyn"
@@ -397,7 +399,6 @@ name = "interface-only"
 version = "0.1.0"
 dependencies = [
  "hax-lib",
- "hax-lib-macros",
 ]
 
 [[package]]
@@ -543,7 +544,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "hacspec-dev",
- "hax-lib-macros",
+ "hax-lib",
  "hax-lib-protocol",
  "hax-lib-protocol-macros",
  "rand",
@@ -667,7 +668,7 @@ version = "0.1.0"
 name = "ping-pong"
 version = "0.1.0"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib",
  "hax-lib-protocol",
  "hax-lib-protocol-macros",
 ]
@@ -782,7 +783,7 @@ dependencies = [
 name = "raw-attributes"
 version = "0.1.0"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib",
 ]
 
 [[package]]

@@ -27,39 +27,8 @@ module Phase = struct
       | x -> [%show: t] x
   end
 
-  type t =
-    | DirectAndMut
-    | AndMutDefSite
-    | Identity
-    | DropReferences
-    | DropBlocks
-    | DropSizedTrait
-    | DropMatchGuards
-    | RefMut
-    | ResugarAsserts
-    | ResugarForLoops
-    | ResugarWhileLoops
-    | ResugarForIndexLoops
-    | ResugarQuestionMarks
-    | RewriteControlFlow
-    | SimplifyQuestionMarks
-    | Specialize
-    | HoistSideEffects
-    | HoistDisjunctions
-    | LocalMutation
-    | TrivializeAssignLhs
-    | CfIntoMonads
-    | FunctionalizeLoops
-    | TraitsSpecs
-    | SimplifyMatchReturn
-    | SimplifyHoisting
-    | DropReturnBreakContinue
-    | TransformHaxLibInline
-    | NewtypeAsRefinement
-    | DummyA
-    | DummyB
-    | DummyC
-    | Reject of Rejection.t
+  (** All names for phases defined in `lib/phases_*` are generated automatically *)
+  type%add_phase_names t = Identity | HoistSideEffects | Reject of Rejection.t
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
   let display = function
@@ -98,11 +67,26 @@ type thir_span = T.span [@@deriving show, eq]
 let compare_thir_span (a : thir_span) (b : thir_span) =
   [%compare: string] ([%show: thir_span] a) ([%show: thir_span] b)
 
-type t = { context : Context.t; kind : kind; span : thir_span list }
+type thir_def_id = T.def_id [@@deriving show, eq]
+
+let compare_thir_def_id (a : thir_def_id) (b : thir_def_id) =
+  [%compare: string] ([%show: thir_def_id] a) ([%show: thir_def_id] b)
+
+type t = {
+  context : Context.t;
+  kind : kind;
+  span : thir_span list;
+  owner_id : thir_def_id option;
+}
 [@@deriving show, eq, compare]
 
 let to_thir_diagnostic (d : t) : Types.diagnostics =
-  { kind = d.kind; context = Context.display d.context; span = d.span }
+  {
+    kind = d.kind;
+    context = Context.display d.context;
+    span = d.span;
+    owner_id = d.owner_id;
+  }
 
 (** Ask `cargo-hax` to pretty print a diagnostic *)
 let ask_diagnostic_pretty_print diag : string =
@@ -117,7 +101,7 @@ let pretty_print : t -> string =
 let pretty_print_context_kind : Context.t -> kind -> string =
  fun context kind ->
   let span = Span.to_thir (Span.dummy ()) in
-  pretty_print { context; kind; span }
+  pretty_print { context; kind; span; owner_id = None }
 
 module Core : sig
   val raise_fatal_error : 'never. t -> 'never
@@ -153,7 +137,8 @@ end
 include Core
 
 let failure ~context ~span kind =
-  Core.raise_fatal_error { context; kind; span = Span.to_thir span }
+  Core.raise_fatal_error
+    { context; kind; span = Span.to_thir span; owner_id = Span.owner_hint span }
 
 module SpanFreeError : sig
   type t = private Data of Context.t * kind [@@deriving show]
@@ -173,6 +158,6 @@ end = struct
     raise (Exn (Data (ctx, kind)))
 
   let raise ?(span = []) (ctx : Context.t) (kind : kind) =
-    report { span; kind; context = ctx };
+    report { span; kind; context = ctx; owner_id = None };
     raise_without_reporting ctx kind
 end

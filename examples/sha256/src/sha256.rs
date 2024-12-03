@@ -1,4 +1,3 @@
-use hax_lib_macros as hax;
 use std::convert::TryInto;
 
 const BLOCK_SIZE: usize = 64;
@@ -50,7 +49,7 @@ const HASH_INIT: Hash = [
     0x5be0cd19u32,
 ];
 
-#[hax::requires(i < 4)]
+#[hax_lib::requires(i < 4)]
 pub fn sigma(x: u32, i: usize, op: usize) -> u32 {
     let mut tmp: u32 = x.rotate_right(OP_TABLE[3 * i + 2].into());
     if op == 0 {

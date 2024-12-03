@@ -62,8 +62,9 @@ end
 
 (** Make a monomorphic phase: a phase that transform an AST with
 feature set [F] into an AST with the same feature set [F] *)
-module MakeMonomorphicPhase (F : Features.T) (M : MAKE_MONOMORPHIC_PHASE(F).ARG) :
-  MAKE_MONOMORPHIC_PHASE(F).T = struct
+module MakeMonomorphicPhase
+    (F : Features.T)
+    (M : MAKE_MONOMORPHIC_PHASE(F).ARG) : MAKE_MONOMORPHIC_PHASE(F).T = struct
   module FA = F
   module FB = F
   module A = Ast.Make (F)
@@ -129,7 +130,8 @@ end
 
 module MakeBase
     (FA : Features.T)
-    (FB : Features.T) (M : sig
+    (FB : Features.T)
+    (M : sig
       val phase_id : Diagnostics.Phase.t
     end) =
 struct
@@ -248,10 +250,12 @@ module TracePhase (P : PHASE) = struct
   include P
 
   let name = [%show: Diagnostics.Phase.t] P.metadata.current_phase
-  let enable = Option.is_some P.metadata.previous_phase
+  (* We distinguish between composite phases (i.e. `BindPhase(_)(_)`) versus non-composite ones. *)
+
+  let composite_phase = Option.is_some P.metadata.previous_phase
 
   let ditems =
-    if enable then P.ditems
+    if composite_phase then P.ditems
     else fun items ->
       Logs.info (fun m -> m "Entering phase [%s]" name);
       let items = P.ditems items in
@@ -259,12 +263,25 @@ module TracePhase (P : PHASE) = struct
       items
 end
 
+module ProfilePhase (P : PHASE) = struct
+  include P
+
+  (* We distinguish between composite phases (i.e. `BindPhase(_)(_)`) versus non-composite ones. *)
+  let composite_phase = Option.is_some P.metadata.previous_phase
+
+  let ditems items =
+    if composite_phase then P.ditems items
+    else
+      let ctx = Diagnostics.Context.Phase P.metadata.current_phase in
+      Profiling.profile ctx (List.length items) (fun () -> P.ditems items)
+end
+
 module BindPhase
     (D1 : PHASE)
     (D2 : PHASE with module FA = D1.FB and module A = D1.B) =
 struct
-  module D1' = TracePhase (D1)
-  module D2' = TracePhase (D2)
+  module D1' = ProfilePhase (TracePhase (D1))
+  module D2' = ProfilePhase (TracePhase (D2))
   module FA = D1.FA
   module FB = D2.FB
   module A = D1.A
@@ -275,8 +292,11 @@ struct
   let ditems (items : A.item list) : B.item list =
     let nth = List.length @@ Metadata.previous_phases D1'.metadata in
     (if Int.equal nth 0 then
-     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Stdlib.Obj.magic in
-     DebugBindPhase.add Before 0 (fun _ -> List.map ~f:coerce_to_full_ast items));
+       let coerce_to_full_ast : D1'.A.item -> Ast.Full.item =
+         Stdlib.Obj.magic
+       in
+       DebugBindPhase.add Before 0 (fun _ ->
+           List.map ~f:coerce_to_full_ast items));
     let items' = D1'.ditems items in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
       Stdlib.Obj.magic

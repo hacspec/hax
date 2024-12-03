@@ -8,7 +8,7 @@ let rec print_ty (t : Type.t) =
   else
     "("
     ^ (if List.is_empty t.args then ""
-      else "(" ^ String.concat ~sep:", " (List.map t.args ~f:print_ty) ^ ") ")
+       else "(" ^ String.concat ~sep:", " (List.map t.args ~f:print_ty) ^ ") ")
     ^ t.typ ^ ")"
 
 let print_record_or_tuple is_record x =
@@ -50,12 +50,12 @@ let mk_builder (provided_fields : string list)
             |> List.map ~f:(fun (name, ty) ->
                    ( true,
                      (if List.mem ~equal:[%eq: string] record_names name then (
-                      let name' = "inner_" ^ name in
-                      (* if not ([%eq: string] field_name_raw name) then *)
-                      extra_lb :=
-                        !extra_lb ^ "let " ^ name ^ " = " ^ name' ^ " in\n";
-                      name')
-                     else name),
+                        let name' = "inner_" ^ name in
+                        (* if not ([%eq: string] field_name_raw name) then *)
+                        extra_lb :=
+                          !extra_lb ^ "let " ^ name ^ " = " ^ name' ^ " in\n";
+                        name')
+                      else name),
                      ty ))
         | Tuple types ->
             List.mapi ~f:(fun i ty -> (false, "x" ^ Int.to_string i, ty)) types

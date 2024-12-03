@@ -39,3 +39,4 @@ class iterator (self: Type u#0): Type u#1 = {
   f_all:       self -> (f_Item -> bool) -> self * bool;
 }
 
+let t_Iterator = iterator
