@@ -25,3 +25,6 @@ insta = {version = "1.29.0", features = ["filters", "toml"]}
 serde = { version = "1.0", features = ["derive"] }
 regex = "1"
 hax-types.workspace = true
+
+[package.metadata.release]
+release = false
