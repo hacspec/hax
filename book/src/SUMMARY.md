@@ -11,24 +11,23 @@
     - [Using the F* backend](examples/fstar/intro.md)
     - [Using the Coq backend](examples/coq/intro.md)
     - [Using the ProVerif backend](examples/coq/intro.md)
-- [Proofs]()
-    - [F*]()
-    - [Coq]()
-    - [`libcore`]()
+<!-- - [Proofs]() -->
+<!--     - [F*]() -->
+<!--     - [Coq]() -->
+<!--     - [`libcore`]() -->
 - [Troubleshooting/FAQ](faq/intro.md)
-    - [Command line usage]()
-       - [The include flag: which items should be extracted, and how?](faq/include-flags.md)
-- [Contributing]()
+    - [The include flag: which items should be extracted, and how?](faq/include-flags.md)
+- [Contributing](contributing/intro.md)
     - [Architecture](contributing/architecture.md)
-    - [Hax Cargo subcommand]()
-    - [Frontend: the Rustc driver]()
-    - [Frontend: the exporter]()
-    - [Engine]()
-    - [Backends]()
-    - [Utilities]()
     - [Libraries & Macros](contributing/libraries_macros.md)
-    - [`libcore`]()
+    <!-- - [Hax Cargo subcommand]() -->
+    <!-- - [Frontend: the Rustc driver]() -->
+    <!-- - [Frontend: the exporter]() -->
+    <!-- - [Engine]() -->
+    <!-- - [Backends]() -->
+    <!-- - [Utilities]() -->
+    <!-- - [`libcore`]() -->
 
 ---
-[Contributors]()
+<!-- [Contributors]() -->
 [Archive](misc/archive.md)
