@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 hax-lib = { path = "../../hax-lib" }
+hax-bounded-integers = { path = "../../hax-bounded-integers" }
 serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.hax-tests]

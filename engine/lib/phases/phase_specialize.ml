@@ -84,6 +84,7 @@ module Make (F : Features.T) =
               Rust_primitives__hax__int__div;
             int_int_any Core__ops__arith__Rem__rem
               Rust_primitives__hax__int__rem;
+            int_any Core__ops__arith__Neg__neg Rust_primitives__hax__int__neg;
             rint_rint_any Core__cmp__PartialOrd__gt
               Rust_primitives__hax__int__gt;
             rint_rint_any Core__cmp__PartialOrd__ge

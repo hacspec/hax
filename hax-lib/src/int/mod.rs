@@ -30,6 +30,14 @@ impl Add for Int {
     }
 }
 
+impl Neg for Int {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self::new(-self.get())
+    }
+}
+
 impl Sub for Int {
     type Output = Self;
 

@@ -58,7 +58,7 @@
   );
   frontend-docs = craneLib.cargoDoc (commonArgs // {
     preBuildPhases = ["addRustcDocs"];
-    cargoDocExtraArgs = "--document-private-items";
+    cargoDocExtraArgs = "--document-private-items -p hax-bounded-integers";
     addRustcDocs = ''
       mkdir -p target/doc
       cp --no-preserve=mode -rf ${rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc/* target/doc/
