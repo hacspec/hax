@@ -70,7 +70,7 @@ pat ::=
 | ("[" (expr ",")* "]" | "[" expr ";" int "]")
 | "&" pat
 | literal
-| ident "@" pat
+| ("&")? ("mut")? ident ("@" pat)?
 ```
 
 The simple expressions are literals, local or global variables, type
@@ -188,7 +188,7 @@ pat ::=
 | ("[" (expr ",")* "]" | "[" expr ";" int "]")
 | "&" pat
 | literal
-| ident "@" pat
+| ("&")? ("mut")? ident ("@" pat)?
 
 local_var ::= ident
 global_var ::= ident
