@@ -55,7 +55,7 @@ ty ::=
 | (ty "->")* ty
 | impl "::" ident
 | "impl" ty
-| (goal)*
+| "dyn" (goal)*
 ```
 
 The patterns allowed reflect these types. Wildcard patterns, literal
