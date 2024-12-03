@@ -17,4 +17,8 @@ val impl_2__new_v1 (pieces: t_Slice string) (args: t_Slice Core.Fmt.Rt.t_Argumen
 val impl_7__write_fmt (fmt: t_Formatter) (args: t_Arguments): t_Formatter & t_Result
 val impl_2__new_const (args: t_Slice string): t_Arguments
 
-class t_Debug t_Self = {}
+class t_Debug t_Self = {
+  f_dfmt_pre: t_Self -> t_Formatter -> bool;
+  f_dfmt_post: t_Self -> t_Formatter -> (t_Formatter & Core.Result.t_Result Prims.unit t_Error) -> bool;
+  f_dfmt: t_Self -> t_Formatter -> (t_Formatter & Core.Result.t_Result Prims.unit t_Error)
+}
