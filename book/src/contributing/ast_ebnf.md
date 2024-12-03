@@ -1,5 +1,4 @@
-
-We currently take inputs from the following AST (visualization done
+We currently take inputs from the following AST (visualization can be done
 using <https://rr.red-dove.com/ui>). Literals are strings, numbers and
 booleans
 
