@@ -19,7 +19,7 @@
     - [Command line usage]()
        - [The include flag: which items should be extracted, and how?](faq/include-flags.md)
 - [Contributing]()
-    - [Structure]()
+    - [Architecture](contributing/architecture.md)
     - [Hax Cargo subcommand]()
     - [Frontend: the Rustc driver]()
     - [Frontend: the exporter]()
