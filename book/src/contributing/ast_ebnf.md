@@ -27,8 +27,17 @@ function types. Lastly we have named types defined by items, e.g. enums
 and structs.
 
 ``` ebnf
-impl ::= <!!TODO!!>
-goal ::= <!!TODO!!>
+generic_value ::=
+| "'" ident
+| ty
+| expr
+
+impl ::=
+| "self"
+| goal
+| "dyn"
+| <!TODO!>
+goal ::= ident "<" (generic_value ",")* ">"
 
 ty ::=
 | "bool"
@@ -61,7 +70,7 @@ pat ::=
 | ("[" (expr ",")* "]" | "[" expr ";" int "]")
 | "&" pat
 | literal
-| <!!TODO(PBinding): ident ":=" path !!>
+| ident "@" pat
 ```
 
 The simple expressions are literals, local or global variables, type
@@ -75,14 +84,8 @@ global_var ::= ident
 
 modifiers ::= "" | "unsafe" modifiers | "const" modifiers
 
-macro_name ::= string
-macro_args ::= (.)*
-
 lhs ::= pat
 param ::= pat
-
-monadic_binding ::= <!!TODO!!>
-monad ::= <!!TODO!!>
 
 expr ::=
 | "if" expr "{" expr "}" ("else" "{" expr "}")?
@@ -91,12 +94,11 @@ expr ::=
 | "[" (expr ",")* "]" | "[" expr ";" int "]"
 | ident "(" (expr ",")* ")" | ident "{" (ident ":"expr ";")* "}" | ident "{" (ident ":"expr ";")* ".." expr "}"
 | "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
-| "let" pat (":" ty)? ":=" expr ";" expr | monadic_binding "<" monad ">" "(" "|" pat "|" expr "," expr ")"
+| "let" pat (":" ty)? ":=" expr ";" expr
 | modifiers "{" expr "}"
 | local_var
 | global_var
 | expr "as" ty
-| macro_name "!" "(" macro_args ")"
 | loops_expr
 | lhs "=" expr
 | "return" expr
@@ -123,10 +125,8 @@ item ::=
 | "type" ident "=" ty
 | "enum" ident "=" "{" (ident ("(" (ty)* ")")? ",")* "}"
 | "struct" ident "=" "{" (ident ":" ty ",")* "}"
-| <!!TODO(macros):  "public_nat_mod!()" | "bytes!()" | "public_bytes" | "array" | "unsigned_public_integer" !!>
 | "trait" ident "{" (trait_item)* "}"
 | "impl" ("<" (generics ",")* ">")? ident "for" ty "{" (impl_item)* "}"
-| <!!TODO(Alias)!!>
 | "use" path ";"
 ```
 
@@ -150,8 +150,17 @@ literal ::=
 
 ident ::= string
 
-impl ::= <!!TODO!!>
-goal ::= <!!TODO!!>
+generic_value ::=
+| "'" ident
+| ty
+| expr
+
+impl ::=
+| "self"
+| goal
+| "dyn"
+| <!TODO!>
+goal ::= ident "<" (generic_value ",")* ">" 
 
 ty ::=
 | "bool"
@@ -160,6 +169,7 @@ ty ::=
 | "f16" | "f32" | "f64"
 | "str"
 | (ty ",")*
+| ident "(" (ident ",")* ")"
 | "[" ty ";" int "]"
 | "[" ty "]"
 | "*const" ty | "*mut" ty
@@ -168,7 +178,7 @@ ty ::=
 | (ty "->")* ty
 | impl "::" ident
 | "impl" ty
-| (goal)*
+| "dyn" (goal)*
 
 pat ::=
 | "_"
@@ -178,21 +188,15 @@ pat ::=
 | ("[" (expr ",")* "]" | "[" expr ";" int "]")
 | "&" pat
 | literal
-| <!!TODO(PBinding): ident ":=" path !!>
+| ident "@" pat
 
 local_var ::= ident
 global_var ::= ident
 
 modifiers ::= "" | "unsafe" modifiers | "const" modifiers
 
-macro_name ::= string
-macro_args ::= (.)*
-
 lhs ::= pat
 param ::= pat
-
-monadic_binding ::= <!!TODO!!>
-monad ::= <!!TODO!!>
 
 expr ::=
 | "if" expr "{" expr "}" ("else" "{" expr "}")?
@@ -201,12 +205,11 @@ expr ::=
 | "[" (expr ",")* "]" | "[" expr ";" int "]"
 | ident "(" (expr ",")* ")" | ident "{" (ident ":"expr ";")* "}" | ident "{" (ident ":"expr ";")* ".." expr "}"
 | "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
-| "let" pat (":" ty)? ":=" expr ";" expr | monadic_binding "<" monad ">" "(" "|" pat "|" expr "," expr ")"
+| "let" pat (":" ty)? ":=" expr ";" expr
 | modifiers "{" expr "}"
 | local_var
 | global_var
 | expr "as" ty
-| macro_name "!" "(" macro_args ")"
 | loops_expr
 | lhs "=" expr
 | "return" expr
@@ -228,9 +231,7 @@ item ::=
 | "type" ident "=" ty
 | "enum" ident "=" "{" (ident ("(" (ty)* ")")? ",")* "}"
 | "struct" ident "=" "{" (ident ":" ty ",")* "}"
-| <!!TODO(macros):  "public_nat_mod!()" | "bytes!()" | "public_bytes" | "array" | "unsigned_public_integer" !!>
 | "trait" ident "{" (trait_item)* "}"
 | "impl" ("<" (generics ",")* ">")? ident "for" ty "{" (impl_item)* "}"
-| <!!TODO(Alias)!!>
 | "use" path ";"
 ```
