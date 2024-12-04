@@ -20,7 +20,7 @@
        - [The include flag: which items should be extracted, and how?](faq/include-flags.md)
 - [Contributing]()
     - [Architecture](contributing/architecture.md)
-        - [AST/EBNF](contributing/ast_ebnf.md)
+    - [AST/EBNF](contributing/ast_ebnf.md)
     - [Hax Cargo subcommand]()
     - [Frontend: the Rustc driver]()
     - [Frontend: the exporter]()
