@@ -881,18 +881,6 @@ struct
     in
     let erased_impl name ty attrs binders =
       let name' = F.id_prime name in
-      (* let arguments =
-           match F.AST.(ty.tm) with
-           | F.AST.Product (binders, _) -> binders
-           | _ -> []
-         in
-         let generics_names =
-           arguments
-           |> List.filter_map ~f:(fun arg ->
-                  match F.AST.(arg.aqual, arg.b) with
-                  | Some ((Implicit | TypeClassArg) as arg), F.AST.Annotated (name, _) -> Some (name, arg)
-                  | _ -> None)
-         in *)
       let pat = F.AST.PatVar (name, None, []) in
       let term = F.term @@ F.AST.Var (F.lid_of_id @@ name') in
       let pat, term =
