@@ -12,7 +12,7 @@ float ::= int (".")? uint
 bool ::= "true" | "false"
 
 literal ::=
-| "\"" string "\""
+| '"' string '"'
 | "'" char "'"
 | int
 | float
@@ -142,7 +142,7 @@ float ::= int (".")? uint
 bool ::= "true" | "false"
 
 literal ::=
-| "\"" string "\""
+| '"' string '"'
 | "'" char "'"
 | int
 | float
@@ -159,7 +159,7 @@ impl ::=
 | "self"
 | goal
 | "dyn"
-| <!TODO!>
+| TODO..
 goal ::= ident "<" (generic_value ",")* ">" 
 
 ty ::=
