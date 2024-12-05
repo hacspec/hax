@@ -35,21 +35,55 @@ module Attribute_opaque
 open Core
 open FStar.Mul
 
+assume
+val t_OpaqueEnum': v_X: usize -> v_T: Type0 -> v_U: Type0 -> eqtype
+
+let t_OpaqueEnum (v_X: usize) (v_T v_U: Type0) = t_OpaqueEnum' v_X v_T v_U
+
+assume
+val t_OpaqueStruct': v_X: usize -> v_T: Type0 -> v_U: Type0 -> eqtype
+
+let t_OpaqueStruct (v_X: usize) (v_T v_U: Type0) = t_OpaqueStruct' v_X v_T v_U
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_T_for_u8': t_T u8
 
 let impl_T_for_u8 = impl_T_for_u8'
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
-val c': u8
+val impl_1': #v_U: Type0 -> {| i1: Core.Clone.t_Clone v_U |} -> t_TrGeneric i32 v_U
 
-let c = c'
+let impl_1 (#v_U: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_U) =
+  impl_1' #v_U #i1
+
+assume
+val v_C': u8
+
+let v_C = v_C'
 
 assume
 val f': x: bool -> y: bool -> Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
 
 let f = f'
+
+assume
+val ff_generic': v_X: usize -> #v_T: Type0 -> #v_U: Type0 -> x: v_U
+  -> Prims.Pure (t_OpaqueEnum v_X v_T v_U) Prims.l_True (fun _ -> Prims.l_True)
+
+let ff_generic (v_X: usize) (#v_T #v_U: Type0) = ff_generic' v_X #v_T #v_U
+
+assume
+val ff_pre_post': x: bool -> y: bool
+  -> Prims.Pure bool
+      (requires x)
+      (ensures
+        fun result ->
+          let result:bool = result in
+          result =. y)
+
+let ff_pre_post = ff_pre_post'
 '''
 "Attribute_opaque.fsti" = '''
 module Attribute_opaque
@@ -63,12 +97,33 @@ class t_T (v_Self: Type0) = {
   f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
 }
 
-val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
+val t_OpaqueEnum (v_X: usize) (v_T v_U: Type0) : eqtype
 
-val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
+val t_OpaqueStruct (v_X: usize) (v_T v_U: Type0) : eqtype
+
+class t_TrGeneric (v_Self: Type0) (v_U: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_6168282666194871449:Core.Clone.t_Clone v_U;
+  f_f_pre:v_U -> Type0;
+  f_f_post:v_U -> v_Self -> Type0;
+  f_f:x0: v_U -> Prims.Pure v_Self (f_f_pre x0) (fun result -> f_f_post x0 result)
+}
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 val impl_T_for_u8:t_T u8
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+val impl_1 (#v_U: Type0) {| i1: Core.Clone.t_Clone v_U |} : t_TrGeneric i32 v_U
+
 val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
+
+val ff_generic (v_X: usize) (#v_T #v_U: Type0) (x: v_U)
+    : Prims.Pure (t_OpaqueEnum v_X v_T v_U) Prims.l_True (fun _ -> Prims.l_True)
+
+val ff_pre_post (x y: bool)
+    : Prims.Pure bool
+      (requires x)
+      (ensures
+        fun result ->
+          let result:bool = result in
+          result =. y)
 '''
