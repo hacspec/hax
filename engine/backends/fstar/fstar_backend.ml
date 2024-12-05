@@ -879,19 +879,39 @@ struct
         ~f:([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
       |> Option.is_some
     in
-    let erased_impl name ty attrs =
+    let erased_impl name ty attrs binders =
       let name' = F.id_prime name in
-
+      (* let arguments =
+           match F.AST.(ty.tm) with
+           | F.AST.Product (binders, _) -> binders
+           | _ -> []
+         in
+         let generics_names =
+           arguments
+           |> List.filter_map ~f:(fun arg ->
+                  match F.AST.(arg.aqual, arg.b) with
+                  | Some ((Implicit | TypeClassArg) as arg), F.AST.Annotated (name, _) -> Some (name, arg)
+                  | _ -> None)
+         in *)
+      let pat = F.AST.PatVar (name, None, []) in
+      let term = F.term @@ F.AST.Var (F.lid_of_id @@ name') in
+      let pat, term =
+        match binders with
+        | [] -> (pat, term)
+        | _ ->
+            ( F.AST.PatApp
+                (F.pat pat, List.map ~f:FStarBinder.to_pattern binders),
+              List.fold_left binders ~init:term ~f:(fun term binder ->
+                  let binder_term, binder_imp =
+                    FStarBinder.to_qualified_term binder
+                  in
+                  F.term @@ F.AST.App (term, binder_term, binder_imp)) )
+      in
       [
         F.decl ~quals:[ Assumption ] ~fsti:false ~attrs
         @@ F.AST.Assume (name', ty);
         F.decl ~fsti:false
-        @@ F.AST.TopLevelLet
-             ( NoLetQualifier,
-               [
-                 ( F.pat @@ F.AST.PatVar (name, None, []),
-                   F.term @@ F.AST.Var (F.lid_of_id @@ name') );
-               ] );
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (F.pat @@ pat, term) ]);
       ]
     in
     match e.v with
@@ -959,7 +979,7 @@ struct
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
 
-        let erased = erased_impl name arrow_typ [] in
+        let erased = erased_impl name arrow_typ [] generics in
         let impl, full =
           if is_erased then (erased, erased) else ([ impl ], [ full ])
         in
@@ -997,14 +1017,19 @@ struct
                    ty );
                ] )
     | Type { name; generics; _ } when is_erased ->
-        let generics = FStarBinder.of_generics e.span generics in
-        let ty = F.type0_term in
+        let generics =
+          FStarBinder.of_generics e.span generics
+          |> List.map ~f:FStarBinder.implicit_to_explicit
+        in
+        let ty = F.eqtype_term in
         let arrow_typ =
           F.term
           @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
         in
         let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
-        [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
+        let erased = erased_impl name arrow_typ [] generics in
+        let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
+        if ctx.interface_mode then intf :: erased else erased
     | Type
         {
           name;
@@ -1486,7 +1511,7 @@ struct
           let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
           let v = F.AST.Val (name, val_type) in
           (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
-          @ erased_impl name val_type [ tcinst ]
+          @ erased_impl name val_type [ tcinst ] generics
         else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
     | Quote { quote; _ } ->
         let fstar_opts =

@@ -88,6 +88,7 @@ let mk_refined (x : string) (typ : AST.term) (phi : x:AST.term -> AST.term) =
   term @@ AST.Refine (x_bd, phi (term @@ AST.Var (lid_of_id x)))
 
 let type0_term = AST.Name (lid [ "Type0" ]) |> term
+let eqtype_term = AST.Name (lid [ "eqtype" ]) |> term
 
 let parse_string f s =
   let open FStar_Parser_ParseIt in
