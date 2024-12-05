@@ -159,7 +159,7 @@ impl ::=
 | "self"
 | goal
 | "dyn"
-| TODO..
+| /*TODO*/
 goal ::= ident "<" (generic_value ",")* ">" 
 
 ty ::=
