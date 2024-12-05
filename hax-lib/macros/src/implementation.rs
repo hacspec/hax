@@ -249,8 +249,8 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             );
         }
     }
-    use AttrPayload::NeverDropBody;
-    quote! { #attr #NeverDropBody #item }.into()
+    use AttrPayload::NeverErased;
+    quote! { #attr #NeverErased #item }.into()
 }
 
 /*
@@ -617,7 +617,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
     quote! { #item #(#extra_items)* }.into()
 }
 
-/// Mark a struct or an enum opaque: the extraction will assume the
+/// Mark an item opaque: the extraction will assume the
 /// type without revealing its definition.
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -626,13 +626,23 @@ pub fn opaque_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
     opaque(attr, item)
 }
 
-/// Mark a struct or an enum opaque: the extraction will assume the
+/// Mark an item opaque: the extraction will assume the
 /// type without revealing its definition.
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn opaque(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: Item = parse_macro_input!(item);
     let attr = AttrPayload::Erased;
+    quote! {#attr #item}.into()
+}
+
+/// Mark an item transparent: the extraction will not
+/// make it opaque regardless of the `-i` flag default.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn transparent(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: Item = parse_macro_input!(item);
+    let attr = AttrPayload::NeverErased;
     quote! {#attr #item}.into()
 }
 

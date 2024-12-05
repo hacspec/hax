@@ -31,6 +31,7 @@ identity_proc_macro_attribute!(
     process_read,
     opaque,
     opaque_type,
+    transparent,
     refinement_type,
     fstar_replace,
     coq_replace,

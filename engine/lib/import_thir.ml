@@ -1462,6 +1462,12 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       |> List.exists ~f:(fst >> [%matches? (Erased : Types.ha_payload)])
     in
     let item_erased_by_user = erased_by_user attrs in
+    let type_only =
+      type_only
+      && Attr_payloads.payloads attrs
+         |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
+         |> not
+    in
     (* This is true if the item should be erased because we are in type-only mode
        (Only certain kinds of items are erased in this case). *)
     let erased_by_type_only =
@@ -1493,8 +1499,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
     let drop_body =
       erased
       && Attr_payloads.payloads attrs
-         |> List.exists
-              ~f:(fst >> [%matches? (NeverDropBody : Types.ha_payload)])
+         |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
          |> not
     in
     let c_body = if drop_body then c_expr_drop_body else c_expr in
