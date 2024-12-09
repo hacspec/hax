@@ -630,8 +630,7 @@ module Make (Options : OPTS) : MAKE = struct
               if
                 Attrs.find_unique_attr item.attrs
                   ~f:
-                    ([%eq: Types.ha_payload] OpaqueType
-                    >> Fn.flip Option.some_if ())
+                    ([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
                 |> Option.is_some
               then default_lines
               else default_lines ^^ destructor_lines

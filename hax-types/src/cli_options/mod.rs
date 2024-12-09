@@ -303,7 +303,8 @@ pub struct TranslationOptions {
 
     /// {n} - `+:`: only includes the type of the selected items (no
     /// dependencies). This includes full struct and enums, but only
-    /// the type signature of functions, dropping their bodies.
+    /// the type signature of functions and trait impls (except when
+    /// they contain associated types), dropping their bodies.
     #[arg(
         value_parser = parse_inclusion_clause,
         value_delimiter = ' ',
