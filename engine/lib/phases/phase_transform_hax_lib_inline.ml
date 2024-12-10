@@ -208,7 +208,17 @@ module%inlined_contents Make (F : Features.T) = struct
                      Quote { quote; origin }
                    in
                    let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
-                   (B.{ v; span; ident = item.ident; attrs }, position))
+                   ( B.
+                       {
+                         v;
+                         span;
+                         ident =
+                           item.ident
+                           |> Concrete_ident.Create.map_last ~f:(fun s ->
+                                  s ^ "__hax_quote");
+                         attrs;
+                       },
+                     position ))
             |> List.partition_tf ~f:(snd >> [%matches? Types.Before])
             |> map_fst *** map_fst
           with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
