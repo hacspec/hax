@@ -54,6 +54,10 @@ pub struct DefIdContents {
     /// indexes unless you cannot do otherwise.
     pub index: (u32, u32),
     pub is_local: bool,
+
+    /// The kind of definition this `DefId` points to.
+    #[cfg(not(feature = "extract_names_mode"))]
+    pub kind: crate::DefKind,
 }
 
 #[cfg(feature = "rustc")]
@@ -140,6 +144,8 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
             rustc_hir::def_id::DefIndex::as_u32(def_id.index),
         ),
         is_local: def_id.is_local(),
+        #[cfg(not(feature = "extract_names_mode"))]
+        kind: tcx.def_kind(def_id).sinto(s),
     };
     let contents =
         s.with_global_cache(|cache| id_table::Node::new(contents, &mut cache.id_table_session));
