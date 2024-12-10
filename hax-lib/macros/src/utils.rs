@@ -301,7 +301,7 @@ pub fn make_fn_decoration(
         } else {
             quote! {}
         };
-        use AttrPayload::NeverDropBody;
+        use AttrPayload::NeverErased;
         quote! {
             #[cfg(#DebugOrHaxCfgExpr)]
             #late_skip
@@ -312,7 +312,7 @@ pub fn make_fn_decoration(
                 #uid_attr
                 #late_skip
                 #[allow(unused)]
-                #NeverDropBody
+                #NeverErased
                 #decoration_sig {
                     #phi
                 }

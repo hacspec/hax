@@ -118,7 +118,7 @@ pub enum AttrPayload {
     /// Mark an item so that hax never drop its body (this is useful
     /// for pre- and post- conditions of a function we dropped the
     /// body of: pre and post are part of type signature)
-    NeverDropBody,
+    NeverErased,
     NewtypeAsRefinement,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
@@ -130,8 +130,8 @@ pub enum AttrPayload {
     PVConstructor,
     PVHandwritten,
     TraitMethodNoPrePost,
-    /// Make a type opaque
-    OpaqueType,
+    /// Make an item opaque
+    Erased,
 }
 
 pub const HAX_TOOL: &str = "_hax";
