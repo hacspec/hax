@@ -16,12 +16,22 @@ macro_rules! identity_proc_macro_attribute {
     }
 }
 
+#[proc_macro_attribute]
+pub fn requires(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let phi: syn::Expr = parse_macro_input!(attr);
+
+    quote! {
+        #[doc=concat!("Requires: ",stringify!(#phi))]
+        #item
+    }.into()
+}
+
 identity_proc_macro_attribute!(
     fstar_options,
     fstar_verification_status,
     include,
     exclude,
-    requires,
     ensures,
     pv_handwritten,
     pv_constructor,
