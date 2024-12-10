@@ -38,7 +38,7 @@ pub enum AstPass {
 
 /// Reflects [`rustc_span::hygiene::MacroKind`]
 #[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[derive(AdtInto, JsonSchema, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[args(<S>, from: rustc_span::hygiene::MacroKind, state: S as _s)]
 pub enum MacroKind {
     Bang,

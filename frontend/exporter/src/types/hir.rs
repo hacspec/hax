@@ -62,7 +62,7 @@ impl<S> SInto<S, Mutability> for hir::Mutability {
 
 /// Reflects [`hir::def::CtorKind`]
 #[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[derive(AdtInto, JsonSchema, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[args(<S>, from: hir::def::CtorKind, state: S as _s)]
 pub enum CtorKind {
     Fn,
@@ -71,7 +71,7 @@ pub enum CtorKind {
 
 /// Reflects [`hir::def::CtorOf`]
 #[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[derive(AdtInto, JsonSchema, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[args(<S>, from: hir::def::CtorOf, state: S as _s)]
 pub enum CtorOf {
     Struct,
@@ -1177,7 +1177,51 @@ pub enum AttrKind {
     DocComment(CommentKind, Symbol),
 }
 
-sinto_todo!(rustc_hir::def, DefKind);
+/// Reflects [`rustc_hir::def::DefKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::def::DefKind, state: S as tcx)]
+#[derive_group(Serializers)]
+#[derive(Debug, JsonSchema, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DefKind {
+    Mod,
+    Struct,
+    Union,
+    Enum,
+    Variant,
+    Trait,
+    TyAlias,
+    ForeignTy,
+    TraitAlias,
+    AssocTy,
+    TyParam,
+    Fn,
+    Const,
+    ConstParam,
+    Static {
+        safety: Safety,
+        mutability: Mutability,
+        nested: bool,
+    },
+    Ctor(CtorOf, CtorKind),
+    AssocFn,
+    AssocConst,
+    Macro(MacroKind),
+    ExternCrate,
+    Use,
+    ForeignMod,
+    AnonConst,
+    InlineConst,
+    OpaqueTy,
+    Field,
+    LifetimeParam,
+    GlobalAsm,
+    Impl {
+        of_trait: bool,
+    },
+    Closure,
+    SyntheticCoroutineBody,
+}
+
 sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
 sinto_todo!(rustc_hir, InlineAsm<'a>);
 sinto_todo!(rustc_hir, MissingLifetimeKind);
