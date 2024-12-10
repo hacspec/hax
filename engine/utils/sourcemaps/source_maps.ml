@@ -45,7 +45,6 @@ let mk ?(file = "") ?(sourceRoot = "") ?(sourcesContent = fun _ -> None)
     Chunk.{ gen; src; meta }
   in
   let mappings = List.map mappings ~f |> List.sort ~compare:Chunk.compare in
-  Stdlib.prerr_endline @@ [%show: Chunk.t list] mappings;
   let mappings = Mappings.encode mappings in
   let sourcesContent = List.map ~f:sourcesContent sources in
   { mappings; sourceRoot; sourcesContent; sources; names; version = 3; file }

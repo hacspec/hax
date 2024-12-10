@@ -74,6 +74,29 @@ module AnnotatedString = struct
   let to_spanned_strings ((s, annots) : t) : (Ast.span * string) list =
     Annotation.split_with_string s annots
 
+  (** Lifts a string to an annotated list *)
+  let pure (s : string) : t = (s, [])
+
+  (** Concatenate two annotated strings *)
+  let concat (x : t) (y : t) : t =
+    let (xs, xl), (ys, yl) = (x, y) in
+    let last_x =
+      let lines = String.split ~on:'\n' xs in
+      let last_line = List.last lines |> Option.value ~default:"" in
+      let col, line = (String.length last_line, List.length lines) in
+      Annotation.{ col; line }
+    in
+    let yl =
+      let f ({ line; col } : Annotation.loc) : Annotation.loc =
+        {
+          line = line + last_x.line;
+          col = (match col with 0 -> col + last_x.col | _ -> col);
+        }
+      in
+      List.map ~f:(f *** Fn.id) yl
+    in
+    (xs ^ ys, xl @ yl)
+
   let to_sourcemap : t -> Types.source_map =
     snd >> List.filter_map ~f:Annotation.to_mapping >> Sourcemaps.Source_maps.mk
     >> fun ({
@@ -90,7 +113,7 @@ module AnnotatedString = struct
       { mappings; sourceRoot; sources; sourcesContent; names; version; file }
 end
 
-(** Helper class that brings imperative span  *)
+(** Helper class that brings imperative span *)
 class span_helper : object
   method span_data : Annotation.t list
   (** Get the span annotation accumulated while printing *)

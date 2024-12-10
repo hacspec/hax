@@ -100,6 +100,9 @@ Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl__Int___unsafe_from_s
   let _ : t_usize := impl__Int__to_usize (x) in
   impl__Int__to_u8 (f_add (x) (f_mul (x) (x))).
 
+Definition null : ascii :=
+  "\000"%char.
+
 Definition numeric (_ : unit) : unit :=
   let _ : t_usize := 123 in
   let _ : t_isize := -42 in

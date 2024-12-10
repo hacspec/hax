@@ -144,7 +144,18 @@ pub struct FnHeader {
     pub abi: Abi,
 }
 
-sinto_todo!(rustc_target::spec::abi, Abi);
+/// Reflects [`rustc_target::spec::abi::Abi`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_target::spec::abi::Abi, state: S as s)]
+pub enum Abi {
+    Rust,
+    C {
+        unwind: bool,
+    },
+    #[todo]
+    Other(String),
+}
 
 /// Function definition
 #[derive_group(Serializers)]

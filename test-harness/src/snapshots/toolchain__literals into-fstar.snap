@@ -38,7 +38,7 @@ type t_Foo = { f_field:u8 }
 let v_CONSTANT: t_Foo = { f_field = 3uy } <: t_Foo
 
 let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
-  let (_: u64):u64 =
+  let _:u64 =
     ((((cast (x8 <: u8) <: u64) +! (cast (x16 <: u16) <: u64) <: u64) +! (cast (x32 <: u32) <: u64)
         <:
         u64) +!
@@ -47,28 +47,28 @@ let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
       u64) +!
     (cast (xs <: usize) <: u64)
   in
-  let (_: u32):u32 =
+  let _:u32 =
     ((((cast (x8 <: u8) <: u32) +! (cast (x16 <: u16) <: u32) <: u32) +! x32 <: u32) +!
       (cast (x64 <: u64) <: u32)
       <:
       u32) +!
     (cast (xs <: usize) <: u32)
   in
-  let (_: u16):u16 =
+  let _:u16 =
     ((((cast (x8 <: u8) <: u16) +! x16 <: u16) +! (cast (x32 <: u32) <: u16) <: u16) +!
       (cast (x64 <: u64) <: u16)
       <:
       u16) +!
     (cast (xs <: usize) <: u16)
   in
-  let (_: u8):u8 =
+  let _:u8 =
     (((x8 +! (cast (x16 <: u16) <: u8) <: u8) +! (cast (x32 <: u32) <: u8) <: u8) +!
       (cast (x64 <: u64) <: u8)
       <:
       u8) +!
     (cast (xs <: usize) <: u8)
   in
-  let (_: i64):i64 =
+  let _:i64 =
     ((((cast (x8 <: u8) <: i64) +! (cast (x16 <: u16) <: i64) <: i64) +! (cast (x32 <: u32) <: i64)
         <:
         i64) +!
@@ -77,7 +77,7 @@ let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
       i64) +!
     (cast (xs <: usize) <: i64)
   in
-  let (_: i32):i32 =
+  let _:i32 =
     ((((cast (x8 <: u8) <: i32) +! (cast (x16 <: u16) <: i32) <: i32) +! (cast (x32 <: u32) <: i32)
         <:
         i32) +!
@@ -86,7 +86,7 @@ let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
       i32) +!
     (cast (xs <: usize) <: i32)
   in
-  let (_: i16):i16 =
+  let _:i16 =
     ((((cast (x8 <: u8) <: i16) +! (cast (x16 <: u16) <: i16) <: i16) +! (cast (x32 <: u32) <: i16)
         <:
         i16) +!
@@ -95,7 +95,7 @@ let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
       i16) +!
     (cast (xs <: usize) <: i16)
   in
-  let (_: i8):i8 =
+  let _:i8 =
     ((((cast (x8 <: u8) <: i8) +! (cast (x16 <: u16) <: i8) <: i8) +! (cast (x32 <: u32) <: i8)
         <:
         i8) +!
@@ -115,7 +115,7 @@ let math_integers (x: Hax_lib.Int.t_Int)
     : Prims.Pure u8
       (requires x > (0 <: Hax_lib.Int.t_Int) && x < (16 <: Hax_lib.Int.t_Int))
       (fun _ -> Prims.l_True) =
-  let (_: Hax_lib.Int.t_Int):Hax_lib.Int.t_Int = Rust_primitives.Hax.Int.from_machine (sz 3) in
+  let _:Hax_lib.Int.t_Int = Rust_primitives.Hax.Int.from_machine (sz 3) in
   let _:bool =
     ((-340282366920938463463374607431768211455000) <: Hax_lib.Int.t_Int) >
     (340282366920938463463374607431768211455000 <: Hax_lib.Int.t_Int)
@@ -129,24 +129,26 @@ let math_integers (x: Hax_lib.Int.t_Int)
   let _:Hax_lib.Int.t_Int = x - x in
   let _:Hax_lib.Int.t_Int = x * x in
   let _:Hax_lib.Int.t_Int = x / x in
-  let (_: i16):i16 = Hax_lib.Int.impl__Int__to_i16 x in
-  let (_: i32):i32 = Hax_lib.Int.impl__Int__to_i32 x in
-  let (_: i64):i64 = Hax_lib.Int.impl__Int__to_i64 x in
-  let (_: i128):i128 = Hax_lib.Int.impl__Int__to_i128 x in
-  let (_: isize):isize = Hax_lib.Int.impl__Int__to_isize x in
-  let (_: u16):u16 = Hax_lib.Int.impl__Int__to_u16 x in
-  let (_: u32):u32 = Hax_lib.Int.impl__Int__to_u32 x in
-  let (_: u64):u64 = Hax_lib.Int.impl__Int__to_u64 x in
-  let (_: u128):u128 = Hax_lib.Int.impl__Int__to_u128 x in
-  let (_: usize):usize = Hax_lib.Int.impl__Int__to_usize x in
+  let _:i16 = Hax_lib.Int.impl__Int__to_i16 x in
+  let _:i32 = Hax_lib.Int.impl__Int__to_i32 x in
+  let _:i64 = Hax_lib.Int.impl__Int__to_i64 x in
+  let _:i128 = Hax_lib.Int.impl__Int__to_i128 x in
+  let _:isize = Hax_lib.Int.impl__Int__to_isize x in
+  let _:u16 = Hax_lib.Int.impl__Int__to_u16 x in
+  let _:u32 = Hax_lib.Int.impl__Int__to_u32 x in
+  let _:u64 = Hax_lib.Int.impl__Int__to_u64 x in
+  let _:u128 = Hax_lib.Int.impl__Int__to_u128 x in
+  let _:usize = Hax_lib.Int.impl__Int__to_usize x in
   Hax_lib.Int.impl__Int__to_u8 (x + (x * x <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int)
 
+let null: char = '\0'
+
 let numeric (_: Prims.unit) : Prims.unit =
-  let (_: usize):usize = sz 123 in
-  let (_: isize):isize = isz (-42) in
-  let (_: isize):isize = isz 42 in
-  let (_: i32):i32 = (-42l) in
-  let (_: u128):u128 = pub_u128 22222222222222222222 in
+  let _:usize = sz 123 in
+  let _:isize = isz (-42) in
+  let _:isize = isz 42 in
+  let _:i32 = (-42l) in
+  let _:u128 = pub_u128 22222222222222222222 in
   ()
 
 let patterns (_: Prims.unit) : Prims.unit =
@@ -188,7 +190,7 @@ let panic_with_msg (_: Prims.unit) : Prims.unit =
       Rust_primitives.Hax.t_Never)
 
 let empty_array (_: Prims.unit) : Prims.unit =
-  let (_: t_Slice u8):t_Slice u8 =
+  let _:t_Slice u8 =
     (let list:Prims.list u8 = [] in
       FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 0);
       Rust_primitives.Hax.array_of_list 0 list)

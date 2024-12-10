@@ -2,10 +2,11 @@ open Prelude
 include Types
 
 type range = { start : Location.t; end_ : Location.t option }
-[@@deriving show, eq]
+[@@deriving show, eq, yojson]
 
 module Chunk = struct
-  type t = { gen : range; src : range; meta : meta } [@@deriving show, eq]
+  type t = { gen : range; src : range; meta : meta }
+  [@@deriving show, eq, yojson]
 
   let compare (x : t) (y : t) = Location.compare x.gen.start y.gen.start
 
