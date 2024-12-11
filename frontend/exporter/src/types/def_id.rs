@@ -144,7 +144,6 @@ pub struct DefIdContents {
     pub is_local: bool,
 
     /// The kind of definition this `DefId` points to.
-    #[cfg(not(feature = "extract_names_mode"))]
     pub kind: crate::DefKind,
 }
 
@@ -232,7 +231,6 @@ pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) 
             rustc_hir::def_id::DefIndex::as_u32(def_id.index),
         ),
         is_local: def_id.is_local(),
-        #[cfg(not(feature = "extract_names_mode"))]
         kind: tcx.def_kind(def_id).sinto(s),
     };
     let contents =
