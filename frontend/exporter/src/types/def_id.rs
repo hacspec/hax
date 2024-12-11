@@ -18,7 +18,7 @@ use crate::prelude::*;
 use crate::{AdtInto, JsonSchema};
 
 #[cfg(feature = "rustc")]
-use rustc_span::def_id::DefId as RDefId;
+use {rustc_hir as hir, rustc_span::def_id::DefId as RDefId};
 
 pub type Symbol = String;
 
@@ -27,6 +27,94 @@ impl<'t, S> SInto<S, Symbol> for rustc_span::symbol::Symbol {
     fn sinto(&self, _s: &S) -> Symbol {
         self.to_ident_string()
     }
+}
+
+/// Reflects [`hir::Safety`]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<S>, from: hir::Safety, state: S as _s))]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Safety {
+    Unsafe,
+    Safe,
+}
+
+pub type Mutability = bool;
+
+/// Reflects [`hir::def::CtorKind`]
+#[derive_group(Serializers)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema, AdtInto))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<S>, from: hir::def::CtorKind, state: S as _s))]
+pub enum CtorKind {
+    Fn,
+    Const,
+}
+
+/// Reflects [`hir::def::CtorOf`]
+#[derive_group(Serializers)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema, AdtInto))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<S>, from: hir::def::CtorOf, state: S as _s))]
+pub enum CtorOf {
+    Struct,
+    Variant,
+}
+
+/// Reflects [`rustc_span::hygiene::MacroKind`]
+#[derive_group(Serializers)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema, AdtInto))]
+#[cfg_attr(not(feature = "extract_names_mode"), args(<S>, from: rustc_span::hygiene::MacroKind, state: S as _s))]
+pub enum MacroKind {
+    Bang,
+    Attr,
+    Derive,
+}
+
+/// Reflects [`rustc_hir::def::DefKind`]
+#[derive_group(Serializers)]
+#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema, AdtInto))]
+#[cfg_attr(not(feature = "extract_names_mode"),args(<S>, from: rustc_hir::def::DefKind, state: S as tcx))]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DefKind {
+    Mod,
+    Struct,
+    Union,
+    Enum,
+    Variant,
+    Trait,
+    TyAlias,
+    ForeignTy,
+    TraitAlias,
+    AssocTy,
+    TyParam,
+    Fn,
+    Const,
+    ConstParam,
+    Static {
+        safety: Safety,
+        mutability: Mutability,
+        nested: bool,
+    },
+    Ctor(CtorOf, CtorKind),
+    AssocFn,
+    AssocConst,
+    Macro(MacroKind),
+    ExternCrate,
+    Use,
+    ForeignMod,
+    AnonConst,
+    InlineConst,
+    OpaqueTy,
+    Field,
+    LifetimeParam,
+    GlobalAsm,
+    Impl {
+        of_trait: bool,
+    },
+    Closure,
+    SyntheticCoroutineBody,
 }
 
 /// Reflects [`rustc_hir::def_id::DefId`]

@@ -48,8 +48,6 @@ pub enum Movability {
     Movable,
 }
 
-pub type Mutability = bool;
-
 #[cfg(feature = "rustc")]
 impl<S> SInto<S, Mutability> for hir::Mutability {
     fn sinto(&self, _s: &S) -> Mutability {
@@ -60,24 +58,6 @@ impl<S> SInto<S, Mutability> for hir::Mutability {
     }
 }
 
-/// Reflects [`hir::def::CtorKind`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, JsonSchema, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<S>, from: hir::def::CtorKind, state: S as _s)]
-pub enum CtorKind {
-    Fn,
-    Const,
-}
-
-/// Reflects [`hir::def::CtorOf`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, JsonSchema, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<S>, from: hir::def::CtorOf, state: S as _s)]
-pub enum CtorOf {
-    Struct,
-    Variant,
-}
-
 /// Reflects [`hir::RangeEnd`]
 #[derive(AdtInto)]
 #[args(<S>, from: hir::RangeEnd, state: S as _s)]
@@ -86,16 +66,6 @@ pub enum CtorOf {
 pub enum RangeEnd {
     Included,
     Excluded,
-}
-
-/// Reflects [`hir::Safety`]
-#[derive(AdtInto)]
-#[args(<S>, from: hir::Safety, state: S as _s)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Safety {
-    Unsafe,
-    Safe,
 }
 
 /// Reflects [`hir::ImplicitSelfKind`]
@@ -1175,51 +1145,6 @@ pub struct NormalAttr {
 pub enum AttrKind {
     Normal(NormalAttr),
     DocComment(CommentKind, Symbol),
-}
-
-/// Reflects [`rustc_hir::def::DefKind`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::def::DefKind, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Debug, JsonSchema, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DefKind {
-    Mod,
-    Struct,
-    Union,
-    Enum,
-    Variant,
-    Trait,
-    TyAlias,
-    ForeignTy,
-    TraitAlias,
-    AssocTy,
-    TyParam,
-    Fn,
-    Const,
-    ConstParam,
-    Static {
-        safety: Safety,
-        mutability: Mutability,
-        nested: bool,
-    },
-    Ctor(CtorOf, CtorKind),
-    AssocFn,
-    AssocConst,
-    Macro(MacroKind),
-    ExternCrate,
-    Use,
-    ForeignMod,
-    AnonConst,
-    InlineConst,
-    OpaqueTy,
-    Field,
-    LifetimeParam,
-    GlobalAsm,
-    Impl {
-        of_trait: bool,
-    },
-    Closure,
-    SyntheticCoroutineBody,
 }
 
 sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
