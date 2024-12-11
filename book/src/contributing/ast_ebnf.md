@@ -11,8 +11,11 @@ int ::= ("-")? uint
 float ::= int (".")? uint
 bool ::= "true" | "false"
 
+local_var ::= ident
+global_var ::= rust-path-identifier
+
 literal ::=
-| '"' string '"'
+| "\"" string "\""
 | "'" char "'"
 | int
 | float
@@ -27,23 +30,13 @@ function types. Lastly we have named types defined by items, e.g. enums
 and structs.
 
 ``` ebnf
-generic_value ::=
-| "'" ident
-| ty
-| expr
-
-impl ::=
-| "self"
-| goal
-| "dyn"
-| <!TODO!>
-goal ::= ident "<" (generic_value ",")* ">"
-
 ty ::=
 | "bool"
 | "char"
-| "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
-| "i8" | "i16" | "i32" | "i64" | "i128" | "isize"
+| "u8" | "u16" | "u32" | "u64"
+| "u128" | "usize"
+| "i8" | "i16" | "i32" | "i64"
+| "i128" | "isize"
 | "f16" | "f32" | "f64"
 | "str"
 | (ty ",")*
@@ -53,9 +46,7 @@ ty ::=
 | "*" expr | "*mut" expr
 | ident
 | (ty "->")* ty
-| impl "::" ident
-| "impl" ty
-| "dyn" (goal)*
+| dyn (goal)+
 ```
 
 The patterns allowed reflect these types. Wildcard patterns, literal
@@ -64,10 +55,10 @@ types, typed patterns, list patterns, record or tuple patterns.
 ``` ebnf
 pat ::=
 | "_"
-| pat ":" ty
-| (ident "{" (ident ":" pat ";")* "}" | ident "(" (pat ",")* ")" )
+| ident "{" (ident ":" pat ";")* "}"
+| ident "(" (pat ",")* ")"
 | (pat "|")* pat
-| ("[" (expr ",")* "]" | "[" expr ";" int "]")
+| "[" (pat ",")* "]"
 | "&" pat
 | literal
 | ("&")? ("mut")? ident ("@" pat)?
@@ -79,41 +70,36 @@ match statements, loops, return, break and continue. The rest is blocks,
 macro calls, lambda functions and borrowing.
 
 ``` ebnf
-local_var ::= ident
-global_var ::= ident
-
-modifiers ::= "" | "unsafe" modifiers | "const" modifiers
-
-lhs ::= pat
-param ::= pat
-
 expr ::=
 | "if" expr "{" expr "}" ("else" "{" expr "}")?
+| "if" "let" pat (":" ty)? "=" expr "{" expr "}" ("else" "{" expr "}")?
 | expr "(" (expr ",")* ")"
 | literal
 | "[" (expr ",")* "]" | "[" expr ";" int "]"
-| ident "(" (expr ",")* ")" | ident "{" (ident ":"expr ";")* "}" | ident "{" (ident ":"expr ";")* ".." expr "}"
-| "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
-| "let" pat (":" ty)? ":=" expr ";" expr
+| ident "{" (ident ":"expr ";")* "}"
+| ident "{" (ident ":"expr ";")* ".." expr "}"
+| "match" expr guard "{"
+(("|" pat)* "=>" (expr "," | "{" expr "}"))*
+"}"
+| "let" pat (":" ty)? "=" expr ";" expr
+| "let" pat (":" ty)? "=" expr "else" "{" expr "}" ";" expr
 | modifiers "{" expr "}"
 | local_var
 | global_var
 | expr "as" ty
-| loops_expr
-| lhs "=" expr
+| "loop" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "while" "(" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "for" "(" pat "in" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "break" expr
+| "continue"
+| pat "=" expr
 | "return" expr
 | expr "?"
 | "&" ("mut")? expr
-| "&" expr "as" "&const _" | "&mut" expr "as" "&mut _"
-| "|" param "|" expr
-
-loops_expr ::=
-| "loop" "{" expr "}"
-| "while" "(" expr ")" "{" expr "}"
-| "for" "(" pat "in" expr ")" "{" expr "}"
-| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"
-| "break" expr
-| "continue"
+| "&" expr "as" "&const _"
+| "&mut" expr "as" "&mut _"
+| "|" pat "|" expr
 ```
 
 The items supported are functions, type aliasing, enums, structs, trait
@@ -121,12 +107,15 @@ definitions and implementations, and imports.
 
 ``` ebnf
 item ::=
-| modifiers "fn" ident "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
+| "const" ident "=" expr
+| "static" ident "=" expr
+| modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
 | "type" ident "=" ty
-| "enum" ident "=" "{" (ident ("(" (ty)* ")")? ",")* "}"
-| "struct" ident "=" "{" (ident ":" ty ",")* "}"
-| "trait" ident "{" (trait_item)* "}"
+| "enum" ident ("<" (generics ",")* ">")? "{" (ident ("(" (ty)* ")")? ",")* "}"
+| "struct" ident ("<" (generics ",")* ">")? "{" (ident ":" ty ",")* "}"
+| "trait" ident ("<" (generics ",")* ">")? "{" (trait_item)* "}"
 | "impl" ("<" (generics ",")* ">")? ident "for" ty "{" (impl_item)* "}"
+| "mod" ident "{" (item)* "}"
 | "use" path ";"
 ```
 
@@ -141,97 +130,114 @@ int ::= ("-")? uint
 float ::= int (".")? uint
 bool ::= "true" | "false"
 
+local_var ::= ident
+global_var ::= rust-path-identifier
+
 literal ::=
-| '"' string '"'
+| "\"" string "\""
 | "'" char "'"
 | int
-| float
+| float  [a]
 | bool
-
-ident ::= string
 
 generic_value ::=
 | "'" ident
 | ty
 | expr
 
-impl ::=
-| "self"
-| goal
-| "dyn"
-| /*TODO*/
-goal ::= ident "<" (generic_value ",")* ">" 
+goal ::=
+| ident "<" (generic_value ",")* ">"
 
 ty ::=
 | "bool"
 | "char"
-| "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
-| "f16" | "f32" | "f64"
+| "u8" | "u16" | "u32" | "u64"
+| "u128" | "usize"
+| "i8" | "i16" | "i32" | "i64"
+| "i128" | "isize"
+| "f16" | "f32" | "f64"  [a]
 | "str"
 | (ty ",")*
-| ident "(" (ident ",")* ")"
 | "[" ty ";" int "]"
 | "[" ty "]"
-| "*const" ty | "*mut" ty
-| "*" expr | "*mut" expr
+| "*const" ty | "*mut" ty  [b]
+| "*" expr | "*mut" expr  [b]
 | ident
 | (ty "->")* ty
-| impl "::" ident
-| "impl" ty
-| "dyn" (goal)*
+| dyn (goal)+  [c]
 
 pat ::=
 | "_"
-| pat ":"
-| (ident "{" (ident ":" pat ";")* "}" | ident "(" (pat ",")* ")" )
+| ident "{" (ident ":" pat ";")* "}"
+| ident "(" (pat ",")* ")"
 | (pat "|")* pat
-| ("[" (expr ",")* "]" | "[" expr ";" int "]")
+| "[" (pat ",")* "]"  [d]
 | "&" pat
 | literal
-| ("&")? ("mut")? ident ("@" pat)?
+| ("&")? ("mut")? ident ("@" pat)?  [e]
 
-local_var ::= ident
-global_var ::= ident
+modifiers ::=
+| ""
+| "unsafe" modifiers
+| "const" modifiers
+| "async" modifiers  [b]
 
-modifiers ::= "" | "unsafe" modifiers | "const" modifiers
-
-lhs ::= pat
-param ::= pat
+guard ::=
+| "if" "let" pat (":" ty)? "=" expr
 
 expr ::=
 | "if" expr "{" expr "}" ("else" "{" expr "}")?
+| "if" "let" pat (":" ty)? "=" expr "{" expr "}" ("else" "{" expr "}")?
 | expr "(" (expr ",")* ")"
 | literal
 | "[" (expr ",")* "]" | "[" expr ";" int "]"
-| ident "(" (expr ",")* ")" | ident "{" (ident ":"expr ";")* "}" | ident "{" (ident ":"expr ";")* ".." expr "}"
-| "match" expr "{" (("|" pat)* "=>" (expr "," | "{" expr "}"))* "}"
-| "let" pat (":" ty)? ":=" expr ";" expr
+| ident "{" (ident ":"expr ";")* "}"
+| ident "{" (ident ":"expr ";")* ".." expr "}"
+| "match" expr guard "{"
+(("|" pat)* "=>" (expr "," | "{" expr "}"))*
+"}"
+| "let" pat (":" ty)? "=" expr ";" expr
+| "let" pat (":" ty)? "=" expr "else" "{" expr "}" ";" expr
 | modifiers "{" expr "}"
 | local_var
 | global_var
 | expr "as" ty
-| loops_expr
-| lhs "=" expr
-| "return" expr
-| expr "?"
-| "&" ("mut")? expr
-| "&" expr "as" "&const _" | "&mut" expr "as" "&mut _"
-| "|" param "|" expr
-
-loops_expr ::=
-| "loop" "{" expr "}"
-| "while" "(" expr ")" "{" expr "}"
-| "for" "(" pat "in" expr ")" "{" expr "}"
-| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"
+| "loop" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "while" "(" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "for" "(" pat "in" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
 | "break" expr
 | "continue"
+| pat "=" expr
+| "return" expr
+| expr "?"
+| "&" ("mut")? expr  [e]
+| "&" expr "as" "&const _"  [b]
+| "&mut" expr "as" "&mut _"
+| "|" pat "|" expr
+
+impl_item ::=
+| "type" ident "=" ty ";"
+| modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
+
+trait_item ::=
+| "type" ident ";"
+| modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? ("{" expr "}" | ";")
 
 item ::=
-| modifiers "fn" ident "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
+| "const" ident "=" expr
+| "static" ident "=" expr  [b]
+| modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
 | "type" ident "=" ty
-| "enum" ident "=" "{" (ident ("(" (ty)* ")")? ",")* "}"
-| "struct" ident "=" "{" (ident ":" ty ",")* "}"
-| "trait" ident "{" (trait_item)* "}"
+| "enum" ident ("<" (generics ",")* ">")? "{" (ident ("(" (ty)* ")")? ",")* "}"
+| "struct" ident ("<" (generics ",")* ">")? "{" (ident ":" ty ",")* "}"
+| "trait" ident ("<" (generics ",")* ">")? "{" (trait_item)* "}"
 | "impl" ("<" (generics ",")* ">")? ident "for" ty "{" (impl_item)* "}"
+| "mod" ident "{" (item)* "}"
 | "use" path ";"
 ```
+(a) no support yet for raw pointers, async/await, static, extern, or union types
+(b) partial support for nested matching and range patterns
+(c) partial support for mutable borrows
+(d) most backends lack support for dynamic dispatch, floating point operations
+(e) some backends only handle specific forms of iterators
