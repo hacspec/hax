@@ -51,3 +51,24 @@ mod defaults_generics {
     struct Defaults<T = (), const N: usize = 2>([T; N]);
     fn f(_: Defaults) {}
 }
+
+/// See https://github.com/hacspec/hax/issues/1176
+mod impl_generics {
+    struct Test();
+
+    impl Test {
+        fn set_ciphersuites<S>(&self, ciphers: impl IntoIterator<Item = S>) -> Result<(), ()>
+        where
+            S: AsRef<str>,
+        {
+            Ok(())
+        }
+
+        fn set_alpn_protocols<S>(&self, _protocols: impl IntoIterator<Item = S>) -> Result<(), ()>
+        where
+            S: AsRef<str>,
+        {
+            Ok(())
+        }
+    }
+}
