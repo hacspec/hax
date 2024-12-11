@@ -226,9 +226,11 @@ module Make (F : Features.T) = struct
             ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
           | GCType { goal; name } when enabled ->
-              let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:name ~data in
-              GCType { goal; name = data }
+              let new_name =
+                Hashtbl.find_or_add s name ~default:(fun () ->
+                    "i" ^ Int.to_string (Hashtbl.length s))
+              in
+              GCType { goal; name = new_name }
           | _ -> super#visit_generic_constraint (enabled, s) gc
 
         method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
