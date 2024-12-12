@@ -92,6 +92,18 @@ open FStar.Mul
 
 unfold type t_Int = int
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_1': Core.Clone.t_Clone t_Int
+
+let impl_1 = impl_1'
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl': Core.Marker.t_Copy t_Int
+
+let impl = impl'
+
 unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
   {
     f_Output = t_Int;

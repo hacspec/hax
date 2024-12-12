@@ -108,6 +108,11 @@ module MakeBase (Error : Phase_utils.ERROR) = struct
   let late_skip : attrs -> bool =
     status >> [%matches? Types.Included { late_skip = true }]
 
+  let is_erased : attrs -> bool =
+    find_unique_attr
+      ~f:([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
+    >> Option.is_some
+
   let uid : attrs -> UId.t option =
     let f = function Types.Uid uid -> Some (UId.of_raw uid) | _ -> None in
     find_unique_attr ~f

@@ -407,14 +407,19 @@ struct
       method item'_Impl ~super ~generics ~self_ty ~of_trait ~items
           ~parent_bounds:_ ~safety:_ =
         let name, args = of_trait#v in
-        CoqNotation.instance
-          (name#p ^^ string "_" ^^ string (Int.to_string ([%hash: item] super)))
-          generics#p []
-          (name#p ^^ concat_map (fun x -> space ^^ parens x#p) args)
-          (braces
-             (nest 2
-                (concat_map (fun x -> break 1 ^^ name#p ^^ !^"_" ^^ x#p) items)
-             ^^ break 1))
+        if Attrs.is_erased super.attrs then empty
+        else
+          CoqNotation.instance
+            (name#p ^^ string "_"
+            ^^ string (Int.to_string ([%hash: item] super)))
+            generics#p []
+            (name#p ^^ concat_map (fun x -> space ^^ parens x#p) args)
+            (braces
+               (nest 2
+                  (concat_map
+                     (fun x -> break 1 ^^ name#p ^^ !^"_" ^^ x#p)
+                     items)
+               ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
 
