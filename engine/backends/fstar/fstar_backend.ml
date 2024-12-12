@@ -1494,14 +1494,24 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
+        let has_type =
+          List.exists items ~f:(fun { ii_v; _ } ->
+              match ii_v with IIType _ -> true | _ -> false)
+        in
         let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
-        if is_erased then
-          let generics_binders = List.map ~f:FStarBinder.to_binder generics in
-          let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
-          let v = F.AST.Val (name, val_type) in
-          (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
-          @ erased_impl name val_type [ tcinst ] generics
-        else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
+        let generics_binders = List.map ~f:FStarBinder.to_binder generics in
+        let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
+        let v = F.AST.Val (name, val_type) in
+        let intf = F.decls ~fsti:true ~attrs:[ tcinst ] v in
+        let impl =
+          if is_erased then erased_impl name val_type [ tcinst ] generics
+          else
+            F.decls
+              ~fsti:(ctx.interface_mode && has_type)
+              ~attrs:[ tcinst ] let_impl
+        in
+        let intf = if has_type && not is_erased then [] else intf in
+        if ctx.interface_mode then intf @ impl else impl
     | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function

@@ -58,18 +58,12 @@ let impl_T2_for_u8: t_T2 u8 =
 /// dropped. This might be a bit surprising: see
 /// https://github.com/hacspec/hax/issues/616.
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl:Core.Convert.t_From t_Bar Prims.unit
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl': Core.Convert.t_From t_Bar Prims.unit
 
 let impl = impl'
 
 /// If you need to drop the body of a method, please hoist it:
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl_1:Core.Convert.t_From t_Bar u8
-
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_1': Core.Convert.t_From t_Bar u8
@@ -82,16 +76,10 @@ val from__from': u8 -> t_Bar
 let from__from = from__from'
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl_2 (#v_T: Type0) : Core.Convert.t_From (t_Holder v_T) Prims.unit
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_2': #v_T: Type0 -> Core.Convert.t_From (t_Holder v_T) Prims.unit
 
 let impl_2 (#v_T: Type0) = impl_2' #v_T
-
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl_3 (v_SIZE: usize) : Core.Convert.t_From (t_Param v_SIZE) Prims.unit
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
