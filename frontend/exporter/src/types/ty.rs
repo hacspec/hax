@@ -802,14 +802,20 @@ pub enum TyKind {
             let sig = tcx.fn_sig(*def).instantiate(tcx, generics);
             TyKind::Arrow(Box::new(sig.sinto(s)))
         },
-        ty::TyKind::Closure (_def_id, generics) => {
-            let sig = generics.as_closure().sig();
-            let sig = s.base().tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
-            TyKind::Arrow(Box::new(sig.sinto(s)))
+    )]
+    /// Reflects [`ty::TyKind::FnPtr`] and [`ty::TyKind::FnDef`]
+    Arrow(Box<PolyFnSig>),
+
+    #[custom_arm(
+        ty::TyKind::Closure (def_id, generics) => {
+            let closure = generics.as_closure();
+            TyKind::Closure(
+                def_id.sinto(s),
+                ClosureArgs::sfrom(s, *def_id, closure),
+            )
         },
     )]
-    /// Reflects [`ty::TyKind::FnPtr`], [`ty::TyKind::FnDef`] and [`ty::TyKind::Closure`]
-    Arrow(Box<PolyFnSig>),
+    Closure(DefId, ClosureArgs),
 
     #[custom_arm(
         ty::TyKind::Adt(adt_def, generics) => {

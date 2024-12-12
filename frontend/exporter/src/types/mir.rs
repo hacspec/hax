@@ -433,8 +433,10 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
 
     let ty = func.ty(&s.mir().local_decls, tcx);
     let hax_ty: crate::Ty = ty.sinto(s);
-    let TyKind::Arrow(sig) = hax_ty.kind() else {
-        unreachable!("Attempting to call non-function type: {ty:?}")
+    let sig = match hax_ty.kind() {
+        TyKind::Arrow(sig) => sig,
+        TyKind::Closure(_, args) => &args.untupled_sig,
+        _ => unreachable!("Attempting to call non-function type: {ty:?}"),
     };
     let fun_op = if let ty::TyKind::FnDef(def_id, generics) = ty.kind() {
         // The type of the value is one of the singleton types that corresponds to each function,
