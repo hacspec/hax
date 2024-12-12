@@ -1330,17 +1330,9 @@ let is_automatically_derived (attrs : Thir.attribute list) =
       | _ -> false)
     attrs
 
-let is_hax_skip (attrs : Thir.attribute list) =
-  List.exists
-    ~f:(function
-      | { kind = Normal { item = { path; _ }; _ }; _ } ->
-          String.equal path "_hax::skip"
-      | _ -> false)
-    attrs
-
 let should_skip (attrs : Thir.item_attributes) =
   let attrs = attrs.attributes @ attrs.parent_attributes in
-  is_hax_skip attrs || is_automatically_derived attrs
+  is_automatically_derived attrs
 
 (** Converts a generic parameter to a generic value. This assumes the
 parameter is bound. *)
