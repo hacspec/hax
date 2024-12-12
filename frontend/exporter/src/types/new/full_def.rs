@@ -271,10 +271,8 @@ pub enum FullDefKind<Body> {
         is_const: bool,
         #[value({
             let fun_type = s.base().tcx.type_of(s.owner_id()).instantiate_identity();
-            match fun_type.kind() {
-                ty::TyKind::Closure(_, args) => args.as_closure().sinto(s),
-                _ => unreachable!(),
-            }
+            let ty::TyKind::Closure(_, args) = fun_type.kind() else { unreachable!() };
+            ClosureArgs::sfrom(s, s.owner_id(), args.as_closure())
         })]
         args: ClosureArgs,
     },

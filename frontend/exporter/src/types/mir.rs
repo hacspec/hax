@@ -955,26 +955,12 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, generics) => {
-        let def_id : DefId = rust_id.sinto(s);
-        // The generics is meant to be converted to a function signature. Note
-        // that Rustc does its job: the PolyFnSig binds the captured local
-        // type, regions, etc. variables, which means we can treat the local
-        // closure like any top-level function.
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(def_id, generics) => {
         let closure = generics.as_closure();
-        let sig = closure.sig().sinto(s);
-
-        // Solve the predicates from the parent (i.e., the item which defines the closure).
-        let tcx = s.base().tcx;
-        let parent_generics = closure.parent_args();
-        let parent_generics_ref = tcx.mk_args(parent_generics);
-        // TODO: does this handle nested closures?
-        let parent = tcx.generics_of(rust_id).parent.unwrap();
-        let trait_refs = solve_item_required_traits(s, parent, parent_generics_ref);
-
-        AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
+        let args = ClosureArgs::sfrom(s, *def_id, closure);
+        AggregateKind::Closure(def_id.sinto(s), args)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
+    Closure(DefId, ClosureArgs),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
     RawPtr(Ty, Mutability),
