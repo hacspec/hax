@@ -45,18 +45,22 @@ val t_OpaqueStruct': v_X: usize -> v_T: Type0 -> v_U: Type0 -> eqtype
 
 let t_OpaqueStruct (v_X: usize) (v_T v_U: Type0) = t_OpaqueStruct' v_X v_T v_U
 
+assume
+val impl__S1__f_s1': Prims.unit -> Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
+
+let impl__S1__f_s1 = impl__S1__f_s1'
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
-val impl_T_for_u8': t_T u8
+val impl_2': #v_U: Type0 -> {| i1: Core.Clone.t_Clone v_U |} -> t_TrGeneric i32 v_U
 
-let impl_T_for_u8 = impl_T_for_u8'
+let impl_2 (#v_U: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_U) =
+  impl_2' #v_U #i1
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
-val impl_1': #v_U: Type0 -> {| i1: Core.Clone.t_Clone v_U |} -> t_TrGeneric i32 v_U
+val impl__S2__f_s2': Prims.unit -> Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
 
-let impl_1 (#v_U: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_U) =
-  impl_1' #v_U #i1
+let impl__S2__f_s2 = impl__S2__f_s2'
 
 assume
 val v_C': u8
@@ -84,6 +88,12 @@ val ff_pre_post': x: bool -> y: bool
           result =. y)
 
 let ff_pre_post = ff_pre_post'
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_T_for_u8': t_T u8
+
+let impl_T_for_u8 = impl_T_for_u8'
 '''
 "Attribute_opaque.fsti" = '''
 module Attribute_opaque
@@ -91,11 +101,9 @@ module Attribute_opaque
 open Core
 open FStar.Mul
 
-class t_T (v_Self: Type0) = {
-  f_d_pre:Prims.unit -> Type0;
-  f_d_post:Prims.unit -> Prims.unit -> Type0;
-  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
-}
+type t_S1 = | S1 : t_S1
+
+type t_S2 = | S2 : t_S2
 
 val t_OpaqueEnum (v_X: usize) (v_T v_U: Type0) : eqtype
 
@@ -108,11 +116,12 @@ class t_TrGeneric (v_Self: Type0) (v_U: Type0) = {
   f_f:x0: v_U -> Prims.Pure v_Self (f_f_pre x0) (fun result -> f_f_post x0 result)
 }
 
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl_T_for_u8:t_T u8
+val impl__S1__f_s1: Prims.unit -> Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-val impl_1 (#v_U: Type0) {| i1: Core.Clone.t_Clone v_U |} : t_TrGeneric i32 v_U
+val impl_2 (#v_U: Type0) {| i1: Core.Clone.t_Clone v_U |} : t_TrGeneric i32 v_U
+
+val impl__S2__f_s2: Prims.unit -> Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
 
 val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
 
@@ -126,4 +135,18 @@ val ff_pre_post (x y: bool)
         fun result ->
           let result:bool = result in
           result =. y)
+
+class t_T (v_Self: Type0) = {
+  f_U:Type0;
+  f_c:u8;
+  f_d_pre:Prims.unit -> Type0;
+  f_d_post:Prims.unit -> Prims.unit -> Type0;
+  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result);
+  f_m_pre:self___: v_Self -> x: u8 -> pred: Type0{x =. 0uy ==> pred};
+  f_m_post:v_Self -> u8 -> bool -> Type0;
+  f_m:x0: v_Self -> x1: u8 -> Prims.Pure bool (f_m_pre x0 x1) (fun result -> f_m_post x0 x1 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+val impl_T_for_u8:t_T u8
 '''
