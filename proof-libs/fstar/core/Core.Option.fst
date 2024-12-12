@@ -18,6 +18,8 @@ let impl__is_some #t_Self (self: t_Option t_Self): bool =  Option_Some? self
 
 let impl__is_none #t_Self (self: t_Option t_Self): bool =  Option_None? self
 
+let impl__take #t (x: t_Option t) : (t_Option t & t_Option t) = (x, Option_None)
+	
 let impl__as_ref #t_Self (self: t_Option t_Self): t_Option t_Self = self
 
 let impl__unwrap_or_default 

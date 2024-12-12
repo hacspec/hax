@@ -1,8 +1,5 @@
 module Std.Collections.Hash.Map
 
-open Core
-open FStar.Mul
+type t_HashMap (k v s:Type0)
 
-type t_HashMap (v_K: Type0) (v_V: Type0) (v_S: Type0) = {
-  f__hax_placeholder:unit
-}
+val impl__new #k #v: unit -> t_HashMap k v Std.Hash.Random.t_RandomState

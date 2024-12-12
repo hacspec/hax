@@ -401,8 +401,9 @@ struct
     let ppat = ppat' false in
     match p.p with
     | PWild -> F.wild
-    | PAscription { typ; pat } ->
+    | PAscription { typ; pat = { p = PBinding _; _ } as pat } ->
         F.pat @@ F.AST.PatAscribed (ppat pat, (pty p.span typ, None))
+    | PAscription { pat; _ } -> ppat pat
     | PBinding
         {
           mut = Immutable;
