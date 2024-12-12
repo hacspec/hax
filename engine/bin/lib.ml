@@ -36,14 +36,14 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
             include_clauses
           |> List.last
         in
-        let drop_body =
+        let type_only =
           (* Shall we drop the body? *)
           Option.map
             ~f:(fun clause -> [%matches? Types.SignatureOnly] clause.kind)
             most_precise_clause
           |> Option.value ~default:false
         in
-        Import_thir.import_item ~drop_body item)
+        Import_thir.import_item ~type_only item)
       items
     |> List.map ~f:snd
   in

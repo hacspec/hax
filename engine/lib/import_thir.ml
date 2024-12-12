@@ -1440,29 +1440,66 @@ let cast_of_enum typ_name generics typ thir_span
   in
   { v; span; ident; attrs = [] }
 
-let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
+let rec c_item ~ident ~type_only (item : Thir.item) : item list =
   try
     Span.with_owner_hint item.owner_id (fun _ ->
-        c_item_unwrapped ~ident ~drop_body item)
+        c_item_unwrapped ~ident ~type_only item)
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
     let span = Span.of_thir item.span in
     [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
+and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
     let attrs = c_item_attrs item.attributes in
+    (* this is true if the user explicilty requested to erase using the `opaque` macro *)
+    let erased_by_user attrs =
+      Attr_payloads.payloads attrs
+      |> List.exists ~f:(fst >> [%matches? (Erased : Types.ha_payload)])
+    in
+    let item_erased_by_user = erased_by_user attrs in
+    let type_only =
+      type_only
+      && Attr_payloads.payloads attrs
+         |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
+         |> not
+    in
+    (* This is true if the item should be erased because we are in type-only mode
+       (Only certain kinds of items are erased in this case). *)
+    let erased_by_type_only =
+      type_only
+      &&
+      match item.kind with
+      | Fn _ | Static _ -> true
+      | Impl { of_trait = Some _; items; _ }
+        when List.exists items ~f:(fun item ->
+                 match item.kind with Type _ -> true | _ -> false)
+             |> not ->
+          true
+      | _ -> false
+    in
+    (* If the item is erased in type-only mode we need to add the Erased attribute.
+       It is already present if the item is erased by user. *)
+    let attrs_with_erased erased_by_type_only erased_by_user attrs =
+      if erased_by_type_only && not erased_by_user then
+        Attr_payloads.to_attr Erased span :: attrs
+      else attrs
+    in
+    let attrs =
+      attrs_with_erased erased_by_type_only item_erased_by_user attrs
+    in
+    let erased = item_erased_by_user || erased_by_type_only in
+
     let mk_one v = { span; v; ident; attrs } in
     let mk v = [ mk_one v ] in
     let drop_body =
-      drop_body
+      erased
       && Attr_payloads.payloads attrs
-         |> List.exists
-              ~f:(fst >> [%matches? (NeverDropBody : Types.ha_payload)])
+         |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
          |> not
     in
     let c_body = if drop_body then c_expr_drop_body else c_expr in
@@ -1475,7 +1512,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_expr body;
+               body = c_body body;
                params = [];
                safety = Safe;
              }
@@ -1499,6 +1536,12 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                params = c_fn_params item.span params;
                safety = csafety safety;
              }
+    | (Enum (_, generics, _) | Struct (_, generics)) when erased ->
+        let generics = c_generics generics in
+        let is_struct = match item.kind with Struct _ -> true | _ -> false in
+        let def_id = Option.value_exn item.def_id in
+        let name = Concrete_ident.of_def_id Type def_id in
+        mk @@ Type { name; generics; variants = []; is_struct }
     | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in
         let generics = c_generics generics in
@@ -1628,6 +1671,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         List.map
           ~f:(fun (item : Thir.impl_item) ->
             let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
+            let attrs = c_item_attrs item.attributes in
+            let sub_item_erased_by_user = erased_by_user attrs in
+            let sub_item_erased = sub_item_erased_by_user || type_only in
+            let attrs =
+              attrs_with_erased type_only sub_item_erased_by_user attrs
+            in
+            let c_body = if sub_item_erased then c_expr_drop_body else c_body in
 
             let v =
               match (item.kind : Thir.impl_item_kind) with
@@ -1663,7 +1713,6 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                      (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
             in
             let ident = Concrete_ident.of_def_id Value item.owner_id in
-            let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
     | Impl
@@ -1681,11 +1730,66 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
             items
         in
-        let has_type =
-          List.exists items ~f:(fun item ->
-              match item.kind with Type _ -> true | _ -> false)
+        let items =
+          if erased then
+            [
+              (* Dummy associated item *)
+              {
+                ii_span = Span.of_thir item.span;
+                ii_generics = { params = []; constraints = [] };
+                ii_v =
+                  IIFn
+                    {
+                      body = U.unit_expr span;
+                      params = [ U.make_unit_param span ];
+                    };
+                ii_ident =
+                  Concrete_ident.of_name Value
+                    Rust_primitives__hax__dropped_body;
+                ii_attrs = [];
+              };
+            ]
+          else
+            List.map
+              ~f:(fun (item : Thir.impl_item) ->
+                (* TODO: introduce a Kind.TraitImplItem or
+                   something. Otherwise we have to assume every
+                   backend will see traits and impls as
+                   records. See https://github.com/hacspec/hax/issues/271. *)
+                let ii_ident = Concrete_ident.of_def_id Field item.owner_id in
+                {
+                  ii_span = Span.of_thir item.span;
+                  ii_generics = c_generics item.generics;
+                  ii_v =
+                    (match (item.kind : Thir.impl_item_kind) with
+                    | Fn { body; params; _ } ->
+                        let params =
+                          if List.is_empty params then
+                            [ U.make_unit_param span ]
+                          else List.map ~f:(c_param item.span) params
+                        in
+                        IIFn { body = c_expr body; params }
+                    | Const (_ty, e) -> IIFn { body = c_expr e; params = [] }
+                    | Type { ty; parent_bounds } ->
+                        IIType
+                          {
+                            typ = c_ty item.span ty;
+                            parent_bounds =
+                              List.filter_map
+                                ~f:(fun (clause, impl_expr, span) ->
+                                  let* bound = c_clause span clause in
+                                  match bound with
+                                  | GCType trait_goal ->
+                                      Some
+                                        (c_impl_expr span impl_expr, trait_goal)
+                                  | _ -> None)
+                                parent_bounds;
+                          });
+                  ii_ident;
+                  ii_attrs = c_item_attrs item.attributes;
+                })
+              items
         in
-        let c_e = if has_type then c_expr else c_body in
         mk
         @@ Impl
              {
@@ -1695,49 +1799,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                  ( Concrete_ident.of_def_id Trait of_trait.def_id,
                    List.map ~f:(c_generic_value item.span) of_trait.generic_args
                  );
-               items =
-                 List.map
-                   ~f:(fun (item : Thir.impl_item) ->
-                     (* TODO: introduce a Kind.TraitImplItem or
-                        something. Otherwise we have to assume every
-                        backend will see traits and impls as
-                        records. See https://github.com/hacspec/hax/issues/271. *)
-                     let ii_ident =
-                       Concrete_ident.of_def_id Field item.owner_id
-                     in
-                     {
-                       ii_span = Span.of_thir item.span;
-                       ii_generics = c_generics item.generics;
-                       ii_v =
-                         (match (item.kind : Thir.impl_item_kind) with
-                         | Fn { body; params; _ } ->
-                             let params =
-                               if List.is_empty params then
-                                 [ U.make_unit_param span ]
-                               else List.map ~f:(c_param item.span) params
-                             in
-                             IIFn { body = c_e body; params }
-                         | Const (_ty, e) -> IIFn { body = c_e e; params = [] }
-                         | Type { ty; parent_bounds } ->
-                             IIType
-                               {
-                                 typ = c_ty item.span ty;
-                                 parent_bounds =
-                                   List.filter_map
-                                     ~f:(fun (clause, impl_expr, span) ->
-                                       let* bound = c_clause span clause in
-                                       match bound with
-                                       | GCType trait_goal ->
-                                           Some
-                                             ( c_impl_expr span impl_expr,
-                                               trait_goal )
-                                       | _ -> None)
-                                     parent_bounds;
-                               });
-                       ii_ident;
-                       ii_attrs = c_item_attrs item.attributes;
-                     })
-                   items;
+               items;
                parent_bounds =
                  List.filter_map
                    ~f:(fun (clause, impl_expr, span) ->
@@ -1787,7 +1849,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
     | TraitAlias _ ->
         mk NotImplementedYet
 
-let import_item ~drop_body (item : Thir.item) :
+let import_item ~type_only (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
   let ident = Concrete_ident.of_def_id Value item.owner_id in
   let r, reports =
@@ -1797,6 +1859,6 @@ let import_item ~drop_body (item : Thir.item) :
       >> U.Reducers.disambiguate_local_idents
     in
     Diagnostics.Core.capture (fun _ ->
-        c_item item ~ident ~drop_body |> List.map ~f)
+        c_item item ~ident ~type_only |> List.map ~f)
   in
   (ident, (r, reports))
