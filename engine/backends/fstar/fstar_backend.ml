@@ -875,11 +875,7 @@ struct
       | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
-    let is_erased =
-      Attrs.find_unique_attr e.attrs
-        ~f:([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
-      |> Option.is_some
-    in
+    let is_erased = Attrs.is_erased e.attrs in
     let erased_impl name ty attrs binders =
       let name' = F.id_prime name in
       let pat = F.AST.PatVar (name, None, []) in
