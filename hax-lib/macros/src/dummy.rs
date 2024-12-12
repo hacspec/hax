@@ -22,7 +22,7 @@ pub fn requires(attr: TokenStream, item: TokenStream) -> TokenStream {
     let phi: syn::Expr = parse_macro_input!(attr);
 
     quote! {
-        #[doc=concat!("Requires: ",stringify!(#phi))]
+        #[doc=concat!("Requires:\n```\n",stringify!(#phi),"\n```")]
         #item
     }.into()
 }
