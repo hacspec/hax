@@ -106,6 +106,9 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hax bash`
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
+Note: Please make sure that `$HOME/.cargo/bin` is in your `$PATH`, as
+that is where `setup.sh` will install hax.
+
 </details>
 
 ## Supported Subset of the Rust Language
