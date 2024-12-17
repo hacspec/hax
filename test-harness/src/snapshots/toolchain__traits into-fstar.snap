@@ -614,7 +614,6 @@ let use_impl_trait (_: Prims.unit) : Prims.unit =
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
   f_AssocType_15012754260415912210:t_SuperTrait f_AssocType;
-  f_AssocType_3242921639065184873:Core.Clone.t_Clone f_AssocType;
   f_N:usize;
   f_assoc_f_pre:Prims.unit -> Type0;
   f_assoc_f_post:Prims.unit -> Prims.unit -> Type0;
@@ -624,12 +623,12 @@ class t_Foo (v_Self: Type0) = {
   f_method_f_post:v_Self -> Prims.unit -> Type0;
   f_method_f:x0: v_Self
     -> Prims.Pure Prims.unit (f_method_f_pre x0) (fun result -> f_method_f_post x0 result);
-  f_assoc_type_pre:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Type0;
-  f_assoc_type_post:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Prims.unit -> Type0;
-  f_assoc_type:{| i3: Core.Marker.t_Copy f_AssocType |} -> x0: f_AssocType
+  f_assoc_type_pre:{| i2: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Type0;
+  f_assoc_type_post:{| i2: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Prims.unit -> Type0;
+  f_assoc_type:{| i2: Core.Marker.t_Copy f_AssocType |} -> x0: f_AssocType
     -> Prims.Pure Prims.unit
-        (f_assoc_type_pre #i3 x0)
-        (fun result -> f_assoc_type_post #i3 x0 result)
+        (f_assoc_type_pre #i2 x0)
+        (fun result -> f_assoc_type_post #i2 x0 result)
 }
 
 class t_Lang (v_Self: Type0) = {

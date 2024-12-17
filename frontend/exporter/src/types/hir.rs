@@ -840,10 +840,15 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     };
 
     let clauses: Vec<ty::Clause<'tcx>> = if use_item_bounds {
-        tcx.item_bounds(s.owner_id())
+        tcx.explicit_item_bounds(s.owner_id())
+            .map_bound(|clauses| {
+                clauses
+                    .iter()
+                    .map(|(x, _span)| x)
+                    .copied()
+                    .collect::<Vec<_>>()
+            })
             .instantiate_identity()
-            .iter()
-            .collect()
     } else {
         predicates_defined_on(tcx, s.owner_id())
             .predicates
