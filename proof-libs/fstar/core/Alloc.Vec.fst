@@ -3,7 +3,6 @@ open Rust_primitives
 
 unfold type t_Vec t (_: unit) = t_Slice t
 
-
 let impl__new #t (): t_Vec t () = FStar.Seq.empty
 
 let impl_2__extend_from_slice #t (#[(Tactics.exact (`()))]alloc:unit) (self: t_Vec t alloc) (other: t_Slice t{Seq.length self + Seq.length other <= max_usize}): t_Vec t alloc
@@ -41,6 +40,3 @@ instance update_at_tc_array t n: update_at_tc (t_Vec t ()) (int_t n) = {
 
 let impl_1__is_empty #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc): bool =
   Seq.length v = 0
-
-
-
