@@ -929,10 +929,11 @@ struct
           F.decl ~fsti:false
           @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
-        let interface_mode = ctx.interface_mode && not (List.is_empty params) in
+        let is_const = List.is_empty params in
         let ty =
-          add_clauses_effect_type ~no_tot_abbrev:interface_mode e.attrs
-            (pty body.span body.typ)
+          add_clauses_effect_type
+            ~no_tot_abbrev:(ctx.interface_mode && not is_const)
+            e.attrs (pty body.span body.typ)
         in
         let arrow_typ =
           F.term
@@ -968,7 +969,8 @@ struct
         let impl, full =
           if is_erased then (erased, erased) else ([ impl ], [ full ])
         in
-        if interface_mode then intf :: impl else full
+        if ctx.interface_mode && ((not is_const) || is_erased) then intf :: impl
+        else full
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat

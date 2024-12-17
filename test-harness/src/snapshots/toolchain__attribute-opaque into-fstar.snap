@@ -123,6 +123,8 @@ val impl_2 (#v_U: Type0) {| i1: Core.Clone.t_Clone v_U |} : t_TrGeneric i32 v_U
 
 val impl__S2__f_s2: Prims.unit -> Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
 
+val v_C:u8
+
 val f (x y: bool) : Prims.Pure bool Prims.l_True (fun _ -> Prims.l_True)
 
 val ff_generic (v_X: usize) (#v_T #v_U: Type0) (x: v_U)

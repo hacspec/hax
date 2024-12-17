@@ -1659,9 +1659,14 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
           let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
           let attrs = c_item_attrs item.attributes in
           let sub_item_erased_by_user = erased_by_user attrs in
-          let sub_item_erased = sub_item_erased_by_user || type_only in
+          let erased_by_type_only =
+            type_only && match item.kind with Fn _ -> true | _ -> false
+          in
+          let sub_item_erased =
+            sub_item_erased_by_user || erased_by_type_only
+          in
           let attrs =
-            attrs_with_erased type_only sub_item_erased_by_user attrs
+            attrs_with_erased erased_by_type_only sub_item_erased_by_user attrs
           in
           let c_body = if sub_item_erased then c_expr_drop_body else c_body in
 
