@@ -53,7 +53,7 @@ all:
 	rm -f .depend && $(MAKE) .depend
 	$(MAKE) verify
 
-HAX_CLI = "cargo hax into fstar --z3rlimit 1000"
+HAX_CLI = "cargo hax into fstar --z3rlimit 1500"
 
 # If $HACL_HOME doesn't exist, clone it
 ${HACL_HOME}:
