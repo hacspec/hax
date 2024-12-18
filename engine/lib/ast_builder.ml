@@ -210,7 +210,8 @@ module Make (F : Features.T) = struct
   end
 
   module type S = module type of Make0 (struct
-    let span = failwith "dummy"
+    (* This [failwith] is OK: this module is never actually used for computation. It is useful only for typing. *)
+    let span = failwith "type only module: this will never be computed"
   end)
 
   module Make (Span : sig
