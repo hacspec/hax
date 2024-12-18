@@ -2,11 +2,15 @@ open! Prelude
 open Ast
 open Ast.Full
 
-module Concrete_ident_view = Concrete_ident.MakeViewAPI (struct
-  include Concrete_ident.DefaultNamePolicy
+module View = struct
+  include Concrete_ident.MakeRenderAPI (struct
+    include Concrete_ident.DefaultNamePolicy
 
-  let index_field_transform field = "_" ^ field
-end)
+    let anonymous_field_transform field = "_" ^ field
+  end)
+
+  let to_definition_name id = (render id).name
+end
 
 module AnnotatedString = struct
   module T = struct
@@ -90,7 +94,7 @@ module Raw = struct
     let ( ! ) s = pure span (prefix ^ s) in
     match e with
     | `Concrete c ->
-        !(let s = Concrete_ident_view.show c in
+        !(let s = View.show c in
           if String.equal "_" s then "_anon" else s)
     | `Primitive p -> pprimitive_ident span p
     | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
@@ -126,7 +130,7 @@ module Raw = struct
 
   let rec last_of_global_ident (g : global_ident) span =
     match g with
-    | `Concrete c -> Concrete_ident_view.to_definition_name c
+    | `Concrete c -> View.to_definition_name c
     | `Projector c -> last_of_global_ident (c :> global_ident) span
     | _ ->
         Diagnostics.report
@@ -169,7 +173,7 @@ module Raw = struct
         in
         !"arrow!(" & arrow & !")"
     | TAssociatedType _ -> !"proj_asso_type!()"
-    | TOpaque ident -> !(Concrete_ident_view.show ident)
+    | TOpaque ident -> !(View.show ident)
     | TDyn { goals; _ } ->
         let goals =
           concat ~sep:!" + " (List.map ~f:(pdyn_trait_goal span) goals)
@@ -181,7 +185,7 @@ module Raw = struct
     let args =
       List.map ~f:(pgeneric_value span) non_self_args |> concat ~sep:!", "
     in
-    !(Concrete_ident_view.show trait)
+    !(View.show trait)
     & if List.is_empty args then empty else !"<" & args & !">"
 
   and pgeneric_value span (e : generic_value) : AnnotatedString.t =
@@ -416,7 +420,7 @@ module Raw = struct
   let ptrait_goal span { trait; args } =
     let ( ! ) = pure span in
     let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
-    !(Concrete_ident_view.show trait)
+    !(View.show trait)
     & if List.is_empty args then empty else !"<" & args & !">"
 
   let pprojection_predicate span (pp : projection_predicate) =
@@ -426,9 +430,9 @@ module Raw = struct
     |> Option.map ~f:(pty span)
     |> Option.value ~default:!"unknown_self"
     & !" :"
-    & !(Concrete_ident_view.show pp.impl.goal.trait)
+    & !(View.show pp.impl.goal.trait)
     & !"<"
-    & !(Concrete_ident_view.to_definition_name pp.assoc_item)
+    & !(View.to_definition_name pp.assoc_item)
     & !" = " & pty span pp.typ & !">"
 
   let pgeneric_constraint span (p : generic_constraint) =
@@ -451,9 +455,7 @@ module Raw = struct
       !"{"
       & concat ~sep:!","
           (List.map arguments ~f:(fun (id, ty, attrs) ->
-               pattrs attrs
-               & !(Concrete_ident_view.to_definition_name id)
-               & !":" & pty span ty))
+               pattrs attrs & !(View.to_definition_name id) & !":" & pty span ty))
       & !"}"
     else
       !"("
@@ -465,7 +467,7 @@ module Raw = struct
   let pvariant span (variant : variant) =
     let ( ! ) = pure span in
     pattrs variant.attrs
-    & !(Concrete_ident_view.to_definition_name variant.name)
+    & !(View.to_definition_name variant.name)
     & pvariant_body span variant
 
   let pvariants span variants =
@@ -485,7 +487,7 @@ module Raw = struct
     let ( ! ) = pure ti.ti_span in
     let generics = pgeneric_params ti.ti_generics.params in
     let bounds = pgeneric_constraints ti.ti_span ti.ti_generics.constraints in
-    let ident = !(Concrete_ident_view.to_definition_name ti.ti_ident) in
+    let ident = !(View.to_definition_name ti.ti_ident) in
     pattrs ti.ti_attrs
     &
     match ti.ti_v with
@@ -518,7 +520,7 @@ module Raw = struct
     let ( ! ) = pure span in
     let generics = pgeneric_params ii.ii_generics.params in
     let bounds = pgeneric_constraints span ii.ii_generics.constraints in
-    let ident = !(Concrete_ident_view.to_definition_name ii.ii_ident) in
+    let ident = !(View.to_definition_name ii.ii_ident) in
     pattrs ii.ii_attrs
     &
     match ii.ii_v with
@@ -537,27 +539,27 @@ module Raw = struct
         | Fn { name; body; generics; params; safety } ->
             let return_type = pty e.span body.typ in
             (match safety with Safe -> !"fn " | Unsafe _ -> !"unsafe fn ")
-            & !(Concrete_ident_view.to_definition_name name)
+            & !(View.to_definition_name name)
             & pgeneric_params generics.params
             & pparams e.span params & !" -> " & return_type
             & pgeneric_constraints e.span generics.constraints
             & !"{" & pexpr body & !"}"
         | TyAlias { name; generics; ty } ->
             !"type "
-            & !(Concrete_ident_view.to_definition_name name)
+            & !(View.to_definition_name name)
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & !"=" & pty e.span ty & !";"
         | Type { name; generics; variants = [ variant ]; is_struct = true } ->
             !"struct "
-            & !(Concrete_ident_view.to_definition_name name)
+            & !(View.to_definition_name name)
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & pvariant_body e.span variant
             & if variant.is_record then !"" else !";"
         | Type { name; generics; variants; _ } ->
             !"enum "
-            & !(Concrete_ident_view.to_definition_name name)
+            & !(View.to_definition_name name)
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             &
@@ -568,7 +570,7 @@ module Raw = struct
               match safety with Safe -> !"" | Unsafe _ -> !"unsafe "
             in
             safety & !"trait "
-            & !(Concrete_ident_view.to_definition_name name)
+            & !(View.to_definition_name name)
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & !"{"

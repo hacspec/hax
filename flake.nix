@@ -199,8 +199,9 @@
             pkgs.rust-analyzer
             pkgs.toml2json
             rustfmt
-            rustc
             utils
+
+            pkgs.rustup
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {

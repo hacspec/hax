@@ -79,19 +79,20 @@ module FStarNamePolicy = struct
 
   [@@@ocamlformat "disable"]
 
-  let index_field_transform index = "_" ^ index
+  let anonymous_field_transform index = "_" ^ index
 
   let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and";"string"]
 end
 
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
+module RenderId = Concrete_ident.MakeRenderAPI (FStarNamePolicy)
+module U = Ast_utils.Make (InputLanguage)
 module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
 module Context = struct
   type t = {
-    current_namespace : string * string list;
+    current_namespace : string list;
     items : item list;
     interface_mode : bool;
     line_width : int;
@@ -99,9 +100,8 @@ module Context = struct
 end
 
 (** Convers a namespace to a module name *)
-let module_name (ns : string * string list) : string =
-  String.concat ~sep:"."
-    (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
+let module_name (ns : string list) : string =
+  String.concat ~sep:"." (List.map ~f:(map_first_letter String.uppercase) ns)
 
 module Make
     (Attrs : Attrs.WITH_ITEMS)
@@ -222,11 +222,10 @@ struct
     | _ -> mk_const @@ pliteral_as_const span e
 
   let pconcrete_ident (id : concrete_ident) =
-    let id = U.Concrete_ident_view.to_view id in
-    let ns_crate, ns_path = ctx.current_namespace in
-    if String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path then
-      F.lid [ id.definition ]
-    else F.lid (id.crate :: (id.path @ [ id.definition ]))
+    let id = RenderId.render id in
+    let path = ctx.current_namespace in
+    if [%eq: string list] path id.path then F.lid [ id.name ]
+    else F.lid (id.path @ [ id.name ])
 
   let rec pglobal_ident (span : span) (id : global_ident) =
     match id with
@@ -253,7 +252,7 @@ struct
          ^ show_global_ident id)
 
   let plocal_ident_str (e : Local_ident.t) =
-    U.Concrete_ident_view.local_ident
+    RenderId.local_ident
       (match String.chop_prefix ~prefix:"impl " e.name with
       | Some name ->
           let name = "impl_" ^ Int.to_string ([%hash: string] name) in
@@ -274,8 +273,7 @@ struct
          ^ show_global_ident f)
 
   let index_of_field_concrete id =
-    try Some (Int.of_string @@ U.Concrete_ident_view.to_definition_name id)
-    with _ -> None
+    try Some (Int.of_string @@ (RenderId.render id).name) with _ -> None
 
   let index_of_field = function
     | `Concrete id -> index_of_field_concrete id
@@ -285,7 +283,7 @@ struct
   let is_field_an_index = index_of_field >> Option.is_some
 
   let operators =
-    let c = Global_ident.of_name Value in
+    let c = Global_ident.of_name ~value:true in
     [
       (c Rust_primitives__hax__array_of_list, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
@@ -355,14 +353,11 @@ struct
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
     | TAssociatedType { impl = { kind = Self; _ }; item } ->
-        F.term
-        @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
+        F.term @@ F.AST.Var (F.lid [ (RenderId.render item).name ])
     | TAssociatedType { impl; item } -> (
         match pimpl_expr span impl with
         | Some impl ->
-            F.term
-            @@ F.AST.Project
-                 (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
+            F.term @@ F.AST.Project (impl, F.lid [ (RenderId.render item).name ])
         | None -> F.term @@ F.AST.Wild)
     | TOpaque s -> F.term @@ F.AST.Wild
     | TDyn { goals; _ } ->
@@ -567,7 +562,8 @@ struct
         let body = F.AST.mkConsList F.dummyRange (List.map ~f:pexpr l) in
         let array_of_list =
           let id =
-            Concrete_ident.of_name Value Rust_primitives__hax__array_of_list
+            Concrete_ident.of_name ~value:true
+              Rust_primitives__hax__array_of_list
           in
           F.term @@ F.AST.Name (pconcrete_ident id)
         in
@@ -934,16 +930,15 @@ struct
     | Alias { name; item } ->
         (* These should come from bundled items (in the case of cyclic module dependencies).
            We make use of this f* feature: https://github.com/FStarLang/FStar/pull/3369 *)
-        let bundle = U.Concrete_ident_view.to_namespace item |> module_name in
+        let bundle = (RenderId.render item).path |> module_name in
         [
           `VerbatimImpl
             ( Printf.sprintf "include %s {%s as %s}" bundle
-                (U.Concrete_ident_view.to_definition_name item)
-                (U.Concrete_ident_view.to_definition_name name),
+                (RenderId.render item).name (RenderId.render name).name,
               `Newline );
         ]
     | Fn { name; generics; body; params } ->
-        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+        let name = F.id @@ (RenderId.render name).name in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
         let pat_args =
@@ -975,7 +970,7 @@ struct
                        let name =
                          match pat.p with
                          | PBinding { var; _ } ->
-                             Some (U.Concrete_ident_view.local_ident var)
+                             Some (RenderId.local_ident var)
                          | _ ->
                              (* TODO: this might generate bad code,
                                 see
@@ -1004,9 +999,7 @@ struct
         else full
     | TyAlias { name; generics; ty } ->
         let pat =
-          F.pat
-          @@ F.AST.PatVar
-               (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
+          F.pat @@ F.AST.PatVar (F.id @@ (RenderId.render name).name, None, [])
         in
         let ty, quals =
           (* Adds a refinement if a refinement attribute is detected *)
@@ -1044,7 +1037,7 @@ struct
           F.term
           @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
         in
-        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+        let name = F.id @@ (RenderId.render name).name in
         let erased = erased_impl name arrow_typ [] generics in
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
         if ctx.interface_mode then intf :: erased else erased
@@ -1061,7 +1054,7 @@ struct
                false,
                [
                  F.AST.TyconRecord
-                   ( F.id @@ U.Concrete_ident_view.to_definition_name name,
+                   ( F.id @@ (RenderId.render name).name,
                      FStarBinder.of_generics e.span generics
                      |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
@@ -1069,12 +1062,10 @@ struct
                      [],
                      List.map
                        ~f:(fun (prev, (field, ty, attrs)) ->
-                         let fname : string =
-                           U.Concrete_ident_view.to_definition_name field
-                         in
+                         let fname : string = (RenderId.render field).name in
                          let fvars =
                            List.map prev ~f:(fun (field, _, _) ->
-                               U.Concrete_ident_view.to_definition_name field)
+                               (RenderId.render field).name)
                          in
                          ( F.id fname,
                            None,
@@ -1085,7 +1076,7 @@ struct
     | Type { name; generics; variants; _ } ->
         let self =
           F.mk_e_app
-            (F.term_of_lid [ U.Concrete_ident_view.to_definition_name name ])
+            (F.term_of_lid [ (RenderId.render name).name ])
             (List.map
                ~f:FStarBinder.(of_generic_param e.span >> to_ident)
                generics.params
@@ -1095,7 +1086,7 @@ struct
         let constructors =
           List.map
             ~f:(fun { name; arguments; is_record; _ } ->
-              ( F.id (U.Concrete_ident_view.to_definition_name name),
+              ( F.id (RenderId.render name).name,
                 Some
                   (let field_indexes =
                      List.map ~f:(fst3 >> index_of_field_concrete) arguments
@@ -1105,7 +1096,7 @@ struct
                        ( List.map
                            ~f:(fun (field, ty, attrs) ->
                              let fname : string =
-                               U.Concrete_ident_view.to_definition_name field
+                               (RenderId.render field).name
                              in
                              (F.id fname, None, [], pty e.span ty))
                            arguments,
@@ -1128,7 +1119,7 @@ struct
                false,
                [
                  F.AST.TyconVariant
-                   ( F.id @@ U.Concrete_ident_view.to_definition_name name,
+                   ( F.id @@ (RenderId.render name).name,
                      FStarBinder.of_generics e.span generics
                      |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
@@ -1144,8 +1135,8 @@ struct
                span = e.span;
              }
         in
-        match U.Concrete_ident_view.to_view macro with
-        | { crate = "hacspec_lib"; path = _; definition = name } -> (
+        match RenderId.render macro with
+        | { path = "hacspec_lib" :: _; name } -> (
             let unwrap r =
               match r with
               | Ok r -> r
@@ -1207,12 +1198,12 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let name_str = U.Concrete_ident_view.to_definition_name name in
+        let name_str = (RenderId.render name).name in
         let name_id = F.id @@ name_str in
         let fields =
           List.concat_map
             ~f:(fun i ->
-              let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
+              let name = (RenderId.render i.ti_ident).name in
               let generics = FStarBinder.of_generics i.ti_span i.ti_generics in
               let bds = generics |> List.map ~f:FStarBinder.to_binder in
               let fields =
@@ -1385,8 +1376,9 @@ struct
                       in
                       let add_pre n = n ^ "_pre" in
                       let pre_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
+                        (RenderId.render
+                           (Concrete_ident.with_suffix `Pre i.ti_ident))
+                          .name
                       in
                       let pre =
                         F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
@@ -1394,8 +1386,9 @@ struct
                       let result = F.term_of_lid [ "result" ] in
                       let add_post n = n ^ "_post" in
                       let post_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
+                        (RenderId.render
+                           (Concrete_ident.with_suffix `Post i.ti_ident))
+                          .name
                       in
                       let post =
                         F.mk_app
@@ -1470,7 +1463,7 @@ struct
           items;
           parent_bounds;
         } ->
-        let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
+        let name = (RenderId.render e.ident).name |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
         let pat =
@@ -1486,7 +1479,7 @@ struct
         let fields =
           List.concat_map
             ~f:(fun { ii_span; ii_generics; ii_v; ii_ident } ->
-              let name = U.Concrete_ident_view.to_definition_name ii_ident in
+              let name = (RenderId.render ii_ident).name in
 
               match ii_v with
               | IIFn { body; params } ->
@@ -1609,7 +1602,7 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   let (module Print) =
     make m
       {
-        current_namespace = U.Concrete_ident_view.to_namespace item.ident;
+        current_namespace = (RenderId.render item.ident).path;
         interface_mode;
         items;
         line_width = bo.line_width;
@@ -1651,7 +1644,7 @@ let string_of_items ~mod_name ~bundles (bo : BackendOptions.t) m items :
       |> Set.union_list (module Concrete_ident)
       |> Set.map
            (module String)
-           ~f:(fun i -> U.Concrete_ident_view.to_namespace i |> module_name)
+           ~f:(fun i -> (RenderId.render i).path |> module_name)
       |> Fn.flip Set.remove mod_name
       |> Set.to_list
       |> List.filter ~f:(fun m ->
@@ -1755,11 +1748,11 @@ let fstar_headers (bo : BackendOptions.t) =
 (** Translate as F* (the "legacy" printer) *)
 let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
     (items : AST.item list) : Types.file list =
-  let show_view Concrete_ident.{ crate; path; definition } =
-    crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
-  in
   U.group_items_by_namespace items
   |> Map.to_alist
+  |> List.filter_map ~f:(fun (_, items) ->
+         let* first_item = List.hd items in
+         Some ((RenderId.render first_item.ident).path, items))
   |> List.concat_map ~f:(fun (ns, items) ->
          let mod_name = module_name ns in
          let impl, intf = string_of_items ~mod_name ~bundles bo m items in

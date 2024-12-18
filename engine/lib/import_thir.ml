@@ -39,8 +39,8 @@ module U = Ast_utils.Make (Features.Rust)
 module W = Features.On
 open Ast
 
-let def_id kind (def_id : Thir.def_id) : global_ident =
-  `Concrete (Concrete_ident.of_def_id kind def_id)
+let def_id ~value (def_id : Thir.def_id) : global_ident =
+  `Concrete (Concrete_ident.of_def_id ~value def_id)
 
 let local_ident kind (ident : Thir.local_ident) : local_ident =
   {
@@ -220,8 +220,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
   | _ -> None
 
 (** Name for the cast function from an ADT to its discriminant *)
-let cast_name_for_type typ_name =
-  Concrete_ident.Create.map_last ~f:(fun s -> s ^ "_cast_to_repr") typ_name
+let cast_name_for_type = Concrete_ident.with_suffix `Cast
 
 module type EXPR = sig
   val c_expr : Thir.decorated_for__expr_kind -> expr
@@ -343,15 +342,15 @@ end) : EXPR = struct
         in
         match f (lhs.typ, rhs.typ) with
         | Some with_ ->
-            Concrete_ident.of_name Value name
-            |> Concrete_ident.map_path_strings ~f:(function
+            Concrete_ident.of_name ~value:true name
+            |> (Concrete_ident.map_path_strings [@alert "-unsafe"]) ~f:(function
                  | "u128" -> with_
                  | s -> s)
         | None ->
             assertion_failure (Span.to_thir span)
               ("Binary operation: expected " ^ expected ^ " type, got "
               ^ [%show: ty] lhs.typ)
-      else Concrete_ident.of_name Value @@ overloaded_names_of_binop op
+      else Concrete_ident.of_name ~value:true @@ overloaded_names_of_binop op
     in
     U.call' (`Concrete name) [ lhs; rhs ] span typ
 
@@ -372,7 +371,9 @@ end) : EXPR = struct
   and c_expr_drop_body (e : Thir.decorated_for__expr_kind) : expr =
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
-    let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
+    let v =
+      Global_ident.of_name ~value:true Rust_primitives__hax__dropped_body
+    in
     { span; typ; e = GlobalVar v }
 
   and c_block ~expr ~span ~stmts ~ty ~(safety_mode : Types.block_safety) : expr
@@ -472,7 +473,7 @@ end) : EXPR = struct
           MacroInvokation
             {
               args = argument;
-              macro = def_id Macro macro_ident;
+              macro = def_id ~value:false macro_ident;
               witness = W.macro;
             }
       | If
@@ -519,7 +520,7 @@ end) : EXPR = struct
             let f = c_expr fun' in
             match (trait, fun'.contents) with
             | Some _, GlobalName { id; _ } ->
-                { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
+                { f with e = GlobalVar (def_id ~value:true id) }
             | _ -> f
           in
           let args = if List.is_empty args then [ unit_expr span ] else args in
@@ -610,7 +611,8 @@ end) : EXPR = struct
           let lhs = c_expr lhs in
           let projector =
             GlobalVar
-              (`Projector (`Concrete (Concrete_ident.of_def_id Field field)))
+              (`Projector
+                (`Concrete (Concrete_ident.of_def_id ~value:true field)))
           in
           let span = Span.of_thir e.span in
           App
@@ -638,15 +640,7 @@ end) : EXPR = struct
               trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
-      | GlobalName { id; constructor } ->
-          let kind =
-            match constructor with
-            | Some { kind = Struct _; _ } ->
-                Concrete_ident.Kind.Constructor { is_struct = true }
-            | Some _ -> Concrete_ident.Kind.Constructor { is_struct = false }
-            | None -> Concrete_ident.Kind.Value
-          in
-          GlobalVar (def_id kind id)
+      | GlobalName { id; constructor = _ } -> GlobalVar (def_id ~value:true id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
@@ -702,7 +696,7 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ e.span ]
                   "Construct union types: not supported"
           in
-          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let constructor = def_id ~value:true info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -711,7 +705,7 @@ end) : EXPR = struct
           let fields =
             List.map
               ~f:(fun f ->
-                let field = def_id Field f.field in
+                let field = def_id ~value:true f.field in
                 let value = c_expr f.value in
                 (field, value))
               fields
@@ -731,10 +725,7 @@ end) : EXPR = struct
                      })
                    l))
       | NamedConst { def_id = id; impl; args; _ } -> (
-          let kind : Concrete_ident.Kind.t =
-            match impl with Some _ -> AssociatedItem Value | _ -> Value
-          in
-          let f = GlobalVar (def_id kind id) in
+          let f = GlobalVar (def_id ~value:true id) in
           match impl with
           | Some impl ->
               let trait =
@@ -762,9 +753,9 @@ end) : EXPR = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ Global_ident.of_name Value Core__ops__index__Index__index)
+            @@ Global_ident.of_name ~value:true Core__ops__index__Index__index)
             [ lhs; index ]
-      | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
+      | StaticRef { def_id = id; _ } -> GlobalVar (def_id ~value:true id)
       | PlaceTypeAscription _ ->
           assertion_failure [ e.span ]
             "Got a unexpected node `PlaceTypeAscription`. Please report, we \
@@ -900,7 +891,7 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ pat.span ]
                   "Pattern match on union types: not supported"
           in
-          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let constructor = def_id ~value:true info.variant in
           let fields = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
@@ -937,7 +928,10 @@ end) : EXPR = struct
     { p = v; span; typ }
 
   and c_field_pat _info (field_pat : Thir.field_pat) : field_pat =
-    { field = def_id Field field_pat.field; pat = c_pat field_pat.pattern }
+    {
+      field = def_id ~value:true field_pat.field;
+      pat = c_pat field_pat.pattern;
+    }
 
   and extended_literal_of_expr (e : expr) : extended_literal =
     let not_a_literal () =
@@ -1016,7 +1010,7 @@ end) : EXPR = struct
         in
         TArrow (inputs, c_ty span output)
     | Adt { def_id = id; generic_args; _ } ->
-        let ident = def_id Type id in
+        let ident = def_id ~value:false id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
     | Foreign _ -> unimplemented ~issue_id:928 [ span ] "Foreign"
@@ -1037,10 +1031,10 @@ end) : EXPR = struct
         TApp { ident = `TupleType (List.length types); args = types }
     | Alias { kind = Projection { assoc_item = _; impl_expr }; def_id; _ } ->
         let impl = c_impl_expr span impl_expr in
-        let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
+        let item = Concrete_ident.of_def_id ~value:false def_id in
         TAssociatedType { impl; item }
     | Alias { kind = Opaque _; def_id; _ } ->
-        TOpaque (Concrete_ident.of_def_id Type def_id)
+        TOpaque (Concrete_ident.of_def_id ~value:false def_id)
     | Alias { kind = Inherent; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
     | Alias { kind = Weak; _ } ->
@@ -1068,7 +1062,7 @@ end) : EXPR = struct
               | Trait { args; def_id } ->
                   let goal : dyn_trait_goal =
                     {
-                      trait = Concrete_ident.of_def_id Trait def_id;
+                      trait = Concrete_ident.of_def_id ~value:false def_id;
                       non_self_args = List.map ~f:(c_generic_value span) args;
                     }
                   in
@@ -1107,7 +1101,7 @@ end) : EXPR = struct
     | _ -> impl
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
-    let trait = Concrete_ident.of_def_id Trait tr.def_id in
+    let trait = Concrete_ident.of_def_id ~value:false tr.def_id in
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
 
@@ -1122,10 +1116,7 @@ end) : EXPR = struct
           let ident =
             { goal = c_trait_ref span trait_ref; name = predicate_id }
           in
-          let kind : Concrete_ident.Kind.t =
-            match item.kind with Const | Fn -> Value | Type -> Type
-          in
-          let item = Concrete_ident.of_def_id kind item.def_id in
+          let item = Concrete_ident.of_def_id ~value:false item.def_id in
           let trait_ref = c_trait_ref span trait_ref in
           Projection
             { impl = { kind = item_kind; goal = trait_ref }; ident; item }
@@ -1139,7 +1130,7 @@ end) : EXPR = struct
     in
     match ie with
     | Concrete { id; generics; _ } ->
-        let trait = Concrete_ident.of_def_id Impl id in
+        let trait = Concrete_ident.of_def_id ~value:false id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
     | LocalBound { predicate_id; path; _ } ->
@@ -1235,12 +1226,12 @@ end) : EXPR = struct
     match kind with
     | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
-        let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
+        let trait = Concrete_ident.of_def_id ~value:false trait_ref.def_id in
         Some (GCType { goal = { trait; args }; name = id })
     | Projection { impl_expr; assoc_item; ty } ->
         let impl = c_impl_expr span impl_expr in
         let assoc_item =
-          Concrete_ident.of_def_id (AssociatedItem Type) assoc_item.def_id
+          Concrete_ident.of_def_id ~value:false assoc_item.def_id
         in
         let typ = c_ty span ty in
         Some (GCProjection { impl; assoc_item; typ })
@@ -1336,7 +1327,7 @@ let c_trait_item (item : Thir.trait_item) : trait_item =
   let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
-  let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
+  let ti_ident = Concrete_ident.of_def_id ~value:false item.owner_id in
   {
     ti_span = Span.of_thir item.span;
     ti_generics = { params; constraints };
@@ -1419,7 +1410,9 @@ let cast_of_enum typ_name generics typ thir_span
             let acc = Lit Int64.(n + m) in
             (acc, (pat, acc))
         | _, Explicit did ->
-            let acc = Exp { e = GlobalVar (def_id Value did); span; typ } in
+            let acc =
+              Exp { e = GlobalVar (def_id ~value:true did); span; typ }
+            in
             (acc, (pat, acc))
         | Exp e, Relative n ->
             let acc =
@@ -1525,7 +1518,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       mk
       @@ Fn
            {
-             name = Concrete_ident.of_def_id Value (assert_item_def_id ());
+             name = Concrete_ident.of_def_id ~value:true (assert_item_def_id ());
              generics = c_generics generics;
              body = c_body body;
              params = [];
@@ -1535,7 +1528,8 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       mk
       @@ TyAlias
            {
-             name = Concrete_ident.of_def_id Type (assert_item_def_id ());
+             name =
+               Concrete_ident.of_def_id ~value:false (assert_item_def_id ());
              generics = c_generics generics;
              ty = c_ty item.span ty;
            }
@@ -1543,7 +1537,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       mk
       @@ Fn
            {
-             name = Concrete_ident.of_def_id Value (assert_item_def_id ());
+             name = Concrete_ident.of_def_id ~value:true (assert_item_def_id ());
              generics = c_generics generics;
              body = c_body body;
              params = c_fn_params item.span params;
@@ -1553,18 +1547,17 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       let generics = c_generics generics in
       let is_struct = match item.kind with Struct _ -> true | _ -> false in
       let def_id = assert_item_def_id () in
-      let name = Concrete_ident.of_def_id Type def_id in
+      let name = Concrete_ident.of_def_id ~value:false def_id in
       mk @@ Type { name; generics; variants = []; is_struct }
   | Enum (variants, generics, repr) ->
       let def_id = assert_item_def_id () in
       let generics = c_generics generics in
       let is_struct = false in
-      let kind = Concrete_ident.Kind.Constructor { is_struct } in
       let discs =
         (* Each variant might introduce a anonymous constant defining its discriminant integer  *)
         List.filter_map ~f:(fun v -> v.disr_expr) variants
         |> List.map ~f:(fun Types.{ def_id; body; _ } ->
-               let name = Concrete_ident.of_def_id kind def_id in
+               let name = Concrete_ident.of_def_id ~value:true def_id in
                let generics = { params = []; constraints = [] } in
                let body = c_expr body in
                {
@@ -1589,13 +1582,13 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
               [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
                 data
             in
-            let name = Concrete_ident.of_def_id kind variant_id in
+            let name = Concrete_ident.of_def_id ~value:true variant_id in
             let arguments =
               match data with
               | Tuple (fields, _, _) | Struct { fields; _ } ->
                   List.map
                     ~f:(fun { def_id = id; ty; span; attributes; _ } ->
-                      ( Concrete_ident.of_def_id Field id,
+                      ( Concrete_ident.of_def_id ~value:true id,
                         c_ty span ty,
                         c_attrs attributes ))
                     fields
@@ -1605,7 +1598,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
             ({ name; arguments; is_record; attrs }, original))
           variants
       in
-      let name = Concrete_ident.of_def_id Type def_id in
+      let name = Concrete_ident.of_def_id ~value:true def_id in
       let cast_fun =
         cast_of_enum name generics (c_ty item.span repr.typ) item.span variants
       in
@@ -1620,14 +1613,13 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       let is_struct = true in
       (* repeating the attributes of the item in the variant: TODO is that ok? *)
       let v =
-        let kind = Concrete_ident.Kind.Constructor { is_struct } in
-        let name = Concrete_ident.of_def_id kind def_id in
-        let name = Concrete_ident.Create.move_under name ~new_parent:name in
+        let name = Concrete_ident.of_def_id ~value:true def_id in
+        (* let name = Concrete_ident.Create.move_under name ~new_parent:name in *)
         let mk fields is_record =
           let arguments =
             List.map
               ~f:(fun Thir.{ def_id = id; ty; span; attributes; _ } ->
-                ( Concrete_ident.of_def_id Field id,
+                ( Concrete_ident.of_def_id ~value:true id,
                   c_ty span ty,
                   c_attrs attributes ))
               fields
@@ -1640,13 +1632,13 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
         | _ -> { name; arguments = []; is_record = false; attrs }
       in
       let variants = [ v ] in
-      let name = Concrete_ident.of_def_id Type def_id in
+      let name = Concrete_ident.of_def_id ~value:false def_id in
       mk @@ Type { name; generics; variants; is_struct }
   | MacroInvokation { macro_ident; argument; span } ->
       mk
       @@ IMacroInvokation
            {
-             macro = Concrete_ident.of_def_id Macro macro_ident;
+             macro = Concrete_ident.of_def_id ~value:false macro_ident;
              argument;
              span = Span.of_thir span;
              witness = W.macro;
@@ -1657,7 +1649,9 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
           ~f:(fun { attributes; _ } -> not (should_skip attributes))
           items
       in
-      let name = Concrete_ident.of_def_id Trait (assert_item_def_id ()) in
+      let name =
+        Concrete_ident.of_def_id ~value:false (assert_item_def_id ())
+      in
       let { params; constraints } = c_generics generics in
       let self =
         let id = Local_ident.mk_id Typ 0 (* todo *) in
@@ -1679,7 +1673,9 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       in
       List.map
         ~f:(fun (item : Thir.impl_item) ->
-          let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
+          let item_def_id =
+            Concrete_ident.of_def_id ~value:false item.owner_id
+          in
           let attrs = c_item_attrs item.attributes in
           let sub_item_erased_by_user = erased_by_user attrs in
           let erased_by_type_only =
@@ -1726,7 +1722,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
                    associated types \
                    (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
           in
-          let ident = Concrete_ident.of_def_id Value item.owner_id in
+          let ident = Concrete_ident.of_def_id ~value:false item.owner_id in
           { span = Span.of_thir item.span; v; ident; attrs })
         items
   | Impl
@@ -1758,7 +1754,8 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
                     params = [ U.make_unit_param span ];
                   };
               ii_ident =
-                Concrete_ident.of_name Value Rust_primitives__hax__dropped_body;
+                Concrete_ident.of_name ~value:false
+                  Rust_primitives__hax__dropped_body;
               ii_attrs = [];
             };
           ]
@@ -1769,7 +1766,9 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
                  something. Otherwise we have to assume every
                  backend will see traits and impls as
                  records. See https://github.com/hacspec/hax/issues/271. *)
-              let ii_ident = Concrete_ident.of_def_id Field item.owner_id in
+              let ii_ident =
+                Concrete_ident.of_def_id ~value:false item.owner_id
+              in
               {
                 ii_span = Span.of_thir item.span;
                 ii_generics = c_generics item.generics;
@@ -1807,7 +1806,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
              generics = c_generics generics;
              self_ty = c_ty item.span self_ty;
              of_trait =
-               ( Concrete_ident.of_def_id Trait of_trait.def_id,
+               ( Concrete_ident.of_def_id ~value:false of_trait.def_id,
                  List.map ~f:(c_generic_value item.span) of_trait.generic_args
                );
              items;
@@ -1836,21 +1835,23 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       (* ident is supposed to always be an actual item, thus here we need to cheat a bit *)
       (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
       let def_id = item.owner_id in
-      let def_id : Types.def_id =
-        let value =
-          {
-            def_id.contents.value with
-            path =
-              def_id.contents.value.path
-              @ [
-                  Types.
-                    { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
-                ];
-          }
-        in
-        { contents = { def_id.contents with value } }
-      in
-      [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
+      (* let def_id : Types.def_id =
+           let value =
+             {
+               def_id.contents.value with
+               path =
+                 def_id.contents.value.path
+                 @ [
+                     Types.
+                       { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
+                   ];
+             }
+           in
+           { contents = { def_id.contents with value } }
+         in *)
+      [
+        { span; v; ident = Concrete_ident.of_def_id ~value:false def_id; attrs };
+      ]
   | Union _ ->
       unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
   | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
@@ -1859,7 +1860,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
 
 let import_item ~type_only (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
-  let ident = Concrete_ident.of_def_id Value item.owner_id in
+  let ident = Concrete_ident.of_def_id ~value:false item.owner_id in
   let r, reports =
     let f =
       U.Mappers.rename_generic_constraints#visit_item

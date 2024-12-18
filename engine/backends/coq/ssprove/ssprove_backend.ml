@@ -74,7 +74,8 @@ module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
 module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeRenderAPI (CoqNamePolicy)
 open AST
 
 module SSProveLibrary : Library = struct
@@ -553,7 +554,7 @@ end
 
 module Context = struct
   type t = {
-    current_namespace : string * string list;
+    current_namespace : string list;
     analysis_data : StaticAnalysis.analysis_data;
   }
 end
@@ -618,10 +619,10 @@ module TransformToInputLanguage (* : PHASE *) =
 (*   | None -> Error.unimplemented ~details:err span *)
 
 let pconcrete_ident (id : Ast.concrete_ident) : string =
-  U.Concrete_ident_view.to_definition_name id
+  (RenderId.render id).name
 
 let plocal_ident (e : Local_ident.t) : string =
-  U.Concrete_ident_view.local_ident
+  RenderId.local_ident
     (match String.chop_prefix ~prefix:"impl " e.name with
     | Some name ->
         let name = "impl_" ^ Int.to_string ([%hash: string] name) in
@@ -690,7 +691,7 @@ struct
     | Bool b -> SSP.AST.Const_bool b
 
   let operators =
-    let c = Ast.Global_ident.of_name Value in
+    let c = Ast.Global_ident.of_name ~value:true in
     [
       (c Rust_primitives__hax__array_of_list, (3, [ ""; ".a["; "]<-"; "" ]));
       (c Core__ops__index__Index__index, (2, [ ""; ".a["; "]" ]));
@@ -1556,8 +1557,8 @@ struct
             let id = [%show: concrete_ident] macro in
             Error.raise { kind = UnsupportedMacro { id }; span = e.span }
           in
-          match U.Concrete_ident_view.to_view macro with
-          | { crate = "hacspec_lib"; path = _; definition = name } -> (
+          match RenderId.render macro with
+          | { path = "hacspec_lib" :: _; name } -> (
               match name with
               | "public_nat_mod" ->
                   let open Hacspeclib_macro_parser in
@@ -1713,7 +1714,7 @@ struct
               | _ -> unsupported ())
           | _ -> unsupported ())
       | Use { path; is_external; rename } ->
-          let _ns_crate, _ns_path = ctx.current_namespace in
+          let _ns_path = ctx.current_namespace in
           if is_external then []
           else
             [ SSP.AST.Require (None, (* ns_crate:: ns_path @ *) path, rename) ]
@@ -1989,10 +1990,7 @@ let print_item (analysis_data : StaticAnalysis.analysis_data) (item : AST.item)
     : SSP.AST.decl list =
   let (module Print) =
     make
-      {
-        current_namespace = U.Concrete_ident_view.to_namespace item.ident;
-        analysis_data;
-      }
+      { current_namespace = (RenderId.render item.ident).path; analysis_data }
   in
   Print.pitem item
 
@@ -2422,12 +2420,14 @@ let translate _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
   let analysis_data = StaticAnalysis.analyse items in
   U.group_items_by_namespace items
   |> Map.to_alist
+  |> List.filter_map
+       ~f:
+         (snd >> List.hd
+         >> Option.map ~f:(fun i -> ((RenderId.render i.ident).path, items)))
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
            String.concat ~sep:"_"
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+             (List.map ~f:(map_first_letter String.uppercase) ns)
          in
          let file_content =
            hardcoded_coq_headers ^ "\n"

@@ -17,8 +17,7 @@ module Make (F : Features.T) =
         let ctx = Diagnostics.Context.Phase phase_id
       end)
 
-      let mk_name ident (kind : string) =
-        Concrete_ident.Create.map_last ~f:(fun s -> s ^ "_" ^ kind) ident
+      let mk_name ident kind = Concrete_ident.with_suffix kind ident
 
       module Attrs = Attr_payloads.Make (F) (Error)
 
@@ -52,11 +51,11 @@ module Make (F : Features.T) =
                   | TIFn (TArrow (inputs, output)) ->
                       [
                         {
-                          (mk Types.Requires "pre") with
+                          (mk Types.Requires `Pre) with
                           ti_v = TIFn (TArrow (inputs, TBool));
                         };
                         {
-                          (mk Types.Ensures "post") with
+                          (mk Types.Ensures `Post) with
                           ti_v = TIFn (TArrow (inputs @ [ output ], TBool));
                         };
                       ]
@@ -109,7 +108,7 @@ module Make (F : Features.T) =
                            | Some (_, params, body) -> (params, body)
                            | None -> (params, default)
                          in
-                         { (mk "pre") with ii_v = IIFn { body; params } });
+                         { (mk `Pre) with ii_v = IIFn { body; params } });
                         (let params, body =
                            match Attrs.associated_fn Ensures item.ii_attrs with
                            | Some (_, params, body) -> (params, body)
@@ -136,7 +135,7 @@ module Make (F : Features.T) =
                                in
                                (params @ [ out ], default)
                          in
-                         { (mk "post") with ii_v = IIFn { body; params } });
+                         { (mk `Post) with ii_v = IIFn { body; params } });
                       ]
                   | IIType _ -> []
                 in
