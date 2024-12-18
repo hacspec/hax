@@ -23,6 +23,7 @@ pub(crate) const FIELD_MODULUS: i32 = 3329;
 /// `|result| ≤ FIELD_MODULUS / 2 · (|value|/BARRETT_R + 1)
 ///
 /// In particular, if `|value| < BARRETT_R`, then `|result| < FIELD_MODULUS`.
+#[hax::fstar::options("--z3rlimit 200")]
 #[hax::requires((i64::from(value) >= -BARRETT_R && i64::from(value) <= BARRETT_R))]
 #[hax::ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS &&
                    result % FIELD_MODULUS == value % FIELD_MODULUS)]
