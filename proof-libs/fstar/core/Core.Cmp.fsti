@@ -27,6 +27,8 @@ class t_PartialEq (v_Self: Type) (v_Rhs: Type) = {
   f_ne:v_Self -> v_Rhs -> bool
 }
 
+let t_Eq v_Self v_Rhs = t_PartialEq v_Self v_Rhs
+
 instance all_eq (a: eqtype): t_PartialEq a a = {
   f_eq = (fun x y -> x = y);
   f_ne = (fun x y -> x <> y);
