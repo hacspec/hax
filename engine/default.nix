@@ -57,6 +57,7 @@
         ppx_matches
         ppx_let
         ppx_enumerate
+        ppx_map
         cmdliner
         angstrom
         ppx_string

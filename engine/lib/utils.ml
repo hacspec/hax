@@ -115,4 +115,22 @@ module List = struct
   let zip_opt : 'a 'b. 'a list -> 'b list -> ('a * 'b) list option =
    fun x y ->
     match zip x y with Ok result -> Some result | Unequal_lengths -> None
+
+  let longest_prefix (type t) ~(eq : t -> t -> bool) (l : t list list) : t list
+      =
+    match l with
+    | [] -> []
+    | hd :: tl ->
+        let tl = ref tl in
+        let f x =
+          let exception Stop in
+          try
+            tl :=
+              List.map !tl ~f:(function
+                | y :: tl when eq x y -> tl
+                | _ -> raise Stop);
+            true
+          with Stop -> false
+        in
+        List.take_while ~f hd
 end
