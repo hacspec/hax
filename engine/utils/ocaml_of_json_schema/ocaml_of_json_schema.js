@@ -534,7 +534,10 @@ function run(str) {
     let sig = ``;
 
     let impl = `include struct
-[@@@warning "-A"]`;
+[@@@warning "-A"]
+`;
+
+    impl += `let hax_version = {escape|${contents['$id'].replace(/\|escape\}/g, '|_escape}')}|escape}`;
 
     let items = Object.entries(definitions)
         .map(([name, def]) => ['Node_for_TyKind' == name ? 'node_for_ty_kind_generated' : name, def])
@@ -559,6 +562,7 @@ module ParseError = struct
 end
 
 open ParseError
+
 `;
 
     let derive_clause = derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : '';
@@ -577,6 +581,7 @@ and node_for__def_id_contents = node_for_def_id_contents_generated
 type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
 
+module Exn = struct
 let table_id_node_of_yojson (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
     let label = "table_id_node_of_yojson:" ^ name ^ ": " in
     match o with
@@ -635,8 +640,43 @@ and node_for__def_id_contents_of_yojson (o: Yojson.Safe.t): node_for__def_id_con
     impl += `
 and yojson_of_node_for__ty_kind {value; id} = yojson_of_node_for_ty_kind_generated {value; id}
 and yojson_of_node_for__def_id_contents {value; id} = yojson_of_node_for_def_id_contents_generated {value; id}
+end
+
+open struct
+  let catch_parsing_errors (type a b) (label: string) (f: a -> b) (x: a): (b, Base.Error.t) Base.Result.t = 
+      try Base.Result.Ok (f x) with
+      | e -> Base.Result.Error (Base.Error.of_exn ~backtrace:\`Get e)
+  let unwrap = function 
+    | Base.Result.Ok value -> value
+    | Base.Result.Error err -> 
+        let err =
+            let path = Utils.tempfile_path ~suffix:".log" in
+            Core.Out_channel.write_all path
+                ~data:(Base.Error.to_string_hum err);
+            path
+        in
+        prerr_endline [%string {|
+Error: could not serialize or deserialize a hax value.
+This error arises from an incompatibility betwen hax components: hax-engine, cargo-hax and hax-lib.
+Potential fixes:
+  - Make sure the version of \`hax-lib\` for the crate your are trying to extract matches the version of hax currently installed (%{hax_version}).
+  - Run \`cargo clean\`
+  - Reinstall hax
+
+The full stack trace was dumped to %{err}.
+|}];
+        exit 1
+end
 `;
 
+
+    impl += (items.map(({ name, type, parse, to_json }) =>
+        `
+let safe_yojson_of_${name} = catch_parsing_errors "yojson_of_${name}" Exn.yojson_of_${name}
+let safe_${name}_of_yojson = catch_parsing_errors "${name}_of_yojson" Exn.${name}_of_yojson
+let yojson_of_${name} x = unwrap (safe_yojson_of_${name} x)
+let ${name}_of_yojson x = unwrap (safe_${name}_of_yojson x)`
+    ).join('\n'));
 
     return impl + ' \n end';
 }
