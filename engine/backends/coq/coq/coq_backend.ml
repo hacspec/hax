@@ -68,7 +68,8 @@ module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
 module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeViewAPI (CoqNamePolicy)
 open AST
 
 let hardcoded_coq_headers =
@@ -492,7 +493,7 @@ struct
           let crate =
             String.capitalize
               (Option.value ~default:"(TODO CRATE)"
-                 (Option.map ~f:fst current_namespace))
+                 (Option.bind ~f:List.hd current_namespace))
           in
           let concat_capitalize l =
             String.concat ~sep:"_" (List.map ~f:String.capitalize l)
@@ -509,7 +510,7 @@ struct
                   (crate
                    :: List.drop_last_exn
                         (Option.value ~default:[]
-                           (Option.map ~f:snd current_namespace))
+                           (Option.bind ~f:List.tl current_namespace))
                   @ xs)
             | [ a ] -> a
             | xs -> concat_capitalize_include xs
@@ -729,7 +730,7 @@ struct
 
       method concrete_ident ~local:_ id : document =
         string
-          (match id.definition with
+          (match id.name with
           | "not" -> "negb"
           | "eq" -> "t_PartialEq_f_eq"
           | "lt" -> "t_PartialOrd_f_lt"
@@ -765,12 +766,14 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
   let my_printer = make m in
   U.group_items_by_namespace items
   |> Map.to_alist
+  |> List.filter_map
+       ~f:
+         (snd >> List.hd
+         >> Option.map ~f:(fun i -> ((RenderId.render i.ident).path, items)))
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
            String.concat ~sep:"_"
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+             (List.map ~f:(map_first_letter String.uppercase) ns)
          in
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in

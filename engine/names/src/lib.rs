@@ -146,9 +146,8 @@ macro_rules! impl_arith {
     }
 }
 
-impl_arith!(u128);
-// impl_arith!(u8, u16, u32, u64, u128, usize);
-// impl_arith!(i8, i16, i32, i64, i128, isize);
+impl_arith!(u8, u16, u32, u64, u128, usize);
+impl_arith!(i8, i16, i32, i64, i128, isize);
 
 fn offset() {}
 

@@ -211,7 +211,7 @@ struct
           let pat = dpat pat in
           let fn : B.expr = UB.make_closure [ bpat; pat ] body body.span in
           let cf = Option.map ~f:fst control_flow in
-          let f, kind, args =
+          let f, args =
             match as_iterator it |> Option.bind ~f:(fn_args_of_iterator cf) with
             | Some (f, args, typ) ->
                 (* TODO what happens if there is control flow? *)
@@ -223,7 +223,7 @@ struct
                   let pat, invariant = Option.value ~default invariant in
                   UB.make_closure [ bpat; pat ] invariant invariant.span
                 in
-                (f, Concrete_ident.Kind.Value, args @ [ invariant; init; fn ])
+                (f, args @ [ invariant; init; fn ])
             | None ->
                 let fold : Concrete_ident.name =
                   match cf with
@@ -232,9 +232,9 @@ struct
                   | Some BreakOnly -> Rust_primitives__hax__folds__fold_cf
                   | None -> Core__iter__traits__iterator__Iterator__fold
                 in
-                (fold, AssociatedItem Value, [ it; init; fn ])
+                (fold, [ it; init; fn ])
           in
-          UB.call ~kind f args span (dty span expr.typ)
+          UB.call f args span (dty span expr.typ)
       | Loop
           {
             body;
@@ -276,8 +276,8 @@ struct
             | Some (BreakOnly, _) -> Rust_primitives__hax__while_loop_cf
             | None -> Rust_primitives__hax__while_loop
           in
-          UB.call ~kind:(AssociatedItem Value) fold_operator
-            [ condition; init; body ] span (dty span expr.typ)
+          UB.call fold_operator [ condition; init; body ] span
+            (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~issue_id:405 ~details:"Loop without mutation"
             span

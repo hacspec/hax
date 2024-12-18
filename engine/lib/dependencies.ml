@@ -10,21 +10,15 @@ module Make (F : Features.T) = struct
     match item.v with Type { name; _ } -> name | _ -> item.ident
 
   module Namespace = struct
-    module T = struct
-      type t = string list [@@deriving show, yojson, compare, sexp, eq, hash]
-    end
+    include Concrete_ident.View.ModPath
+    module Set = Set.M (Concrete_ident.View.ModPath)
 
-    module TT = struct
-      include T
-      include Comparator.Make (T)
-    end
+    let of_concrete_ident ci : t = (Concrete_ident.to_view ci).mod_path
 
-    include TT
-    module Set = Set.M (TT)
-
-    let of_concrete_ident ci : t =
-      let krate, path = Concrete_ident.DefaultViewAPI.to_namespace ci in
-      krate :: path
+    let to_string ?(sep = "::") : t -> string =
+      List.map ~f:(fun (o : Concrete_ident_view.DisambiguatedString.t) ->
+          o.data)
+      >> String.concat ~sep
   end
 
   module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
@@ -190,12 +184,12 @@ module Make (F : Features.T) = struct
       let vertex_name i = "\"" ^ Concrete_ident.show i ^ "\""
 
       let vertex_attributes i =
-        [ `Label (Concrete_ident.DefaultViewAPI.to_definition_name i) ]
+        [ `Label (Concrete_ident.DefaultViewAPI.render i).name ]
 
       let get_subgraph i =
         let ns = Namespace.of_concrete_ident i in
-        let sg_name = String.concat ~sep:"__" ns in
-        let label = String.concat ~sep:"::" ns in
+        let sg_name = Namespace.to_string ~sep:"__" ns in
+        let label = Namespace.to_string ~sep:"::" ns in
         let open Graph.Graphviz.DotAttributes in
         Some { sg_name; sg_attributes = [ `Label label ]; sg_parent = None }
 
@@ -235,7 +229,7 @@ module Make (F : Features.T) = struct
 
       let graph_attributes _ = []
       let default_vertex_attributes _ = []
-      let vertex_name ns = "\"" ^ String.concat ~sep:"::" ns ^ "\""
+      let vertex_name ns = "\"" ^ Namespace.to_string ns ^ "\""
       let vertex_attributes _ = []
       let get_subgraph _ = None
       let default_edge_attributes _ = []
@@ -413,11 +407,12 @@ module Make (F : Features.T) = struct
     in
 
     let transform (bundle : item list) =
-      let ns : Concrete_ident.t =
-        Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
+      let ns =
+        Concrete_ident.fresh_module ~label:"bundle"
+          (List.map ~f:ident_of bundle)
       in
       let new_name_under_ns : Concrete_ident.t -> Concrete_ident.t =
-        Concrete_ident.Create.move_under ~new_parent:ns
+        Concrete_ident.move_to_fresh_module ns
       in
       let new_names = List.map ~f:(ident_of >> new_name_under_ns) bundle in
       let duplicates =
@@ -431,38 +426,35 @@ module Make (F : Features.T) = struct
             (List.mem duplicates (new_name_under_ns id)
                ~equal:Concrete_ident.equal)
         then id
-        else
-          Concrete_ident.Create.map_last
-            ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
-            id
+        else failwith "TODO"
+        (* Concrete_ident.Create.map_last
+           ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
+           id *)
       in
       let renamings =
         List.map
           ~f:(ident_of >> (Fn.id &&& (add_prefix >> new_name_under_ns)))
           bundle
       in
-      let variants_renamings (previous_name, new_name) =
+      let variants_renamings (previous_name, _new_name) =
         match from_ident previous_name with
         | Some { v = Type { variants; is_struct = false; _ }; _ } ->
             List.map variants ~f:(fun { name; _ } ->
-                ( name,
-                  Concrete_ident.Create.move_under ~new_parent:new_name name ))
+                (name, new_name_under_ns name))
         | Some { v = Type { variants; is_struct = true; _ }; _ } ->
             List.concat_map variants ~f:(fun { arguments; _ } ->
                 List.map arguments ~f:(fun (name, _, _) ->
-                    ( name,
-                      Concrete_ident.Create.move_under ~new_parent:new_name name
-                    )))
+                    (name, new_name_under_ns name)))
         | _ -> []
       in
       let variant_and_constructors_renamings =
         List.concat_map ~f:variants_renamings renamings
-        |> List.concat_map ~f:(fun (old_name, new_name) ->
+        (* |> List.concat_map ~f:(fun (old_name, new_name) ->
                [
                  (old_name, new_name);
                  ( Concrete_ident.Create.constructor old_name,
                    Concrete_ident.Create.constructor new_name );
-               ])
+               ]) *)
       in
       let renamings =
         Map.of_alist_exn

@@ -52,16 +52,21 @@ struct
         | None -> x.typ
         | Some (MResult err) ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ; err ] in
-            let ident = Global_ident.of_name Type Core__result__Result in
+            let ident =
+              Global_ident.of_name ~value:false Core__result__Result
+            in
             TApp { ident; args }
         | Some MOption ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ ] in
-            let ident = Global_ident.of_name Type Core__option__Option in
+            let ident =
+              Global_ident.of_name ~value:false Core__option__Option
+            in
             TApp { ident; args }
         | Some (MException return) ->
             let args = List.map ~f:(fun t -> B.GType t) [ return; x.typ ] in
             let ident =
-              Global_ident.of_name Type Core__ops__control_flow__ControlFlow
+              Global_ident.of_name ~value:false
+                Core__ops__control_flow__ControlFlow
             in
             TApp { ident; args }
 

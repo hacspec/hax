@@ -1,7 +1,7 @@
 open! Prelude
 open! Ast
 
-module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
+module Make (F : Features.T) (View : Concrete_ident.RENDER_API) = struct
   open Deprecated_generic_printer_base
   open Deprecated_generic_printer_base.Make (F)
 
@@ -31,19 +31,20 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
 
         method namespace_of_concrete_ident
             : concrete_ident -> string * string list =
-          fun i -> View.to_namespace i
+          fun i ->
+            let rendered = View.render i in
+            (rendered.name, rendered.path)
 
         method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
           fun id ->
-            let id = View.to_view id in
+            let id = View.render id in
             let chunks =
-              if under_current_ns then [ id.definition ]
-              else id.crate :: (id.path @ [ id.definition ])
+              if under_current_ns then [ id.name ] else id.path @ [ id.name ]
             in
             separate_map (colon ^^ colon) utf8string chunks
 
         method name_of_concrete_ident : concrete_ident fn =
-          View.to_definition_name >> utf8string
+          fun id -> (View.render id).name |> utf8string
 
         method mutability : 'a. 'a mutability fn = fun _ -> empty
 

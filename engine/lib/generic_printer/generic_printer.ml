@@ -171,7 +171,7 @@ module Make (F : Features.T) = struct
     object (self)
       inherit Gen.base as super
       inherit span_helper
-      val mutable current_namespace : (string * string list) option = None
+      val mutable current_namespace : string list option = None
 
       method private catch_exn (handle : string -> document)
           (f : unit -> document) : document =
@@ -192,7 +192,7 @@ module Make (F : Features.T) = struct
       method virtual printer_name : string
       (** Mark a path as unreachable *)
 
-      val concrete_ident_view : (module Concrete_ident.VIEW_API) =
+      val concrete_ident_view : (module Concrete_ident.RENDER_API) =
         (module Concrete_ident.DefaultViewAPI)
       (** The concrete ident view to be used *)
 
@@ -221,12 +221,13 @@ module Make (F : Features.T) = struct
         |> string
       (** {2:specialize-expr Printers for special types} *)
 
-      method concrete_ident ~local (id : Concrete_ident.view) : document =
+      method concrete_ident ~local (id : Concrete_ident_render_sig.rendered)
+          : document =
         string
-          (if local then id.definition
+          (if local then id.name
            else
              String.concat ~sep:self#module_path_separator
-               (id.crate :: (id.path @ [ id.definition ])))
+               (id.path @ [ id.name ]))
       (** [concrete_ident ~local id] prints a name without path if
       [local] is true, otherwise it prints the full path, separated by
       `module_path_separator`. *)
@@ -603,13 +604,9 @@ module Make (F : Features.T) = struct
         lazy_doc
           (fun (id : concrete_ident) ->
             let module View = (val concrete_ident_view) in
-            let id = View.to_view id in
-            let ns_crate, ns_path =
-              Option.value ~default:("", []) current_namespace
-            in
-            let local =
-              String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path
-            in
+            let id = View.render id in
+            let ns_path = Option.value ~default:[] current_namespace in
+            let local = [%eq: string list] ns_path id.path in
             self#concrete_ident ~local id)
           ast_position id
 
@@ -636,7 +633,7 @@ module Make (F : Features.T) = struct
       method! _do_not_override_lazy_of_item ast_position (value : item)
           : item lazy_doc =
         let module View = (val concrete_ident_view) in
-        current_namespace <- View.to_namespace value.ident |> Option.some;
+        current_namespace <- Some (View.render value.ident).path;
         super#_do_not_override_lazy_of_item ast_position value
 
       method _do_not_override_lazy_of_generics ast_position (value : generics)
