@@ -132,7 +132,7 @@ module Make (F : Features.T) =
                 in
                 match matching with
                 | [ { fn_replace; _ } ] ->
-                    let f = Ast.Global_ident.of_name Value fn_replace in
+                    let f = Ast.Global_ident.of_name ~value:true fn_replace in
                     let f = { f' with e = GlobalVar f } in
                     {
                       e with

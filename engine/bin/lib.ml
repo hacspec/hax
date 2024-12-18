@@ -27,7 +27,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
   let imported_items =
     List.map
       ~f:(fun item ->
-        let ident = Concrete_ident.(of_def_id Kind.Value item.owner_id) in
+        let ident = Concrete_ident.(of_def_id ~value:true item.owner_id) in
         let most_precise_clause =
           (* Computes the include clause that apply to `item`, if any *)
           List.filter

@@ -18,9 +18,6 @@ module%inlined_contents Make (F : Features.T) = struct
     (* external mut_vars and new variables (e.g. needs def / local) *)
     Map.M(String).t
 
-  module Uprint =
-    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
-
   module LocalIdentOrData (Ty : sig
     type ty [@@deriving compare, sexp]
   end) =
@@ -123,27 +120,25 @@ module%inlined_contents Make (F : Features.T) = struct
            method! visit_global_ident (env : W.t list Map.M(Local_ident).t)
                (x : Global_ident.t) =
              match x with
-             | `Concrete cid ->
+             | `Concrete _cid ->
                  Option.value_map ~default:m#zero
                    ~f:(fun (x, _) ->
                      ( Set.of_list
                          (module W)
                          (List.map ~f:(fun x -> W.Identifier x) x),
                        m#snd#zero ))
-                   (Map.find data
-                      (Uprint.Concrete_ident_view.to_definition_name cid))
+                   (Map.find data (failwith "TODO"))
              | _ -> super#visit_global_ident env x
 
            method! visit_concrete_ident (_env : W.t list Map.M(Local_ident).t)
-               (cid : Concrete_ident.t) =
+               (_cid : Concrete_ident.t) =
              Option.value_map ~default:m#zero
                ~f:(fun (x, _) ->
                  ( Set.of_list
                      (module W)
                      (List.map ~f:(fun x -> W.Identifier x) x),
                    m#snd#zero ))
-               (Map.find data
-                  (Uprint.Concrete_ident_view.to_definition_name cid))
+               (Map.find data (failwith "TODO"))
         end)
           #visit_expr
           env expr
@@ -165,20 +160,15 @@ module%inlined_contents Make (F : Features.T) = struct
         Map.M(String).t =
       List.fold_left
         ~init:(Map.empty (module String (* Concrete_ident *)))
-        ~f:(fun y (x_name, x_items) ->
-          Map.set y
-            ~key:(Uprint.Concrete_ident_view.to_definition_name x_name)
+        ~f:(fun y (_x_name, x_items) ->
+          Map.set y ~key:(failwith "TODO")
             ~data:
               ( List.map ~f:(fst >> fst) x_items
                 @ Option.value_map ~default:[]
                     ~f:
-                      (List.filter_map
-                         ~f:
-                           (Uprint.Concrete_ident_view.to_definition_name
-                          >> Map.find y)
+                      (List.filter_map ~f:(failwith "TODO")
                       >> List.concat_map ~f:fst)
-                    (Map.find func_dep
-                       (Uprint.Concrete_ident_view.to_definition_name x_name)),
+                    (Map.find func_dep (failwith "TODO")),
                 x_items ))
         mut_var_list
     in

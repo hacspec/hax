@@ -8,6 +8,8 @@ let
     src = fetchzip {
       url =
         "https://github.com/johnyob/ocaml-non-empty-list/archive/refs/tags/${version}.zip";
+      url =
+        "https://github.com/johnyob/ocaml-non-empty-list/archive/refs/tags/${version}.zip";
       sha256 = "sha256-BJlEi0yG2DRT5vuU9ulucMD5MPFt9duWgcNO1YsigiA=";
     };
     buildInputs = with ocamlPackages; [ base ppxlib ppx_deriving ];
@@ -22,9 +24,12 @@ let
     src = fetchzip {
       url =
         "https://github.com/wrbs/ppx_matches/archive/refs/tags/${version}.zip";
+      url =
+        "https://github.com/wrbs/ppx_matches/archive/refs/tags/${version}.zip";
       sha256 = "sha256-nAmWF8MgW0odKkRiFcHGsvJyIxNHaZpnOlNPsef89Fo=";
     };
 
+    buildInputs = [ ocamlPackages.ppxlib ];
     buildInputs = [ ocamlPackages.ppxlib ];
     duneVersion = "3";
     minimalOCamlVersion = "4.04";
@@ -34,6 +39,17 @@ let
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
+    src = lib.sourceFilesBySuffices ./. [
+      ".ml"
+      ".mli"
+      ".js"
+      "dune"
+      "dune-js"
+      "dune-project"
+      "sh"
+      "rs"
+      "mld"
+    ];
     src = lib.sourceFilesBySuffices ./. [
       ".ml"
       ".mli"
@@ -93,16 +109,22 @@ let
     '';
 
     outputs = [ "out" "bin" "lib" ];
+    outputs = [ "out" "bin" "lib" ];
     passthru = {
       docs = hax-engine.overrideAttrs (old: {
         name = "hax-engine-docs";
         nativeBuildInputs = old.nativeBuildInputs ++ [ ocamlPackages.odoc ];
         buildPhase = "dune build @doc";
+        nativeBuildInputs = old.nativeBuildInputs ++ [ ocamlPackages.odoc ];
+        buildPhase = "dune build @doc";
         installPhase = "cp -rf _build/default/_doc/_html $out";
+        outputs = [ "out" ];
         outputs = [ "out" ];
       });
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
+        nativeBuildInputs = old.nativeBuildInputs ++ [ closurecompiler gnused ];
+        outputs = [ "out" ];
         nativeBuildInputs = old.nativeBuildInputs ++ [ closurecompiler gnused ];
         outputs = [ "out" ];
         buildPhase = ''
@@ -121,4 +143,5 @@ let
       });
     };
   };
+in hax-engine.overrideAttrs (_: { name = "hax-engine"; })
 in hax-engine.overrideAttrs (_: { name = "hax-engine"; })

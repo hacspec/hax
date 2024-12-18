@@ -106,7 +106,7 @@ module%inlined_contents Make (F : Features.T) = struct
           let opt_result_typ : B.ty =
             TApp
               {
-                ident = Global_ident.of_name Type Core__option__Option;
+                ident = Global_ident.of_name ~value:false Core__option__Option;
                 args = [ GType result_typ ];
               }
           in
@@ -128,8 +128,7 @@ module%inlined_contents Make (F : Features.T) = struct
               | None -> (Core__option__Option__None, [])
             in
             MS.pat_PConstruct
-              ~constructor:
-                (Global_ident.of_name (Constructor { is_struct = false }) name)
+              ~constructor:(Global_ident.of_name ~value:true name)
               ~fields ~is_record:false ~is_struct:false ~typ:opt_result_typ
           in
 

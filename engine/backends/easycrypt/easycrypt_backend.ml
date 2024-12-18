@@ -22,7 +22,8 @@ include
 module BackendOptions = Backend.UnitBackendOptions
 module AST = Ast.Make (InputLanguage)
 module ECNamePolicy = Concrete_ident.DefaultNamePolicy
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ECNamePolicy)
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeViewAPI (ECNamePolicy)
 open AST
 
 module RejectNotEC (FA : Features.T) = struct
@@ -88,14 +89,11 @@ module NM = struct
 
         { the with subnms = Map.Poly.update ~f:update the.subnms name }
 
-  let push_using_namespace (the : nmtree) (nm : string * string list)
-      (item : AST.item) =
-    push_using_longname the (List.rev (fst nm :: snd nm)) item
+  let push_using_namespace (the : nmtree) (nm : string list) (item : AST.item) =
+    push_using_longname the (List.rev nm) item
 
   let push (the : nmtree) (item : AST.item) =
-    push_using_namespace the
-      (U.Concrete_ident_view.to_namespace item.ident)
-      item
+    push_using_namespace the (RenderId.render item.ident).path item
 end
 
 let suffix_of_size (size : Ast.size) =
@@ -132,7 +130,7 @@ let translate' (_bo : BackendOptions.t) (items : AST.item list) :
              match item.v with
              | Fn { name; generics; body; params }
                when List.is_empty generics.params ->
-                 let name = U.Concrete_ident_view.to_definition_name name in
+                 let name = (RenderId.render name).name in
 
                  doit_fn fmt (name, params, body)
              | Fn _ -> assert false
@@ -166,7 +164,7 @@ let translate' (_bo : BackendOptions.t) (items : AST.item list) :
          pp_param)
       params doit_stmt body
   and doit_concrete_ident (fmt : Formatter.t) (p : Concrete_ident.t) =
-    Stdlib.Format.fprintf fmt "%s" (U.Concrete_ident_view.to_definition_name p)
+    Stdlib.Format.fprintf fmt "%s" (RenderId.render p).name
   and doit_type (fmt : Formatter.t) (typ : ty) =
     match typ with
     | TBool -> assert false
@@ -281,7 +279,7 @@ let translate' (_bo : BackendOptions.t) (items : AST.item list) :
              || eq_name Core__cmp__PartialEq__ne op
              || eq_name Core__cmp__PartialEq__eq op) ->
         Stdlib.Format.fprintf fmt "(%a) %s (%a)" doit_expr e1
-          (match U.Concrete_ident_view.to_definition_name op with
+          (match (RenderId.render op).name with
           | "bitxor" -> "^"
           | "bitand" -> "&"
           | "bitor" -> "|"
