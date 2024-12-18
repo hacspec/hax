@@ -6,7 +6,18 @@ let payloads : attrs -> (Types.ha_payload * span) list =
   let parse =
     (* we have to parse ["JSON"]: first a string, then a ha_payload *)
     function
-    | `String s -> Yojson.Safe.from_string s |> [%of_yojson: Types.ha_payload]
+    | `String s -> (
+        match Yojson.Safe.from_string s |> Types.safe_ha_payload_of_yojson with
+        | Error _ ->
+            Stdlib.prerr_endline
+              [%string
+                {|
+The hax engine could not parse a hax attribute.
+This means that the crate being extracted and the version of hax engine are incompatible.
+Please make sure the `hax-lib` dependency of the extracted crate matches hax-engine's version (%{Types.hax_version}).
+|}];
+            Stdlib.exit 1
+        | Ok value -> value)
     | x ->
         Stdlib.failwith
         @@ "Attr_payloads: payloads: expected a string while parsing JSON, got "
