@@ -170,7 +170,7 @@ let ocaml_yojson_of_type_expr = (o, subject, path) => {
             int: `\`Int ${subject}`
         })[o.repr],
         char: _ => `\`String (Base.Char.to_string ${subject})`,
-        name: payload => `to_json_${typeNameOf(payload)} ${subject}`,
+        name: payload => `yojson_of_${typeNameOf(payload)} ${subject}`,
     })[kind] || (_ => {
         log_full(o);
         throw "ocaml_arms_of_type_expr: bad kind " + kind;
@@ -219,7 +219,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
                 [`\`Intlit s`, 'Base.Int.of_string s']
             ]
         })[o.repr],
-        name: payload => [['remains', `parse_${typeNameOf(payload)} remains`]],
+        name: payload => [['remains', `${typeNameOf(payload)}_of_yojson remains`]],
     })[kind] || (_ => {
         log_full(o);
         throw "ocaml_arms_of_type_expr: bad kind " + kind;
@@ -411,7 +411,7 @@ let exporters = {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
             }).flat();
-            let parse = mk_match('o', parse_arms, ['parse_' + name]);
+            let parse = mk_match('o', parse_arms, [name + '_of_yojson']);
             let to_json = `match o with ${variants.map(({ kind, name: variant_name, payloadKind, payload }) => {
                 let variant = variantNameOf(variant_name);
                 let wrap = (x, e) => `${variant} ${x} -> \`Assoc ["${variant_name}", ${e}]`;
@@ -577,8 +577,8 @@ and node_for__def_id_contents = node_for_def_id_contents_generated
 type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
 
-let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
-    let label = "parse_table_id_node:" ^ name ^ ": " in
+let table_id_node_of_yojson (type t) (name: string) (encode: t -> map_types) (decode: map_types -> t option) (parse: Yojson.Safe.t -> t) (o: Yojson.Safe.t): (t * int64) =
+    let label = "table_id_node_of_yojson:" ^ name ^ ": " in
     match o with
     | \`Assoc alist -> begin
           let id = match List.assoc_opt "id" alist with
@@ -606,35 +606,35 @@ let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode
 `;
     impl += ('');
     impl += ('let rec ' + items.map(({ name, type, parse }) =>
-        `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`
+        `${name}_of_yojson (o: Yojson.Safe.t): ${name} = ${parse}`
     ).join('\nand '));
     impl += `
-and parse_node_for__ty_kind (o: Yojson.Safe.t): node_for__ty_kind =
+and node_for__ty_kind_of_yojson (o: Yojson.Safe.t): node_for__ty_kind =
    let (value, id) =
-       parse_table_id_node "TyKind"
+       table_id_node_of_yojson "TyKind"
            (fun value -> \`TyKind value)
            (function | \`TyKind value -> Some value | _ -> None)
-           parse_ty_kind
+           ty_kind_of_yojson
            o
    in
    {value; id}
-and parse_node_for__def_id_contents (o: Yojson.Safe.t): node_for__def_id_contents =
+and node_for__def_id_contents_of_yojson (o: Yojson.Safe.t): node_for__def_id_contents =
    let (value, id) =
-       parse_table_id_node "DefIdContents"
+       table_id_node_of_yojson "DefIdContents"
            (fun value -> \`DefIdContents value)
            (function | \`DefIdContents value -> Some value | _ -> None)
-           parse_def_id_contents
+           def_id_contents_of_yojson
            o
    in
    {value; id}
 `;
     impl += ('');
     impl += ('let rec ' + items.map(({ name, type, parse, to_json }) =>
-        `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
+        `yojson_of_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
     impl += `
-and to_json_node_for__ty_kind {value; id} = to_json_node_for_ty_kind_generated {value; id}
-and to_json_node_for__def_id_contents {value; id} = to_json_node_for_def_id_contents_generated {value; id}
+and yojson_of_node_for__ty_kind {value; id} = yojson_of_node_for_ty_kind_generated {value; id}
+and yojson_of_node_for__def_id_contents {value; id} = yojson_of_node_for_def_id_contents_generated {value; id}
 `;
 
 

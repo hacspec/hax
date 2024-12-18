@@ -189,7 +189,7 @@ let parse_options () =
   table
   |> List.iter ~f:(fun (id, json) ->
          Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
-  let options = Types.parse_engine_options json in
+  let options = [%of_yojson: Types.engine_options] json in
   Profiling.enabled := options.backend.profile;
   options
 

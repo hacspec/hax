@@ -36,10 +36,10 @@ include (
     end)
 
 let read () : Types.to_engine =
-  read_json () |> Option.value_exn |> Types.parse_to_engine
+  read_json () |> Option.value_exn |> [%of_yojson: Types.to_engine]
 
 let write (msg : Types.from_engine) : unit =
-  Types.to_json_from_engine msg |> write_json
+  [%yojson_of: Types.from_engine] msg |> write_json
 
 let close () : unit =
   write Exit;

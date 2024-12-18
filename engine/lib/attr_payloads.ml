@@ -6,7 +6,7 @@ let payloads : attrs -> (Types.ha_payload * span) list =
   let parse =
     (* we have to parse ["JSON"]: first a string, then a ha_payload *)
     function
-    | `String s -> Yojson.Safe.from_string s |> Types.parse_ha_payload
+    | `String s -> Yojson.Safe.from_string s |> [%of_yojson: Types.ha_payload]
     | x ->
         Stdlib.failwith
         @@ "Attr_payloads: payloads: expected a string while parsing JSON, got "
@@ -23,7 +23,7 @@ let payloads : attrs -> (Types.ha_payload * span) list =
 (** Create a attribute out of a [payload] *)
 let to_attr (payload : Types.ha_payload) (span : span) : attr =
   let json =
-    `String (Yojson.Safe.to_string (Types.to_json_ha_payload payload))
+    `String (Yojson.Safe.to_string ([%yojson_of: Types.ha_payload] payload))
   in
   let kind : attr_kind =
     Tool { path = "_hax::json"; tokens = Yojson.Safe.to_string json }
