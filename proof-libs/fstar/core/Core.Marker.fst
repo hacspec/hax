@@ -4,6 +4,10 @@ module Core.Marker
 type t_PhantomData (t:Type0) = 
      | PhantomData: t_PhantomData t
 
+class t_StructuralPartialEq (h: Type) = {
+  dummy_structural_partial_eq_field: unit
+}
+
 class t_Send (h: Type) = {
   dummy_send_field: unit
 }
