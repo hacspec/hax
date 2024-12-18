@@ -1,3 +1,3 @@
 module Std.Hash.Random
 
-type t_RandomState
+type t_RandomState: eqtype
