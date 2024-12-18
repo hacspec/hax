@@ -106,11 +106,21 @@ module%inlined_contents Make (F : Features.T) = struct
                     let id =
                       extract_pattern e
                       |> Option.bind ~f:first_global_ident
-                      |> Option.value_exn
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             Error.assertion_failure span
+                               "Could not extract pattern (case constructor): \
+                                this may be a bug in the quote macros in \
+                                hax-lib.")
                     in
                     `Expr { e with e = GlobalVar id }
                 | Some "_pat" ->
-                    let pat = extract_pattern e |> Option.value_exn in
+                    let pat =
+                      extract_pattern e
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             Error.assertion_failure span
+                               "Could not extract pattern (case pat): this may \
+                                be a bug in the quote macros in hax-lib.")
+                    in
                     `Pat pat
                 | Some "_ty" ->
                     let typ =
