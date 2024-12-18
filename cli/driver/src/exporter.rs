@@ -286,6 +286,7 @@ impl Callbacks for ExtractionCallbacks {
                             .flatten()
                             .collect(),
                         def_ids,
+                        hax_version: hax_types::HAX_VERSION.into(),
                     };
                     haxmeta.write(&mut file, cache_map);
                 }

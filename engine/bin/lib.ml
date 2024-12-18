@@ -186,6 +186,21 @@ let parse_options () =
   let table, json =
     Hax_io.read_json () |> Option.value_exn |> parse_id_table_node
   in
+  let version =
+    try Yojson.Safe.Util.(member "hax_version" json |> to_string)
+    with _ -> "unknown"
+  in
+  if String.equal version Types.hax_version |> not then (
+    prerr_endline
+      [%string
+        {|
+The versions of `hax-engine` and of `cargo-hax` are different:
+  - `hax-engine` version: %{Types.hax_version}
+  - `cargo-hax`  version: %{version}
+
+Please reinstall hax.
+|}];
+    Stdlib.exit 1);
   table
   |> List.iter ~f:(fun (id, json) ->
          Hashtbl.add_exn Types.cache_map ~key:id ~data:(`JSON json));
