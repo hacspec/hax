@@ -1,4 +1,4 @@
-const keys = p => 
+const keys = p =>
     new Set(
         Object.keys(p)
             .filter(k => ![
@@ -7,13 +7,13 @@ const keys = p =>
             .filter(k => p?.additionalProperties !== false || k != 'additionalProperties')
     );
 const eq = (xs, ys) =>
-      xs.size === ys.size &&
-      [...xs].every((x) => ys.has(x));
+    xs.size === ys.size &&
+    [...xs].every((x) => ys.has(x));
 
 let todo = (todo = "todo") => null;
 
 let assert = (fact, msg = "assert") => {
-    if(!fact)
+    if (!fact)
         throw msg;
 };
 
@@ -29,7 +29,7 @@ const clean = o => {
     if (o instanceof Object
         && exact_keys(o, 'allOf')
         && o.allOf.length == 1
-       ) {
+    ) {
         let first = o.allOf[0];
         delete o['allOf'];
         for (let k in first)
@@ -40,13 +40,13 @@ const clean = o => {
         && o.type instanceof Array
         && o.type.length === 2
         && o.type.includes('null')
-       ) {
+    ) {
         let type = o.type.filter(x => x != 'null')[0];
         let other = JSON.parse(JSON.stringify(o));
         other.type = type;
         for (let k in o)
             delete o[k];
-        o.anyOf = [other, {type: 'null'}];
+        o.anyOf = [other, { type: 'null' }];
     }
     if (o instanceof Array) {
         return o
@@ -74,17 +74,17 @@ let variantNameOf = s => {
         return v + "'";
     return v;
 };
-let typeNameOf = s => s.replace(/[A-Z]/g, (l, i) => `${i?'_':''}${l.toLowerCase()}`);
+let typeNameOf = s => s.replace(/[A-Z]/g, (l, i) => `${i ? '_' : ''}${l.toLowerCase()}`);
 let fieldNameOf = s => {
-    let ocaml_keywords = [ "and", "as", "assert", "asr", "begin", "class", "constraint",
-                           "do", "done", "downto", "else", "end", "exception", "external",
-                           "false", "for", "fun", "function", "functor", "if", "in",
-                           "include", "inherit", "initializer", "land", "lazy", "let",
-                           "lor", "lsl", "lsr", "lxor", "match", "method", "mod", "module",
-                           "mutable", "new", "nonrec", "object", "of", "open", "or",
-                           "private", "rec", "sig", "struct", "then", "to", "true", "try",
-                           "type", "val", "virtual", "when", "while", "with"
-                         ];
+    let ocaml_keywords = ["and", "as", "assert", "asr", "begin", "class", "constraint",
+        "do", "done", "downto", "else", "end", "exception", "external",
+        "false", "for", "fun", "function", "functor", "if", "in",
+        "include", "inherit", "initializer", "land", "lazy", "let",
+        "lor", "lsl", "lsr", "lxor", "match", "method", "mod", "module",
+        "mutable", "new", "nonrec", "object", "of", "open", "or",
+        "private", "rec", "sig", "struct", "then", "to", "true", "try",
+        "type", "val", "virtual", "when", "while", "with"
+    ];
     if (ocaml_keywords.includes(s))
         return s + "'";
     return s;
@@ -93,7 +93,7 @@ let fieldNameOf = s => {
 let ensureUnique = (() => {
     let cache = {};
     return (kind, v, disambiguer) => {
-        let key = JSON.stringify({kind, v});
+        let key = JSON.stringify({ kind, v });
         // TODO: enble check below, find a good solution
         // if(cache[key])
         //     throw `dup ${kind}, ${v}`;
@@ -103,18 +103,18 @@ let ensureUnique = (() => {
 })();
 
 const util = require('util');
-let log_full = o => console.error(util.inspect(o, {showHidden: false, depth: null, colors: true}));
+let log_full = o => console.error(util.inspect(o, { showHidden: false, depth: null, colors: true }));
 
 let trace1 = (name, f) => (input) => {
     let output = f(input);
-    log_full({name, input, output});
+    log_full({ name, input, output });
     return output;
 };
 
 let ocaml_of_type_expr = (o, path) => {
     if (!path)
         throw "Path missing!";
-    let {kind, payload} = o;
+    let { kind, payload } = o;
     return (({
         option: type => `(${ocaml_of_type_expr(type, [...path, 'option'])} option)`,
         unit: _ => `unit`,
@@ -131,13 +131,13 @@ let ocaml_of_type_expr = (o, path) => {
         name: payload => typeNameOf(payload),
     })[kind] || (_ => {
         log_full(o);
-        throw "ocaml_of_type_expr: bad kind "+kind;
+        throw "ocaml_of_type_expr: bad kind " + kind;
     }))(payload);
 };
 
 
 let mk_match = (scrut, arms, path) => {
-    if(!path){
+    if (!path) {
         console.trace();
         throw "Path missing!";
     }
@@ -154,13 +154,13 @@ let wrap_paren = s => `(${s})`;
 let ocaml_yojson_of_type_expr = (o, subject, path) => {
     if (!path)
         throw "Path missing!";
-    let {kind, payload} = o;
+    let { kind, payload } = o;
     return `(${(({
         option: type => `match ${subject} with | Option.Some x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'Some'])} | _ -> \`Null`,
         unit: _ => `\`Null`,
         tuple: types =>
             `let (${types.map((t, i) => 'x' + i)}) = ${subject} in \`List [${types.map((t, i) => ocaml_yojson_of_type_expr(t, 'x' + i, [...path, 'tuple', i])).join(';')}]`,
-        array: type => 
+        array: type =>
             `\`List (List.map (fun x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'array'])}) ${subject})`,
         boolean: _ => `\`Bool ${subject}`,
         string: _ => `\`String ${subject}`,
@@ -173,7 +173,7 @@ let ocaml_yojson_of_type_expr = (o, subject, path) => {
         name: payload => `to_json_${typeNameOf(payload)} ${subject}`,
     })[kind] || (_ => {
         log_full(o);
-        throw "ocaml_arms_of_type_expr: bad kind "+kind;
+        throw "ocaml_arms_of_type_expr: bad kind " + kind;
     }))(payload)})`;
 };
 
@@ -181,7 +181,7 @@ let ocaml_yojson_of_type_expr = (o, subject, path) => {
 let ocaml_arms_of_type_expr = (o, path) => {
     if (!path)
         throw "Path missing!";
-    let {kind, payload} = o;
+    let { kind, payload } = o;
     return (({
         option: type => [
             [`\`Null`, `Option.None`],
@@ -189,17 +189,17 @@ let ocaml_arms_of_type_expr = (o, path) => {
         ],
         unit: _ => [[`\`Null`, '()']],
         tuple: types => {
-            let sub_matches = types.map((type, i) => 
+            let sub_matches = types.map((type, i) =>
                 mk_match(`v${i}`, ocaml_arms_of_type_expr(type, [...path, 'tuple', i]), [...path, 'tuple']));
             return [
                 [`\`List [${types.map((_, i) => `v${i}`).join(';')}]`,
-                 `(${sub_matches.join(',')})`
+                `(${sub_matches.join(',')})`
                 ],
             ];
         },
         array: type => [
             [`\`List l`,
-             `List.map (fun x -> ${mk_match('x', ocaml_arms_of_type_expr(type, [...path, 'array']), [...path, 'array'])}) l`
+                `List.map (fun x -> ${mk_match('x', ocaml_arms_of_type_expr(type, [...path, 'array']), [...path, 'array'])}) l`
             ]
         ],
         boolean: _ => [[`\`Bool b`, 'b']],
@@ -222,7 +222,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
         name: payload => [['remains', `parse_${typeNameOf(payload)} remains`]],
     })[kind] || (_ => {
         log_full(o);
-        throw "ocaml_arms_of_type_expr: bad kind "+kind;
+        throw "ocaml_arms_of_type_expr: bad kind " + kind;
     }))(payload);
 };
 
@@ -232,10 +232,10 @@ let parse_type_name = s => {
     return s.split('/').slice(-1)[0];
 };
 
-let int_repr_of_format = format => 
-  (format.endsWith('int128') || format == 'uint64' || format == 'uint' /*`uint`s are `usize`s actually, so that's safer to assume it's a uint64, see https://github.com/GREsau/schemars/blob/386e3d7f5ac601795fb4e247291bbef31512ded3/schemars/src/json_schema_impls/primitives.rs#L85C16-L85C21*/)
-    ? 'string'
-    : (format == 'int64' || format == 'uint32' ? 'int64' : 'int');
+let int_repr_of_format = format =>
+    (format.endsWith('int128') || format == 'uint64' || format == 'uint' /*`uint`s are `usize`s actually, so that's safer to assume it's a uint64, see https://github.com/GREsau/schemars/blob/386e3d7f5ac601795fb4e247291bbef31512ded3/schemars/src/json_schema_impls/primitives.rs#L85C16-L85C21*/)
+        ? 'string'
+        : (format == 'int64' || format == 'uint32' ? 'int64' : 'int');
 
 let is_type = {
     option: def => {
@@ -244,14 +244,14 @@ let is_type = {
             && is_type.expr(def.anyOf[0])
             && exact_keys(def.anyOf[1], 'type')
             && def.anyOf[1].type === 'null'
-           )
+        )
             return {
                 kind: 'option',
                 payload: is_type.expr(def.anyOf[0])
             };
         return false;
     },
-    
+
     unit: def => {
         if (exact_keys(def, 'type')
             && def.type === 'null')
@@ -272,7 +272,7 @@ let is_type = {
             };
         return false;
     },
-    
+
     array: def => {
         if (exact_keys(def, 'type', 'items')
             && def.type === 'array'
@@ -283,37 +283,37 @@ let is_type = {
             };
         return false;
     },
-    
-    expr: def => 
-    (exact_keys(def, '$ref') ? {
-        kind: 'name', payload: parse_type_name(def['$ref'])
-    } : false)
+
+    expr: def =>
+        (exact_keys(def, '$ref') ? {
+            kind: 'name', payload: parse_type_name(def['$ref'])
+        } : false)
         || is_type.option(def)
         || is_type.array(def)
         || is_type.unit(def)
         || is_type.tuple(def)
         || (def.type === 'integer'
-            ? {kind: 'integer', repr: int_repr_of_format(def.format)}
+            ? { kind: 'integer', repr: int_repr_of_format(def.format) }
             : false)
         || (def.type === 'string' && def.maxLength === def.minLength && def.minLength === 1
-            ? {kind: 'char'}
+            ? { kind: 'char' }
             : false)
-        || ( ( exact_keys(def, 'type')
-               && ['boolean', 'string'].includes(def.type)
-             ) ? {kind: def.type} : false
-           ) || false,
+        || ((exact_keys(def, 'type')
+            && ['boolean', 'string'].includes(def.type)
+        ) ? { kind: def.type } : false
+        ) || false,
 
     record: def => {
         if ((eq(keys(def), new Set(["type", "required", "properties"]))
-             || eq(keys(def), new Set(["type", "properties"]))
-            )
+            || eq(keys(def), new Set(["type", "properties"]))
+        )
             && def.type === "object"
             && (def.required || []).every(k => typeof k == 'string')
             && Object.values(def.properties).every(is_type.expr))
             return Object.fromEntries(Object.entries(def.properties).map(([n, v]) => [n, is_type.expr(v)]));
         return false;
     },
-    
+
     variant: def => {
         let doc = def.description;
         if (exporters.enum.guard(def))
@@ -327,7 +327,7 @@ let is_type = {
         if (exact_keys(def, 'type', 'required', 'properties')
             && def.type === 'object'
             && Object.values(def.properties).length == 1
-           ){
+        ) {
             let [name, value] = Object.entries(def.properties)[0];
             if (is_type.expr(value))
                 return [{
@@ -362,7 +362,7 @@ let is_type = {
 
 let export_record = (fields, path) => {
     let record_expression = fields.map(([field, type], i) => {
-        let p = [...path, 'field_'+field];
+        let p = [...path, 'field_' + field];
         let sub = mk_match('x', ocaml_arms_of_type_expr(type, p), p);
         let match = `match List.assoc_opt "${field}" l with Option.Some x -> begin ${sub} end | Option.None -> raise (MissingField {field = "${field}"; fields = l})`;
         return `${fieldNameOf(field)} = begin ${match} end`;
@@ -376,62 +376,61 @@ let exporters = {
     oneOf: {
         guard: def => eq(keys(def), new Set(["oneOf"])) &&
             def.oneOf.every(is_type.variant),
-        f: (name, {oneOf}) => {
+        f: (name, { oneOf }) => {
             let variants = oneOf.map(is_type.variant).flat();
-            let type = variants.map(({kind, name: variant_name, payloadKind, payload, doc}) => {
+            let type = variants.map(({ kind, name: variant_name, payloadKind, payload, doc }) => {
                 doc = mkdoc(doc);
                 let variant = ensureUnique('variant', variantNameOf(variant_name));
                 return ({
                     record: () => {
                         let fields = Object.entries(payload).map(([field, value]) =>
-                            fieldNameOf(field) + ' : ' + ocaml_of_type_expr(value, ['rec-variant:'+variant+':'+field]));
+                            fieldNameOf(field) + ' : ' + ocaml_of_type_expr(value, ['rec-variant:' + variant + ':' + field]));
                         return `${variant} of {${fields.join(';\n')}}${doc}`;
                     },
-                    expr: () => `${variant} of (${ocaml_of_type_expr(payload, ['expr-variant:'+variant+':'+name])})${doc}`,
+                    expr: () => `${variant} of (${ocaml_of_type_expr(payload, ['expr-variant:' + variant + ':' + name])})${doc}`,
                     empty: () => `${variant}${doc}`,
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
             }).join('\n     | ');
-            let parse_arms = variants.map(({kind, name: variant_name, payloadKind, payload}) => {
+            let parse_arms = variants.map(({ kind, name: variant_name, payloadKind, payload }) => {
                 let variant = variantNameOf(variant_name);
-                let wrap = (arms, prefix='') => [
+                let wrap = (arms, prefix = '') => [
                     [`\`Assoc ["${variant_name}", rec_value]`,
-                     prefix + mk_match('rec_value', arms, ['rec-variant_'+variant+'_'+variant_name])
+                    prefix + mk_match('rec_value', arms, ['rec-variant_' + variant + '_' + variant_name])
                     ]
                 ];
                 return ({
                     record: () => {
-                        let [pat, expr] = export_record(Object.entries(payload), ['rec-variant_'+variant+'_'+variant_name]);
-                        return wrap([[pat, variant+' '+expr]]);
+                        let [pat, expr] = export_record(Object.entries(payload), ['rec-variant_' + variant + '_' + variant_name]);
+                        return wrap([[pat, variant + ' ' + expr]]);
                     },
-                    expr: () => wrap(ocaml_arms_of_type_expr(payload, ['expr-variant(PA):'+name+':'+variant+':'+variant_name]), variant + ' '),
+                    expr: () => wrap(ocaml_arms_of_type_expr(payload, ['expr-variant(PA):' + name + ':' + variant + ':' + variant_name]), variant + ' '),
                     empty: () => [[`\`String "${variant_name}"`, variant]],
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
             }).flat();
-            let parse = mk_match('o', parse_arms, ['parse_'+name]);
-            let to_json = `match o with ${variants.map(({kind, name: variant_name, payloadKind, payload}) => {
+            let parse = mk_match('o', parse_arms, ['parse_' + name]);
+            let to_json = `match o with ${variants.map(({ kind, name: variant_name, payloadKind, payload }) => {
                 let variant = variantNameOf(variant_name);
                 let wrap = (x, e) => `${variant} ${x} -> \`Assoc ["${variant_name}", ${e}]`;
                 return ({
                     record: () => {
                         let fields = Object.entries(payload);
                         return wrap(
-                          `{${fields.map(([field, type], i) => `${fieldNameOf(field)}`).join('; ')}}`,
-                          `\`Assoc [${
-                              fields.map(([field, type], i) => `("${field}", ${ocaml_yojson_of_type_expr(type, fieldNameOf(field), [name+':'+variant, 'variant', field])})`).join('; ')
-                          }]`
+                            `{${fields.map(([field, type], i) => `${fieldNameOf(field)}`).join('; ')}}`,
+                            `\`Assoc [${fields.map(([field, type], i) => `("${field}", ${ocaml_yojson_of_type_expr(type, fieldNameOf(field), [name + ':' + variant, 'variant', field])})`).join('; ')
+                            }]`
                         );
                     },
-                    expr: () => wrap('x', ocaml_yojson_of_type_expr(payload, 'x', [name+':'+variant, 'payload'])),
+                    expr: () => wrap('x', ocaml_yojson_of_type_expr(payload, 'x', [name + ':' + variant, 'payload'])),
                     empty: () => `${variant} -> \`String "${variant_name}"`,
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
             }).join(' | ')}`;
-            return {type, parse, to_json};
+            return { type, parse, to_json };
         },
     },
     empty_struct: {
@@ -447,23 +446,23 @@ let exporters = {
     // object is a *flat* record
     object: {
         guard: def => (eq(keys(def), new Set(["type", "required", "properties"]))
-                       || eq(keys(def), new Set(["type", "properties"]))
-                      ) 
+            || eq(keys(def), new Set(["type", "properties"]))
+        )
             && def.type === "object"
             && (def.required || []).every(k => typeof k == 'string')
             && Object.values(def.properties).every(is_type.expr),
-        f: (name, {required, properties}) => {
+        f: (name, { required, properties }) => {
             let fields = Object.entries(properties).map(
                 ([name, prop]) => [name, is_type.expr(prop), prop.description]
             );
 
-            let [pat, expr] = export_record(fields, ['struct_'+name]);
-            
+            let [pat, expr] = export_record(fields, ['struct_' + name]);
+
             return {
-                type: `{ ${fields.map(([fname, type, doc]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_'+fname+'_'+name])}${mkdoc(doc)}`).join(';\n')} }`,
-                parse: mk_match('o', [[pat, expr]], ['struct_'+name]),
+                type: `{ ${fields.map(([fname, type, doc]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_' + fname + '_' + name])}${mkdoc(doc)}`).join(';\n')} }`,
+                parse: mk_match('o', [[pat, expr]], ['struct_' + name]),
                 to_json: //`let {${fields.map(([fname, type, doc]) => fieldNameOf(fname)).join(';')}} = o in`
-                   `\`Assoc [${fields.map(([fname, type, doc]) => `("${fname}", ${ocaml_yojson_of_type_expr(type, 'o.'+fieldNameOf(fname), ['todo'])})`).join('; ')}]`
+                    `\`Assoc [${fields.map(([fname, type, doc]) => `("${fname}", ${ocaml_yojson_of_type_expr(type, 'o.' + fieldNameOf(fname), ['todo'])})`).join('; ')}]`
             };
         },
     },
@@ -473,7 +472,7 @@ let exporters = {
         f: (name, o) => {
             assert(o.enum.every(x => typeof x == "string"), 'not every enum is a string');
 
-            if(o.enum.length == 0) {
+            if (o.enum.length == 0) {
                 return {
                     type: '|',
                     parse: 'failwith "cannot parse an empty type"',
@@ -489,16 +488,16 @@ let exporters = {
 
             let parse_string
                 = `match s with ` + variants.map(
-                    ({Δ, variant}) => `"${Δ}" -> ${variant}`
+                    ({ Δ, variant }) => `"${Δ}" -> ${variant}`
                 ).join(' | ') + ` | s -> failwith ("unexpected variant [" ^ s ^ "] while parsing enum [${name}]")`;
-            
+
             return {
-                type: variants.map(({variant}) => variant).join(' | '),
+                type: variants.map(({ variant }) => variant).join(' | '),
                 parse: `  match o with
                         | \`String s -> (${parse_string})
                         | _ -> failwith "expected a string while parsing a ${name}"
                        `,
-                to_json: `match o with ${variants.map(({variant, variantOriginName}) => `${variant} -> \`String "${variantOriginName}"`).join(' | ')}`,
+                to_json: `match o with ${variants.map(({ variant, variantOriginName }) => `${variant} -> \`String "${variantOriginName}"`).join(' | ')}`,
             };
         },
     },
@@ -506,34 +505,34 @@ let exporters = {
 
 let export_definition = (name, def) => {
     let suitable_exporters = Object.entries(exporters).filter(
-        ([_, {guard}]) => guard(def)
+        ([_, { guard }]) => guard(def)
     );
 
-    if (suitable_exporters.length != 1){
+    if (suitable_exporters.length != 1) {
         console.error(`ERROR: each definition should have exactly one suited exporter, but type "${name}" has the following exporter(s): ${JSON.stringify(suitable_exporters.map(([n, _]) => n))}.`);
         console.error('name', name);
         log_full(def);
         console.error('xname', name);
-        
+
         throw "kind error";
     }
-    let [_, {f}] = suitable_exporters[0];
+    let [_, { f }] = suitable_exporters[0];
     name = ensureUnique('type', typeNameOf(name));
     let r = f(name, def);
-    if(r === null)
+    if (r === null)
         return `(* type ${name} *)`;
-    let {type, parse, to_json} = r;
-    return {name, type, parse, to_json};
+    let { type, parse, to_json } = r;
+    return { name, type, parse, to_json };
     // return [{type, parse}]
     // return `type ${name} = ${type}\nlet parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}\n`;
 };
 
-function run(str){
+function run(str) {
     let contents = JSON.parse(str);
     const definitions = clean(contents.definitions);
 
     let sig = ``;
-    
+
     let impl = `include struct
 [@@@warning "-A"]`;
 
@@ -545,7 +544,7 @@ function run(str){
         ).filter(x => x instanceof Object);
 
     let derive_items = ['show', 'eq'];
-    
+
     impl += `
 module ParseError = struct
   exception MissingField of {
@@ -566,10 +565,10 @@ open ParseError
 
     impl += (
         'type '
-            + items.map(({name, type}) =>
-                `${name} = ${type}\n`
-            ).join('\nand ')
-            + derive_clause
+        + items.map(({ name, type }) =>
+            `${name} = ${type}\n`
+        ).join('\nand ')
+        + derive_clause
     );
     impl += `
 and node_for__ty_kind = node_for_ty_kind_generated
@@ -606,7 +605,7 @@ let parse_table_id_node (type t) (name: string) (encode: t -> map_types) (decode
 
 `;
     impl += ('');
-    impl += ('let rec ' + items.map(({name, type, parse}) =>
+    impl += ('let rec ' + items.map(({ name, type, parse }) =>
         `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`
     ).join('\nand '));
     impl += `
@@ -630,7 +629,7 @@ and parse_node_for__def_id_contents (o: Yojson.Safe.t): node_for__def_id_content
    {value; id}
 `;
     impl += ('');
-    impl += ('let rec ' + items.map(({name, type, parse, to_json}) =>
+    impl += ('let rec ' + items.map(({ name, type, parse, to_json }) =>
         `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
     impl += `
@@ -642,9 +641,9 @@ and to_json_node_for__def_id_contents {value; id} = to_json_node_for_def_id_cont
     return impl + ' \n end';
 }
 
-function parse_args(){
+function parse_args() {
     let [script_name, input_path, output_path, ...rest] = process.argv.slice(1);
-    if(!input_path || !output_path || rest.length) {
+    if (!input_path || !output_path || rest.length) {
         console.log(`
 Usage: node ${script_name} INPUT_PATH OUTPUT_PATH
 
@@ -657,17 +656,17 @@ Usage: node ${script_name} INPUT_PATH OUTPUT_PATH
 
 async function read(stream) {
     const chunks = [];
-    for await (const chunk of stream) chunks.push(chunk); 
+    for await (const chunk of stream) chunks.push(chunk);
     return Buffer.concat(chunks).toString('utf8');
 }
 
-async function main(){
+async function main() {
     const fs = require('fs');
-    let {input_path, output_path} = parse_args();
+    let { input_path, output_path } = parse_args();
     let out = run(input_path == '-'
-                  ? await read(process.stdin)
-                  : fs.readFileSync(input_path, 'utf-8')
-                 );
+        ? await read(process.stdin)
+        : fs.readFileSync(input_path, 'utf-8')
+    );
     output_path == '-'
         ? process.stdout.write(out)
         : fs.writeFileSync(output_path, out);
