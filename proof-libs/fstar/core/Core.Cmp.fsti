@@ -34,8 +34,9 @@ class t_Eq (v_Self: Type) = {
 }
 
 instance all_eq (a: eqtype): t_PartialEq a a = {
+  f_eq_pre = (fun x y -> True);
+  f_eq_post = (fun x y r -> True);
   f_eq = (fun x y -> x = y);
-  f_ne = (fun x y -> x <> y);
 }
 
 class t_PartialOrd (v_Self: Type) (v_Rhs: Type) = {
