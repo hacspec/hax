@@ -1,0 +1,405 @@
+
+module DefName = struct
+  type disambiguator = Int64.t
+  [@@deriving show, hash, compare, sexp, hash, eq, map]
+
+  type 'name type_definition =
+    [ `Enum of 'name | `Struct of 'name | `Union of 'name ]
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type 'name constructor = [ `Constructor of 'name * 'name type_definition ]
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type 'name maybe_associated = [ `Fn of 'name | `Const of 'name ]
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type 'name associated = [ 'name maybe_associated | `Type of 'name ]
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type ('name, 'disambiguator) assoc_parent =
+    [ `Impl of 'disambiguator | `Trait of 'name ]
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type ('name, 'disambiguator) t =
+    [ 'name type_definition
+    | 'name constructor
+    | 'name maybe_associated
+    | ('name, 'disambiguator) assoc_parent
+    | `Use of 'name
+    | `GlobalAsm of 'name
+    | `Closure of 'name
+    | `AnonConst of 'disambiguator
+    | `TraitAlias of 'name
+    | `Foreign of 'name
+    | `Opaque of 'name
+    | `Static of 'name
+    | `Macro of 'name
+    | `AssociatedItem of 'name associated * ('name, 'disambiguator) assoc_parent
+    | `Field of 'name * 'name constructor ]
+  (* | `ForeignMod of 'name *)
+  (* | `ExternCrate of 'name *)
+  (* | `Mod of 'name *)
+  (* | `Lifetime of 'name *)
+  [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
+
+  type named = { disambiguator : disambiguator; data : string }
+
+  let assert_parent did =
+    DefId.parent did
+    |> Option.value_exn
+         ~message:"Was expecting a DefId to have a parent, found none"
+
+  let assert_type_ns (did : DefId.t) =
+    match List.last_exn did.def_id.path with
+    | { data = TypeNs data; disambiguator } -> { data; disambiguator }
+    | _ -> failwith "Broken invariant: not TypeNs"
+
+  let assert_macro_ns (did : DefId.t) =
+    match List.last_exn did.def_id.path with
+    | { data = MacroNs data; disambiguator } -> { data; disambiguator }
+    | _ -> failwith "Broken invariant: not MacroNs"
+
+  let assert_value_ns (did : DefId.t) =
+    match List.last_exn did.def_id.path with
+    | { data = ValueNs data; disambiguator } -> { data; disambiguator }
+    | _ -> failwith "Broken invariant: not ValueNs"
+
+  let rec of_def_id (did : DefId.t) : (named, disambiguator) t =
+    let mk_associated_item kind : _ t =
+      let parent = assert_parent did |> of_def_id in
+      `AssociatedItem
+        ( kind,
+          match parent with
+          | (`Impl _ | `Trait _) as p -> p
+          | _ -> failwith "Invariant broken" )
+    in
+    match did.def_id.kind with
+    | Struct when [%matches? DefId.StructConstructor] did.kind ->
+        let name = assert_type_ns did in
+        `Constructor (name, `Struct name)
+    | Variant | Ctor _ ->
+        let parent = assert_parent did |> of_def_id in
+        let name = assert_type_ns did in
+        `Constructor
+          ( name,
+            match parent with
+            | (`Enum _ | `Struct _ | `Union _) as p -> p
+            | _ -> failwith "expected StandaloneTypeNs" )
+    | AssocFn ->
+        let name = assert_value_ns did in
+        mk_associated_item (`Fn name)
+    | AssocConst ->
+        let name = assert_value_ns did in
+        mk_associated_item (`Const name)
+    | AssocTy ->
+        let name = assert_value_ns did in
+        mk_associated_item (`Type name)
+    | Field ->
+        let name = assert_type_ns did in
+        let constructor =
+          match assert_parent did |> of_def_id with
+          | `Constructor _ as p -> p
+          | _ -> failwith "Expected a Variant or a Standalone"
+        in
+        `Field (name, constructor)
+    | Trait -> `Trait (assert_type_ns did)
+    | Macro _ -> `Macro (assert_macro_ns did)
+    | Union -> `Union (assert_type_ns did)
+    | Enum -> `Enum (assert_type_ns did)
+    | Struct -> `Struct (assert_type_ns did)
+    | AnonConst ->
+        `AnonConst
+          (match List.last_exn did.def_id.path with
+          | { data = AnonConst; disambiguator } -> disambiguator
+          | _ -> failwith "todo: invariant broken")
+    | Impl _ ->
+        `Impl
+          (match List.last_exn did.def_id.path with
+          | { data = Impl; disambiguator } -> disambiguator
+          | _ -> failwith "todo: invariant broken")
+    | OpaqueTy -> `Opaque (assert_type_ns did)
+    | _ -> failwith "todo"
+end
+
+module NamespaceRepr = struct
+  type string_policy =
+    | StartsWith of {
+        reserved_prefix : string;
+        or_case : [ `Uppercase | `Lowercase ] option;
+      }
+    | None
+
+  type ('category, 'concat, 't) t =
+    | Name of 'category * 't
+    | Concat of
+        'concat * ('category, 'concat, 't) t * ('category, 'concat, 't) t
+
+  type ('cat, 'name, 'disambiguator, 'concat, 'o) of_defname_fun =
+    into:(string_policy -> 'name -> 'o) ->
+    empty:(string_policy -> 'disambiguator -> 'o) ->
+    ('name, 'disambiguator) DefName.t ->
+    ('cat, 'concat, 'o) t
+
+  module type POLICY = sig
+    type namespace_category
+    type concat_scheme
+
+    val of_defname :
+      'name 'disambiguator 'o.
+      ( namespace_category,
+        'name,
+        'disambiguator,
+        concat_scheme,
+        'o )
+      of_defname_fun
+
+    val concat : string list -> string
+  end
+
+  module Rust = struct
+    type category = [ `Type | `Value | `Lifetime | `Macro | `Impl | `AnonConst ]
+    type concat_scheme = unit
+
+    let rec of_defname :
+          'n 'd 'o. (category, 'n, 'd, concat_scheme, 'o) of_defname_fun =
+     fun ~into ~empty d ->
+      match d with
+      | `Enum n | `Struct n | `Union n | `Trait n | `Opaque n ->
+          Name (`Type, into None n)
+      | `Fn n | `Const n | `Static n -> Name (`Value, into None n)
+      | `Impl d -> Name (`Impl, empty None d)
+      | `AnonConst d -> Name (`AnonConst, empty None d)
+      | `Constructor (n, tdef) when [%matches? `Struct _] tdef ->
+          Name (`Type, into None n)
+      | `Constructor (n, tdef) ->
+          Concat
+            ( (),
+              of_defname (tdef :> _ DefName.t) ~into ~empty,
+              Name (`Type, into None n) )
+      | _ -> failwith "?"
+  end
+
+  module Make (P : POLICY) = struct
+    let rust =
+      let names = DefName.all [ () ] [ () ] in
+      let names =
+        let fresh =
+          let count = ref 0 in
+          fun () ->
+            count := !count + 1;
+            !count
+        in
+        List.map ~f:(DefName.map fresh fresh) names
+      in
+      let tbl = Hashtbl.create (module Int) in
+      let rust =
+        let mktup x y = Hashtbl.add_exn tbl x in
+        List.map ~f:(Rust.of_defname ~into:mktup ~empty:mktup) names
+      in
+      let backend =
+        List.map ~f:(P.of_defname ~into:(fun p _ -> p) ~empty:Fn.id) names
+      in
+      0
+  end
+
+  (* let of_def_name () *)
+end
+
+(** Describes the suffix of a `DefId`. This denotes the shortest
+relevant suffix for a DefId. A definition can be standalone (i.e. a
+simple funciton), or associated to some structure (i.e. a field is
+associated to a variant, a variant is associated to a type, a method
+to a trait, etc.). *)
+module DefIdSuffix = struct
+  type associated_item_kind = Fn | Const | Ty
+  [@@deriving show, hash, compare, sexp, hash, eq]
+
+  (* def_path_item UNION def_kind *)
+  type 'a t' =
+    | Standalone of {
+        kind :
+          [ (*   `Type of [`OpaqueTy | `Struct | `Enum | `Union | `TyAlias | `TyParam | `ForeignTy | `Mod | ` ] *)
+            (* | `Macro *)
+            (* | `Value of [ *)
+            (* | `SyntheticCoroutineBody *)
+            (* | `ConstParam *)
+            (* | `Closure ]  *)
+            (* | `LifetimeParam *)
+            (* | `Trait *)
+            (* | `TraitAlias *)
+            (* | `Fn *)
+            (* | `Const *)
+            `ExternCrate
+          | `Use
+          | `ForeignMod
+          | `AnonConst
+          | `InlineConst
+          | `Impl
+          | `OpaqueTy
+          | `GlobalAsm
+          | `Static ];
+      }
+        (** A simple standalone item: a non-assoc. function, a non-assoc. constant, a trait, an impl, a static, etc. *)
+    | AssociatedItem of { kind : associated_item_kind; standalone_parent : 'a }
+        (** An associated item: it has one standalone parent (a trait). *)
+    | Variant of { standalone_type : 'a; kind : [ `Struct | `Variant ] }
+        (** A variant, which has exactly one standalone parent (a type). *)
+    | Field of { variant : 'a; standalone_type : 'a }
+        (** A field, has one variant and one type. *)
+  [@@deriving show, hash, compare, sexp, hash, eq]
+
+  type t = DefId.t t' [@@deriving show, hash, compare, sexp, hash, eq]
+
+  let top_def_id (suffix : t) : DefId.t =
+    match suffix with
+    | Standalone did
+    | AssociatedItem { standalone_parent = did; _ }
+    | Variant { standalone_type = did; _ }
+    | Field { standalone_type = did; _ } ->
+        did
+
+  let rec of_def_id (did : DefId.t) : t =
+    let assert_parent did =
+      DefId.parent did
+      |> Option.value_exn
+           ~message:"Was expecting a DefId to have a parent, found none"
+    in
+    let mk_associated_item kind =
+      AssociatedItem { kind; standalone_parent = assert_parent did }
+    in
+    match did.def_id.kind with
+    | Struct when [%matches? DefId.StructConstructor] did.kind ->
+        Variant { standalone_type = assert_parent did; kind = `Struct }
+    | Variant | Ctor _ ->
+        Variant { standalone_type = assert_parent did; kind = `Variant }
+    | AssocFn -> mk_associated_item Fn
+    | AssocConst -> mk_associated_item Const
+    | AssocTy -> mk_associated_item Ty
+    | Field ->
+        let parent = assert_parent did in
+        let variant, standalone_type =
+          match of_def_id parent with
+          | Variant { standalone_type } -> (parent, standalone_type)
+          | Standalone _ -> ({ parent with kind = StructConstructor }, parent)
+          | _ -> failwith "Expected a Variant or a Standalone"
+        in
+        Field { variant; standalone_type }
+    | Macro _ | SyntheticCoroutineBody | TyParam | ConstParam | LifetimeParam
+    | Closure | Mod | Union | Enum | Struct | Trait | TyAlias | ForeignTy
+    | TraitAlias | Fn | Const | ExternCrate | Use | ForeignMod | AnonConst
+    | InlineConst | Impl _ | OpaqueTy | GlobalAsm | Static _ ->
+        Standalone did
+end
+
+module Ident = struct
+  type fresh_namespace = {
+    path_hints : DefId.t list;
+    name_hints : string list;
+    disambiguator_hint : int;
+  }
+
+  type t =
+    | DefId of DefId.t
+    | MovedUnder of { ns : fresh_namespace }
+        (** A `DefId` moved under a fresh namespace *)
+end
+
+module Decomposed = struct
+  type disambiguated_ns_chunk = { disambiguator : Int64.t; ns_chunk : string }
+
+  type t = {
+    namespace : disambiguated_ns_chunk list;
+    suffixes : DefIdSuffix.t list;  (** non empty *)
+  }
+
+  let of_def_id (did : DefId.t) =
+    let ns_chunks, rest =
+      List.split_while
+        ~f:(fun { def_id; _ } ->
+          match def_id.kind with Mod -> true | _ -> false)
+        (DefId.parents did |> List.rev)
+    in
+    let suffixes =
+      let rec f ids =
+        match ids with
+        | [] -> []
+        | last :: _ ->
+            let suffix = DefIdSuffix.of_def_id last in
+            suffix
+            :: (List.drop_while
+                  ~f:([%eq: DefId.t] (DefIdSuffix.top_def_id suffix) >> not)
+                  ids
+               |> f)
+      in
+      f rest
+    in
+    let namespace =
+      { ns_chunk = did.def_id.krate; disambiguator = Int64.zero }
+      :: List.map
+           ~f:(fun (m : DefId.t) ->
+             match m.def_id.path |> List.last_exn with
+             | Types.{ disambiguator; data = TypeNs ns_chunk } ->
+                 { ns_chunk; disambiguator }
+             | _ -> failwith "todo: cannot handle anything but TypeNs")
+           ns_chunks
+    in
+    { namespace; suffixes }
+end
+
+module View = struct
+  type t = { crate : string; path : string list; definition : string }
+end
+
+include Concrete_ident_sig.Make (struct
+  type t_ = DefId.t
+  type view_ = View.t
+end)
+
+(**
+Rust has different spaces for names: types, values, lifetime, macros.
+That means that a type and a value can have the same exact name, yet be different paths.
+A module lives in the type namespace for instance.
+
+In the same time, the backend has namespaces as well. For instance, F* has a "namespace" per struct: we don't need to prefix fields with field names, there is a disambigation mechanism.
+
+Thus, we need to account both for Rust namespaces and Backend namespaces.
+
+A namespace shall be defined as: under path <PATH>,  
+*)
+
+type fmt = { formated : string -> bool; format : string -> string }
+
+type policy = {
+  separator : string;
+  type_ns : fmt;
+  value_ns : fmt;
+  impl_ns : fmt;
+}
+
+module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
+  let prefixes = [ "t"; "C"; "v"; "f"; "i"; "discriminant" ]
+
+  let escape s =
+    match String.lsplit2 ~on:'_' s with
+    | Some (prefix, _) when List.mem ~equal:String.equal prefixes prefix ->
+        String.prefix prefix 1 ^ s
+    | _ -> s
+
+  let render_suffix (s : DefIdSuffix.t) = 0
+
+  let to_view (did : DefId.t) : View.t =
+    let Decomposed.{ namespace; suffixes } = Decomposed.of_def_id did in
+    failwith "todo"
+end
+
+(* type subpath_namespace = Type  (\** A type namespace *\) | Value *)
+
+(* (\** A format defines a string scheme and a way to coerce to the scheme. Property: `∀ s. formated (format s)`. *\) *)
+
+(* type suffixes_fmt = { typ : fmt; value : fmt } *)
+(* (\** How to format  *\) *)
+
+(* module type NAME_POLICY = sig *)
+(*   val format_mod_ns : fmt *)
+(*   (\* val                  *\) *)
+(* end *)

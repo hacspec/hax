@@ -535,6 +535,36 @@ function run(str){
     let sig = ``;
     
     let impl = `include struct
+open struct
+  include Base.Hash.Builtin
+  open Base
+  let bool_of_sexp = bool_of_sexp
+  let string_of_sexp = string_of_sexp
+  let option_of_sexp = option_of_sexp
+  let list_of_sexp = list_of_sexp
+  let int_of_sexp = int_of_sexp
+  let char_of_sexp = char_of_sexp
+  let unit_of_sexp = unit_of_sexp
+  let bool_of_sexp = bool_of_sexp
+
+  let sexp_of_bool = sexp_of_bool
+  let sexp_of_string = sexp_of_string
+  let sexp_of_option = sexp_of_option
+  let sexp_of_list = sexp_of_list
+  let sexp_of_int = sexp_of_int
+  let sexp_of_char = sexp_of_char
+  let sexp_of_unit = sexp_of_unit
+  let sexp_of_bool = sexp_of_bool
+
+  let compare_bool = compare_bool
+  let compare_string = compare_string
+  let compare_option = compare_option
+  let compare_list = compare_list
+  let compare_int = compare_int
+  let compare_char = compare_char
+  let compare_unit = compare_unit
+  let compare_bool = compare_bool
+end
 [@@@warning "-A"]`;
 
     let items = Object.entries(definitions)
@@ -544,7 +574,7 @@ function run(str){
             ([name, def]) => export_definition(name, def)
         ).filter(x => x instanceof Object);
 
-    let derive_items = ['show', 'eq'];
+    let derive_items = ['show', 'eq', 'hash', 'sexp', 'compare'];
     
     impl += `
 module ParseError = struct
@@ -574,6 +604,7 @@ open ParseError
     impl += `
 and node_for__ty_kind = node_for_ty_kind_generated
 and node_for__def_id_contents = node_for_def_id_contents_generated
+
 
 type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
