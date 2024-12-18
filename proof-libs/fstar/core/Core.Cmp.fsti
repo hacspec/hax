@@ -27,9 +27,9 @@ class t_PartialEq (v_Self: Type) (v_Rhs: Type) = {
   f_ne:v_Self -> v_Rhs -> bool
 }
 
-class t_Eq (v_Self: Type) (v_Rhs: Type) = {
+class t_Eq (v_Self: Type) = {
   [@@@FStar.Tactics.Typeclasses.tcresolve]
-  __constraint_t_Eq_t_PartialEq:t_PartialEq v_Self v_Rhs;
+  __constraint_t_Eq_t_PartialEq:t_PartialEq v_Self v_Self;
 }
 
 instance all_eq (a: eqtype): t_PartialEq a a = {
