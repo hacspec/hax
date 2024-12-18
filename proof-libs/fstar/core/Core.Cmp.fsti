@@ -23,8 +23,8 @@ class t_Ord (v_Self: Type) = {
 
 class t_PartialEq (v_Self: Type) (v_Rhs: Type) = {
   // __constraint_1069563329_t_PartialEq:t_PartialEq v_Self v_Rhs;
-  f_eq_pre: v_Self -> vRhs -> Type0;
-  f_eq_post: v_Self -> vRhs -> bool -> Type0;
+  f_eq_pre: v_Self -> v_Rhs -> Type0;
+  f_eq_post: v_Self -> v_Rhs -> bool -> Type0;
   f_eq:v_Self -> v_Rhs -> bool;
 }
 
