@@ -190,6 +190,7 @@
             pkgs.cargo-release
             pkgs.cargo-insta
             pkgs.openssl.dev
+            pkgs.libz.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
             pkgs.toml2json

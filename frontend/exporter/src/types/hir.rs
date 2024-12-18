@@ -48,8 +48,6 @@ pub enum Movability {
     Movable,
 }
 
-pub type Mutability = bool;
-
 #[cfg(feature = "rustc")]
 impl<S> SInto<S, Mutability> for hir::Mutability {
     fn sinto(&self, _s: &S) -> Mutability {
@@ -60,24 +58,6 @@ impl<S> SInto<S, Mutability> for hir::Mutability {
     }
 }
 
-/// Reflects [`hir::def::CtorKind`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: hir::def::CtorKind, state: S as _s)]
-pub enum CtorKind {
-    Fn,
-    Const,
-}
-
-/// Reflects [`hir::def::CtorOf`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: hir::def::CtorOf, state: S as _s)]
-pub enum CtorOf {
-    Struct,
-    Variant,
-}
-
 /// Reflects [`hir::RangeEnd`]
 #[derive(AdtInto)]
 #[args(<S>, from: hir::RangeEnd, state: S as _s)]
@@ -86,16 +66,6 @@ pub enum CtorOf {
 pub enum RangeEnd {
     Included,
     Excluded,
-}
-
-/// Reflects [`hir::Safety`]
-#[derive(AdtInto)]
-#[args(<S>, from: hir::Safety, state: S as _s)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Safety {
-    Unsafe,
-    Safe,
 }
 
 /// Reflects [`hir::ImplicitSelfKind`]
@@ -1177,7 +1147,6 @@ pub enum AttrKind {
     DocComment(CommentKind, Symbol),
 }
 
-sinto_todo!(rustc_hir::def, DefKind);
 sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
 sinto_todo!(rustc_hir, InlineAsm<'a>);
 sinto_todo!(rustc_hir, MissingLifetimeKind);
