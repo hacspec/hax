@@ -111,6 +111,24 @@ module Make
 struct
   open Ctx
 
+  module StringToFStar = struct
+    let catch_parsing_error (type a b) kind span (f : a -> b) x =
+      try f x
+      with e ->
+        let kind =
+          Types.FStarParseError
+            {
+              fstar_snippet = "";
+              details =
+                "While parsing a " ^ kind ^ ", error: "
+                ^ Base.Error.to_string_hum (Base.Error.of_exn e);
+            }
+        in
+        Error.raise { span; kind }
+
+    let term span = catch_parsing_error "term" span F.term_of_string
+  end
+
   let doc_to_string : PPrint.document -> string =
     FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
 
@@ -670,7 +688,7 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote quote -> pquote e.span quote |> F.term_of_string
+    | Quote quote -> pquote e.span quote |> StringToFStar.term e.span
     | _ -> .
 
   (** Prints a `quote` to a string *)

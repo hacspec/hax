@@ -24,7 +24,7 @@ let unimplemented ~issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id = Some (MyInt64.of_int_exn issue_id);
+        issue_id = Some (MyInt64.of_int issue_id);
         details = String.(if details = "" then None else Some details);
       }
   in
@@ -676,7 +676,12 @@ end) : EXPR = struct
           LocalVar
             {
               name = id.name;
-              id = Local_ident.mk_id Cnst (MyInt64.to_int_exn id.index);
+              id =
+                Local_ident.mk_id Cnst
+                  (MyInt64.to_int id.index
+                  |> Option.value_or_thunk ~default:(fun _ ->
+                         assertion_failure [ e.span ]
+                           "Expected const id to fit in an OCaml native int"));
             }
       | Repeat { value; count } ->
           let value = c_expr value in
@@ -1038,7 +1043,16 @@ end) : EXPR = struct
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Weak"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
-        TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
+        TParam
+          {
+            name;
+            id =
+              Local_ident.mk_id Typ
+                (MyInt64.to_int index
+                |> Option.value_or_thunk ~default:(fun _ ->
+                       assertion_failure [ span ]
+                         "Expected param id to fit in an OCaml native int"));
+          }
     | Error ->
         assertion_failure [ span ]
           "got type `Error`: Rust compilation probably failed."
@@ -1172,7 +1186,11 @@ end) : EXPR = struct
     {
       typ_span = Option.map ~f:Span.of_thir param.ty_span;
       typ = c_ty (Option.value ~default:span param.ty_span) param.ty;
-      pat = c_pat (Option.value_exn param.pat);
+      pat =
+        c_pat
+          (Option.value_or_thunk param.pat ~default:(fun _ ->
+               assertion_failure [ span ]
+                 "c_param: expected param.pat to be non-empty"));
       attrs = c_attrs param.attributes;
     }
 
@@ -1492,14 +1510,17 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
        |> not
   in
   let c_body = if drop_body then c_expr_drop_body else c_expr in
+  let assert_item_def_id () =
+    Option.value_or_thunk item.def_id ~default:(fun _ ->
+        assertion_failure [ item.span ] "Expected this item to have a `def_id`")
+  in
   (* TODO: things might be unnamed (e.g. constants) *)
   match (item.kind : Thir.item_kind) with
   | Const (_, generics, body) ->
       mk
       @@ Fn
            {
-             name =
-               Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
+             name = Concrete_ident.of_def_id Value (assert_item_def_id ());
              generics = c_generics generics;
              body = c_body body;
              params = [];
@@ -1509,7 +1530,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       mk
       @@ TyAlias
            {
-             name = Concrete_ident.of_def_id Type (Option.value_exn item.def_id);
+             name = Concrete_ident.of_def_id Type (assert_item_def_id ());
              generics = c_generics generics;
              ty = c_ty item.span ty;
            }
@@ -1517,8 +1538,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       mk
       @@ Fn
            {
-             name =
-               Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
+             name = Concrete_ident.of_def_id Value (assert_item_def_id ());
              generics = c_generics generics;
              body = c_body body;
              params = c_fn_params item.span params;
@@ -1527,11 +1547,11 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   | (Enum (_, generics, _) | Struct (_, generics)) when erased ->
       let generics = c_generics generics in
       let is_struct = match item.kind with Struct _ -> true | _ -> false in
-      let def_id = Option.value_exn item.def_id in
+      let def_id = assert_item_def_id () in
       let name = Concrete_ident.of_def_id Type def_id in
       mk @@ Type { name; generics; variants = []; is_struct }
   | Enum (variants, generics, repr) ->
-      let def_id = Option.value_exn item.def_id in
+      let def_id = assert_item_def_id () in
       let generics = c_generics generics in
       let is_struct = false in
       let kind = Concrete_ident.Kind.Constructor { is_struct } in
@@ -1591,7 +1611,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
       if is_primitive then cast_fun :: result else result
   | Struct (v, generics) ->
       let generics = c_generics generics in
-      let def_id = Option.value_exn item.def_id in
+      let def_id = assert_item_def_id () in
       let is_struct = true in
       (* repeating the attributes of the item in the variant: TODO is that ok? *)
       let v =
@@ -1632,9 +1652,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
           ~f:(fun { attributes; _ } -> not (should_skip attributes))
           items
       in
-      let name =
-        Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
-      in
+      let name = Concrete_ident.of_def_id Trait (assert_item_def_id ()) in
       let { params; constraints } = c_generics generics in
       let self =
         let id = Local_ident.mk_id Typ 0 (* todo *) in

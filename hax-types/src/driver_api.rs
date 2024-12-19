@@ -28,6 +28,7 @@ pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
     )>,
     pub def_ids: Vec<hax_frontend_exporter::DefId>,
     pub comments: Vec<(hax_frontend_exporter::Span, String)>,
+    pub hax_version: String,
 }
 
 use hax_frontend_exporter::id_table;
@@ -49,7 +50,15 @@ where
     pub fn read(reader: impl std::io::Read) -> (Self, id_table::Table) {
         let reader = zstd::stream::read::Decoder::new(reader).unwrap();
         let reader = std::io::BufReader::new(reader);
-        id_table::WithTable::destruct(serde_brief::from_reader(reader).unwrap())
+        let haxmeta = id_table::WithTable::<HaxMeta<Body>>::destruct(
+            serde_brief::from_reader(reader).unwrap(),
+        );
+        if haxmeta.0.hax_version != crate::HAX_VERSION {
+            let version = haxmeta.0.hax_version;
+            let expected = crate::HAX_VERSION;
+            panic!("An invariant was broken: `*.haxmeta` was produced by hax version `{version}` while the current version of hax is `{expected}`. Please report this to https://github.com/hacspec/hax/issues.");
+        };
+        haxmeta
     }
 }
 
