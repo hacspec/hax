@@ -692,7 +692,8 @@ module Make (F : Features.T) = struct
 
   let never_typ : ty =
     let ident =
-      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__Never)
+      `Concrete
+        (Concrete_ident.of_name ~value:false Rust_primitives__hax__Never)
     in
     TApp { ident; args = [] }
 
@@ -888,8 +889,7 @@ module Make (F : Features.T) = struct
   let call_Constructor (constructor_name : Concrete_ident.name)
       (is_struct : bool) (args : expr list) span ret_typ =
     call_Constructor'
-      (`Concrete
-        (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
+      (`Concrete (Concrete_ident.of_name ~value:true constructor_name))
       is_struct args span ret_typ
 
   let call' ?impl f ?(generic_args = []) ?(impl_generic_args = [])
@@ -910,11 +910,10 @@ module Make (F : Features.T) = struct
       span;
     }
 
-  let call ?(kind : Concrete_ident.Kind.t = Value) ?(generic_args = [])
-      ?(impl_generic_args = []) ?impl (f_name : Concrete_ident.name)
-      (args : expr list) span ret_typ =
+  let call ?(generic_args = []) ?(impl_generic_args = []) ?impl
+      (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
     call' ?impl ~generic_args ~impl_generic_args
-      (`Concrete (Concrete_ident.of_name kind f_name))
+      (`Concrete (Concrete_ident.of_name ~value:true f_name))
       args span ret_typ
 
   let make_closure (params : pat list) (body : expr) (span : span) : expr =
@@ -939,7 +938,8 @@ module Make (F : Features.T) = struct
 
   let hax_failure_typ =
     let ident =
-      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__failure)
+      `Concrete
+        (Concrete_ident.of_name ~value:false Rust_primitives__hax__failure)
     in
     TApp { ident; args = [] }
 
@@ -1258,19 +1258,12 @@ module Make (F : Features.T) = struct
     include U
     module Map = Map.M (U)
   end
-end
-
-module MakeWithNamePolicy (F : Features.T) (NP : Concrete_ident.NAME_POLICY) =
-struct
-  include Make (F)
-  open AST
-  module Concrete_ident_view = Concrete_ident.MakeViewAPI (NP)
 
   let group_items_by_namespace (items : item list) : item list StringList.Map.t
       =
     let h = Hashtbl.create (module StringList) in
     List.iter items ~f:(fun item ->
-        let ns = Concrete_ident_view.to_namespace item.ident in
+        let ns = (Concrete_ident_view.of_def_id item.ident).path in
         let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
         items := !items @ [ item ]);
     Map.of_iteri_exn

@@ -1,6 +1,10 @@
 module FreshNamespace : module type of Concrete_ident_fresh_ns
 
-type t [@@deriving show, yojson, compare, sexp, eq, hash]
+module T : sig
+  type t [@@deriving show, yojson, compare, sexp, eq, hash]
+end
+
+include module type of T with type t = T.t
 
 type name = Concrete_ident_generated.t
 [@@deriving show, yojson, compare, sexp, eq, hash]
@@ -9,12 +13,9 @@ type reserved_suffix = [ `Cast | `Pre | `Post ]
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 val of_def_id :
-  ?suffix:reserved_suffix option ->
-  Concrete_ident_defid.kind ->
-  Types.def_id ->
-  t
+  ?suffix:reserved_suffix option -> value:bool -> Types.def_id -> t
 
-val of_name : Concrete_ident_defid.kind -> name -> t
+val of_name : value:bool -> name -> t
 val eq_name : name -> t -> bool
 val to_debug_string : t -> string
 val fresh_namespace : t list -> string list -> FreshNamespace.t
@@ -53,6 +54,13 @@ val with_suffix : reserved_suffix -> t -> t
 type comparator_witness
 
 val comparator : (t, comparator_witness) Base.Comparator.comparator
+
+module RenderSig : module type of Concrete_ident_render_sig.Make (T)
+
+module type NAME_POLICY = Concrete_ident_render_sig.NAME_POLICY
+
+module DefaultNamePolicy : NAME_POLICY
+module MakeViewAPI (NP : NAME_POLICY) : RenderSig.RENDER_API
 
 module ImplInfoStore : sig
   val init : (Types.def_id_contents * Types.impl_infos) list -> unit

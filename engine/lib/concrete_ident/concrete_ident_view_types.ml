@@ -41,6 +41,7 @@ module Name = struct
   [@@deriving show, hash, compare, sexp, hash, eq, enumerate, map]
 
   type t = (disambiguated_string, disambiguator) poly
+  [@@deriving show, hash, compare, sexp, hash, eq]
 
   let add_strings ?(impl = "impl") ?(anon_const = "anon_const") (n : t) :
       (disambiguated_string, disambiguated_string) poly =
@@ -49,16 +50,32 @@ module Name = struct
     | `AnonConst o -> `AnonConst { o with data = anon_const }
     | n -> n
 
-  let rec collect : 'a. ('a, 'a) poly -> 'a list = function
-    | `AnonConst n | `Impl (n, _) | `Use n | `TraitAlias n | `Foreign n -> [ n ]
-    | `Opaque n | `Static n | `Macro n | `Enum n | `Struct n | `Union n -> [ n ]
-    | `Fn n | `Const n | `Trait n -> [ n ]
+  let only_disambiguators : t -> (Int64.t, Int64.t) poly =
+    map_poly (fun ds -> ds.disambiguator) Fn.id
+
+  (** Collects all the informations in a name, from the child to the parent. *)
+  let rec collect_either : 'n 'd. ('n, 'd) poly -> [ `N of 'n | `D of 'd ] list
+      = function
+    | `AnonConst n | `Impl (n, _) -> [ `D n ]
+    | `Use n | `TraitAlias n | `Foreign n -> [ `N n ]
+    | `Opaque n | `Static n | `Macro n | `Enum n | `Struct n | `Union n ->
+        [ `N n ]
+    | `Fn n | `Const n | `Trait n -> [ `N n ]
     | `AssociatedItem ((`Fn a | `Const a | `Type a), b) ->
-        a :: collect (b :> _ poly)
-    | `Constructor (a, b) -> a :: collect (b :> _ poly)
-    | `Field (a, b) -> a :: collect (b :> _ poly)
+        `N a :: collect_either (b :> _ poly)
+    | `Constructor (a, b) -> `N a :: collect_either (b :> _ poly)
+    | `Field (a, b) -> `N a :: collect_either (b :> _ poly)
+
+  (** Collects all the informations in a name, from the child to the parent. *)
+  let collect : 'a. ('a, 'a) poly -> 'a list =
+   fun n -> collect_either n |> List.map ~f:(function `D v | `N v -> v)
 
   let root : 'a. ('a, 'a) poly -> 'a = fun x -> collect x |> List.last_exn
 end
 
-type t = { path : disambiguated_string list; name_path : Name.t list }
+type path = disambiguated_string list
+[@@deriving show, hash, compare, sexp, hash, eq]
+
+type t = { path : path; name_path : Name.t list }
+[@@deriving show, hash, compare, sexp, hash, eq]
+(** Invariant: [name_path] is non-empty *)

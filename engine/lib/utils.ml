@@ -25,6 +25,10 @@ let apply f x = f x
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 
+let expect_singleton : 'a. 'a list -> 'a option = function
+  | [ x ] -> Some x
+  | _ -> None
+
 (** [let*? () = guard in body] acts as a guard: if [guard] holds, then
 [body] is executed, otherwise [None] is returned. *)
 let ( let*? ) (type a) (x : bool) (f : unit -> a option) =

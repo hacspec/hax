@@ -32,7 +32,7 @@ module Global_ident = struct
   include M
   module Map = Map.M (M)
 
-  let of_name kind n = `Concrete (Concrete_ident.of_name kind n)
+  let of_name ~value n = `Concrete (Concrete_ident.of_name ~value n)
 
   let eq_name name (x : t) : bool =
     match x with `Concrete x -> Concrete_ident.eq_name name x | _ -> false

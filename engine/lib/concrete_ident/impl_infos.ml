@@ -21,7 +21,7 @@ engine, this function may return [None] even though the supplied
 identifier points to an [Impl] block. *)
 let lookup span (impl : Concrete_ident.t) : t option =
   let* Types.{ generics = _; clauses; typ; trait_ref } =
-    Concrete_ident.lookup_raw_impl_info impl
+    Concrete_ident.ImplInfoStore.lookup_raw impl
   in
   let trait_goal =
     Option.map ~f:(Import_thir.import_trait_ref span) trait_ref
