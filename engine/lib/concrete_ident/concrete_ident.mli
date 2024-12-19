@@ -27,6 +27,7 @@ val eq_name : name -> t -> bool
 val to_debug_string : t -> string
 
 module Create : sig
+  val parent : t -> t
   val fresh_module : from:t list -> t
   val move_under : new_parent:t -> t -> t
 
@@ -37,6 +38,10 @@ module Create : sig
   val map_last : f:(string -> string) -> t -> t
   (** [map_last f ident] applies [f] on the last chunk of [ident]'s
       path if it holds a string *)
+
+  val add_disambiguator : t -> int -> t
+  (** [add_disambiguator ident d] changes the disambiguator on
+      the last chunk of [ident]'s path to [d] *)
 end
 
 type view = { crate : string; path : string list; definition : string }
