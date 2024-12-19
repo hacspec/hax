@@ -27,6 +27,7 @@ val eq_name : name -> t -> bool
 val to_debug_string : t -> string
 
 module Create : sig
+  val parent : t -> t
   val fresh_module : from:t list -> t
   val move_under : new_parent:t -> t -> t
 

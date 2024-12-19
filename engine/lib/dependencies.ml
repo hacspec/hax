@@ -413,8 +413,12 @@ module Make (F : Features.T) = struct
     in
 
     let transform (bundle : item list) =
+      let module_names =
+        List.map ~f:(ident_of >> Concrete_ident.Create.parent) bundle
+        |> List.dedup_and_sort ~compare:Concrete_ident.compare
+      in
       let ns : Concrete_ident.t =
-        Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
+        Concrete_ident.Create.fresh_module ~from:module_names
       in
       let new_name_under_ns : Concrete_ident.t -> Concrete_ident.t =
         Concrete_ident.Create.move_under ~new_parent:ns
