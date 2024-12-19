@@ -38,7 +38,7 @@ class t_Ord (v_Self: Type) = {
   _super_8099741844003281729: t_Eq v_Self;
   _super_12866954522599331834: t_PartialOrd v_Self v_Self;
   f_cmp_pre: v_Self -> v_Self -> Type0;
-  f_cmp_post: v_Self -> v_Self -> bool -> Type0;
+  f_cmp_post: v_Self -> v_Self -> t_Ordering -> Type0;
   f_cmp:v_Self -> v_Self -> t_Ordering;
   // f_max:v_Self -> v_Self -> v_Self;
   // f_min:v_Self -> v_Self -> v_Self;
