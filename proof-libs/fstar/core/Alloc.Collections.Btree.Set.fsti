@@ -1,4 +1,5 @@
 module Alloc.Collections.Btree.Set
+open Rust_primitives
 
 val t_BTreeSet (t:Type0) (u:unit): eqtype
 
