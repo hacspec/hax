@@ -9,4 +9,4 @@ val impl_13__new #t (): t_BTreeSet t ()
 
 val impl_14__len #t #u (x:t_BTreeSet t u) : usize
 
-val impl_14__insert #t #u (x:t_BTreeSet t u) (y:t) : t_BTreeSet t u
+val impl_14__insert #t #u (x:t_BTreeSet t u) (y:t) : (t_BTreeSet t u & bool)
