@@ -235,10 +235,10 @@ module Raw = struct
     !"quote!("
     & List.map
         ~f:(function
-          | `Verbatim code -> !code
-          | `Expr e -> pexpr e
-          | `Pat p -> ppat p
-          | `Typ t -> pty span t)
+          | Verbatim code -> !code
+          | Expr e -> pexpr e
+          | Pattern p -> ppat p
+          | Typ t -> pty span t)
         quote.contents
       |> concat ~sep:!""
     & !")"

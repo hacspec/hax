@@ -35,6 +35,11 @@ struct
       method borrow_kind_Mut _x1 = default_document_for "borrow_kind_Mut"
       method borrow_kind_Shared = default_document_for "borrow_kind_Shared"
       method borrow_kind_Unique = default_document_for "borrow_kind_Unique"
+      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
+
+      method cf_kind_BreakOrReturn =
+        default_document_for "cf_kind_BreakOrReturn"
+
       method common_array _x1 = default_document_for "common_array"
 
       method dyn_trait_goal ~trait:_ ~non_self_args:_ =
@@ -124,10 +129,6 @@ struct
       method expr'_Return ~super:_ ~e:_ ~witness:_ =
         default_document_for "expr'_Return"
 
-      method cf_kind_BreakOrReturn =
-        default_document_for "cf_kind_BreakOrReturn"
-
-      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
       method field_pat ~field:_ ~pat:_ = default_document_for "field_pat"
 
       method generic_constraint_GCLifetime _x1 _x2 =
@@ -317,6 +318,16 @@ struct
 
       method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
         default_document_for "projection_predicate"
+
+      method quote_content_Expr _x1 = default_document_for "quote_content_Expr"
+
+      method quote_content_Pattern _x1 =
+        default_document_for "quote_content_Pattern"
+
+      method quote_content_Typ _x1 = default_document_for "quote_content_Typ"
+
+      method quote_content_Verbatim _x1 =
+        default_document_for "quote_content_Verbatim"
 
       method safety_kind_Safe = default_document_for "safety_kind_Safe"
       method safety_kind_Unsafe _x1 = default_document_for "safety_kind_Unsafe"

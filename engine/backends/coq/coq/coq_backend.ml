@@ -151,6 +151,16 @@ struct
       method borrow_kind_Unique = default_document_for "borrow_kind_Unique"
       method common_array x1 = brackets (separate (semi ^^ space) x1)
 
+      method quote_content_Verbatim _v =
+        default_document_for "quote_content_Verbatim"
+
+      method quote_content_Expr _e = default_document_for "quote_content_Expr"
+
+      method quote_content_Pattern _p =
+        default_document_for "quote_content_Pattern"
+
+      method quote_content_Typ _t = default_document_for "quote_content_Typ"
+
       method dyn_trait_goal ~trait:_ ~non_self_args:_ =
         default_document_for "dyn_trait_goal"
 

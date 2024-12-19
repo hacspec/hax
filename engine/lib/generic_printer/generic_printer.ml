@@ -231,14 +231,15 @@ module Make (F : Features.T) = struct
       [local] is true, otherwise it prints the full path, separated by
       `module_path_separator`. *)
 
-      method quote (quote : quote) : document =
+      method quote ~contents ~witness:_ : document =
         List.map
-          ~f:(function
-            | `Verbatim code -> string code
-            | `Expr e -> self#print_expr AstPosition_Quote e
-            | `Pat p -> self#print_pat AstPosition_Quote p
-            | `Typ p -> self#print_ty AstPosition_Quote p)
-          quote.contents
+          ~f:(fun doc ->
+            match doc#v with
+            | Verbatim code -> string code
+            | Expr e -> self#print_expr AstPosition_Quote e
+            | Pattern p -> self#print_pat AstPosition_Quote p
+            | Typ t -> self#print_ty AstPosition_Quote t)
+          contents
         |> concat
 
       (** {2:specialize-expr Specialized printers for [expr]} *)
@@ -628,10 +629,6 @@ module Make (F : Features.T) = struct
                   ^ [%show: global_ident] id
                   ^ "]"))
           ast_position id
-
-      method _do_not_override_lazy_of_quote ast_position (value : quote)
-          : quote lazy_doc =
-        lazy_doc (fun (value : quote) -> self#quote value) ast_position value
 
       method! _do_not_override_lazy_of_item ast_position (value : item)
           : item lazy_doc =
