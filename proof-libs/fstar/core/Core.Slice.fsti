@@ -37,3 +37,5 @@ val impl__split_at #t (s: t_Slice t) (mid: usize): Pure (t_Slice t * t_Slice t)
 let impl__is_empty (s: t_Slice 'a): bool = Seq.length s = 0
 
 let impl__clone_from_slice #t (x:t_Slice t) = x
+
+let impl__into_vec #t (x:t_Slice t) = x
