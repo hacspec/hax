@@ -234,10 +234,10 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
         method quote { contents; _ } =
           List.map
             ~f:(function
-              | `Verbatim code -> string code
-              | `Expr e -> print#expr_at Expr_Quote e
-              | `Pat p -> print#pat_at Expr_Quote p
-              | `Typ p -> print#ty_at Expr_Quote p)
+              | Verbatim code -> string code
+              | Expr e -> print#expr_at Expr_Quote e
+              | Pattern p -> print#pat_at Expr_Quote p
+              | Typ p -> print#ty_at Expr_Quote p)
             contents
           |> concat
 

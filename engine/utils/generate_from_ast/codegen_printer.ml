@@ -327,9 +327,7 @@ let mk datatypes =
   in
   let state =
     let names_with_doc = List.map ~f:(fun dt -> dt.name) datatypes in
-    let names_with_doc =
-      "quote" :: "concrete_ident" :: "local_ident" :: names_with_doc
-    in
+    let names_with_doc = "concrete_ident" :: "local_ident" :: names_with_doc in
     { names_with_doc }
   in
   let positions = ref [ "AstPos_Entrypoint"; "AstPos_NotApplicable" ] in

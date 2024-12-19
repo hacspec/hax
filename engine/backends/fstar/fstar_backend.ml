@@ -692,10 +692,10 @@ struct
   and pquote span { contents; _ } =
     List.map
       ~f:(function
-        | `Verbatim code -> code
-        | `Expr e -> pexpr e |> term_to_string
-        | `Pat p -> ppat p |> pat_to_string
-        | `Typ p -> pty span p |> term_to_string)
+        | Verbatim code -> code
+        | Expr e -> pexpr e |> term_to_string
+        | Pattern p -> ppat p |> pat_to_string
+        | Typ p -> pty span p |> term_to_string)
       contents
     |> String.concat
 
