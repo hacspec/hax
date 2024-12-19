@@ -30,8 +30,8 @@ type t_Ordering =
 class t_PartialOrd (v_Self: Type) (v_Rhs:Type) = {
   _super_9014672428308350468: t_PartialEq v_Self v_Rhs;
   f_partial_cmp_pre: v_Self -> v_Rhs -> Type0;
-  f_partial_cmp_post: v_Self -> v_Rhs -> option t_Ordering -> Type0;
-  f_partial_cmp:v_Self -> v_Rhs -> option t_Ordering;
+  f_partial_cmp_post: v_Self -> v_Rhs -> Core.Option.t_Option t_Ordering -> Type0;
+  f_partial_cmp:v_Self -> v_Rhs -> Core.Option.t_Option t_Ordering;
 }
 
 class t_Ord (v_Self: Type) = {
