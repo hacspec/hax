@@ -38,4 +38,3 @@ let impl__is_empty (s: t_Slice 'a): bool = Seq.length s = 0
 
 let impl__clone_from_slice #t (x:t_Slice t) = x
 
-let impl__into_vec #t (x:t_Slice t) = x
