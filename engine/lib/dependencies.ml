@@ -88,8 +88,9 @@ module Make (F : Features.T) = struct
         =
       List.concat_map
         ~f:(fun i ->
+          let attrs = U.Reducers.collect_attrs#visit_item () i in
           let assoc =
-            uid_associated_items i.attrs |> List.map ~f:(fun i -> i.ident)
+            uid_associated_items attrs |> List.map ~f:(fun i -> i.ident)
           in
           vertices_of_item i @ assoc |> List.map ~f:(Fn.const i.ident &&& Fn.id))
         items

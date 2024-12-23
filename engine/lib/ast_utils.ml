@@ -655,6 +655,13 @@ module Make (F : Features.T) = struct
               self#zero
           | _ -> super#visit_expr' () e
       end
+
+    let collect_attrs =
+      object (_self)
+        inherit [_] Visitors.reduce
+        inherit [_] expr_list_monoid
+        method! visit_attrs () attrs = attrs
+      end
   end
 
   (** Produces a local identifier which is locally fresh **with respect
