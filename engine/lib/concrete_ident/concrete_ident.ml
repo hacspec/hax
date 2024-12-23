@@ -596,14 +596,13 @@ module Create = struct
     let len x = List.length x.def_id.path in
     let compare x y = len x - len y in
     let id = List.min_elt ~compare from |> Option.value_exn in
-    let parent = parent id in
     {
       kind = Kind.Value;
       def_id =
         {
-          parent.def_id with
+          id.def_id with
           path =
-            parent.def_id.path
+            id.def_id.path
             @ [
                 {
                   data = TypeNs "rec_bundle";
