@@ -35,7 +35,8 @@ open FStar.Mul
 
 type t_Impossible =
 
-let t_Impossible_cast_to_repr (x: t_Impossible) : Rust_primitives.Hax.t_Never = match x with
+let t_Impossible_cast_to_repr (x: t_Impossible) : Rust_primitives.Hax.t_Never =
+  match x <: t_Impossible with
 
 let get_unchecked_example (slice: t_Slice u8)
     : Prims.Pure u8

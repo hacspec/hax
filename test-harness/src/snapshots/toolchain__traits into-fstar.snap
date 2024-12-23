@@ -544,7 +544,7 @@ let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Err
     let _:Prims.unit = temp_0_ in
     Error_Fail <: t_Error
 
-let t_Error_cast_to_repr (x: t_Error) : isize = match x with | Error_Fail  -> isz 0
+let t_Error_cast_to_repr (x: t_Error) : isize = match x <: t_Error with | Error_Fail  -> isz 0
 
 type t_Struct = | Struct : t_Struct
 
