@@ -32,7 +32,7 @@ module Cyclic_modules.B
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_367033742 {g as g}
+include Cyclic_modules.Cyclic_bundle_367033742 {g as g}
 '''
 "Cyclic_modules.C.fst" = '''
 module Cyclic_modules.C
@@ -42,8 +42,24 @@ open FStar.Mul
 
 let i (_: Prims.unit) : Prims.unit = ()
 '''
-"Cyclic_modules.D.Rec_bundle_81544935.fst" = '''
-module Cyclic_modules.D.Rec_bundle_81544935
+"Cyclic_modules.Cyclic_bundle_367033742.fst" = '''
+module Cyclic_modules.Cyclic_bundle_367033742
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let f (_: Prims.unit) : Prims.unit = ()
+
+let g (_: Prims.unit) : Prims.unit = f ()
+
+let h (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = g () in
+  Cyclic_modules.C.i ()
+
+let h2 (_: Prims.unit) : Prims.unit = Cyclic_modules.C.i ()
+'''
+"Cyclic_modules.D.Cyclic_bundle_81544935.fst" = '''
+module Cyclic_modules.D.Cyclic_bundle_81544935
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -62,9 +78,9 @@ module Cyclic_modules.D
 open Core
 open FStar.Mul
 
-include Cyclic_modules.D.Rec_bundle_81544935 {d1 as d1}
+include Cyclic_modules.D.Cyclic_bundle_81544935 {d1 as d1}
 
-include Cyclic_modules.D.Rec_bundle_81544935 {d2 as d2}
+include Cyclic_modules.D.Cyclic_bundle_81544935 {d2 as d2}
 '''
 "Cyclic_modules.De.fst" = '''
 module Cyclic_modules.De
@@ -72,10 +88,10 @@ module Cyclic_modules.De
 open Core
 open FStar.Mul
 
-include Cyclic_modules.D.Rec_bundle_81544935 {de1 as de1}
+include Cyclic_modules.D.Cyclic_bundle_81544935 {de1 as de1}
 '''
-"Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903.fst" = '''
-module Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903
+"Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903.fst" = '''
+module Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -94,9 +110,9 @@ module Cyclic_modules.Disjoint_cycle_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903 {g as g}
+include Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903 {g as g}
 
-include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903 {f as f}
+include Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903 {f as f}
 '''
 "Cyclic_modules.Disjoint_cycle_b.fst" = '''
 module Cyclic_modules.Disjoint_cycle_b
@@ -104,9 +120,9 @@ module Cyclic_modules.Disjoint_cycle_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903 {h as h}
+include Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903 {h as h}
 
-include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_177270903 {i as i}
+include Cyclic_modules.Disjoint_cycle_a.Cyclic_bundle_177270903 {i as i}
 '''
 "Cyclic_modules.E.fst" = '''
 module Cyclic_modules.E
@@ -114,10 +130,10 @@ module Cyclic_modules.E
 open Core
 open FStar.Mul
 
-include Cyclic_modules.D.Rec_bundle_81544935 {e1 as e1}
+include Cyclic_modules.D.Cyclic_bundle_81544935 {e1 as e1}
 '''
-"Cyclic_modules.Enums_a.Rec_bundle_1009707801.fst" = '''
-module Cyclic_modules.Enums_a.Rec_bundle_1009707801
+"Cyclic_modules.Enums_a.Cyclic_bundle_1009707801.fst" = '''
+module Cyclic_modules.Enums_a.Cyclic_bundle_1009707801
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -146,15 +162,15 @@ module Cyclic_modules.Enums_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {t_T_240131830 as t_T}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {t_T_240131830 as t_T}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_240131830_A as T_A}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_240131830_A as T_A}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_240131830_B as T_B}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_240131830_B as T_B}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_240131830_C as T_C}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_240131830_C as T_C}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_240131830_D as T_D}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_240131830_D as T_D}
 '''
 "Cyclic_modules.Enums_b.fst" = '''
 module Cyclic_modules.Enums_b
@@ -162,26 +178,26 @@ module Cyclic_modules.Enums_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {t_T_366415196 as t_T}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {t_T_366415196 as t_T}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_366415196_A as T_A}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_366415196_A as T_A}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_366415196_B as T_B}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_366415196_B as T_B}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {T_366415196_C as T_C}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {T_366415196_C as T_C}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {t_U as t_U}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {t_U as t_U}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {U_A as U_A}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {U_A as U_A}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {U_B as U_B}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {U_B as U_B}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {U_C as U_C}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {U_C as U_C}
 
-include Cyclic_modules.Enums_a.Rec_bundle_1009707801 {f as f}
+include Cyclic_modules.Enums_a.Cyclic_bundle_1009707801 {f as f}
 '''
-"Cyclic_modules.Late_skip_a.Rec_bundle_658016071.fst" = '''
-module Cyclic_modules.Late_skip_a.Rec_bundle_658016071
+"Cyclic_modules.Late_skip_a.Cyclic_bundle_658016071.fst" = '''
+module Cyclic_modules.Late_skip_a.Cyclic_bundle_658016071
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -197,7 +213,7 @@ module Cyclic_modules.Late_skip_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Late_skip_a.Rec_bundle_658016071 {ff_749016415 as f}
+include Cyclic_modules.Late_skip_a.Cyclic_bundle_658016071 {ff_749016415 as f}
 '''
 "Cyclic_modules.Late_skip_b.fst" = '''
 module Cyclic_modules.Late_skip_b
@@ -205,10 +221,10 @@ module Cyclic_modules.Late_skip_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Late_skip_a.Rec_bundle_658016071 {ff_377825240 as f}
+include Cyclic_modules.Late_skip_a.Cyclic_bundle_658016071 {ff_377825240 as f}
 '''
-"Cyclic_modules.M1.Rec_bundle_892895908.fst" = '''
-module Cyclic_modules.M1.Rec_bundle_892895908
+"Cyclic_modules.M1.Cyclic_bundle_892895908.fst" = '''
+module Cyclic_modules.M1.Cyclic_bundle_892895908
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -229,7 +245,7 @@ module Cyclic_modules.M1
 open Core
 open FStar.Mul
 
-include Cyclic_modules.M1.Rec_bundle_892895908 {a as a}
+include Cyclic_modules.M1.Cyclic_bundle_892895908 {a as a}
 '''
 "Cyclic_modules.M2.fst" = '''
 module Cyclic_modules.M2
@@ -237,11 +253,11 @@ module Cyclic_modules.M2
 open Core
 open FStar.Mul
 
-include Cyclic_modules.M1.Rec_bundle_892895908 {c as c}
+include Cyclic_modules.M1.Cyclic_bundle_892895908 {c as c}
 
-include Cyclic_modules.M1.Rec_bundle_892895908 {d as d}
+include Cyclic_modules.M1.Cyclic_bundle_892895908 {d as d}
 
-include Cyclic_modules.M1.Rec_bundle_892895908 {b as b}
+include Cyclic_modules.M1.Cyclic_bundle_892895908 {b as b}
 '''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec
@@ -273,8 +289,8 @@ and g2 (x: t_T) : t_T =
   | T_t1  -> g1 x
   | T_t2  -> hf x
 '''
-"Cyclic_modules.Rec1_same_name.Rec_bundle_563905053.fst" = '''
-module Cyclic_modules.Rec1_same_name.Rec_bundle_563905053
+"Cyclic_modules.Rec1_same_name.Cyclic_bundle_563905053.fst" = '''
+module Cyclic_modules.Rec1_same_name.Cyclic_bundle_563905053
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -289,7 +305,7 @@ module Cyclic_modules.Rec1_same_name
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec1_same_name.Rec_bundle_563905053 {ff_533409751 as f}
+include Cyclic_modules.Rec1_same_name.Cyclic_bundle_563905053 {ff_533409751 as f}
 '''
 "Cyclic_modules.Rec2_same_name.fst" = '''
 module Cyclic_modules.Rec2_same_name
@@ -297,26 +313,10 @@ module Cyclic_modules.Rec2_same_name
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec1_same_name.Rec_bundle_563905053 {ff_91805216 as f}
+include Cyclic_modules.Rec1_same_name.Cyclic_bundle_563905053 {ff_91805216 as f}
 '''
-"Cyclic_modules.Rec_bundle_367033742.fst" = '''
-module Cyclic_modules.Rec_bundle_367033742
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-let f (_: Prims.unit) : Prims.unit = ()
-
-let g (_: Prims.unit) : Prims.unit = f ()
-
-let h (_: Prims.unit) : Prims.unit =
-  let _:Prims.unit = g () in
-  Cyclic_modules.C.i ()
-
-let h2 (_: Prims.unit) : Prims.unit = Cyclic_modules.C.i ()
-'''
-"Cyclic_modules.Typ_a.Rec_bundle_830459646.fst" = '''
-module Cyclic_modules.Typ_a.Rec_bundle_830459646
+"Cyclic_modules.Typ_a.Cyclic_bundle_830459646.fst" = '''
+module Cyclic_modules.Typ_a.Cyclic_bundle_830459646
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -343,15 +343,15 @@ module Cyclic_modules.Typ_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T as t_T}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T as t_T}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {T_T as T_T}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {T_T as T_T}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_TRec as t_TRec}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_TRec as t_TRec}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {TRec_T as TRec_T}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {TRec_T as TRec_T}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {TRec_Empty as TRec_Empty}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {TRec_Empty as TRec_Empty}
 '''
 "Cyclic_modules.Typ_b.fst" = '''
 module Cyclic_modules.Typ_b
@@ -359,26 +359,26 @@ module Cyclic_modules.Typ_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T1 as t_T1}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T1 as t_T1}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {T1_T1 as T1_T1}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {T1_T1 as T1_T1}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T1_cast_to_repr as t_T1_cast_to_repr}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T1_cast_to_repr as t_T1_cast_to_repr}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T2 as t_T2}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T2 as t_T2}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {T2_T2 as T2_T2}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {T2_T2 as T2_T2}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T1Rec as t_T1Rec}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T1Rec as t_T1Rec}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {T1Rec_T1 as T1Rec_T1}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {T1Rec_T1 as T1Rec_T1}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {t_T2Rec as t_T2Rec}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {t_T2Rec as t_T2Rec}
 
-include Cyclic_modules.Typ_a.Rec_bundle_830459646 {T2Rec_T2 as T2Rec_T2}
+include Cyclic_modules.Typ_a.Cyclic_bundle_830459646 {T2Rec_T2 as T2Rec_T2}
 '''
-"Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522.fst" = '''
-module Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522
+"Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522.fst" = '''
+module Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -400,15 +400,15 @@ module Cyclic_modules.Variant_constructor_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {t_Context as t_Context}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {t_Context as t_Context}
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {Context_A as Context_A}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {Context_A as Context_A}
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {Context_B as Context_B}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {Context_B as Context_B}
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {test as impl__Context__test}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {test as impl__Context__test}
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {f as f}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {f as f}
 '''
 "Cyclic_modules.Variant_constructor_b.fst" = '''
 module Cyclic_modules.Variant_constructor_b
@@ -416,7 +416,7 @@ module Cyclic_modules.Variant_constructor_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Variant_constructor_a.Rec_bundle_748213522 {h as h}
+include Cyclic_modules.Variant_constructor_a.Cyclic_bundle_748213522 {h as h}
 '''
 "Cyclic_modules.fst" = '''
 module Cyclic_modules
@@ -424,9 +424,9 @@ module Cyclic_modules
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_367033742 {f as f}
+include Cyclic_modules.Cyclic_bundle_367033742 {f as f}
 
-include Cyclic_modules.Rec_bundle_367033742 {h as h}
+include Cyclic_modules.Cyclic_bundle_367033742 {h as h}
 
-include Cyclic_modules.Rec_bundle_367033742 {h2 as h2}
+include Cyclic_modules.Cyclic_bundle_367033742 {h2 as h2}
 '''
