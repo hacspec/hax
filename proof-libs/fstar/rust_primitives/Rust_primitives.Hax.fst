@@ -55,3 +55,5 @@ unfold let array_of_list (#t:Type)
   (l: list t {FStar.List.Tot.length l == n})
   : t_Array t (sz n)
   = Seq.seq_of_list l
+
+let box_new (#t:Type) (v: t): Alloc.Boxed.t_Box t Alloc.Alloc.t_Global = v
