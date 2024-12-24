@@ -367,6 +367,10 @@ module Make (F : Features.T) = struct
                           bounds_impls;
                         };
                   }
+            (* Match scrutinees need to be ascribed as well
+               (see https://github.com/hacspec/hax/issues/1207).*)
+            | Match { scrutinee; arms } ->
+                { e with e = Match { scrutinee = ascribe scrutinee; arms } }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
                 if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e

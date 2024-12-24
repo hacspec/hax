@@ -153,7 +153,7 @@ let numeric (_: Prims.unit) : Prims.unit =
 
 let patterns (_: Prims.unit) : Prims.unit =
   let _:Prims.unit =
-    match 1uy with
+    match 1uy <: u8 with
     | 2uy -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in

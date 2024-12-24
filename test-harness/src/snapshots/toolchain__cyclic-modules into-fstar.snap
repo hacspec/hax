@@ -270,22 +270,22 @@ type t_T =
   | T_t2 : t_T
 
 let t_T_cast_to_repr (x: t_T) : isize =
-  match x with
+  match x <: t_T with
   | T_t1  -> isz 0
   | T_t2  -> isz 1
 
 let rec hf (x: t_T) : t_T =
-  match x with
+  match x <: t_T with
   | T_t1  -> hf (T_t2 <: t_T)
   | T_t2  -> x
 
 let rec g1 (x: t_T) : t_T =
-  match x with
+  match x <: t_T with
   | T_t1  -> g2 x
   | T_t2  -> T_t1 <: t_T
 
 and g2 (x: t_T) : t_T =
-  match x with
+  match x <: t_T with
   | T_t1  -> g1 x
   | T_t2  -> hf x
 '''
@@ -325,7 +325,7 @@ type t_T1 = | T1_T1 : t_T1
 
 type t_T = | T_T : t_T1 -> t_T
 
-let t_T1_cast_to_repr (x: t_T1) : isize = match x with | T1_T1  -> isz 0
+let t_T1_cast_to_repr (x: t_T1) : isize = match x <: t_T1 with | T1_T1  -> isz 0
 
 type t_T2 = | T2_T2 : t_T -> t_T2
 
