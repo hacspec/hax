@@ -1608,7 +1608,6 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
   in
   Print.pitem item
-  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
        | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
@@ -1618,6 +1617,7 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
+  |> List.filter ~f:(function `Impl _, _ when no_impl -> false | _ -> true)
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
