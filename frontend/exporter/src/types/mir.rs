@@ -5,6 +5,8 @@
 use crate::prelude::*;
 use crate::sinto_as_usize;
 #[cfg(feature = "rustc")]
+use rustc_middle::{mir, ty};
+#[cfg(feature = "rustc")]
 use tracing::trace;
 
 #[derive_group(Serializers)]
@@ -415,9 +417,8 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
 ) -> TerminatorKind {
-    use rustc_middle::mir::Operand;
-    use rustc_middle::ty::TyKind;
-    let rustc_middle::mir::TerminatorKind::Call {
+    let tcx = s.base().tcx;
+    let mir::TerminatorKind::Call {
         func,
         args,
         destination,
@@ -430,8 +431,12 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         unreachable!()
     };
 
-    let ty = func.ty(&s.mir().local_decls, s.base().tcx);
-    let fun = if let TyKind::FnDef(def_id, generics) = ty.kind() {
+    let ty = func.ty(&s.mir().local_decls, tcx);
+    let hax_ty: crate::Ty = ty.sinto(s);
+    let TyKind::Arrow(sig) = hax_ty.kind() else {
+        unreachable!("Attempting to call non-function type: {ty:?}")
+    };
+    let fun_op = if let ty::TyKind::FnDef(def_id, generics) = ty.kind() {
         // The type of the value is one of the singleton types that corresponds to each function,
         // which is enough information.
         let (def_id, generics, trait_refs, trait_info) =
@@ -443,6 +448,7 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
             trait_info,
         }
     } else {
+        use mir::Operand;
         match func {
             Operand::Constant(_) => {
                 unimplemented!("{:?}", func);
@@ -458,8 +464,27 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         }
     };
 
+    let late_bound_generics = sig
+        .bound_vars
+        .iter()
+        .map(|var| match var {
+            BoundVariableKind::Region(r) => r,
+            BoundVariableKind::Ty(..) => {
+                unreachable!("Found late-bound type variable")
+            }
+            BoundVariableKind::Const => {
+                unreachable!("Found late-bound const variable")
+            }
+        })
+        .map(|_| {
+            GenericArg::Lifetime(Region {
+                kind: RegionKind::ReErased,
+            })
+        })
+        .collect();
     TerminatorKind::Call {
-        fun,
+        fun: fun_op,
+        late_bound_generics,
         args: args.sinto(s),
         destination: destination.sinto(s),
         target: target.sinto(s),
@@ -605,6 +630,11 @@ pub enum TerminatorKind {
     )]
     Call {
         fun: FunOperand,
+        /// A `FunOperand` is a value of type `fn<...> A -> B`. The generics in `<...>` are called
+        /// "late-bound" and are instantiated anew at each call site. This list provides the
+        /// generics used at this call-site. They are all lifetimes and at the time of writing are
+        /// all erased lifetimes.
+        late_bound_generics: Vec<GenericArg>,
         args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
