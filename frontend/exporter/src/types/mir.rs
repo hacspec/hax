@@ -410,75 +410,61 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     (def_id.sinto(s), generics, trait_refs, source)
 }
 
-/// Get a `FunOperand` from an `Operand` used in a function call.
-/// Return the [DefId] of the function referenced by an operand, with the
-/// parameters substitution.
-/// The [Operand] comes from a [TerminatorKind::Call].
-#[cfg(feature = "rustc")]
-fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
-    s: &S,
-    op: &rustc_middle::mir::Operand<'tcx>,
-) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
-    // Match on the func operand: it should be a constant as we don't support
-    // closures for now.
-    use rustc_middle::mir::Operand;
-    use rustc_middle::ty::TyKind;
-    let ty = op.ty(&s.mir().local_decls, s.base().tcx);
-    trace!("type: {:?}", ty);
-    // If the type of the value is one of the singleton types that corresponds to each function,
-    // that's enough information.
-    if let TyKind::FnDef(def_id, generics) = ty.kind() {
-        let (fun_id, generics, trait_refs, trait_info) =
-            get_function_from_def_id_and_generics(s, *def_id, *generics);
-        return (FunOperand::Id(fun_id), generics, trait_refs, trait_info);
-    }
-    match op {
-        Operand::Constant(_) => {
-            unimplemented!("{:?}", op);
-        }
-        Operand::Move(place) => {
-            // Function pointer. A fn pointer cannot have bound variables or trait references, so
-            // we don't need to extract generics, trait refs, etc.
-            let place = place.sinto(s);
-            (FunOperand::Move(place), Vec::new(), Vec::new(), None)
-        }
-        Operand::Copy(_place) => {
-            unimplemented!("{:?}", op);
-        }
-    }
-}
-
 #[cfg(feature = "rustc")]
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
 ) -> TerminatorKind {
-    if let rustc_middle::mir::TerminatorKind::Call {
+    use rustc_middle::mir::Operand;
+    use rustc_middle::ty::TyKind;
+    let rustc_middle::mir::TerminatorKind::Call {
         func,
         args,
         destination,
         target,
         unwind,
-        call_source,
         fn_span,
+        ..
     } = terminator
-    {
-        let (fun, generics, trait_refs, trait_info) = get_function_from_operand(s, func);
+    else {
+        unreachable!()
+    };
 
-        TerminatorKind::Call {
-            fun,
+    let ty = func.ty(&s.mir().local_decls, s.base().tcx);
+    let fun = if let TyKind::FnDef(def_id, generics) = ty.kind() {
+        // The type of the value is one of the singleton types that corresponds to each function,
+        // which is enough information.
+        let (def_id, generics, trait_refs, trait_info) =
+            get_function_from_def_id_and_generics(s, *def_id, *generics);
+        FunOperand::Static {
+            def_id,
             generics,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            call_source: call_source.sinto(s),
-            fn_span: fn_span.sinto(s),
             trait_refs,
             trait_info,
         }
     } else {
-        unreachable!()
+        match func {
+            Operand::Constant(_) => {
+                unimplemented!("{:?}", func);
+            }
+            Operand::Move(place) => {
+                // Function pointer or closure.
+                let place = place.sinto(s);
+                FunOperand::DynamicMove(place)
+            }
+            Operand::Copy(_place) => {
+                unimplemented!("{:?}", func);
+            }
+        }
+    };
+
+    TerminatorKind::Call {
+        fun,
+        args: args.sinto(s),
+        destination: destination.sinto(s),
+        target: target.sinto(s),
+        unwind: unwind.sinto(s),
+        fn_span: fn_span.sinto(s),
     }
 }
 
@@ -562,13 +548,25 @@ pub enum SwitchTargets {
     SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
+/// A value of type `fn<...> A -> B` that can be called.
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FunOperand {
-    /// Call to a top-level function designated by its id
-    Id(DefId),
-    /// Use of a closure
-    Move(Place),
+    /// Call to a statically-known function.
+    Static {
+        def_id: DefId,
+        /// If `Some`, this is a method call on the given trait reference. Otherwise this is a call
+        /// to a known function.
+        trait_info: Option<ImplExpr>,
+        /// If this is a trait method call, this only includes the method generics; the trait
+        /// generics are included in the `ImplExpr` in `trait_info`.
+        generics: Vec<GenericArg>,
+        /// Trait predicates required by the function generics. Like for `generics`, this only
+        /// includes the predicates required by the method, if applicable.
+        trait_refs: Vec<ImplExpr>,
+    },
+    /// Use of a closure or a function pointer value. Counts as a move from the given place.
+    DynamicMove(Place),
 }
 
 #[derive_group(Serializers)]
@@ -607,18 +605,11 @@ pub enum TerminatorKind {
     )]
     Call {
         fun: FunOperand,
-        /// We truncate the substitution so as to only include the arguments
-        /// relevant to the method (and not the trait) if it is a trait method
-        /// call. See [ParamsInfo] for the full details.
-        generics: Vec<GenericArg>,
         args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
-        call_source: CallSource,
         fn_span: Span,
-        trait_refs: Vec<ImplExpr>,
-        trait_info: Option<ImplExpr>,
     },
     TailCall {
         func: Operand,
@@ -1208,7 +1199,6 @@ sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
-sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
 sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);
