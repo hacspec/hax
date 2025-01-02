@@ -206,13 +206,15 @@ pub fn solve_item_implied_traits<'tcx, S: UnderOwnerState<'tcx>>(
 fn solve_item_traits_inner<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     generics: ty::GenericArgsRef<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    predicates: ty::GenericPredicates<'tcx>,
 ) -> Vec<ImplExpr> {
     use crate::rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let param_env = s.param_env();
-
     predicates
+        .predicates
+        .iter()
+        .map(|(clause, _span)| *clause)
         .filter_map(|clause| clause.as_trait_clause())
         .map(|clause| clause.to_poly_trait_ref())
         // Substitute the item generics

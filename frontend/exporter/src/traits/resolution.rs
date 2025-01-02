@@ -118,6 +118,11 @@ fn initial_search_predicates<'tcx>(
         predicates: &mut Vec<AnnotatedTraitPred<'tcx>>,
         pred_id: &mut usize,
     ) {
+        let next_item_origin = |pred_id: &mut usize| {
+            let origin = BoundPredicateOrigin::Item(*pred_id);
+            *pred_id += 1;
+            origin
+        };
         use DefKind::*;
         match tcx.def_kind(def_id) {
             // These inherit some predicates from their parent.
@@ -134,16 +139,18 @@ fn initial_search_predicates<'tcx>(
             }
             _ => {}
         }
-        predicates.extend(required_predicates(tcx, def_id).filter_map(|clause| {
-            clause.as_trait_clause().map(|clause| {
-                let id = *pred_id;
-                *pred_id += 1;
-                AnnotatedTraitPred {
-                    origin: BoundPredicateOrigin::Item(id),
-                    clause,
-                }
-            })
-        }));
+        predicates.extend(
+            required_predicates(tcx, def_id)
+                .predicates
+                .iter()
+                .map(|(clause, _span)| *clause)
+                .filter_map(|clause| {
+                    clause.as_trait_clause().map(|clause| AnnotatedTraitPred {
+                        origin: next_item_origin(pred_id),
+                        clause,
+                    })
+                }),
+        );
     }
 
     let mut predicates = vec![];
@@ -158,6 +165,9 @@ fn parents_trait_predicates<'tcx>(
 ) -> Vec<PolyTraitPredicate<'tcx>> {
     let self_trait_ref = pred.to_poly_trait_ref();
     implied_predicates(tcx, pred.def_id())
+        .predicates
+        .iter()
+        .map(|(clause, _span)| *clause)
         // Substitute with the `self` args so that the clause makes sense in the
         // outside context.
         .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
@@ -270,6 +280,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         // The bounds that hold on the associated type.
         let item_bounds = implied_predicates(tcx, alias_ty.def_id)
+            .predicates
+            .iter()
+            .map(|(clause, _span)| *clause)
             .filter_map(|pred| pred.as_trait_clause())
             // Substitute the item generics
             .map(|pred| EarlyBinder::bind(pred).instantiate(tcx, alias_ty.args))
@@ -425,6 +438,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         let tcx = self.tcx;
         required_predicates(tcx, def_id)
+            .predicates
+            .iter()
+            .map(|(clause, _span)| *clause)
             .filter_map(|clause| clause.as_trait_clause())
             .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
             // Substitute the item generics
