@@ -98,14 +98,10 @@ pub fn implied_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPred
         // We consider all predicates on traits to be outputs
         Trait => predicates_defined_on(tcx, def_id),
         AssocTy if matches!(tcx.def_kind(parent.unwrap()), Trait) => {
-            // TODO: `item_bounds` contains parent traits, use `explicit_item_bounds` instead.
-            let clauses = tcx.item_bounds(def_id).instantiate_identity();
-            use crate::rustc_middle::query::Key;
-            let span = clauses.default_span(tcx);
-            let predicates = clauses.iter().map(|c| (c, span));
             GenericPredicates {
                 parent,
-                predicates: tcx.arena.alloc_from_iter(predicates),
+                // `skip_binder` is for an `EarlyBinder`
+                predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
                 ..GenericPredicates::default()
             }
         }
