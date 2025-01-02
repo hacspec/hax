@@ -131,7 +131,7 @@ fn initial_search_predicates<'tcx>(
                 acc_predicates(tcx, parent, predicates, pred_id);
             }
             Trait => {
-                let self_pred = self_predicate(tcx, def_id).unwrap().upcast(tcx);
+                let self_pred = self_predicate(tcx, def_id).upcast(tcx);
                 predicates.push(AnnotatedTraitPred {
                     origin: BoundPredicateOrigin::SelfPred,
                     clause: self_pred,

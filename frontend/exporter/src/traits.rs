@@ -241,7 +241,7 @@ pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
 
     let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
     // The "self" predicate in the context of the trait.
-    let self_pred = self_predicate(tcx, tr_def_id).unwrap();
+    let self_pred = self_predicate(tcx, tr_def_id);
     // Substitute to be in the context of the current item.
     let generics = generics.truncate_to(tcx, tcx.generics_of(tr_def_id));
     let self_pred = EarlyBinder::bind(self_pred).instantiate(tcx, generics);

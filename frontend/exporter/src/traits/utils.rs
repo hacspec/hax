@@ -79,13 +79,9 @@ pub fn required_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPre
 }
 
 /// The special "self" predicate on a trait.
-pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<PolyTraitRef<'tcx>> {
-    use DefKind::*;
-    match tcx.def_kind(def_id) {
-        // Copied from the code of `tcx.predicates_of()`.
-        Trait => Some(Binder::dummy(TraitRef::identity(tcx, def_id))),
-        _ => None,
-    }
+pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> PolyTraitRef<'tcx> {
+    // Copied from the code of `tcx.predicates_of()`.
+    Binder::dummy(TraitRef::identity(tcx, def_id))
 }
 
 /// The predicates that can be deduced from the presence of this item in a signature. We only
