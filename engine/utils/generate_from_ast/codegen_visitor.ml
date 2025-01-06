@@ -230,7 +230,6 @@ let is_allowed_opaque name =
       "span";
       "string";
       "todo";
-      "quote";
       "float_kind";
       "int_kind";
       "item_quote_origin";
