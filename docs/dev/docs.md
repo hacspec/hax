@@ -10,6 +10,8 @@ pip install mkdocs-glightbox mkdocs-nav-weight mkdocs-material
 
 [Official docs](https://squidfunk.github.io/mkdocs-material).
 
+Note that we don not use `mkdocs-material-adr` because it's not working.
+
 ### Commands
 
 * `mkdocs new [dir-name]` - Create a new project.
