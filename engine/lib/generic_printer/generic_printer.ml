@@ -232,15 +232,12 @@ module Make (F : Features.T) = struct
       `module_path_separator`. *)
 
       method quote ~contents ~witness:_ : document =
-        List.map
-          ~f:(fun doc ->
-            match doc#v with
-            | Verbatim code -> string code
-            | Expr e -> self#print_expr AstPosition_Quote e
-            | Pattern p -> self#print_pat AstPosition_Quote p
-            | Typ t -> self#print_ty AstPosition_Quote t)
-          contents
-        |> concat
+        List.map ~f:(fun doc -> doc#p) contents |> concat
+
+      method quote_content_Verbatim v = string v
+      method quote_content_Expr e = e#p
+      method quote_content_Pattern p = p#p
+      method quote_content_Typ t = t#p
 
       (** {2:specialize-expr Specialized printers for [expr]} *)
 

@@ -319,16 +319,6 @@ struct
       method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
         default_document_for "projection_predicate"
 
-      method quote_content_Expr _x1 = default_document_for "quote_content_Expr"
-
-      method quote_content_Pattern _x1 =
-        default_document_for "quote_content_Pattern"
-
-      method quote_content_Typ _x1 = default_document_for "quote_content_Typ"
-
-      method quote_content_Verbatim _x1 =
-        default_document_for "quote_content_Verbatim"
-
       method safety_kind_Safe = default_document_for "safety_kind_Safe"
       method safety_kind_Unsafe _x1 = default_document_for "safety_kind_Unsafe"
 
