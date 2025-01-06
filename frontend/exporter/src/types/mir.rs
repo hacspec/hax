@@ -436,7 +436,11 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
     let sig = match hax_ty.kind() {
         TyKind::Arrow(sig) => sig,
         TyKind::Closure(_, args) => &args.untupled_sig,
-        _ => unreachable!("Attempting to call non-function type: {ty:?}"),
+        _ => supposely_unreachable_fatal!(
+            s,
+            "TerminatorKind_Call_expected_fn_type";
+            { ty }
+        ),
     };
     let fun_op = if let ty::TyKind::FnDef(def_id, generics) = ty.kind() {
         // The type of the value is one of the singleton types that corresponds to each function,
@@ -471,11 +475,12 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         .iter()
         .map(|var| match var {
             BoundVariableKind::Region(r) => r,
-            BoundVariableKind::Ty(..) => {
-                unreachable!("Found late-bound type variable")
-            }
-            BoundVariableKind::Const => {
-                unreachable!("Found late-bound const variable")
+            BoundVariableKind::Ty(..) | BoundVariableKind::Const => {
+                supposely_unreachable_fatal!(
+                    s,
+                    "non_lifetime_late_bound";
+                    { var }
+                )
             }
         })
         .map(|_| {
