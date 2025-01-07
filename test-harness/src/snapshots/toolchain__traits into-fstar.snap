@@ -157,6 +157,23 @@ let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X 
   let _:u8 = f_to_t #v_X #u8 #FStar.Tactics.Typeclasses.solve x in
   ()
 '''
+"Traits.Impl_expr_in_goal.fst" = '''
+module Traits.Impl_expr_in_goal
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_T2 (v_Self: Type0) = { __marker_trait_t_T2:Prims.unit }
+
+class t_T1 (v_Self: Type0) = { f_Assoc:Type0 }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl
+      (#v_U: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_T1 v_U)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: t_T2 i1.f_Assoc)
+    : t_T2 v_U = { __marker_trait = () }
+'''
 "Traits.Implicit_dependencies_issue_667_.Define_type.fst" = '''
 module Traits.Implicit_dependencies_issue_667_.Define_type
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
