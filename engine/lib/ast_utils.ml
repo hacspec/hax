@@ -230,6 +230,7 @@ module Make (F : Features.T) = struct
                 Hashtbl.find_or_add s name ~default:(fun () ->
                     "i" ^ Int.to_string (Hashtbl.length s))
               in
+              let goal = super#visit_trait_goal (enabled, s) goal in
               GCType { goal; name = new_name }
           | _ -> super#visit_generic_constraint (enabled, s) gc
 
