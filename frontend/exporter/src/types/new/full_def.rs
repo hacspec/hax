@@ -252,7 +252,7 @@ pub enum FullDefKind<Body> {
         inline: InlineAttr,
         #[value(s.base().tcx.constness(s.owner_id()) == rustc_hir::Constness::Const)]
         is_const: bool,
-        #[value(get_method_sig(s).sinto(s))]
+        #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
         #[value(s.owner_id().as_local().map(|ldid| Body::body(ldid, s)))]
         body: Option<Body>,
@@ -271,8 +271,10 @@ pub enum FullDefKind<Body> {
         is_const: bool,
         #[value({
             let fun_type = s.base().tcx.type_of(s.owner_id()).instantiate_identity();
-            let ty::TyKind::Closure(_, args) = fun_type.kind() else { unreachable!() };
-            ClosureArgs::sfrom(s, s.owner_id(), args.as_closure())
+            match fun_type.kind() {
+                ty::TyKind::Closure(_, args) => args.as_closure().sinto(s),
+                _ => unreachable!(),
+            }
         })]
         args: ClosureArgs,
     },
@@ -765,70 +767,6 @@ where
             }
         }
     }
-}
-
-/// The signature of a method impl may be a subtype of the one expected from the trait decl, as in
-/// the example below. For correctness, we must be able to map from the method generics declared in
-/// the trait to the actual method generics. Because this would require type inference, we instead
-/// simply return the declared signature. This will cause issues if it is possible to use such a
-/// more-specific implementation with its more-specific type, but we have a few other issues with
-/// lifetime-generic function pointers anyway so this is unlikely to cause problems.
-///
-/// ```ignore
-/// trait MyCompare<Other>: Sized {
-///     fn compare(self, other: Other) -> bool;
-/// }
-/// impl<'a> MyCompare<&'a ()> for &'a () {
-///     // This implementation is more general because it works for non-`'a` refs. Note that only
-///     // late-bound vars may differ in this way.
-///     // `<&'a () as MyCompare<&'a ()>>::compare` has type `fn<'b>(&'a (), &'b ()) -> bool`,
-///     // but type `fn(&'a (), &'a ()) -> bool` was expected from the trait declaration.
-///     fn compare<'b>(self, _other: &'b ()) -> bool {
-///         true
-///     }
-/// }
-/// ```
-#[cfg(feature = "rustc")]
-fn get_method_sig<'tcx, S>(s: &S) -> ty::PolyFnSig<'tcx>
-where
-    S: UnderOwnerState<'tcx>,
-{
-    let tcx = s.base().tcx;
-    let def_id = s.owner_id();
-    let real_sig = tcx.fn_sig(def_id).instantiate_identity();
-    let item = tcx.associated_item(def_id);
-    if !matches!(item.container, ty::AssocItemContainer::ImplContainer) {
-        return real_sig;
-    }
-    let Some(decl_method_id) = item.trait_item_def_id else {
-        return real_sig;
-    };
-    let declared_sig = tcx.fn_sig(decl_method_id);
-
-    // TODO(Nadrieril): Temporary hack: if the signatures have the same number of bound vars, we
-    // keep the real signature. While the declared signature is more correct, it is also less
-    // normalized and we can't normalize without erasing regions but regions are crucial in
-    // function signatures. Hence we cheat here, until charon gains proper normalization
-    // capabilities.
-    if declared_sig.skip_binder().bound_vars().len() == real_sig.bound_vars().len() {
-        return real_sig;
-    }
-
-    let impl_def_id = item.container_id(tcx);
-    // The trait predicate that is implemented by the surrounding impl block.
-    let implemented_trait_ref = tcx
-        .impl_trait_ref(impl_def_id)
-        .unwrap()
-        .instantiate_identity();
-    // Construct arguments for the declared method generics in the context of the implemented
-    // method generics.
-    let impl_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-    let decl_args = impl_args.rebase_onto(tcx, impl_def_id, implemented_trait_ref.args);
-    let sig = declared_sig.instantiate(tcx, decl_args);
-    // Avoids accidentally using the same lifetime name twice in the same scope
-    // (once in impl parameters, second in the method declaration late-bound vars).
-    let sig = tcx.anonymize_bound_vars(sig);
-    sig
 }
 
 #[cfg(feature = "rustc")]

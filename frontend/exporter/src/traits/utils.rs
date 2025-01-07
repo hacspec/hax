@@ -76,9 +76,6 @@ pub fn required_predicates<'tcx>(
                 .iter()
                 .map(|(clause, _span)| *clause),
         ),
-        // The tuple struct/variant constructor functions inherit the generics and predicates from
-        // their parents.
-        Variant | Ctor(..) => return required_predicates(tcx, tcx.parent(def_id)),
         // We consider all predicates on traits to be outputs
         Trait => None,
         // `predicates_defined_on` ICEs on other def kinds.

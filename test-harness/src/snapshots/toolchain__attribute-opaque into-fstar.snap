@@ -110,7 +110,7 @@ val t_OpaqueEnum (v_X: usize) (v_T v_U: Type0) : eqtype
 val t_OpaqueStruct (v_X: usize) (v_T v_U: Type0) : eqtype
 
 class t_TrGeneric (v_Self: Type0) (v_U: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_13225137425257751668:Core.Clone.t_Clone v_U;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_6168282666194871449:Core.Clone.t_Clone v_U;
   f_f_pre:v_U -> Type0;
   f_f_post:v_U -> v_Self -> Type0;
   f_f:x0: v_U -> Prims.Pure v_Self (f_f_pre x0) (fun result -> f_f_post x0 result)

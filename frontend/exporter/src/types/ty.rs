@@ -802,20 +802,14 @@ pub enum TyKind {
             let sig = tcx.fn_sig(*def).instantiate(tcx, generics);
             TyKind::Arrow(Box::new(sig.sinto(s)))
         },
-    )]
-    /// Reflects [`ty::TyKind::FnPtr`] and [`ty::TyKind::FnDef`]
-    Arrow(Box<PolyFnSig>),
-
-    #[custom_arm(
-        ty::TyKind::Closure (def_id, generics) => {
-            let closure = generics.as_closure();
-            TyKind::Closure(
-                def_id.sinto(s),
-                ClosureArgs::sfrom(s, *def_id, closure),
-            )
+        ty::TyKind::Closure (_def_id, generics) => {
+            let sig = generics.as_closure().sig();
+            let sig = s.base().tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
+            TyKind::Arrow(Box::new(sig.sinto(s)))
         },
     )]
-    Closure(DefId, ClosureArgs),
+    /// Reflects [`ty::TyKind::FnPtr`], [`ty::TyKind::FnDef`] and [`ty::TyKind::Closure`]
+    Arrow(Box<PolyFnSig>),
 
     #[custom_arm(
         ty::TyKind::Adt(adt_def, generics) => {
@@ -1278,55 +1272,19 @@ pub enum AliasRelationDirection {
 }
 
 /// Reflects [`ty::ClosureArgs`]
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: ty::ClosureArgs<ty::TyCtxt<'tcx>>, state: S as s)]
+#[derive(Clone, Debug, JsonSchema)]
 #[derive_group(Serializers)]
 pub struct ClosureArgs {
-    /// The base kind of this closure. The kinds are ordered by inclusion: any `Fn` works as an
-    /// `FnMut`, and any `FnMut` works as an `FnOnce`.
+    #[value(self.kind().sinto(s))]
     pub kind: ClosureKind,
-    /// The arguments to the parent (i.e., the item which defines the closure).
+    #[value(self.parent_args().sinto(s))]
     pub parent_args: Vec<GenericArg>,
-    /// The solved predicates from the parent (i.e., the item which defines the closure).
-    pub parent_trait_refs: Vec<ImplExpr>,
-    /// The proper `fn(A, B, C) -> D` signature of the closure.
-    pub untupled_sig: PolyFnSig,
-    /// The signature of the closure as one input and one output, where the input arguments are
-    /// tupled. This is relevant to implementing the `Fn*` traits.
-    pub tupled_sig: PolyFnSig,
-    /// The set of captured variables. Together they form the state of the closure.
+    #[value(self.sig().sinto(s))]
+    pub sig: PolyFnSig,
+    #[value(self.upvar_tys().sinto(s))]
     pub upvar_tys: Vec<Ty>,
-}
-
-#[cfg(feature = "rustc")]
-impl ClosureArgs {
-    // Manual implementation because we need the `def_id` of the closure.
-    pub(crate) fn sfrom<'tcx, S>(
-        s: &S,
-        def_id: RDefId,
-        from: ty::ClosureArgs<ty::TyCtxt<'tcx>>,
-    ) -> Self
-    where
-        S: UnderOwnerState<'tcx>,
-    {
-        let tcx = s.base().tcx;
-        let sig = from.sig();
-        ClosureArgs {
-            kind: from.kind().sinto(s),
-            parent_args: from.parent_args().sinto(s),
-            // The solved predicates from the parent (i.e., the item which defines the closure).
-            parent_trait_refs: {
-                // TODO: handle nested closures
-                let parent = tcx.generics_of(def_id).parent.unwrap();
-                let parent_generics_ref = tcx.mk_args(from.parent_args());
-                solve_item_required_traits(s, parent, parent_generics_ref)
-            },
-            tupled_sig: sig.sinto(s),
-            untupled_sig: tcx
-                .signature_unclosure(sig, rustc_hir::Safety::Safe)
-                .sinto(s),
-            upvar_tys: from.upvar_tys().sinto(s),
-        }
-    }
 }
 
 /// Reflects [`ty::ClosureKind`]
