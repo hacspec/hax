@@ -27,6 +27,32 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Loops.And_mut_side_effect_loop.fst" = '''
+module Loops.And_mut_side_effect_loop
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let looping (array: t_Array u8 (sz 5)) : t_Array u8 (sz 5) =
+  let array:t_Array u8 (sz 5) =
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (Core.Slice.impl__len #u8 (array <: t_Slice u8) <: usize)
+      (fun array temp_1_ ->
+          let array:t_Array u8 (sz 5) = array in
+          let _:usize = temp_1_ in
+          true)
+      array
+      (fun array i ->
+          let array:t_Array u8 (sz 5) = array in
+          let i:usize = i in
+          Rust_primitives.Hax.Monomorphized_update_at.update_at_usize array
+            i
+            (cast (i <: usize) <: u8)
+          <:
+          t_Array u8 (sz 5))
+  in
+  array
+'''
 "Loops.Control_flow.fst" = '''
 module Loops.Control_flow
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

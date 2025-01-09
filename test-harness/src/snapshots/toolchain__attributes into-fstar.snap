@@ -419,7 +419,7 @@ let impl: t_Foo Prims.unit =
     f_i
     =
     fun (x: u8) (y: u8) ->
-      let hax_temp_output:Prims.unit = () <: Prims.unit in
+      let _:Prims.unit = () <: Prims.unit in
       y
   }
 '''

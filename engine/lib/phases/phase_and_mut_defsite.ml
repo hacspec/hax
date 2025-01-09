@@ -116,9 +116,16 @@ struct
           match e.e with
           | GlobalVar (`TupleCons 0) -> e
           | _ ->
-              let lhs = UB.make_var_pat var e.typ e.span in
               let rhs = e in
-              let body = { e with e = LocalVar var } in
+              let lhs, body =
+                if [%eq: ty] e.typ UB.unit_typ then
+                  (* This case has been added to fix https://github.com/hacspec/hax/issues/720.
+                     It might need a better solution. *)
+                  ( UB.M.pat_PWild ~span:e.span ~typ:e.typ,
+                    UB.M.expr_unit ~span:e.span )
+                else
+                  (UB.make_var_pat var e.typ e.span, { e with e = LocalVar var })
+              in
               { body with e = Let { monadic = None; lhs; rhs; body } }
         in
         UB.map_body_of_nested_lets f e
