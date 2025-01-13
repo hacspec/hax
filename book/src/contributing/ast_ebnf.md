@@ -46,7 +46,7 @@ ty ::=
 | "*" expr | "*mut" expr  (* [b] *)
 | ident
 | (ty "->")* ty
-| dyn (goal)+ (* [c] *)
+| "dyn" (goal)+ (* [c] *)
 ```
 
 The patterns allowed reflect these types. Wildcard patterns, literal
@@ -164,7 +164,7 @@ ty ::=
 | "*" expr | "*mut" expr  (* [b] *)
 | ident
 | (ty "->")* ty
-| dyn (goal)+ (* [c] *)
+| "dyn" (goal)+ (* [c] *)
 
 pat ::=
 | "_"
