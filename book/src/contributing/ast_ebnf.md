@@ -1,6 +1,6 @@
 We currently take inputs from the following AST (visualization can be done
 using <https://rr.red-dove.com/ui>). Literals are strings, numbers and
-booleans
+booleans.
 
 ``` ebnf
 char ::= [a-zA-Z]
@@ -15,10 +15,10 @@ local_var ::= ident
 global_var ::= rust-path-identifier
 
 literal ::=
-| "\"" string "\""
+| '"' string '"'
 | "'" char "'"
 | int
-| float
+| float (* [a] *)
 | bool
 ```
 
@@ -37,16 +37,16 @@ ty ::=
 | "u128" | "usize"
 | "i8" | "i16" | "i32" | "i64"
 | "i128" | "isize"
-| "f16" | "f32" | "f64"
+| "f16" | "f32" | "f64"  (* [a] *)
 | "str"
 | (ty ",")*
 | "[" ty ";" int "]"
 | "[" ty "]"
-| "*const" ty | "*mut" ty
-| "*" expr | "*mut" expr
+| "*const" ty | "*mut" ty  (* [b] *)
+| "*" expr | "*mut" expr  (* [b] *)
 | ident
 | (ty "->")* ty
-| dyn (goal)+
+| dyn (goal)+ (* [c] *)
 ```
 
 The patterns allowed reflect these types. Wildcard patterns, literal
@@ -58,10 +58,10 @@ pat ::=
 | ident "{" (ident ":" pat ";")* "}"
 | ident "(" (pat ",")* ")"
 | (pat "|")* pat
-| "[" (pat ",")* "]"
+| "[" (pat ",")* "]"  (* [d] *)
 | "&" pat
 | literal
-| ("&")? ("mut")? ident ("@" pat)?
+| ("&")? ("mut")? ident ("@" pat)?  (* [e] *)
 ```
 
 The simple expressions are literals, local or global variables, type
@@ -87,17 +87,17 @@ expr ::=
 | local_var
 | global_var
 | expr "as" ty
-| "loop" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "while" "(" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "for" "(" pat "in" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "loop" "{" expr "}"
+| "while" "(" expr ")" "{" expr "}"
+| "for" "(" pat "in" expr ")" "{" expr "}"
+| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"
 | "break" expr
 | "continue"
 | pat "=" expr
 | "return" expr
 | expr "?"
-| "&" ("mut")? expr
-| "&" expr "as" "&const _"
+| "&" ("mut")? expr  (* [e] *)
+| "&" expr "as" "&const _"  (* [b] *)
 | "&mut" expr "as" "&mut _"
 | "|" pat "|" expr
 ```
@@ -108,7 +108,7 @@ definitions and implementations, and imports.
 ``` ebnf
 item ::=
 | "const" ident "=" expr
-| "static" ident "=" expr
+| "static" ident "=" expr  (* [b] *)
 | modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
 | "type" ident "=" ty
 | "enum" ident ("<" (generics ",")* ">")? "{" (ident ("(" (ty)* ")")? ",")* "}"
@@ -119,7 +119,7 @@ item ::=
 | "use" path ";"
 ```
 
-The full AST description
+## Full eBNF
 
 ``` ebnf
 char ::= [a-zA-Z]
@@ -134,7 +134,7 @@ local_var ::= ident
 global_var ::= rust-path-identifier
 
 literal ::=
-| "\"" string "\""
+| '"' string '"'
 | "'" char "'"
 | int
 | float  [a]
@@ -155,32 +155,32 @@ ty ::=
 | "u128" | "usize"
 | "i8" | "i16" | "i32" | "i64"
 | "i128" | "isize"
-| "f16" | "f32" | "f64"  [a]
+| "f16" | "f32" | "f64"  (* [a] *)
 | "str"
 | (ty ",")*
 | "[" ty ";" int "]"
 | "[" ty "]"
-| "*const" ty | "*mut" ty  [b]
-| "*" expr | "*mut" expr  [b]
+| "*const" ty | "*mut" ty  (* [b] *)
+| "*" expr | "*mut" expr  (* [b] *)
 | ident
 | (ty "->")* ty
-| dyn (goal)+  [c]
+| dyn (goal)+ (* [c] *)
 
 pat ::=
 | "_"
 | ident "{" (ident ":" pat ";")* "}"
 | ident "(" (pat ",")* ")"
 | (pat "|")* pat
-| "[" (pat ",")* "]"  [d]
+| "[" (pat ",")* "]"  (* [d] *)
 | "&" pat
 | literal
-| ("&")? ("mut")? ident ("@" pat)?  [e]
+| ("&")? ("mut")? ident ("@" pat)?  (* [e] *)
 
 modifiers ::=
 | ""
 | "unsafe" modifiers
 | "const" modifiers
-| "async" modifiers  [b]
+| "async" modifiers  (* [b] *)
 
 guard ::=
 | "if" "let" pat (":" ty)? "=" expr
@@ -202,17 +202,17 @@ expr ::=
 | local_var
 | global_var
 | expr "as" ty
-| "loop" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "while" "(" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "for" "(" pat "in" expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
-| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"$~[\subref{fig:ebnf-iterators}]$
+| "loop" "{" expr "}"
+| "while" "(" expr ")" "{" expr "}"
+| "for" "(" pat "in" expr ")" "{" expr "}"
+| "for" "(" "let" ident "in" expr ".." expr ")" "{" expr "}"
 | "break" expr
 | "continue"
 | pat "=" expr
 | "return" expr
 | expr "?"
-| "&" ("mut")? expr  [e]
-| "&" expr "as" "&const _"  [b]
+| "&" ("mut")? expr  (* [e] *)
+| "&" expr "as" "&const _"  (* [b] *)
 | "&mut" expr "as" "&mut _"
 | "|" pat "|" expr
 
@@ -226,7 +226,7 @@ trait_item ::=
 
 item ::=
 | "const" ident "=" expr
-| "static" ident "=" expr  [b]
+| "static" ident "=" expr  (* [b] *)
 | modifiers "fn" ident ("<" (generics ",")* ">")? "(" (pat ":" ty ",")* ")" (":" ty)? "{" expr "}"
 | "type" ident "=" ty
 | "enum" ident ("<" (generics ",")* ">")? "{" (ident ("(" (ty)* ")")? ",")* "}"
@@ -236,8 +236,10 @@ item ::=
 | "mod" ident "{" (item)* "}"
 | "use" path ";"
 ```
-(a) no support yet for raw pointers, async/await, static, extern, or union types
-(b) partial support for nested matching and range patterns
-(c) partial support for mutable borrows
-(d) most backends lack support for dynamic dispatch, floating point operations
-(e) some backends only handle specific forms of iterators
+## Footnotes
+
+* **[a]** no support yet for raw pointers, async/await, static, extern, or union types
+* **[b]** partial support for nested matching and range patterns
+* **[c]** partial support for mutable borrows
+* **[d]** most backends lack support for dynamic dispatch, floating point operations
+* **[e]** some backends only handle specific forms of iterators
