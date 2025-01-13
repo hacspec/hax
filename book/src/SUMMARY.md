@@ -20,6 +20,7 @@
 - [Contributing](contributing/intro.md)
     - [Architecture](contributing/architecture.md)
     - [Libraries & Macros](contributing/libraries_macros.md)
+    - [AST/EBNF](contributing/ast_ebnf.md)
     <!-- - [Hax Cargo subcommand]() -->
     <!-- - [Frontend: the Rustc driver]() -->
     <!-- - [Frontend: the exporter]() -->
