@@ -64,7 +64,7 @@ constructs](https://github.com/hacspec/hax?tab=readme-ov-file#supported-subset-o
 for extracting only a part of your crate. When running hax, if an item
 of your crate, say a function `my_crate::f`, is not handled by hax,
 you can append `-my_crate::f` to the `-i` flag. You can learn more
-about the `-i` flag [in the FAQ](../faq/include-flags.html).
+about the `-i` flag [in the FAQ](../faq/include-flags.md).
 
 
 
