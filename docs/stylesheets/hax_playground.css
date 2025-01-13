@@ -1,0 +1,11 @@
+.md-hax-playground::after {
+    display: none;
+}
+
+font-family: "Monaco",
+"Menlo",
+"Ubuntu Mono",
+"Consolas",
+"Source Code Pro",
+"source-code-pro",
+monospace;

@@ -3,9 +3,9 @@ theme:
   name: material
   logo: static/img/logo.png
   favicon: static/img/favicon.png
+  custom_dir: docs/overrides
   palette:
-    primary: indigo
-    accent: indigo
+    primary: white
   features:
     - content.code.copy
     - content.code.select
@@ -25,8 +25,15 @@ theme:
       deprecated: material/sticker-minus-outline
       superseded: material/sticker-alert-outline
       rejected: material/sticker-remove-outline
+extra_javascript:
+  - javascripts/hax_playground.js
+  - javascripts/ansi_up.js
+  - javascripts/fstar.js
+  - javascripts/lz-string.js
 extra_css:
   - stylesheets/tags-colors.css
+  - stylesheets/hax_playground.css
+  - stylesheets/logo.css
 extra:
   tags:
     Draft: draft
