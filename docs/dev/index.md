@@ -2,6 +2,7 @@
 weight: 5
 ---
 
-# Dev
+# Dev on hax
+This chapter contains information about internals of hax.
 
-Working on hax.
+Please read the [`CONTRIBUTING.md`](https://github.com/hacspec/hax/blob/main/CONTRIBUTING.md) before opening a pull request.
