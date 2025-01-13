@@ -2,7 +2,7 @@ site_name: hax
 theme:
   name: material
   logo: static/img/logo.png
-  # favicon: static/img/favicon.png
+  favicon: static/img/favicon.png
   palette:
     primary: indigo
     accent: indigo
