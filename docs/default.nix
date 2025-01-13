@@ -1,5 +1,5 @@
 { stdenv, buildPythonPackage, fetchPypi, setuptools, wheel, mkdocs
-, mkdocs-material, }:
+, mkdocs-material }:
 let
   mkdocs-glightbox = buildPythonPackage rec {
     pname = "mkdocs-glightbox";
@@ -13,12 +13,26 @@ let
     doCheck = false;
 
     pyproject = true;
-    build-system = with pkgs.python312Packages; [ setuptools wheel ];
+    build-system = [ setuptools wheel ];
+  };
+  mkdocs-nav-weight = buildPythonPackage rec {
+    pname = "mkdocs-nav-weight";
+    version = "0.0.7";
+
+    src = fetchPypi {
+      inherit pname version;
+      hash = "sha256-gAQGD3U3/NmWW/3uUSrCjo/T+rqdIlMkKn83TjDgbp0=";
+    };
+
+    doCheck = false;
+
+    pyproject = true;
+    build-system = [ setuptools wheel mkdocs ];
   };
 
 in stdenv.mkDerivation {
   name = "hax-docs";
-  buildInputs = [ mkdocs mkdocs-material mkdocs-glightbox ];
+  buildInputs = [ mkdocs mkdocs-material mkdocs-glightbox mkdocs-nav-weight ];
   buildPhase = "mkdocs build";
-  installPhase = "mv site $out"
+  installPhase = "mv site $out";
 }

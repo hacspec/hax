@@ -64,7 +64,7 @@
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
-          hax-book = pkgs.callPackage ./book {};
+          hax-docs = pkgs.python312Packages.callPackage ./docs { };
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             # `hax-engine-names-extract` extracts Rust names but also
@@ -148,13 +148,6 @@
               ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
-          serve-book = {
-            type = "app";
-            program = "${pkgs.writeScript "serve-book" ''
-              cd ${packages.hax-book}
-              ${pkgs.python3}/bin/python -m http.server "$@"
-            ''}";
-          };
         };
         devShells = let
           inputsFrom = [
@@ -194,10 +187,8 @@
             pkgs.pkg-config
             pkgs.rust-analyzer
             pkgs.toml2json
-            pkgs.mdbook
             rustfmt
             rustc
-
             utils
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
