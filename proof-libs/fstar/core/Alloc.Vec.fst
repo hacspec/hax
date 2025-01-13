@@ -1,7 +1,7 @@
 module Alloc.Vec
 open Rust_primitives
 
-unfold type t_Vec t (_: unit) = s:t_Slice t
+unfold type t_Vec t (_: unit) = t_Slice t
 
 let impl__new #t (): t_Vec t () = FStar.Seq.empty
 
@@ -25,6 +25,8 @@ let impl_1__len #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) =
   let n = Seq.length v in
   assert (n <= maxint usize_inttype);
   mk_int #usize_inttype (Seq.length v)
+
+let impl_1__as_slice #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) : t_Slice t = v
 
 let from_elem #a (item: a) (len: usize) = Seq.create (v len) item
 

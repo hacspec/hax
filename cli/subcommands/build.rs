@@ -14,7 +14,7 @@ fn rustc_version_env_var() {
 }
 
 fn json_schema_static_asset() {
-    let schema = schemars::schema_for!((
+    let mut schema = schemars::schema_for!((
         hax_frontend_exporter::Item<hax_frontend_exporter::ThirBody>,
         hax_types::cli_options::Options,
         hax_types::diagnostics::Diagnostics,
@@ -25,6 +25,7 @@ fn json_schema_static_asset() {
         hax_types::engine_api::protocol::ToEngine,
         hax_lib_macros_types::AttrPayload,
     ));
+    schema.schema.metadata.get_or_insert_default().id = Some(hax_types::HAX_VERSION.into());
     serde_json::to_writer(
         std::fs::File::create(format!("{}/schema.json", std::env::var("OUT_DIR").unwrap()))
             .unwrap(),

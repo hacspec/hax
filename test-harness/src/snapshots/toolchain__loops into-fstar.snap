@@ -71,6 +71,9 @@ let impl__M__decoded_message (self: t_M)
               (Core.Ops.Control_flow.t_ControlFlow
                   (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
                   (Prims.unit & Prims.unit)) Prims.unit)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow
+      (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) Prims.unit
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue _ ->
@@ -188,6 +191,8 @@ let double_sum2_return (v: t_Slice i32) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & (i32 & i32))) (i32 & i32))
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 (i32 & i32)
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2) -> sum +! sum2
@@ -218,6 +223,8 @@ let double_sum_return (v: t_Slice i32) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 i32
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
@@ -314,6 +321,8 @@ let nested_return (_: Prims.unit) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 i32
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
@@ -651,7 +660,7 @@ let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
     (fun count i ->
         let count:u64 = count in
         let i:usize = i in
-        i <= Core.Slice.impl__len #v_T slice)
+        i <= Core.Slice.impl__len #v_T slice <: usize)
     count
     (fun count i ->
         let count:u64 = count in

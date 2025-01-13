@@ -106,13 +106,14 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hax bash`
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
+Note: Please make sure that `$HOME/.cargo/bin` is in your `$PATH`, as
+that is where `setup.sh` will install hax.
+
 </details>
 
 ## Supported Subset of the Rust Language
 
-Hax intends to support full Rust, with the two following exceptions, promoting a functional style:
- 1. no `unsafe` code (see https://github.com/hacspec/hax/issues/417);
- 2. mutable references (aka `&mut T`) on return types or when aliasing (see https://github.com/hacspec/hax/issues/420).
+Hax intends to support full Rust, with the one exception, promoting a functional style: mutable references (aka `&mut T`) on return types or when aliasing (see https://github.com/hacspec/hax/issues/420) are forbidden.
 
 Each unsupported Rust feature is documented as an issue labeled [`unsupported-rust`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust). When the issue is labeled [`wontfix-v1`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix%2Cwontfix-v1), that means we don't plan on supporting that feature soon.
 

@@ -5,6 +5,8 @@
 use crate::prelude::*;
 use crate::sinto_as_usize;
 #[cfg(feature = "rustc")]
+use rustc_middle::{mir, ty};
+#[cfg(feature = "rustc")]
 use tracing::trace;
 
 #[derive_group(Serializers)]
@@ -410,75 +412,91 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     (def_id.sinto(s), generics, trait_refs, source)
 }
 
-/// Get a `FunOperand` from an `Operand` used in a function call.
-/// Return the [DefId] of the function referenced by an operand, with the
-/// parameters substitution.
-/// The [Operand] comes from a [TerminatorKind::Call].
-#[cfg(feature = "rustc")]
-fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
-    s: &S,
-    op: &rustc_middle::mir::Operand<'tcx>,
-) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
-    // Match on the func operand: it should be a constant as we don't support
-    // closures for now.
-    use rustc_middle::mir::Operand;
-    use rustc_middle::ty::TyKind;
-    let ty = op.ty(&s.mir().local_decls, s.base().tcx);
-    trace!("type: {:?}", ty);
-    // If the type of the value is one of the singleton types that corresponds to each function,
-    // that's enough information.
-    if let TyKind::FnDef(def_id, generics) = ty.kind() {
-        let (fun_id, generics, trait_refs, trait_info) =
-            get_function_from_def_id_and_generics(s, *def_id, *generics);
-        return (FunOperand::Id(fun_id), generics, trait_refs, trait_info);
-    }
-    match op {
-        Operand::Constant(_) => {
-            unimplemented!("{:?}", op);
-        }
-        Operand::Move(place) => {
-            // Function pointer. A fn pointer cannot have bound variables or trait references, so
-            // we don't need to extract generics, trait refs, etc.
-            let place = place.sinto(s);
-            (FunOperand::Move(place), Vec::new(), Vec::new(), None)
-        }
-        Operand::Copy(_place) => {
-            unimplemented!("{:?}", op);
-        }
-    }
-}
-
 #[cfg(feature = "rustc")]
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
 ) -> TerminatorKind {
-    if let rustc_middle::mir::TerminatorKind::Call {
+    let tcx = s.base().tcx;
+    let mir::TerminatorKind::Call {
         func,
         args,
         destination,
         target,
         unwind,
-        call_source,
         fn_span,
+        ..
     } = terminator
-    {
-        let (fun, generics, trait_refs, trait_info) = get_function_from_operand(s, func);
+    else {
+        unreachable!()
+    };
 
-        TerminatorKind::Call {
-            fun,
+    let ty = func.ty(&s.mir().local_decls, tcx);
+    let hax_ty: crate::Ty = ty.sinto(s);
+    let sig = match hax_ty.kind() {
+        TyKind::Arrow(sig) => sig,
+        TyKind::Closure(_, args) => &args.untupled_sig,
+        _ => supposely_unreachable_fatal!(
+            s,
+            "TerminatorKind_Call_expected_fn_type";
+            { ty }
+        ),
+    };
+    let fun_op = if let ty::TyKind::FnDef(def_id, generics) = ty.kind() {
+        // The type of the value is one of the singleton types that corresponds to each function,
+        // which is enough information.
+        let (def_id, generics, trait_refs, trait_info) =
+            get_function_from_def_id_and_generics(s, *def_id, *generics);
+        FunOperand::Static {
+            def_id,
             generics,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            call_source: call_source.sinto(s),
-            fn_span: fn_span.sinto(s),
             trait_refs,
             trait_info,
         }
     } else {
-        unreachable!()
+        use mir::Operand;
+        match func {
+            Operand::Constant(_) => {
+                unimplemented!("{:?}", func);
+            }
+            Operand::Move(place) => {
+                // Function pointer or closure.
+                let place = place.sinto(s);
+                FunOperand::DynamicMove(place)
+            }
+            Operand::Copy(_place) => {
+                unimplemented!("{:?}", func);
+            }
+        }
+    };
+
+    let late_bound_generics = sig
+        .bound_vars
+        .iter()
+        .map(|var| match var {
+            BoundVariableKind::Region(r) => r,
+            BoundVariableKind::Ty(..) | BoundVariableKind::Const => {
+                supposely_unreachable_fatal!(
+                    s,
+                    "non_lifetime_late_bound";
+                    { var }
+                )
+            }
+        })
+        .map(|_| {
+            GenericArg::Lifetime(Region {
+                kind: RegionKind::ReErased,
+            })
+        })
+        .collect();
+    TerminatorKind::Call {
+        fun: fun_op,
+        late_bound_generics,
+        args: args.sinto(s),
+        destination: destination.sinto(s),
+        target: target.sinto(s),
+        unwind: unwind.sinto(s),
+        fn_span: fn_span.sinto(s),
     }
 }
 
@@ -562,13 +580,25 @@ pub enum SwitchTargets {
     SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
+/// A value of type `fn<...> A -> B` that can be called.
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FunOperand {
-    /// Call to a top-level function designated by its id
-    Id(DefId),
-    /// Use of a closure
-    Move(Place),
+    /// Call to a statically-known function.
+    Static {
+        def_id: DefId,
+        /// If `Some`, this is a method call on the given trait reference. Otherwise this is a call
+        /// to a known function.
+        trait_info: Option<ImplExpr>,
+        /// If this is a trait method call, this only includes the method generics; the trait
+        /// generics are included in the `ImplExpr` in `trait_info`.
+        generics: Vec<GenericArg>,
+        /// Trait predicates required by the function generics. Like for `generics`, this only
+        /// includes the predicates required by the method, if applicable.
+        trait_refs: Vec<ImplExpr>,
+    },
+    /// Use of a closure or a function pointer value. Counts as a move from the given place.
+    DynamicMove(Place),
 }
 
 #[derive_group(Serializers)]
@@ -607,18 +637,16 @@ pub enum TerminatorKind {
     )]
     Call {
         fun: FunOperand,
-        /// We truncate the substitution so as to only include the arguments
-        /// relevant to the method (and not the trait) if it is a trait method
-        /// call. See [ParamsInfo] for the full details.
-        generics: Vec<GenericArg>,
+        /// A `FunOperand` is a value of type `fn<...> A -> B`. The generics in `<...>` are called
+        /// "late-bound" and are instantiated anew at each call site. This list provides the
+        /// generics used at this call-site. They are all lifetimes and at the time of writing are
+        /// all erased lifetimes.
+        late_bound_generics: Vec<GenericArg>,
         args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
-        call_source: CallSource,
         fn_span: Span,
-        trait_refs: Vec<ImplExpr>,
-        trait_info: Option<ImplExpr>,
     },
     TailCall {
         func: Operand,
@@ -934,26 +962,12 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, generics) => {
-        let def_id : DefId = rust_id.sinto(s);
-        // The generics is meant to be converted to a function signature. Note
-        // that Rustc does its job: the PolyFnSig binds the captured local
-        // type, regions, etc. variables, which means we can treat the local
-        // closure like any top-level function.
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(def_id, generics) => {
         let closure = generics.as_closure();
-        let sig = closure.sig().sinto(s);
-
-        // Solve the predicates from the parent (i.e., the item which defines the closure).
-        let tcx = s.base().tcx;
-        let parent_generics = closure.parent_args();
-        let parent_generics_ref = tcx.mk_args(parent_generics);
-        // TODO: does this handle nested closures?
-        let parent = tcx.generics_of(rust_id).parent.unwrap();
-        let trait_refs = solve_item_required_traits(s, parent, parent_generics_ref);
-
-        AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
+        let args = ClosureArgs::sfrom(s, *def_id, closure);
+        AggregateKind::Closure(def_id.sinto(s), args)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
+    Closure(DefId, ClosureArgs),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
     RawPtr(Ty, Mutability),
@@ -1208,7 +1222,6 @@ sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
-sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
 sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);

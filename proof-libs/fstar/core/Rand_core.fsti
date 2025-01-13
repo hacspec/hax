@@ -10,3 +10,9 @@ class t_RngCore (t_Self: Type0) = {
 class t_CryptoRng (t_Self: Type0) = {
   marker_trait: unit
 }
+
+class t_CryptoRngCore (t_Self: Type0) = {
+  f_rngcore: t_Self -> t_Self
+}
+
+

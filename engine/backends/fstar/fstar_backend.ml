@@ -111,6 +111,24 @@ module Make
 struct
   open Ctx
 
+  module StringToFStar = struct
+    let catch_parsing_error (type a b) kind span (f : a -> b) x =
+      try f x
+      with e ->
+        let kind =
+          Types.FStarParseError
+            {
+              fstar_snippet = "";
+              details =
+                "While parsing a " ^ kind ^ ", error: "
+                ^ Base.Error.to_string_hum (Base.Error.of_exn e);
+            }
+        in
+        Error.raise { span; kind }
+
+    let term span = catch_parsing_error "term" span F.term_of_string
+  end
+
   let doc_to_string : PPrint.document -> string =
     FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
 
@@ -401,8 +419,9 @@ struct
     let ppat = ppat' false in
     match p.p with
     | PWild -> F.wild
-    | PAscription { typ; pat } ->
+    | PAscription { typ; pat = { p = PBinding _; _ } as pat } ->
         F.pat @@ F.AST.PatAscribed (ppat pat, (pty p.span typ, None))
+    | PAscription { pat; _ } -> ppat pat
     | PBinding
         {
           mut = Immutable;
@@ -666,17 +685,17 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote quote -> pquote e.span quote |> F.term_of_string
+    | Quote quote -> pquote e.span quote |> StringToFStar.term e.span
     | _ -> .
 
   (** Prints a `quote` to a string *)
   and pquote span { contents; _ } =
     List.map
       ~f:(function
-        | `Verbatim code -> code
-        | `Expr e -> pexpr e |> term_to_string
-        | `Pat p -> ppat p |> pat_to_string
-        | `Typ p -> pty span p |> term_to_string)
+        | Verbatim code -> code
+        | Expr e -> pexpr e |> term_to_string
+        | Pattern p -> ppat p |> pat_to_string
+        | Typ p -> pty span p |> term_to_string)
       contents
     |> String.concat
 
@@ -874,6 +893,30 @@ struct
       | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
+    let is_erased = Attrs.is_erased e.attrs in
+    let erased_impl name ty attrs binders =
+      let name' = F.id_prime name in
+      let pat = F.AST.PatVar (name, None, []) in
+      let term = F.term @@ F.AST.Var (F.lid_of_id @@ name') in
+      let pat, term =
+        match binders with
+        | [] -> (pat, term)
+        | _ ->
+            ( F.AST.PatApp
+                (F.pat pat, List.map ~f:FStarBinder.to_pattern binders),
+              List.fold_left binders ~init:term ~f:(fun term binder ->
+                  let binder_term, binder_imp =
+                    FStarBinder.to_qualified_term binder
+                  in
+                  F.term @@ F.AST.App (term, binder_term, binder_imp)) )
+      in
+      [
+        F.decl ~quals:[ Assumption ] ~fsti:false ~attrs
+        @@ F.AST.Assume (name', ty);
+        F.decl ~fsti:false
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (F.pat @@ pat, term) ]);
+      ]
+    in
     match e.v with
     | Alias { name; item } ->
         (* These should come from bundled items (in the case of cyclic module dependencies).
@@ -904,10 +947,11 @@ struct
           F.decl ~fsti:false
           @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
-        let interface_mode = ctx.interface_mode && not (List.is_empty params) in
+        let is_const = List.is_empty params in
         let ty =
-          add_clauses_effect_type ~no_tot_abbrev:interface_mode e.attrs
-            (pty body.span body.typ)
+          add_clauses_effect_type
+            ~no_tot_abbrev:(ctx.interface_mode && not is_const)
+            e.attrs (pty body.span body.typ)
         in
         let arrow_typ =
           F.term
@@ -938,7 +982,13 @@ struct
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
-        if interface_mode then [ impl; intf ] else [ full ]
+
+        let erased = erased_impl name arrow_typ [] generics in
+        let impl, full =
+          if is_erased then (erased, erased) else ([ impl ], [ full ])
+        in
+        if ctx.interface_mode && ((not is_const) || is_erased) then intf :: impl
+        else full
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -971,31 +1021,20 @@ struct
                             |> List.map ~f:to_pattern) ),
                    ty );
                ] )
-    | Type { name; generics; _ }
-      when Attrs.find_unique_attr e.attrs
-             ~f:([%eq: Types.ha_payload] OpaqueType >> Fn.flip Option.some_if ())
-           |> Option.is_some ->
-        if not ctx.interface_mode then
-          Error.raise
-          @@ {
-               kind =
-                 AttributeRejected
-                   {
-                     reason =
-                       "a type cannot be opaque if its module is not extracted \
-                        as an interface";
-                   };
-               span = e.span;
-             }
-        else
-          let generics = FStarBinder.of_generics e.span generics in
-          let ty = F.type0_term in
-          let arrow_typ =
-            F.term
-            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
-          in
-          let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
-          [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
+    | Type { name; generics; _ } when is_erased ->
+        let generics =
+          FStarBinder.of_generics e.span generics
+          |> List.map ~f:FStarBinder.implicit_to_explicit
+        in
+        let ty = F.eqtype_term in
+        let arrow_typ =
+          F.term
+          @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
+        in
+        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+        let erased = erased_impl name arrow_typ [] generics in
+        let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
+        if ctx.interface_mode then intf :: erased else erased
     | Type
         {
           name;
@@ -1475,15 +1514,20 @@ struct
           List.exists items ~f:(fun { ii_v; _ } ->
               match ii_v with IIType _ -> true | _ -> false)
         in
-        let impl_val = ctx.interface_mode && not has_type in
         let let_impl = F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]) in
-        if impl_val then
-          let generics_binders = List.map ~f:FStarBinder.to_binder generics in
-          let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
-          let v = F.AST.Val (name, val_type) in
-          (F.decls ~fsti:true ~attrs:[ tcinst ] @@ v)
-          @ F.decls ~fsti:false ~attrs:[ tcinst ] let_impl
-        else F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ] let_impl
+        let generics_binders = List.map ~f:FStarBinder.to_binder generics in
+        let val_type = F.term @@ F.AST.Product (generics_binders, typ) in
+        let v = F.AST.Val (name, val_type) in
+        let intf = F.decls ~fsti:true ~attrs:[ tcinst ] v in
+        let impl =
+          if is_erased then erased_impl name val_type [ tcinst ] generics
+          else
+            F.decls
+              ~fsti:(ctx.interface_mode && has_type)
+              ~attrs:[ tcinst ] let_impl
+        in
+        let intf = if has_type && not is_erased then [] else intf in
+        if ctx.interface_mode then intf @ impl else impl
     | Quote { quote; _ } ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
@@ -1529,8 +1573,7 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item ~signature_only (bo : BackendOptions.t) m items
-    (item : item) :
+let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
@@ -1548,8 +1591,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
     |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
   in
   let interface_mode =
-    signature_only
-    || not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
+    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1560,30 +1602,27 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         line_width = bo.line_width;
       }
   in
-  let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
+  let mk_impl i = `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
   let no_impl =
-    signature_only
-    || [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
+    [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
   in
   Print.pitem item
-  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
        | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
-       | `VerbatimIntf (s, nl) ->
-           [ ((if interface_mode then `Intf s else `Impl s), nl) ]
-       | `VerbatimImpl (s, nl) ->
-           [ ((if interface_mode then `Impl s else `Impl s), nl) ]
+       | `VerbatimIntf (s, nl) -> [ (mk_intf s, nl) ]
+       | `VerbatimImpl (s, nl) -> [ (`Impl s, nl) ]
        | `Comment s ->
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
+  |> List.filter ~f:(function `Impl _, _ when no_impl -> false | _ -> true)
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
-let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
-    items : string * string =
+let string_of_items ~mod_name ~bundles (bo : BackendOptions.t) m items :
+    string * string =
   let collect_trait_goal_idents =
     object
       inherit [_] Visitors.reduce as super
@@ -1656,7 +1695,7 @@ let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
     List.concat_map
       ~f:(fun item ->
         let recursivity_prefix = get_recursivity_prefix item in
-        let strs = strings_of_item ~signature_only bo m items item in
+        let strs = strings_of_item bo m items item in
         match (recursivity_prefix, item.v) with
         | FirstMutRec, Fn _ ->
             replace_in_strs ~pattern:"let" ~with_:"let rec" strs
@@ -1709,20 +1748,8 @@ let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.concat_map ~f:(fun (ns, items) ->
-         let signature_only =
-           let is_dropped_body =
-             Concrete_ident.eq_name Rust_primitives__hax__dropped_body
-           in
-           let contains_dropped_body =
-             U.Reducers.collect_concrete_idents#visit_item ()
-             >> Set.exists ~f:is_dropped_body
-           in
-           List.exists ~f:contains_dropped_body items
-         in
          let mod_name = module_name ns in
-         let impl, intf =
-           string_of_items ~signature_only ~mod_name ~bundles bo m items
-         in
+         let impl, intf = string_of_items ~mod_name ~bundles bo m items in
          let make ~ext body =
            if String.is_empty body then None
            else

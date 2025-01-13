@@ -240,6 +240,7 @@ fn run_engine(
     message_format: MessageFormat,
 ) -> bool {
     let engine_options = EngineOptions {
+        hax_version: haxmeta.hax_version,
         backend: backend.clone(),
         input: haxmeta.items,
         impl_infos: haxmeta.impl_infos,
@@ -532,6 +533,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
     } else {
         0
     };
+
     (haxmeta_files, exit_code)
 }
 

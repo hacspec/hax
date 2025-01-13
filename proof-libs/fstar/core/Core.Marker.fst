@@ -1,6 +1,8 @@
+
 module Core.Marker
 
-type t_PhantomData (t: Type) = t
+type t_PhantomData (t:Type0) = 
+     | PhantomData: t_PhantomData t
 
 class t_Send (h: Type) = {
   dummy_send_field: unit

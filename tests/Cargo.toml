@@ -23,6 +23,7 @@ members = [
         "dyn",
         "reordering",
         "nested-derefs",
+        "patterns",
         "proverif-minimal",
         "proverif-basic-structs",
         "proverif-ping-pong",
