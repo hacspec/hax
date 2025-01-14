@@ -59,7 +59,7 @@ let rec poly :
   let assert_macro_ns did = Assert.macro_ns did |> into_n did in
   let result =
     match (Explicit_def_id.to_def_id did).kind with
-    | Struct when Explicit_def_id.is_constructor did ->
+    | (Ctor (Struct, _) | Struct) when Explicit_def_id.is_constructor did ->
         let name = assert_type_ns did in
         `Constructor (name, `Struct name)
     | Variant | Ctor _ ->
@@ -98,7 +98,9 @@ let rec poly :
         `Impl
           (match List.last_exn (Explicit_def_id.to_def_id did).path with
           | { data = Impl; disambiguator } ->
-              (into_d did disambiguator, if of_trait then `Trait else `Inherent)
+              ( into_d did disambiguator,
+                (if of_trait then `Trait else `Inherent),
+                Explicit_def_id.ImplInfoStore.lookup_raw did )
           | _ -> broken_invariant "last path chunk to be Impl" did)
     | OpaqueTy ->
         `Opaque
