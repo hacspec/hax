@@ -1,8 +1,6 @@
 open! Prelude
 module View = Concrete_ident_view
 
-(** This module provides the global concrete identifiers. *)
-
 module Fresh_module : sig
   (** This module provides a way of generating fresh modules paths. This can be
       used to reorganize locally definitions; the main motivation for this is
@@ -121,7 +119,7 @@ module T = struct
     suffix : reserved_suffix option;
   }
   [@@deriving show, yojson, hash, compare, sexp, hash, eq]
-  (** A `DefId` moved under a fresh namespace *)
+  (** A concrete identifier is defined as a  *)
 end
 
 include T
@@ -164,7 +162,10 @@ let with_suffix (suffix : reserved_suffix) (i : t) : t =
 
 module type VIEW_RENDERER = sig
   val render_module : View.DisambiguatedString.t -> string
-  val render_name : View.RelPath.Chunk.t list -> string option
+
+  val render_name :
+    namespace:View.ModPath.t -> View.RelPath.Chunk.t list -> string option
+
   val finalize : Concrete_ident_render_sig.rendered -> string
 end
 
@@ -191,7 +192,7 @@ module MakeToString (R : VIEW_RENDERER) = struct
     let Concrete_ident_view.{ mod_path; rel_path } = to_view i in
     let path = List.map ~f:R.render_module mod_path in
     let name =
-      let* name = R.render_name rel_path in
+      let* name = R.render_name ~namespace:mod_path rel_path in
       let name =
         match i.suffix with
         | Some suffix -> (
@@ -259,6 +260,8 @@ module type NAME_POLICY = Concrete_ident_render_sig.NAME_POLICY
 module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
   open Concrete_ident_render_sig
 
+  let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
+
   module R : VIEW_RENDERER = struct
     let escape_sep =
       let re = Re.Pcre.regexp "_(e*)_" in
@@ -315,23 +318,69 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
         =
       let is_prefix_upper = prefix |> first_letter |> is_uppercase in
       let is_s_upper = s |> first_letter |> is_uppercase in
-      if Bool.equal is_s_upper is_prefix_upper && not requiered_prefix then
-        escape_prefixes s
-      else prefix ^ "_" ^ s
+      if
+        Bool.equal is_s_upper is_prefix_upper
+        && (not requiered_prefix)
+        && not (is_reserved_word s)
+      then escape_prefixes s
+      else prefix ^ if String.is_empty s then "" else "_" ^ s
 
-    let rec render_last (extra : string) (n : View.RelPath.Chunk.t) : string =
+    let render_last ~namespace (extra : string) (n : View.RelPath.Chunk.t) :
+        string =
       let value_fmt = format "v" false in
+      let field_fmt = format "f" true in
       let type_fmt = format "t" true in
+      (* let render_last = render_last ~namespace in *)
       let constructor_fmt ?(force_prefix = false) = format "C" force_prefix in
       match n with
-      | `AssociatedItem (((`Type n | `Const n | `Fn n) as item), parent) -> (
+      | `AssociatedItem
+          ((`Type n | `Const n | `Fn n), (`Trait _ | `Impl (_, _, _))) ->
+          let name = render_disambiguated n in
+          extra ^: field_fmt name
+      (* | `AssociatedItem (((`Type n | `Const n | `Fn n) as item), parent) ->
           let impl = render_last extra (parent :> _ View.RelPath.Chunk.poly) in
           let name = render_disambiguated n in
-          let s = impl ^: name in
-          match item with `Type _ -> type_fmt s | _ -> value_fmt s)
-      | `Impl (d, _) ->
-          (* TODO! *)
-          format "impl" true (extra ^: Int64.to_string d)
+          let name =
+            match item with `Type _ -> type_fmt name | _ -> value_fmt name
+          in
+          impl ^ "__" ^ escape_sep name *)
+      | `Impl (d, _, impl_infos) ->
+          let identifier =
+            let* impl_infos = impl_infos in
+            let* ty = Thir_simple_types.to_string ~namespace impl_infos.typ in
+            let*? _no_generics = List.is_empty impl_infos.generics.params in
+            match impl_infos.trait_ref with
+            | None -> Some ty
+            | Some { def_id = trait; generic_args = [ _self ] } ->
+                let* trait = Explicit_def_id.of_def_id trait in
+                let trait = View.of_def_id trait in
+                let*? _same_ns =
+                  [%eq: View.ModPath.t] namespace trait.mod_path
+                in
+                let* trait =
+                  match trait.rel_path with
+                  | [ `Trait (n, _) ]
+                    when Int64.equal Int64.zero n.disambiguator ->
+                      Some n.data
+                  | _ -> None
+                in
+                let trait =
+                  let re = Re.Pcre.regexp "_((?:e_)*)for_" in
+                  let f group = "_e_" ^ Re.Group.get group 1 ^ "for_" in
+                  Re.replace ~all:true re ~f trait
+                in
+                Some (trait ^ "_for_" ^ ty)
+            | _ -> None
+          in
+          let default =
+            if Int64.equal Int64.zero d then "" else Int64.to_string d
+          in
+          let name = identifier |> Option.value ~default in
+          let prefix = "impl" in
+          let prefix =
+            if Option.is_some identifier then prefix ^ "_" else prefix
+          in
+          format prefix true (extra ^: name)
       | `AnonConst d -> format "anon_const" true (extra ^: Int64.to_string d)
       | `Use d -> format "use" true (extra ^: Int64.to_string d)
       | `Foreign d -> format "foreign" true (extra ^: Int64.to_string d)
@@ -361,12 +410,12 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
           else constructor_fmt (type_name ^ "_" ^ render_disambiguated cons)
       | `Macro n | `Static n | `Fn n | `Const n ->
           value_fmt (extra ^: render_disambiguated n)
-      | `Field (n, _) -> value_fmt (extra ^: render_disambiguated n)
+      | `Field (n, _) -> field_fmt (extra ^: render_disambiguated n)
 
-    let render_name (n : View.RelPath.t) =
+    let render_name ~namespace (n : View.RelPath.t) =
       let* fake_path, name = last_init n in
       let extra = List.map ~f:render_name_plain fake_path |> sep in
-      Some (render_last extra name)
+      Some (render_last ~namespace extra name)
 
     let finalize { path; name } =
       let path = List.map ~f:(map_first_letter String.uppercase) path in
@@ -386,7 +435,7 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
   let local_ident (li : Local_ident.t) : string =
     if Local_ident.is_final li then li.name
     else
-      R.render_name
+      R.render_name ~namespace:[]
         [
           `Fn
             View.DisambiguatedString.
@@ -398,37 +447,9 @@ end
 (** Stateful store that maps [def_id]s to implementation informations
 (which trait is implemented? for which type? under which constraints?) *)
 module ImplInfoStore = struct
-  let state : (Types.def_id_contents, Types.impl_infos) Hashtbl.t option ref =
-    ref None
+  include Explicit_def_id.ImplInfoStore
 
-  module T = struct
-    type t = Types.def_id_contents [@@deriving show, compare, sexp, eq, hash]
-  end
-
-  let init (impl_infos : (Types.def_id * Types.impl_infos) list) =
-    state :=
-      impl_infos
-      |> List.map ~f:(fun ((id : Types.def_id), impl_infos) ->
-             (id.contents.value, impl_infos))
-      |> Hashtbl.of_alist_multi (module T)
-      |> Hashtbl.map ~f:List.hd_exn |> Option.some
-
-  let get_state () =
-    match !state with
-    | None -> failwith "ImplInfoStore was not initialized"
-    | Some state -> state
-
-  (** Given a [id] of type [def_id], [find id] will return [Some
-            impl_info] when [id] is an (non-inherent[1]) impl. [impl_info]
-            contains information about the trait being implemented and for
-            which type.
-      
-            [1]: https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations
-        *)
-  let find k = Hashtbl.find (get_state ()) k
-
-  let lookup_raw (impl : t) : Types.impl_infos option =
-    find (Explicit_def_id.to_def_id impl.def_id)
+  let lookup_raw (impl : t) : Types.impl_infos option = lookup_raw impl.def_id
 end
 
 type name = Concrete_ident_generated.t

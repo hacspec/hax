@@ -110,7 +110,8 @@ module RelPath = struct
       otherwise, some PPX is broken...  *)
 
     and ('name, 'disambiguator) assoc_parent =
-      [ `Impl of 'disambiguator * [ `Inherent | `Trait ]
+      [ `Impl of
+        'disambiguator * [ `Inherent | `Trait ] * Types.impl_infos option
       | `Trait of 'name * [ `Alias ] option ]
     [@@deriving show, hash, compare, sexp, hash, eq, map]
     (** The parent of an associated item can be an impl or a trait. *)
@@ -174,7 +175,7 @@ module RelPath = struct
       | `Opaque n
       | `GlobalAsm n
       | `AnonConst n
-      | `Impl (n, _)
+      | `Impl (n, _, _)
       | `Use n
       | `Foreign n ->
           [ `D n ]
