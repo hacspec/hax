@@ -135,12 +135,13 @@ function setup() {
         button_tc.classList.add('md-hax-playground');
         button_tc.style.right = "4.5em";
         button_tc.onclick = () => {
-            call_playground(result_block, 'fstar+tc', getCode());
-        };
-        e.prepend(button_tc);
+            button_tc.onclick = () => {
+                call_playground(result_block, 'fstar+tc', getCode());
+            };
+            e.prepend(button_tc);
 
-        code.style.padding = "0 0.9em";
+            code.style.padding = "0 0.9em";
+        }
     }
-}
 
-setup();
+    setup();
