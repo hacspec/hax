@@ -1,4 +1,6 @@
 site_name: hax
+repo_url: https://github.com/hacspec/hax
+repo_name: GitHub
 theme:
   name: material
   logo: static/img/logo.png
