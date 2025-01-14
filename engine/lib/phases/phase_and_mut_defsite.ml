@@ -95,12 +95,14 @@ struct
       (* visit an expression and replace all `Return e` nodes by `Return (f e)` *)
       let map_returns ~(f : expr -> expr) : expr -> expr =
         let visitor =
-          object
+          object (self)
             inherit [_] Visitors.map as super
 
             method! visit_expr' () e =
               match e with
-              | Return { e; witness } -> Return { e = f e; witness }
+              | Return { e; witness } ->
+                  let e = self#visit_expr () e in
+                  Return { e = f e; witness }
               | _ -> super#visit_expr' () e
           end
         in
