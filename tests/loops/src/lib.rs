@@ -244,3 +244,19 @@ mod control_flow {
         sum
     }
 }
+
+mod and_mut_side_effect_loop {
+    // https://github.com/hacspec/hax/issues/720
+    fn looping(array: &mut [u8; 5]) {
+        for i in 0..array.len() {
+            array[i] = i as u8;
+        }
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    fn looping_2(array: &mut [u8; 5]) {
+        for i in 0..array.len() {
+            array[i] = i as u8;
+        }
+    }
+}
