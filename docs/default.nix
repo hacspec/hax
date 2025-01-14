@@ -1,5 +1,6 @@
 { stdenv, buildPythonPackage, fetchPypi, setuptools, wheel, mkdocs
-, mkdocs-material }:
+, mkdocs-material, fetchFromGitHub, natsort, wcmatch, hax-frontend-docs
+, hax-engine-docs }:
 let
   mkdocs-glightbox = buildPythonPackage rec {
     pname = "mkdocs-glightbox";
@@ -32,7 +33,14 @@ let
 
 in stdenv.mkDerivation {
   name = "hax-docs";
+  src = ./..;
   buildInputs = [ mkdocs mkdocs-material mkdocs-glightbox mkdocs-nav-weight ];
-  buildPhase = "mkdocs build";
-  installPhase = "mv site $out";
+  buildPhase = ''
+    mkdocs build
+  '';
+  installPhase = ''
+    mv site $out
+    cp -rf ${hax-frontend-docs}/share/doc/ $out/frontend/docs
+    cp -rf ${hax-engine-docs} $out/engine/docs
+  '';
 }

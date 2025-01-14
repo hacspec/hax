@@ -35,7 +35,20 @@
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
         };
-        rustc = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        toolchain =
+          (fromTOML (pkgs.lib.readFile ./rust-toolchain.toml)).toolchain;
+        rustc = pkgs.rust-bin.fromRustupToolchain toolchain;
+        rustc-docs = (let
+          # Only x86 linux has the component rustc-docs, see https://github.com/nix-community/fenix/issues/51
+          # system = "x86_64-linux";
+          n = toolchain // {
+            components = toolchain.components ++ [ "rustc-docs" ];
+          };
+          rustc = builtins.trace n.components
+            ((pkgs.rust-bin.fromRustupToolchain n).override {
+              targets = [ "x86_64-unknown-linux-gnu" ];
+            });
+        in rustc);
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_26_2;
         rustfmt = pkgs.rustfmt;
@@ -55,8 +68,11 @@
         ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar hax-env;
-          hax-docs = pkgs.python312Packages.callPackage ./docs { };
+          inherit rustc ocamlformat rustfmt fstar hax-env rustc-docs;
+          docs = pkgs.python312Packages.callPackage ./docs {
+            hax-frontend-docs = packages.hax-rust-frontend.docs;
+            hax-engine-docs = packages.hax-engine.docs;
+          };
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             # `hax-engine-names-extract` extracts Rust names but also
@@ -74,7 +90,7 @@
             inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
-            inherit rustc craneLib;
+            inherit rustc craneLib rustc-docs;
             inherit (packages) hax-engine;
           };
           hax = packages.hax-rust-frontend;
@@ -138,7 +154,7 @@
           serve-rustc-docs = {
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
-              cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
+              cd ${rustc-docs}/share/doc/rust/html/rustc
               ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
@@ -154,7 +170,7 @@
               hax-rust-frontend = pkgs.hello;
               hax-engine-names-extract = pkgs.hello;
             })
-            packages.hax-docs
+            packages.docs
           ];
         in let
           utils = pkgs.stdenv.mkDerivation {
