@@ -66,7 +66,14 @@ let
         stdio
         re
         js_of_ocaml
-        ocamlgraph
+        (ocamlgraph.overrideAttrs (_: {
+          src = fetchFromGitHub {
+            owner = "maximebuyse";
+            repo = "ocamlgraph";
+            rev = "fix-stable-topological-sort";
+            sha256 = "sha256-l7v7Kxjaz3xP6T91peAzloyusxpsIOYHXLIiiRHa490=";
+          };
+        }))
       ] ++
       # F* dependencies
       [ batteries menhirLib ppx_deriving ppxlib sedlex stdint ];
