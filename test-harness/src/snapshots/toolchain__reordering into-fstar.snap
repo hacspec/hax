@@ -26,6 +26,18 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Reordering.Mut_rec.fst" = '''
+module Reordering.Mut_rec
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let rec f (_: Prims.unit) : Prims.unit = g ()
+
+and g (_: Prims.unit) : Prims.unit = f ()
+
+let ff_2_ (_: Prims.unit) : Prims.unit = f ()
+'''
 "Reordering.fst" = '''
 module Reordering
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

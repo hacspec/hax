@@ -516,6 +516,8 @@ let add3_lemma (x: u32)
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
 
+unfold let some_function _ = "hello from F*"
+
 let before_inlined_code = "example before"
 
 let inlined_code (foo: t_Foo) : Prims.unit =
@@ -528,6 +530,4 @@ let inlined_code (foo: t_Foo) : Prims.unit =
   ()
 
 let inlined_code_after = "example after"
-
-unfold let some_function _ = "hello from F*"
 '''
