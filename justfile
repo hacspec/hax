@@ -59,9 +59,9 @@ _test *FLAGS:
 test-review: (_ensure_command_in_path "cargo-insta" "Insta (https://insta.rs)")
   cargo insta review
 
-# Serve the book
-book: (_ensure_command_in_path "mdbook" "mdBook (https://rust-lang.github.io/mdBook/)")
-  cd book && mdbook serve
+# Serve documentation
+docs: (_ensure_command_in_path "mkdocs" "mkdocs (https://www.mkdocs.org/)")
+  mkdocs serve
 
 # Check the coherency between issues labeled `marked-unimplemented` on GitHub and issues mentionned in the engine in the `Unimplemented {issue_id: ...}` errors.
 @check-issues:
@@ -114,3 +114,9 @@ _pager:
   else
       less
   fi
+
+# Serve the book
+[private]
+@book:
+  echo "We moved out from mdbook: please run 'just docs'"
+  exit 1
