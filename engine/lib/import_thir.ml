@@ -730,14 +730,18 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; _ } -> (
+      | NamedConst { def_id = id; impl; args; _ } -> (
           let kind : Concrete_ident.Kind.t =
             match impl with Some _ -> AssociatedItem Value | _ -> Value
           in
           let f = GlobalVar (def_id kind id) in
           match impl with
           | Some impl ->
-              let trait = Some (c_impl_expr e.span impl, []) in
+              let trait =
+                Some
+                  ( c_impl_expr e.span impl,
+                    List.map ~f:(c_generic_value e.span) args )
+              in
               let f = { e = f; span; typ = TArrow ([], typ) } in
               App { f; trait; args = []; generic_args = []; bounds_impls = [] }
           | _ -> f)
