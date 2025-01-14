@@ -140,18 +140,19 @@ let foo (lhs rhs: t_S) : t_S =
       (fun lhs i ->
           let lhs:t_S = lhs in
           let i:usize = i in
-          {
-            lhs with
-            f_b
-            =
-            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize lhs.f_b
-              i
-              ((lhs.f_b.[ i ] <: u8) +! (rhs.f_b.[ i ] <: u8) <: u8)
+          let lhs:t_S =
+            {
+              lhs with
+              f_b
+              =
+              Rust_primitives.Hax.Monomorphized_update_at.update_at_usize lhs.f_b
+                i
+                ((lhs.f_b.[ i ] <: u8) +! (rhs.f_b.[ i ] <: u8) <: u8)
+            }
             <:
-            t_Array u8 (sz 5)
-          }
-          <:
-          t_S)
+            t_S
+          in
+          lhs)
   in
   lhs
 
@@ -169,16 +170,12 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
       (fun x i ->
           let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) = x in
           let i:u8 = i in
-          {
-            x with
-            f_a
-            =
-            Alloc.Vec.impl_1__push #u8 #Alloc.Alloc.t_Global x.f_a i
+          let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
+            { x with f_a = Alloc.Vec.impl_1__push #u8 #Alloc.Alloc.t_Global x.f_a i }
             <:
-            Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
-          }
-          <:
-          t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+            t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+          in
+          x)
   in
   let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
     { x with f_a = Core.Slice.impl__swap #u8 x.f_a (sz 0) (sz 1) }

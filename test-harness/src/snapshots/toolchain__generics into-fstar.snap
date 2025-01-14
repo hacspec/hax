@@ -153,7 +153,8 @@ let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
       (fun acc i ->
           let acc:usize = acc in
           let i:usize = i in
-          acc +! (arr.[ i ] <: usize) <: usize)
+          let acc:usize = acc +! (arr.[ i ] <: usize) in
+          acc)
   in
   acc
 

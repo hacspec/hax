@@ -49,7 +49,8 @@ let impl: t_MyFrom u16 u8 =
 
 let f (x: u8) : Core.Result.t_Result u16 u16 =
   match Core.Result.Result_Err 1uy <: Core.Result.t_Result Prims.unit u8 with
-  | Core.Result.Result_Ok _ ->
+  | Core.Result.Result_Ok ok ->
+    let _:Prims.unit = ok in
     Core.Result.Result_Ok (f_my_from #u16 #u8 #FStar.Tactics.Typeclasses.solve x)
     <:
     Core.Result.t_Result u16 u16
@@ -201,7 +202,9 @@ let assign_non_trivial_lhs (foo: t_Foo) : t_Foo =
 let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
     : Core.Result.t_Result i8 u32 =
   match y <: Core.Result.t_Result Prims.unit u32 with
-  | Core.Result.Result_Ok _ -> Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32
+  | Core.Result.Result_Ok ok ->
+    let _:Prims.unit = ok in
+    Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32
   | Core.Result.Result_Err err -> Core.Result.Result_Err err <: Core.Result.t_Result i8 u32
 
 /// Question mark with an error coercion
@@ -253,7 +256,8 @@ let local_mutation (x: u32) : u32 =
         (fun y i ->
             let y:u32 = y in
             let i:u32 = i in
-            Core.Num.impl__u32__wrapping_add x i <: u32)
+            let y:u32 = Core.Num.impl__u32__wrapping_add x i in
+            y)
     in
     Core.Num.impl__u32__wrapping_add x y
   else
@@ -447,6 +451,7 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
     then
       match Core.Result.Result_Err 12uy <: Core.Result.t_Result Prims.unit u8 with
       | Core.Result.Result_Ok ok ->
+        let _:Prims.unit = ok in
         Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
         <:
         Core.Result.t_Result u32 u32
