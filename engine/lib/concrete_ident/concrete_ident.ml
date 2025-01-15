@@ -190,8 +190,28 @@ end
 module MakeToString (R : VIEW_RENDERER) = struct
   open Concrete_ident_render_sig
 
+  (** For each module namespace, we store three different pieces of data:
+      - a map from relative paths (i.e. the non-module part of a path) to full
+        identifiers
+      - an set of rendered names in this namespace
+      - a memoization map from full identifiers to rendered names
+
+      If an identifier was already rendered, we just use this already rendered
+      name.
+
+      Otherwise, when we print a name under a fresh module, we take a look at
+      the first map: if there is already an identifier in the fresh module with
+      the exact same relative path, then we have a collision, and we need to
+      generate a fresh name.
+
+      To generate a fresh name, we use the set of rendered names.
+      *)
   let per_module :
-      (string list, (string, t) Hashtbl.t * (t, string) Hashtbl.t) Hashtbl.t =
+      ( string list,
+        (View.RelPath.t, t) Hashtbl.t
+        * string Hash_set.t
+        * (t, string) Hashtbl.t )
+      Hashtbl.t =
     Hashtbl.create
       (module struct
         type t = string list [@@deriving hash, compare, sexp, eq]
@@ -201,16 +221,20 @@ module MakeToString (R : VIEW_RENDERER) = struct
     let Concrete_ident_view.{ mod_path; rel_path } = to_view i in
     let path = List.map ~f:R.render_module mod_path in
     let name =
-      let* name = R.render_name ~namespace:mod_path rel_path in
-      let name_map, id_map =
+      (* Retrieve the various maps. *)
+      let rel_path_map, name_set, memo =
         Hashtbl.find_or_add per_module
           ~default:(fun _ ->
-            (Hashtbl.create (module String), Hashtbl.create (module T)))
+            ( Hashtbl.create (module View.RelPath),
+              Hash_set.create (module String),
+              Hashtbl.create (module T) ))
           path
       in
-      match Hashtbl.find id_map i with
+      (* If we rendered [i] already in the past, just use that. *)
+      match Hashtbl.find memo i with
       | Some name -> Some name
       | None ->
+          let* name = R.render_name ~namespace:mod_path rel_path in
           let name =
             match i.suffix with
             | Some suffix -> (
@@ -234,48 +258,35 @@ module MakeToString (R : VIEW_RENDERER) = struct
             else name
           in
           let name =
-            match Hashtbl.find name_map name with
-            (* If [i'] is an associated item (or under an assoc item), it lives in a separate namespace.
-               TODO: this is true only for backend that support typeclasses or that
-               have expressive records. *)
-            | Some i'
-              when List.exists
-                     ~f:(fun i ->
-                       [%matches? Types.AssocFn | AssocConst | AssocTy | Field]
-                         (Explicit_def_id.to_def_id i).kind)
-                     (Explicit_def_id.parents i'.def_id) ->
-                name
+            match Hashtbl.find rel_path_map rel_path with
             | Some _ when moved_into_fresh_ns ->
                 let path : View.ModPath.t =
                   (View.of_def_id i.def_id).mod_path
                 in
                 let path = List.map ~f:R.render_module path in
+                (* Generates the list of all prefixes of reversed `path` *)
                 List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
                     let acc = chunk :: acc in
                     (acc, acc))
+                (* We want to try small prefixes first *)
                 |> List.map ~f:List.rev
+                (* We generate a fake path with module ancestors *)
                 |> List.map ~f:(fun path ->
                        name ^ "__from__"
                        ^ String.concat ~sep:"__"
                            path (* This might shadow, we should escape *))
-                |> List.find ~f:(Hashtbl.mem name_map >> not)
+                   (* Find the shortest name that doesn't exist already *)
+                |> List.find ~f:(Hash_set.mem name_set >> not)
                 |> Option.value_exn
-            | Some i' ->
-                let dbg = [%show: t] in
-                let msg =
-                  "Fatal error in the name rendering: we tried to render\n\n"
-                  ^ dbg i ^ "\n\n as [" ^ name
-                  ^ "], but this name is already taken by the following \
-                     identifier: \n\n" ^ dbg i'
-                in
-                Stdio.prerr_endline msg;
-                failwith msg
             | _ -> name
           in
-          let _ = Hashtbl.add name_map ~key:name ~data:i in
-          let _ = Hashtbl.add id_map ~key:i ~data:name in
+          (* Update the maps and hashtables *)
+          let _ = Hashtbl.add rel_path_map ~key:rel_path ~data:i in
+          let _ = Hash_set.add name_set name in
+          let _ = Hashtbl.add memo ~key:i ~data:name in
           Some name
     in
+
     let name = name |> Option.value ~default:"" in
     { path; name }
 
@@ -484,8 +495,13 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
         (impl_infos : Types.impl_infos option) =
       let pretty = impl_infos |> Option.bind ~f:(pretty_impl_name ~namespace) in
       let*? _ = always || Int64.equal Int64.zero disambiguator |> not in
-      Some (Option.value ~default:(Int64.to_string disambiguator) pretty)
+      match pretty with
+      | Some pretty -> Some pretty
+      | None ->
+          if Int64.equal Int64.zero disambiguator then None
+          else Some (Int64.to_string disambiguator)
 
+    (** Renders one chunk *)
     let rec render_chunk ~namespace (chunk : View.RelPath.Chunk.t) : NameAst.t =
       let prefix ?(global = false) ?(disable_when = []) s contents =
         NameAst.Policy
