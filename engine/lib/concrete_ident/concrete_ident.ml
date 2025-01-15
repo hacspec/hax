@@ -54,7 +54,7 @@ end = struct
     let base = List.longest_prefix ~eq:DisambiguatedString.equal mod_paths in
     assert (List.is_empty base |> not);
     let module_names =
-      List.filter ~f:(List.length >> Int.equal (List.length base)) mod_paths
+      List.filter ~f:(List.length >> ( < ) (List.length base)) mod_paths
       |> List.filter_map ~f:List.last
       |> List.dedup_and_sort ~compare:[%compare: DisambiguatedString.t]
     in
@@ -66,9 +66,15 @@ end = struct
     let label = DisambiguatedString.pure m.label in
     (base, label, module_names @ [ hash ])
 
-  let all_paths =
-    Explicit_def_id.State.list_all
-    >> List.map ~f:(fun x -> (of_def_id x).mod_path)
+  let all_paths () =
+    let rust_ones =
+      Explicit_def_id.State.list_all ()
+      |> List.map ~f:(fun x -> (of_def_id x).mod_path)
+    in
+    let fresh_ones : ModPath.t list =
+      Hashtbl.data map_state |> List.filter_map ~f:snd
+    in
+    rust_ones @ fresh_ones
 
   let compute_path (m : t) =
     let mod_path, mod_name, suffixes = compute_path_chunks m in
