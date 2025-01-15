@@ -62,6 +62,8 @@ pub enum ImplExprAtom {
         #[from(def_id)]
         id: GlobalIdent,
         generics: Vec<GenericArg>,
+        /// The impl exprs that prove the clauses on the impl.
+        impl_exprs: Vec<ImplExpr>,
     },
     /// A context-bound clause like `where T: Trait`.
     LocalBound {
@@ -108,8 +110,6 @@ pub struct ImplExpr {
     pub r#trait: Binder<TraitRef>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom,
-    /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
-    pub args: Vec<ImplExpr>,
 }
 
 /// Given a clause `clause` in the context of some impl block `impl_did`, susbts correctly `Self`

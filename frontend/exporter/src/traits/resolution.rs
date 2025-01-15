@@ -49,6 +49,8 @@ pub enum ImplExprAtom<'tcx> {
     Concrete {
         def_id: DefId,
         generics: GenericArgsRef<'tcx>,
+        /// The impl exprs that prove the clauses on the impl.
+        impl_exprs: Vec<ImplExpr<'tcx>>,
     },
     /// A context-bound clause like `where T: Trait`.
     LocalBound {
@@ -83,8 +85,6 @@ pub struct ImplExpr<'tcx> {
     pub r#trait: PolyTraitRef<'tcx>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom<'tcx>,
-    /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
-    pub args: Vec<Self>,
 }
 
 /// Items have various predicates in scope. `path_to` uses them as a starting point for trait
@@ -360,7 +360,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let tcx = self.tcx;
         let impl_source = shallow_resolve_trait_ref(tcx, self.param_env, erased_tref);
-        let nested;
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
@@ -368,15 +367,14 @@ impl<'tcx> PredicateSearcher<'tcx> {
                 ..
             })) => {
                 // Resolve the predicates required by the impl.
-                nested = self.resolve_item_predicates(impl_def_id, generics, warn)?;
+                let impl_exprs = self.resolve_item_predicates(impl_def_id, generics, warn)?;
                 ImplExprAtom::Concrete {
                     def_id: impl_def_id,
                     generics,
+                    impl_exprs,
                 }
             }
             Ok(ImplSource::Param(_)) => {
-                // Mentioning a local clause requires no extra predicates to hold.
-                nested = vec![];
                 match self.resolve_local(erased_tref.upcast(self.tcx), warn)? {
                     Some(candidate) => {
                         let path = candidate.path;
@@ -402,17 +400,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
                     }
                 }
             }
-            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => {
-                nested = vec![];
-                ImplExprAtom::Dyn
-            }
-            Ok(ImplSource::Builtin(_, _)) => {
-                // Builtin impls currently don't need nested predicates.
-                nested = vec![];
-                ImplExprAtom::Builtin { r#trait: *tref }
-            }
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
+            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
             Err(e) => {
-                nested = vec![];
                 let msg = format!(
                     "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
                 );
@@ -423,7 +413,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         Ok(ImplExpr {
             r#impl: atom,
-            args: nested,
             r#trait: *tref,
         })
     }
