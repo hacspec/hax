@@ -6,8 +6,34 @@ module Make (F : Features.T) = struct
   open Ast
   open AST
 
-  let ident_of (item : item) : Concrete_ident.t =
-    match item.v with Type { name; _ } -> name | _ -> item.ident
+  (** Get the identifier of an item *)
+  let ident_of (item : item) : Concrete_ident.t = item.ident
+
+  (** Get all the identifiers declared under an item. This includes the
+    identifier of the item itself, but also of any sub-item: for instance,
+    associated items within an impl. *)
+  let idents_of (item : item) : Concrete_ident.t list =
+    let is_field_anonymous ident =
+      match List.last (Concrete_ident.to_view ident).mod_path with
+      | Some { data = n; _ } -> Option.is_some (Int.of_string_opt n)
+      | _ -> false
+    in
+    ident_of item
+    ::
+    (match item.v with
+    | Type { variants; _ } ->
+        List.concat_map
+          ~f:(fun variant ->
+            let fields =
+              List.map ~f:fst3 variant.arguments
+              |> List.filter ~f:is_field_anonymous
+            in
+
+            variant.name :: fields)
+          variants
+    | Trait { items; _ } -> List.map ~f:(fun item -> item.ti_ident) items
+    | Impl { items; _ } -> List.map ~f:(fun item -> item.ii_ident) items
+    | _ -> (* No sub items *) [])
 
   module Namespace = struct
     include Concrete_ident.View.ModPath
@@ -166,13 +192,12 @@ module Make (F : Features.T) = struct
           (mod_graph_cycles : Namespace.Set.t list) : Bundle.t list =
         let item_names = List.map items ~f:(fun x -> x.ident) in
         let cycles =
-          List.filter mod_graph_cycles ~f:(fun set ->
-              Prelude.Set.length set > 1)
+          List.filter mod_graph_cycles ~f:(fun set -> Set.length set > 1)
         in
         let bundles =
           List.map cycles ~f:(fun set ->
               List.filter item_names ~f:(fun item ->
-                  Prelude.Set.mem set (Namespace.of_concrete_ident item)))
+                  Set.mem set (Namespace.of_concrete_ident item)))
         in
         bundles
     end
@@ -366,103 +391,41 @@ module Make (F : Features.T) = struct
     in
     List.filter ~f:(ident_of >> Set.mem selection) items
 
-  (* Construct the new item `f item` (say `item'`), and create a
-     "symbolic link" to `item'`. Returns a pair that consists in the
-     symbolic link and in `item'`. *)
-  let shallow_copy (f : item -> item)
-      (variants_renamings :
-        concrete_ident * concrete_ident ->
-        (concrete_ident * concrete_ident) list) (item : item) : item list =
-    let item' = f item in
-    let old_new = (ident_of item, ident_of item') in
+  let fresh_module_for (bundle : item list) =
+    let fresh_module =
+      Concrete_ident.fresh_module ~label:"bundle" (List.map ~f:ident_of bundle)
+    in
+    let renamings =
+      bundle
+      (* Exclude `Use` items: we exclude those from bundling since they are only
+         user hints. `Use` items don't have proper identifiers, and those
+         identifiers are never referenced by other Rust items. *)
+      |> List.filter ~f:(function { v = Use _; _ } -> false | _ -> true)
+      (* Exclude `NotImplementedYet` items *)
+      |> List.filter ~f:(function
+           | { v = NotImplementedYet; _ } -> false
+           | _ -> true)
+      |> List.concat_map ~f:(fun item ->
+             List.map
+               ~f:(fun id ->
+                 ( item,
+                   (id, Concrete_ident.move_to_fresh_module fresh_module id) ))
+               (idents_of item))
+    in
     let aliases =
-      List.map (old_new :: variants_renamings old_new)
-        ~f:(fun (old_ident, new_ident) ->
+      List.map renamings ~f:(fun (origin_item, (from_id, to_id)) ->
           let attrs =
-            List.filter ~f:(fun att -> Attrs.late_skip [ att ]) item.attrs
+            List.filter
+              ~f:(fun att -> Attrs.late_skip [ att ])
+              origin_item.attrs
           in
-
-          { item with v = Alias { name = old_ident; item = new_ident }; attrs })
+          let v = Alias { name = from_id; item = to_id } in
+          { attrs; span = origin_item.span; ident = from_id; v })
     in
-    item' :: aliases
-
-  let bundle_cyclic_modules (items : item list) : item list =
-    let from_ident ident : item option =
-      List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
-    in
-    let mut_rec_bundles =
-      let mod_graph_cycles = ModGraph.of_items items |> ModGraph.cycles in
-      (* `Use` items shouldn't be bundled as they have no dependencies
-          and they have dummy names. *)
-      let non_use_items =
-        List.filter
-          ~f:(fun item ->
-            match item.v with Use _ | NotImplementedYet -> false | _ -> true)
-          items
-      in
-      let bundles =
-        ItemGraph.CyclicDep.of_mod_sccs non_use_items mod_graph_cycles
-      in
-      let f = List.filter_map ~f:from_ident in
-      List.map ~f bundles
-    in
-
-    let transform (bundle : item list) =
-      let ns =
-        Concrete_ident.fresh_module ~label:"bundle"
-          (List.map ~f:ident_of bundle)
-      in
-      let new_name_under_ns : Concrete_ident.t -> Concrete_ident.t =
-        Concrete_ident.move_to_fresh_module ns
-      in
-      let new_names = List.map ~f:(ident_of >> new_name_under_ns) bundle in
-      let duplicates =
-        new_names |> List.find_all_dups ~compare:Concrete_ident.compare
-      in
-      (* Verify name clashes *)
-      (* In case of clash, add hash *)
-      let add_prefix id =
-        if
-          not
-            (List.mem duplicates (new_name_under_ns id)
-               ~equal:Concrete_ident.equal)
-        then id
-        else failwith "TODO"
-        (* Concrete_ident.Create.map_last
-           ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
-           id *)
-      in
+    let rename =
+      let renamings = List.map ~f:snd renamings in
       let renamings =
-        List.map
-          ~f:(ident_of >> (Fn.id &&& (add_prefix >> new_name_under_ns)))
-          bundle
-      in
-      let variants_renamings (previous_name, _new_name) =
-        match from_ident previous_name with
-        | Some { v = Type { variants; is_struct = false; _ }; _ } ->
-            List.map variants ~f:(fun { name; _ } ->
-                (name, new_name_under_ns name))
-        | Some { v = Type { variants; is_struct = true; _ }; _ } ->
-            List.concat_map variants ~f:(fun { arguments; _ } ->
-                List.map arguments ~f:(fun (name, _, _) ->
-                    (name, new_name_under_ns name)))
-        | _ -> []
-      in
-      let variant_and_constructors_renamings =
-        List.concat_map ~f:variants_renamings renamings
-        (* |> List.concat_map ~f:(fun (old_name, new_name) ->
-               [
-                 (old_name, new_name);
-                 ( Concrete_ident.Create.constructor old_name,
-                   Concrete_ident.Create.constructor new_name );
-               ]) *)
-      in
-      let renamings =
-        match
-          Map.of_alist
-            (module Concrete_ident)
-            (renamings @ variant_and_constructors_renamings)
-        with
+        match Map.of_alist (module Concrete_ident) renamings with
         | `Duplicate_key dup ->
             failwith
               [%string
@@ -472,47 +435,25 @@ module Make (F : Features.T) = struct
                  %{[%show: concrete_ident] dup}"]
         | `Ok value -> value
       in
-      let rename =
-        let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
-        (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
-      in
-      fun it -> shallow_copy rename variants_renamings it
+      let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
+      (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
     in
-    let bundle_transforms =
-      List.concat_map mut_rec_bundles ~f:(fun bundle ->
-          let bundle_value =
-            ( List.map ~f:ident_of bundle
-              |> ItemGraph.MutRec.Bundle.homogeneous_namespace,
-              transform bundle )
-          in
-          List.map bundle ~f:(fun item -> (item, bundle_value)))
-    in
-    let module ComparableItem = struct
-      module T = struct
-        type t = item [@@deriving sexp_of, compare, hash]
-      end
+    List.map ~f:rename bundle @ aliases
 
-      include T
-      include Comparable.Make (T)
-    end in
-    let bundle_of_item =
-      match Hashtbl.of_alist (module ComparableItem) bundle_transforms with
-      | `Duplicate_key dup ->
-          failwith
-            [%string
-              "Fatal error: in dependency analysis, [bundles_transforms] is \
-               expected to be a key-value list with a guarantee of unicity in \
-               keys. However, we found the following key (an item) twice:\n\
-               %{U.Debug.item' dup}"]
-      | `Ok value -> value
+  let bundle_cyclic_modules (items : item list) : item list =
+    (* [module_level_scc] is a list of set of strongly connected modules. *)
+    let module_level_scc = ModGraph.(of_items >> cycles) items in
+    let items_per_ns =
+      List.map ~f:(fun i -> (Namespace.of_concrete_ident i.ident, i)) items
+      |> Map.of_alist_multi (module Namespace)
     in
-    let maybe_transform_item item =
-      match Hashtbl.find bundle_of_item item with
-      | Some (homogeneous_bundle, transform_bundle) ->
-          if homogeneous_bundle then [ item ] else transform_bundle item
-      | None -> [ item ]
-    in
-    List.concat_map items ~f:maybe_transform_item
+    let items_of_ns = Map.find items_per_ns >> Option.value ~default:[] in
+    module_level_scc
+    |> List.concat_map ~f:(fun nss ->
+           let multiple_heterogeneous_modules = Set.length nss > 1 in
+           let items = Set.to_list nss |> List.concat_map ~f:items_of_ns in
+           if multiple_heterogeneous_modules then fresh_module_for items
+           else items)
 
   let recursive_bundles (items : item list) : item list list * item list =
     let g = ItemGraph.of_items ~original_items:items items in

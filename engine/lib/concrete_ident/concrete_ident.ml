@@ -84,7 +84,7 @@ end = struct
       List.mapi ~f:(fun n _ -> mod_name :: List.take suffixes n) suffixes
       |> List.map ~f:(List.map ~f:(fun m -> m.DisambiguatedString.data))
       |> List.map ~f:(String.concat ~sep:"_")
-      |> List.find ~f:(Set.mem existing_names)
+      |> List.find ~f:(Set.mem existing_names >> not)
       |> Option.value_exn
            ~message:
              "Broken invariant: in fresh modules the suffix is supposed to be \
@@ -179,10 +179,19 @@ let to_view (ident : t) : Concrete_ident_view.t =
   in
   { mod_path; rel_path }
 
+(** Stateful store that maps [def_id]s to implementation informations
+(which trait is implemented? for which type? under which constraints?) *)
+module ImplInfoStore = struct
+  include Explicit_def_id.ImplInfoStore
+
+  let lookup_raw (impl : t) : Types.impl_infos option = lookup_raw impl.def_id
+end
+
 module MakeToString (R : VIEW_RENDERER) = struct
   open Concrete_ident_render_sig
 
-  let per_module : (string list, (string, t) Hashtbl.t) Hashtbl.t =
+  let per_module :
+      (string list, (string, t) Hashtbl.t * (t, string) Hashtbl.t) Hashtbl.t =
     Hashtbl.create
       (module struct
         type t = string list [@@deriving hash, compare, sexp, eq]
@@ -193,55 +202,79 @@ module MakeToString (R : VIEW_RENDERER) = struct
     let path = List.map ~f:R.render_module mod_path in
     let name =
       let* name = R.render_name ~namespace:mod_path rel_path in
-      let name =
-        match i.suffix with
-        | Some suffix -> (
-            name ^ "_"
-            ^
-            match suffix with
-            | `Pre -> "pre"
-            | `Post -> "post"
-            | `Cast -> "cast_to_repr")
-        | _ -> name
-      in
-      let name_map =
+      let name_map, id_map =
         Hashtbl.find_or_add per_module
-          ~default:(fun _ -> Hashtbl.create (module String))
+          ~default:(fun _ ->
+            (Hashtbl.create (module String), Hashtbl.create (module T)))
           path
       in
-      let moved_into_fresh_ns = Option.is_none i.moved in
-      let name =
-        if moved_into_fresh_ns then
-          let escape_sep =
-            let re = Re.Pcre.regexp "__(e*)from__" in
-            let f group = "__e" ^ Re.Group.get group 1 ^ "from__" in
-            Re.replace ~all:true re ~f
+      match Hashtbl.find id_map i with
+      | Some name -> Some name
+      | None ->
+          let name =
+            match i.suffix with
+            | Some suffix -> (
+                name ^ "_"
+                ^
+                match suffix with
+                | `Pre -> "pre"
+                | `Post -> "post"
+                | `Cast -> "cast_to_repr")
+            | _ -> name
           in
-          escape_sep name
-        else name
-      in
-      let name =
-        match Hashtbl.find name_map name with
-        | Some i' when [%equal: t] i i' -> name
-        | None -> name
-        | Some _i' when not moved_into_fresh_ns ->
-            failwith "TODO: report duplicate! R is incorrect"
-        | Some _ ->
-            let path : View.ModPath.t = (View.of_def_id i.def_id).mod_path in
-            let path = List.map ~f:R.render_module path in
-            List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
-                let acc = chunk :: acc in
-                (acc, acc))
-            |> List.map ~f:List.rev
-            |> List.map ~f:(fun path ->
-                   name ^ "__from__"
-                   ^ String.concat ~sep:"__"
-                       path (* This might shadow, we should escape *))
-            |> List.find ~f:(Hashtbl.mem name_map >> not)
-            |> Option.value_exn
-      in
-      let _ignored = Hashtbl.add ~key:name ~data:i in
-      Some name
+          let moved_into_fresh_ns = Option.is_some i.moved in
+          let name =
+            if moved_into_fresh_ns then
+              let escape_sep =
+                let re = Re.Pcre.regexp "__(e*)from__" in
+                let f group = "__e" ^ Re.Group.get group 1 ^ "from__" in
+                Re.replace ~all:true re ~f
+              in
+              escape_sep name
+            else name
+          in
+          let name =
+            match Hashtbl.find name_map name with
+            (* If [i'] is an associated item (or under an assoc item), it lives in a separate namespace.
+               TODO: this is true only for backend that support typeclasses or that
+               have expressive records. *)
+            | Some i'
+              when List.exists
+                     ~f:(fun i ->
+                       [%matches? Types.AssocFn | AssocConst | AssocTy | Field]
+                         (Explicit_def_id.to_def_id i).kind)
+                     (Explicit_def_id.parents i'.def_id) ->
+                name
+            | Some _ when moved_into_fresh_ns ->
+                let path : View.ModPath.t =
+                  (View.of_def_id i.def_id).mod_path
+                in
+                let path = List.map ~f:R.render_module path in
+                List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
+                    let acc = chunk :: acc in
+                    (acc, acc))
+                |> List.map ~f:List.rev
+                |> List.map ~f:(fun path ->
+                       name ^ "__from__"
+                       ^ String.concat ~sep:"__"
+                           path (* This might shadow, we should escape *))
+                |> List.find ~f:(Hashtbl.mem name_map >> not)
+                |> Option.value_exn
+            | Some i' ->
+                let dbg = [%show: t] in
+                let msg =
+                  "Fatal error in the name rendering: we tried to render\n\n"
+                  ^ dbg i ^ "\n\n as [" ^ name
+                  ^ "], but this name is already taken by the following \
+                     identifier: \n\n" ^ dbg i'
+                in
+                Stdio.prerr_endline msg;
+                failwith msg
+            | _ -> name
+          in
+          let _ = Hashtbl.add name_map ~key:name ~data:i in
+          let _ = Hashtbl.add id_map ~key:i ~data:name in
+          Some name
     in
     let name = name |> Option.value ~default:"" in
     { path; name }
@@ -263,13 +296,6 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
   module R : VIEW_RENDERER = struct
-    let escape_sep =
-      let re = Re.Pcre.regexp "_(e*)_" in
-      let f group = "_e" ^ Re.Group.get group 1 ^ "_" in
-      Re.replace ~all:true re ~f
-
-    let sep = List.map ~f:escape_sep >> String.concat ~sep:"__"
-
     let disambiguator_escape s =
       match split_str ~on:"_" s |> List.rev with
       | hd :: _ :: _ when Int.of_string_opt hd |> Option.is_some -> s ^ "_"
@@ -281,111 +307,234 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
 
     let render_module = render_disambiguated
 
-    let disambiguate_name (n : View.RelPath.Chunk.t) :
-        (string, string) View.RelPath.Chunk.poly =
-      View.RelPath.Chunk.add_strings n
-      |> View.RelPath.Chunk.map_poly render_disambiguated render_disambiguated
+    module NameAst = struct
+      module Separator = struct
+        let separator = "__"
+        let concat x y = x ^ separator ^ y
 
-    let render_name_plain : View.RelPath.Chunk.t -> string =
-      View.RelPath.Chunk.(disambiguate_name >> collect) >> sep
+        let escape =
+          let re = Re.Pcre.regexp "_(e*)_" in
+          let f group = "_e" ^ Re.Group.get group 1 ^ "_" in
+          Re.replace ~all:true re ~f
+      end
 
-    let ( ^: ) x y = if String.is_empty x then y else sep [ x; y ]
+      module Prefixes : sig
+        type t = private string [@@deriving eq, show]
 
-    let allowed_prefixes =
-      [
-        "impl";
-        "anon_const";
-        "foreign";
-        "use";
-        "opaque";
-        "t";
-        "C";
-        "v";
-        "f";
-        "i";
-        "discriminant";
-      ]
+        val allowed : t list
+        (** List of allowed reserved prefixes. *)
 
-    let escape_prefixes (s : string) : string =
-      match String.lsplit2 ~on:'_' s with
-      | Some (prefix, _)
-        when List.mem ~equal:[%equal: string] allowed_prefixes prefix ->
-          prefix ^ s
-      | _ -> s
+        val mk : string -> t
+        (** Creates a prefix, if it is valid. *)
 
-    (** This formats a string as [<prefix>_<s>] if [requiered_prefix] is true or if [s]'s first letter is uppercase while [prefix]'s first letter is lowercase or vice-versa. *)
-    let format (prefix : string) (requiered_prefix : bool) (s : string) : string
-        =
-      let is_prefix_upper = prefix |> first_letter |> is_uppercase in
-      let is_s_upper = s |> first_letter |> is_uppercase in
-      if
-        Bool.equal is_s_upper is_prefix_upper
-        && (not requiered_prefix)
-        && not (is_reserved_word s)
-      then escape_prefixes s
-      else prefix ^ if String.is_empty s then "" else "_" ^ s
+        val escape : string -> string
+        (** Escapes reserved prefixes in a string *)
+      end = struct
+        type t = string [@@deriving eq, show]
 
-    let render_last ~namespace (extra : string) (n : View.RelPath.Chunk.t) :
-        string =
-      let value_fmt = format "v" false in
-      let field_fmt = format "f" true in
-      let type_fmt = format "t" true in
-      (* let render_last = render_last ~namespace in *)
-      let constructor_fmt ?(force_prefix = false) = format "C" force_prefix in
-      match n with
-      | `AssociatedItem
-          ((`Type n | `Const n | `Fn n), (`Trait _ | `Impl (_, _, _))) ->
-          let name = render_disambiguated n in
-          extra ^: field_fmt name
-      (* | `AssociatedItem (((`Type n | `Const n | `Fn n) as item), parent) ->
-          let impl = render_last extra (parent :> _ View.RelPath.Chunk.poly) in
-          let name = render_disambiguated n in
-          let name =
-            match item with `Type _ -> type_fmt name | _ -> value_fmt name
-          in
-          impl ^ "__" ^ escape_sep name *)
-      | `Impl (d, _, impl_infos) ->
-          let identifier =
-            let* impl_infos = impl_infos in
-            let* ty = Thir_simple_types.to_string ~namespace impl_infos.typ in
-            let*? _no_generics = List.is_empty impl_infos.generics.params in
-            match impl_infos.trait_ref with
-            | None -> Some ty
-            | Some { def_id = trait; generic_args = [ _self ] } ->
-                let* trait = Explicit_def_id.of_def_id trait in
-                let trait = View.of_def_id trait in
-                let*? _same_ns =
-                  [%eq: View.ModPath.t] namespace trait.mod_path
-                in
-                let* trait =
-                  match trait.rel_path with
-                  | [ `Trait (n, _) ]
-                    when Int64.equal Int64.zero n.disambiguator ->
-                      Some n.data
-                  | _ -> None
-                in
-                let trait =
-                  let re = Re.Pcre.regexp "_((?:e_)*)for_" in
-                  let f group = "_e_" ^ Re.Group.get group 1 ^ "for_" in
-                  Re.replace ~all:true re ~f trait
-                in
-                Some (trait ^ "_for_" ^ ty)
+        let allowed =
+          [
+            "impl";
+            "anon_const";
+            "foreign";
+            "use";
+            "opaque";
+            "t";
+            "C";
+            "v";
+            "f";
+            "i";
+            "discriminant";
+          ]
+
+        let mem = List.mem ~equal:[%eq: string] allowed
+
+        let mk s =
+          if mem s then s
+          else
+            failwith ("broken invariant: [" ^ s ^ "] is not an allowed prefix")
+
+        let escape_char = "e"
+
+        let () =
+          assert (
+            (* Make sure there is no prefix `Cs` such that `C ^ "s"` is a prefix as well. *)
+            List.for_all allowed ~f:(fun s -> not (mem (first_letter s ^ s))))
+
+        let () = assert (mem "e" |> not)
+
+        let rec escape (s : string) : string =
+          match String.lsplit2 ~on:'_' s with
+          | Some ("", rest) -> "e_" ^ escape rest
+          | Some (prefix, rest)
+            when List.mem ~equal:[%equal: string] allowed prefix ->
+              first_letter prefix ^ prefix ^ "_" ^ escape rest
+          | _ -> s
+      end
+
+      type policy = {
+        prefix : Prefixes.t;
+        disable_when : [ `SameCase ] list;
+        mode : [ `Global | `Local | `Both ];
+      }
+      [@@deriving eq, show]
+
+      type t =
+        | Concat of (t * t)  (** Concatenate two names *)
+        | Policy of (policy * t)
+        | TrustedString of string  (** A string that is already escaped *)
+        | UnsafeString of string  (** A string that needs escaping *)
+        | Empty
+      [@@deriving eq, show]
+
+      let rec global_policy ast : _ =
+        let filter =
+          Option.filter ~f:(fun p -> [%matches? `Global | `Both] p.mode)
+        in
+        let ( <|> ) v f = match v with Some v -> Some v | None -> f () in
+        match ast with
+        | Policy (policy, contents) ->
+            global_policy contents |> filter <|> fun _ ->
+            policy |> Option.some |> filter
+        | Concat (l, r) ->
+            global_policy r |> filter <|> fun _ -> global_policy l |> filter
+        | _ -> None
+
+      let escape_unsafe_string = Prefixes.escape >> Separator.escape
+
+      let apply_policy (leftmost : bool) (policy : policy) (escaped : string) =
+        let prefix = (policy.prefix :> string) in
+        let disable =
+          List.exists policy.disable_when ~f:(function `SameCase ->
+              let first_upper = first_letter >> is_uppercase in
+              Bool.equal (first_upper prefix) (first_upper escaped))
+        in
+        if (not disable) || (leftmost && is_reserved_word escaped) then
+          prefix ^ "_" ^ escaped
+        else escaped
+
+      let rec norm' = function
+        | Concat (Empty, x) | Concat (x, Empty) -> x
+        | Policy (_, Empty) -> Empty
+        | Policy (p, x) -> Policy (p, norm' x)
+        | Concat (x, y) -> Concat (norm' x, norm' y)
+        | x -> x
+
+      let rec norm x =
+        let x' = norm' x in
+        if [%eq: t] x x' then x else norm x'
+
+      let concat_list =
+        List.fold ~f:(fun l r -> Concat (l, r)) ~init:Empty >> norm
+
+      let rec render' leftmost ast =
+        match ast with
+        | Concat (a, b) ->
+            Separator.concat (render' leftmost a) (render' false b)
+        | Policy (policy, a) when [%matches? `Global] policy.mode ->
+            render' leftmost a
+        | Policy (policy, a) ->
+            render' leftmost a |> apply_policy leftmost policy
+        | TrustedString s -> s
+        | UnsafeString s -> escape_unsafe_string s
+        | Empty -> ""
+
+      let render ast =
+        let policy = global_policy ast in
+        let policy =
+          Option.map ~f:(apply_policy true) policy
+          |> Option.value ~default:Fn.id
+        in
+        let rendered = norm ast |> render' true |> policy in
+        if is_reserved_word rendered then rendered ^ "_escape_reserved_word"
+        else rendered
+    end
+
+    (** [pretty_impl_name ~namespace impl_infos] computes a pretty impl name given impl informations and a namespace.
+        A pretty name can be computed when:
+        - (1) the impl, (2) the type and (3) the trait implemented all live in the same namespace
+        - the impl block has no generics
+        - the type implemented is simple enough to be represented as a string (see module {!Thir_simple_types})
+    *)
+    let pretty_impl_name ~namespace (impl_infos : Types.impl_infos) =
+      let* ty = Thir_simple_types.to_string ~namespace impl_infos.typ in
+      let*? _no_generics = List.is_empty impl_infos.generics.params in
+      match impl_infos.trait_ref with
+      | None -> Some ty
+      | Some { def_id = trait; generic_args = [ _self ] } ->
+          let* trait = Explicit_def_id.of_def_id trait in
+          let trait = View.of_def_id trait in
+          let*? _same_ns = [%eq: View.ModPath.t] namespace trait.mod_path in
+          let* trait =
+            match trait.rel_path with
+            | [ `Trait (n, _) ] when Int64.equal Int64.zero n.disambiguator ->
+                Some n.data
             | _ -> None
           in
-          let default =
-            if Int64.equal Int64.zero d then "" else Int64.to_string d
+          let trait =
+            let re = Re.Pcre.regexp "_((?:e_)*)for_" in
+            let f group = "_e_" ^ Re.Group.get group 1 ^ "for_" in
+            Re.replace ~all:true re ~f trait
           in
-          let name = identifier |> Option.value ~default in
-          let prefix = "impl" in
-          let prefix =
-            if Option.is_some identifier then prefix ^ "_" else prefix
+          Some (trait ^ "_for_" ^ ty)
+      | _ -> None
+
+    (** Produces a name for an impl block, only if it is necessary (e.g. the disambiguator is non-null) *)
+    let impl_name ~namespace ?(always = false) disambiguator
+        (impl_infos : Types.impl_infos option) =
+      let pretty = impl_infos |> Option.bind ~f:(pretty_impl_name ~namespace) in
+      let*? _ = always || Int64.equal Int64.zero disambiguator |> not in
+      Some (Option.value ~default:(Int64.to_string disambiguator) pretty)
+
+    let rec render_chunk ~namespace (chunk : View.RelPath.Chunk.t) : NameAst.t =
+      let prefix ?(global = false) ?(disable_when = []) s contents =
+        NameAst.Policy
+          ( {
+              prefix = NameAst.Prefixes.mk s;
+              mode = (if global then `Both else `Local);
+              disable_when;
+            },
+            contents )
+      in
+      let prefix_d s d = prefix s (NameAst.UnsafeString (Int64.to_string d)) in
+      let dstr s = NameAst.UnsafeString (render_disambiguated s) in
+      let _render_chunk = render_chunk ~namespace in
+      match chunk with
+      | `AnonConst d -> prefix_d "anon_const" d
+      | `Use d -> prefix_d "use" d
+      | `Foreign d -> prefix_d "foreign" d
+      | `GlobalAsm d -> prefix_d "global_asm" d
+      | `Opaque d -> prefix_d "opaque" d
+      (* The name of a trait impl *)
+      | `Impl (d, _, impl_infos) -> (
+          match impl_name ~namespace d impl_infos with
+          | Some name -> prefix "impl" (UnsafeString name)
+          | None -> TrustedString "impl")
+      (* Print the name of an associated item in a inherent impl *)
+      | `AssociatedItem
+          ((`Type n | `Const n | `Fn n), `Impl (d, `Inherent, impl_infos)) ->
+          let impl =
+            match impl_name ~always:true ~namespace d impl_infos with
+            | Some name -> prefix "impl" (UnsafeString name)
+            | None -> TrustedString "impl"
           in
-          format prefix true (extra ^: name)
-      | `AnonConst d -> format "anon_const" true (extra ^: Int64.to_string d)
-      | `Use d -> format "use" true (extra ^: Int64.to_string d)
-      | `Foreign d -> format "foreign" true (extra ^: Int64.to_string d)
-      | `GlobalAsm d -> format "global_asm" true (extra ^: Int64.to_string d)
-      | `Opaque d -> format "opaque" true (extra ^: Int64.to_string d)
+          Concat (impl, dstr n)
+      (* Print the name of an associated item in a trait impl *)
+      | `AssociatedItem
+          ((`Type n | `Const n | `Fn n), (`Trait _ | `Impl (_, `Trait, _))) ->
+          prefix "f" (dstr n)
+      (* The constructor of a struct *)
+      | `Constructor (cons, `Struct _) ->
+          prefix ~global:true ~disable_when:[ `SameCase ] "C" (dstr cons)
+      | `Constructor (cons, (`Enum n | `Union n)) ->
+          (* [TODO] Here, we separate with `_` so that we keep the old behavior: this is dodgy. *)
+          let n = render_disambiguated n ^ "_" ^ render_disambiguated cons in
+          prefix ~global:true ~disable_when:[ `SameCase ] "C" (UnsafeString n)
+      | `Field (n, _) -> prefix "f" (dstr n)
+      (* Anything function-like *)
+      | `Macro n | `Static n | `Fn n | `Const n ->
+          prefix "v" ~disable_when:[ `SameCase ] (dstr n)
+      (* Anything type-like *)
       | `ExternCrate n
       | `Trait (n, _)
       | `ForeignTy n
@@ -394,28 +543,13 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
       | `Struct n
       | `Union n
       | `Enum n ->
-          type_fmt (extra ^: render_disambiguated n)
-      | `Constructor (cons, `Struct _) ->
-          let cons = extra ^: render_disambiguated cons in
-          constructor_fmt
-            ~force_prefix:(String.is_substring cons ~substring:"_")
-            cons
-      | `Constructor (cons, parent) ->
-          let type_name =
-            extra ^: render_name_plain (parent :> _ View.RelPath.Chunk.poly)
-          in
-          if String.is_substring type_name ~substring:"_" then
-            constructor_fmt ~force_prefix:true
-              (type_name ^: render_disambiguated cons)
-          else constructor_fmt (type_name ^ "_" ^ render_disambiguated cons)
-      | `Macro n | `Static n | `Fn n | `Const n ->
-          value_fmt (extra ^: render_disambiguated n)
-      | `Field (n, _) -> field_fmt (extra ^: render_disambiguated n)
+          prefix "t" (dstr n)
 
-    let render_name ~namespace (n : View.RelPath.t) =
-      let* fake_path, name = last_init n in
-      let extra = List.map ~f:render_name_plain fake_path |> sep in
-      Some (render_last ~namespace extra name)
+    let render_name ~namespace (rel_path : View.RelPath.t) =
+      let rel_path =
+        List.map ~f:(render_chunk ~namespace) rel_path |> NameAst.concat_list
+      in
+      Some (NameAst.render rel_path)
 
     let finalize { path; name } =
       let path = List.map ~f:(map_first_letter String.uppercase) path in
@@ -442,14 +576,6 @@ module MakeViewAPI (NP : NAME_POLICY) : RENDER_API = struct
               { disambiguator = Int64.zero; data = li.name };
         ]
       |> Option.value_exn
-end
-
-(** Stateful store that maps [def_id]s to implementation informations
-(which trait is implemented? for which type? under which constraints?) *)
-module ImplInfoStore = struct
-  include Explicit_def_id.ImplInfoStore
-
-  let lookup_raw (impl : t) : Types.impl_infos option = lookup_raw impl.def_id
 end
 
 type name = Concrete_ident_generated.t

@@ -2,7 +2,18 @@ open! Prelude
 
 module T = struct
   type t = { is_constructor : bool; def_id : Types.def_id_contents }
-  [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+  [@@deriving show, yojson, sexp]
+
+  type repr = bool * string * Types.disambiguated_def_path_item list
+  [@@deriving hash, compare, eq]
+
+  let to_repr { is_constructor; def_id } =
+    (is_constructor, def_id.krate, def_id.path)
+
+  let hash = to_repr >> hash_repr
+  let hash_fold_t s = to_repr >> hash_fold_repr s
+  let equal x y = equal_repr (to_repr x) (to_repr y)
+  let compare x y = compare_repr (to_repr x) (to_repr y)
 end
 
 include T

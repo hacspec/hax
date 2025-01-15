@@ -1737,10 +1737,9 @@ let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
     (items : AST.item list) : Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
-  |> List.filter_map
-       ~f:
-         (snd >> List.hd
-         >> Option.map ~f:(fun i -> ((RenderId.render i.ident).path, items)))
+  |> List.filter_map ~f:(fun (_, items) ->
+         let* first_item = List.hd items in
+         Some ((RenderId.render first_item.ident).path, items))
   |> List.concat_map ~f:(fun (ns, items) ->
          let mod_name = module_name ns in
          let impl, intf = string_of_items ~mod_name ~bundles bo m items in
