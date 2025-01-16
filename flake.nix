@@ -4,9 +4,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     crane = {
       url = "github:ipetkov/crane";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-      };
+      inputs = { nixpkgs.follows = "nixpkgs"; };
     };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -29,21 +27,28 @@
     };
   };
 
-  outputs = {
-    flake-utils,
-    nixpkgs,
-    rust-overlay,
-    crane,
-    hacl-star,
-    ...
-  } @ inputs:
-    flake-utils.lib.eachDefaultSystem (
-      system: let
+  outputs =
+    { flake-utils, nixpkgs, rust-overlay, crane, hacl-star, ... }@inputs:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [rust-overlay.overlays.default];
+          overlays = [ rust-overlay.overlays.default ];
         };
-        rustc = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        toolchain =
+          (fromTOML (pkgs.lib.readFile ./rust-toolchain.toml)).toolchain;
+        rustc = pkgs.rust-bin.fromRustupToolchain toolchain;
+        rustc-docs = (let
+          # Only x86 linux has the component rustc-docs, see https://github.com/nix-community/fenix/issues/51
+          # system = "x86_64-linux";
+          n = toolchain // {
+            components = toolchain.components ++ [ "rustc-docs" ];
+          };
+          rustc = builtins.trace n.components
+            ((pkgs.rust-bin.fromRustupToolchain n).override {
+              targets = [ "x86_64-unknown-linux-gnu" ];
+            });
+        in rustc);
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_26_2;
         rustfmt = pkgs.rustfmt;
@@ -63,8 +68,11 @@
         ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar hax-env;
-          hax-book = pkgs.callPackage ./book {};
+          inherit rustc ocamlformat rustfmt fstar hax-env rustc-docs;
+          docs = pkgs.python312Packages.callPackage ./docs {
+            hax-frontend-docs = packages.hax-rust-frontend.docs;
+            hax-engine-docs = packages.hax-engine.docs;
+          };
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             # `hax-engine-names-extract` extracts Rust names but also
@@ -74,14 +82,15 @@
             # Rust sources happens to be in the Nix store. That
             # creates useless dependencies, this wrapper below takes
             # care of removing those extra depenedencies.
-            hax-engine-names-extract = pkgs.writeScriptBin "hax-engine-names-extract" ''
-              #!${pkgs.stdenv.shell}
-              ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
-            '';
+            hax-engine-names-extract =
+              pkgs.writeScriptBin "hax-engine-names-extract" ''
+                #!${pkgs.stdenv.shell}
+                ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
+              '';
             inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
-            inherit rustc craneLib;
+            inherit rustc craneLib rustc-docs;
             inherit (packages) hax-engine;
           };
           hax = packages.hax-rust-frontend;
@@ -93,8 +102,8 @@
 
           rust-by-example-hax-extraction = pkgs.stdenv.mkDerivation {
             name = "rust-by-example-hax-extraction";
-            phases = ["installPhase"];
-            buildInputs = [packages.hax pkgs.cargo];
+            phases = [ "installPhase" ];
+            buildInputs = [ packages.hax pkgs.cargo ];
             installPhase = ''
               cp --no-preserve=mode -rf ${inputs.rust-by-examples} workdir
               cd workdir
@@ -118,10 +127,9 @@
             inherit (packages) hax;
             inherit craneLib fstar hacl-star hax-env;
           };
-          readme-coherency = let
-            src = pkgs.lib.sourceFilesBySuffices ./. [".md"];
-          in
-            pkgs.stdenv.mkDerivation {
+          readme-coherency =
+            let src = pkgs.lib.sourceFilesBySuffices ./. [ ".md" ];
+            in pkgs.stdenv.mkDerivation {
               name = "readme-coherency";
               inherit src;
               buildPhase = ''
@@ -135,7 +143,9 @@
           replace-fstar-versions-md = {
             type = "app";
             program = "${pkgs.writeScript "replace-fstar-versions-md" ''
-              FSTAR_VERSION=$(cat ${./flake.lock} | ${pkgs.jq}/bin/jq '.nodes.fstar.original.ref' -r)
+              FSTAR_VERSION=$(cat ${
+                ./flake.lock
+              } | ${pkgs.jq}/bin/jq '.nodes.fstar.original.ref' -r)
               ${pkgs.fd}/bin/fd \
                  -X ${pkgs.sd}/bin/sd '`.*?`(<!---FSTAR_VERSION-->)' '`'"$FSTAR_VERSION"'`$1' **/*.md \
                  ";" --glob '*.md'
@@ -144,14 +154,7 @@
           serve-rustc-docs = {
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
-              cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-              ${pkgs.python3}/bin/python -m http.server "$@"
-            ''}";
-          };
-          serve-book = {
-            type = "app";
-            program = "${pkgs.writeScript "serve-book" ''
-              cd ${packages.hax-book}
+              cd ${rustc-docs}/share/doc/rust/html/rustc
               ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
@@ -167,15 +170,16 @@
               hax-rust-frontend = pkgs.hello;
               hax-engine-names-extract = pkgs.hello;
             })
+            packages.docs
           ];
         in let
           utils = pkgs.stdenv.mkDerivation {
             name = "hax-dev-scripts";
-            phases = ["installPhase"];
+            phases = [ "installPhase" ];
             installPhase = ''
-                mkdir -p $out/bin
-                cp ${./.utils/rebuild.sh} $out/bin/rebuild
-              '';
+              mkdir -p $out/bin
+              cp ${./.utils/rebuild.sh} $out/bin/rebuild
+            '';
           };
           packages = [
             ocamlformat
@@ -190,13 +194,12 @@
             pkgs.cargo-release
             pkgs.cargo-insta
             pkgs.openssl.dev
+            pkgs.libz.dev
             pkgs.pkg-config
             pkgs.rust-analyzer
             pkgs.toml2json
-            pkgs.mdbook
             rustfmt
             rustc
-
             utils
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
@@ -209,13 +212,13 @@
               export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
               export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
             '';
-            packages = packages ++ [fstar pkgs.proverif];
+            packages = packages ++ [ fstar pkgs.proverif ];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
-            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
+            shellHook = ''
+              echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
         };
-      }
-    );
+      });
 }

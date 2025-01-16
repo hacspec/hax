@@ -153,7 +153,7 @@ let numeric (_: Prims.unit) : Prims.unit =
 
 let patterns (_: Prims.unit) : Prims.unit =
   let _:Prims.unit =
-    match 1uy with
+    match 1uy <: u8 with
     | 2uy -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in
@@ -178,6 +178,24 @@ let patterns (_: Prims.unit) : Prims.unit =
     | _ -> () <: Prims.unit
   in
   ()
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl': Core.Marker.t_StructuralPartialEq t_Foo
+
+let impl = impl'
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_1': Core.Cmp.t_PartialEq t_Foo t_Foo
+
+let impl_1 = impl_1'
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_2': Core.Cmp.t_Eq t_Foo
+
+let impl_2 = impl_2'
 
 let panic_with_msg (_: Prims.unit) : Prims.unit =
   Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (sz 1)

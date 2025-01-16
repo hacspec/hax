@@ -6,6 +6,7 @@ type ThirBody = hax_frontend_exporter::ThirBody;
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
 pub struct EngineOptions {
+    pub hax_version: String,
     pub backend: BackendOptions<()>,
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
     pub impl_infos: Vec<(

@@ -42,9 +42,9 @@ struct
                {
                  details =
                    "Expected two exact same types, got x="
-                   ^ [%show: ty] x
+                   ^ (x |> U.LiftToFullAst.ty |> Print_rust.pty_str)
                    ^ " and y="
-                   ^ [%show: ty] y;
+                   ^ (y |> U.LiftToFullAst.ty |> Print_rust.pty_str);
                })
         else x
       in

@@ -267,6 +267,7 @@ struct
           }
       | Loop { body; kind; state; label; witness; _ } ->
           let variables_to_output = s.expr_level in
+          let drop_expr = s.drop_expr in
           (* [adapt]: should we reorder shadowings? *)
           let observable_mutations, adapt =
             let set =
@@ -338,27 +339,32 @@ struct
               span;
             }
           in
-          if adapt && not (List.is_empty variables_to_output) then
-            (* here, we need to introduce the shadowings as bindings *)
-            let out =
-              UB.make_tuple_expr ~span
-              @@ List.map
-                   ~f:(fun (ident, typ) -> B.{ e = LocalVar ident; typ; span })
-                   variables_to_output
-            in
-            let lhs =
-              UB.make_tuple_pat
-              @@ List.map
-                   ~f:(fun (ident, typ) -> UB.make_var_pat ident typ span)
-                   observable_mutations
-            in
-            B.
-              {
-                e = Let { monadic = None; lhs; rhs = loop; body = out };
-                span;
-                typ = out.typ;
-              }
-          else loop
+          let vars =
+            if adapt && not (List.is_empty variables_to_output) then
+              (* here, we need to introduce the shadowings as bindings *)
+              let out =
+                UB.make_tuple_expr ~span
+                @@ List.map
+                     ~f:(fun (ident, typ) ->
+                       B.{ e = LocalVar ident; typ; span })
+                     variables_to_output
+              in
+              let lhs =
+                UB.make_tuple_pat
+                @@ List.map
+                     ~f:(fun (ident, typ) -> UB.make_var_pat ident typ span)
+                     observable_mutations
+              in
+              B.
+                {
+                  e = Let { monadic = None; lhs; rhs = loop; body = out };
+                  span;
+                  typ = out.typ;
+                }
+            else loop
+          in
+          if drop_expr then vars
+          else UB.make_tuple_expr ~span [ vars; UB.unit_expr span ]
       | [%inline_arms
           "dexpr'.*" - Let - Assign - Closure - Loop - If - Match - Break
           - Return] ->

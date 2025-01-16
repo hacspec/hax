@@ -65,3 +65,29 @@ impl<const SIZE: usize> From<()> for Param<SIZE> {
         Param { value: [0; SIZE] }
     }
 }
+
+fn f_generic<const X: usize, U>(_x: U) -> Param<X> {
+    Param { value: [0; X] }
+}
+
+trait T {
+    type Assoc;
+    fn d();
+}
+
+/// Impls with associated types are not erased
+impl T for u8 {
+    type Assoc = u8;
+    fn d() {}
+}
+trait T2 {
+    fn d();
+}
+
+/// Items can be forced to be transparent
+#[hax_lib::transparent]
+#[hax_lib::attributes]
+impl T2 for u8 {
+    #[hax_lib::requires(false)]
+    fn d() {}
+}

@@ -60,3 +60,6 @@ dev-repo: "git+https://github.com/hacspec/hax.git"
 depexts: [
   ["nodejs"] {}
 ]
+pin-depends: [
+  ["ocamlgraph" "git+https://github.com/maximebuyse/ocamlgraph.git#fix-stable-topological-sort"]
+]

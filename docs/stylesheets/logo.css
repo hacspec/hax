@@ -1,0 +1,24 @@
+.md-header__button[data-md-component="logo"] {
+    display: block !important;
+}
+
+label.md-header__button.md-icon[for="__drawer"] {
+    order: -1;
+}
+
+label.md-nav__title[for="__drawer"] img {
+    margin: auto;
+}
+
+label.md-nav__title[for="__drawer"] {
+    font-size: 0.0001px !important;
+    color: red !important;
+    text-align: center;
+    height: 4rem;
+    overflow: none;
+    /* color: transparent !important; */
+}
+
+.md-header__topic {
+    display: none;
+}

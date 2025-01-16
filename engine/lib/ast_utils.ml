@@ -226,9 +226,12 @@ module Make (F : Features.T) = struct
             ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
           | GCType { goal; name } when enabled ->
-              let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:name ~data in
-              GCType { goal; name = data }
+              let new_name =
+                Hashtbl.find_or_add s name ~default:(fun () ->
+                    "i" ^ Int.to_string (Hashtbl.length s))
+              in
+              let goal = super#visit_trait_goal (enabled, s) goal in
+              GCType { goal; name = new_name }
           | _ -> super#visit_generic_constraint (enabled, s) gc
 
         method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
@@ -365,6 +368,10 @@ module Make (F : Features.T) = struct
                           bounds_impls;
                         };
                   }
+            (* Match scrutinees need to be ascribed as well
+               (see https://github.com/hacspec/hax/issues/1207).*)
+            | Match { scrutinee; arms } ->
+                { e with e = Match { scrutinee = ascribe scrutinee; arms } }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
                 if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e
@@ -652,6 +659,13 @@ module Make (F : Features.T) = struct
               (* Do *NOT* visit sub nodes *)
               self#zero
           | _ -> super#visit_expr' () e
+      end
+
+    let collect_attrs =
+      object (_self)
+        inherit [_] Visitors.reduce
+        inherit [_] expr_list_monoid
+        method! visit_attrs () attrs = attrs
       end
   end
 
@@ -950,8 +964,11 @@ module Make (F : Features.T) = struct
   module Debug : sig
     val expr : ?label:string -> AST.expr -> unit
     (** Prints an expression pretty-printed as Rust, with its full
-        AST encoded as JSON, available as a file, so that one can
-        `jless` or `jq` into it. *)
+    AST encoded as JSON, available as a file, so that one can
+    `jless` or `jq` into it. *)
+
+    val item' : ?label:string -> AST.item -> string
+    val item : ?label:string -> AST.item -> unit
   end = struct
     let expr ?(label = "") (e : AST.expr) : unit =
       let path = tempfile_path ~suffix:".json" in
@@ -962,6 +979,18 @@ module Make (F : Features.T) = struct
       ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
       ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
       |> Stdio.prerr_endline
+
+    let item' ?(label = "") (e : AST.item) : string =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.item] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.item e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pitem_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+
+    let item ?(label = "") (e : AST.item) =
+      item' ~label e |> Stdio.prerr_endline
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =

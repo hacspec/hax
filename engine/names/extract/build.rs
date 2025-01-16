@@ -140,7 +140,7 @@ fn reader_to_str(s: String) -> String {
     result += "\n";
     result += "module Values = struct\n";
     for (json, name) in &def_ids {
-        result += &format!("{TAB}let parsed_{name} = Types.parse_def_id (Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{})\n", "{", json, "}");
+        result += &format!("{TAB}let parsed_{name} = Types.def_id_of_yojson (Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{})\n", "{", json, "}");
     }
     result += "end\n\n";
 
@@ -155,7 +155,7 @@ fn reader_to_str(s: String) -> String {
 
     result += &format!("let impl_infos_json_list = match Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{} with | `List l -> l | _ -> failwith \"Expected a list of `def_id * impl_infos`\"\n\n", "{", serde_json::to_string(&impl_infos).unwrap(), "}");
     result +=
-        &format!("let impl_infos = Base.List.map ~f:(function | `List [did; ii] -> (Types.parse_def_id did, Types.parse_impl_infos ii) | _ -> failwith \"Expected tuple\") impl_infos_json_list");
+        &format!("let impl_infos = Base.List.map ~f:(function | `List [did; ii] -> (Types.def_id_of_yojson did, Types.impl_infos_of_yojson ii) | _ -> failwith \"Expected tuple\") impl_infos_json_list");
 
     result
 }

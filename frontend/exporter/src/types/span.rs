@@ -36,16 +36,6 @@ pub enum AstPass {
     ProcMacroHarness,
 }
 
-/// Reflects [`rustc_span::hygiene::MacroKind`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_span::hygiene::MacroKind, state: S as _s)]
-pub enum MacroKind {
-    Bang,
-    Attr,
-    Derive,
-}
-
 /// Reflects [`rustc_span::hygiene::ExpnKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::hygiene::ExpnKind, state: S as gstate)]

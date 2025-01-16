@@ -72,6 +72,7 @@ module Make (F : Features.T) =
                   List.map (treat_args [ [] ] fields_as_pat)
                     ~f:(fun fields_as_pat ->
                       let fields =
+                        (* exn justification: `rev_map fields` and `fields` have the same length *)
                         List.map2_exn fields_as_pat fields
                           ~f:(fun pat { field; _ } -> { field; pat })
                       in

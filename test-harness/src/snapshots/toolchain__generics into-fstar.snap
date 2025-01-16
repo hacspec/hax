@@ -37,6 +37,36 @@ type t_Defaults (v_T: Type0) (v_N: usize) = | Defaults : t_Array v_T v_N -> t_De
 
 let f (_: t_Defaults Prims.unit (sz 2)) : Prims.unit = ()
 '''
+"Generics.Impl_generics.fst" = '''
+module Generics.Impl_generics
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Test = | Test : t_Test
+
+let impl__Test__set_alpn_protocols
+      (#v_S #impl_995885649_: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Convert.t_AsRef v_S string)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()]
+          i3:
+          Core.Iter.Traits.Collect.t_IntoIterator impl_995885649_)
+      (self: t_Test)
+      (v__protocols: impl_995885649_)
+    : Core.Result.t_Result Prims.unit Prims.unit =
+  Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit Prims.unit
+
+let impl__Test__set_ciphersuites
+      (#v_S #impl_995885649_: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Convert.t_AsRef v_S string)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()]
+          i3:
+          Core.Iter.Traits.Collect.t_IntoIterator impl_995885649_)
+      (self: t_Test)
+      (ciphers: impl_995885649_)
+    : Core.Result.t_Result Prims.unit Prims.unit =
+  Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit Prims.unit
+'''
 "Generics.fst" = '''
 module Generics
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
