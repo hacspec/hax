@@ -92,8 +92,18 @@ pub enum ImplExprAtom {
     /// `dyn Trait` implements `Trait` using a built-in implementation; this refers to that
     /// built-in implementation.
     Dyn,
-    /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
-    Builtin { r#trait: Binder<TraitRef> },
+    /// A built-in trait whose implementation is computed by the compiler, such as `FnMut`. This
+    /// morally points to an invisible `impl` block; as such it contains the information we may
+    /// need from one.
+    Builtin {
+        r#trait: Binder<TraitRef>,
+        /// The `ImplExpr`s required to satisfy the implied predicates on the trait declaration.
+        /// E.g. since `FnMut: FnOnce`, a built-in `T: FnMut` impl would have an `ImplExpr` for `T:
+        /// FnOnce`.
+        impl_exprs: Vec<ImplExpr>,
+        /// The values of the associated types for this trait.
+        types: Vec<(DefId, Ty)>,
+    },
     /// An error happened while resolving traits.
     Error(String),
 }
