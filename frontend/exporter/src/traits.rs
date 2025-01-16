@@ -206,13 +206,15 @@ pub fn solve_item_implied_traits<'tcx, S: UnderOwnerState<'tcx>>(
 fn solve_item_traits_inner<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     generics: ty::GenericArgsRef<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    predicates: ty::GenericPredicates<'tcx>,
 ) -> Vec<ImplExpr> {
     use crate::rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let param_env = s.param_env();
-
     predicates
+        .predicates
+        .iter()
+        .map(|(clause, _span)| *clause)
         .filter_map(|clause| clause.as_trait_clause())
         .map(|clause| clause.to_poly_trait_ref())
         // Substitute the item generics
@@ -239,7 +241,7 @@ pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
 
     let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
     // The "self" predicate in the context of the trait.
-    let self_pred = self_predicate(tcx, tr_def_id).unwrap();
+    let self_pred = self_predicate(tcx, tr_def_id);
     // Substitute to be in the context of the current item.
     let generics = generics.truncate_to(tcx, tcx.generics_of(tr_def_id));
     let self_pred = EarlyBinder::bind(self_pred).instantiate(tcx, generics);

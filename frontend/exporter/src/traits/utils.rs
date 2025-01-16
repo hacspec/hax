@@ -51,10 +51,7 @@ pub fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> GenericPredicate
 }
 
 /// The predicates that must hold to mention this item.
-pub fn required_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> impl Iterator<Item = Clause<'tcx>> + DoubleEndedIterator {
+pub fn required_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPredicates<'tcx> {
     use DefKind::*;
     match tcx.def_kind(def_id) {
         AssocConst
@@ -70,58 +67,42 @@ pub fn required_predicates<'tcx>(
         | Struct
         | TraitAlias
         | TyAlias
-        | Union => Some(
-            predicates_defined_on(tcx, def_id)
-                .predicates
-                .iter()
-                .map(|(clause, _span)| *clause),
-        ),
+        | Union => predicates_defined_on(tcx, def_id),
         // The tuple struct/variant constructor functions inherit the generics and predicates from
         // their parents.
         Variant | Ctor(..) => return required_predicates(tcx, tcx.parent(def_id)),
         // We consider all predicates on traits to be outputs
-        Trait => None,
+        Trait => Default::default(),
         // `predicates_defined_on` ICEs on other def kinds.
-        _ => None,
+        _ => Default::default(),
     }
-    .into_iter()
-    .flatten()
 }
 
 /// The special "self" predicate on a trait.
-pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<PolyTraitRef<'tcx>> {
-    use DefKind::*;
-    match tcx.def_kind(def_id) {
-        // Copied from the code of `tcx.predicates_of()`.
-        Trait => Some(Binder::dummy(TraitRef::identity(tcx, def_id))),
-        _ => None,
-    }
+pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> PolyTraitRef<'tcx> {
+    // Copied from the code of `tcx.predicates_of()`.
+    Binder::dummy(TraitRef::identity(tcx, def_id))
 }
 
 /// The predicates that can be deduced from the presence of this item in a signature. We only
 /// consider predicates implied by traits here, not implied bounds such as `&'a T` implying `T:
 /// 'a`.
-pub fn implied_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> impl Iterator<Item = Clause<'tcx>> + DoubleEndedIterator {
+pub fn implied_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPredicates<'tcx> {
     use DefKind::*;
+    let parent = tcx.opt_parent(def_id);
     match tcx.def_kind(def_id) {
         // We consider all predicates on traits to be outputs
-        Trait => predicates_defined_on(tcx, def_id)
-            .predicates
-            .iter()
-            .map(|(clause, _span)| *clause)
-            .collect::<Vec<_>>(),
-        AssocTy => tcx
-            // TODO: `item_bounds` contains parent traits, use `explicit_item_bounds` instead.
-            .item_bounds(def_id)
-            .instantiate_identity()
-            .iter()
-            .collect(),
-        _ => vec![],
+        Trait => predicates_defined_on(tcx, def_id),
+        AssocTy if matches!(tcx.def_kind(parent.unwrap()), Trait) => {
+            GenericPredicates {
+                parent,
+                // `skip_binder` is for an `EarlyBinder`
+                predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
+                ..GenericPredicates::default()
+            }
+        }
+        _ => GenericPredicates::default(),
     }
-    .into_iter()
 }
 
 /// Erase all regions. Largely copied from `tcx.erase_regions`.

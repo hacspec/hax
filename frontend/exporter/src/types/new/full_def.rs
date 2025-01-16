@@ -97,7 +97,7 @@ pub enum FullDefKind<Body> {
     Struct {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
         def: AdtDef,
@@ -105,7 +105,7 @@ pub enum FullDefKind<Body> {
     Union {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
         def: AdtDef,
@@ -113,7 +113,7 @@ pub enum FullDefKind<Body> {
     Enum {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
         def: AdtDef,
@@ -122,7 +122,7 @@ pub enum FullDefKind<Body> {
     TyAlias {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         /// `Some` if the item is in the local crate.
         #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
@@ -142,7 +142,7 @@ pub enum FullDefKind<Body> {
         parent: DefId,
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_item_predicates(s, s.owner_id()))]
+        #[value(normalized_implied_predicates(s, s.owner_id()))]
         // FIXME: clarify implied vs required predicates
         predicates: GenericPredicates,
         #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
@@ -164,7 +164,7 @@ pub enum FullDefKind<Body> {
     Trait {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_implied_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         /// The special `Self: Trait` clause.
         #[value({
@@ -172,7 +172,6 @@ pub enum FullDefKind<Body> {
             let tcx = s.base().tcx;
             let pred: ty::TraitPredicate =
                 crate::traits::self_predicate(tcx, s.owner_id())
-                    .unwrap()
                     .no_bound_vars()
                     .unwrap()
                     .upcast(tcx);
@@ -226,7 +225,7 @@ pub enum FullDefKind<Body> {
     Fn {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
         inline: InlineAttr,
@@ -246,7 +245,7 @@ pub enum FullDefKind<Body> {
         associated_item: AssocItem,
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
         inline: InlineAttr,
@@ -281,7 +280,7 @@ pub enum FullDefKind<Body> {
     Const {
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
@@ -296,7 +295,7 @@ pub enum FullDefKind<Body> {
         associated_item: AssocItem,
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
@@ -316,7 +315,7 @@ pub enum FullDefKind<Body> {
         nested: bool,
         #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
         generics: TyGenerics,
-        #[value(get_generic_predicates(s, s.owner_id()))]
+        #[value(normalized_required_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
         #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
         ty: Ty,
@@ -662,7 +661,7 @@ where
     let tcx = s.base().tcx;
     let impl_def_id = s.owner_id();
     let generics = tcx.generics_of(impl_def_id).sinto(s);
-    let predicates = get_generic_predicates(s, impl_def_id);
+    let predicates = normalized_required_predicates(s, impl_def_id);
     match tcx.impl_subject(impl_def_id).instantiate_identity() {
         ty::ImplSubject::Inherent(ty) => {
             let items = tcx
@@ -866,9 +865,10 @@ where
 #[cfg(feature = "rustc")]
 fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
-    predicates: &[(ty::Clause<'tcx>, rustc_span::Span)],
-) -> Vec<(Predicate, Span)> {
-    let predicates: Vec<_> = predicates
+    predicates: ty::GenericPredicates<'tcx>,
+) -> GenericPredicates {
+    let clauses: Vec<_> = predicates
+        .predicates
         .iter()
         .map(|(clause, span)| {
             let mut clause = *clause;
@@ -882,46 +882,30 @@ fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
             (clause.as_predicate(), *span)
         })
         .collect();
-    predicates.sinto(s)
+    GenericPredicates {
+        parent: predicates.parent.sinto(s),
+        predicates: clauses.sinto(s),
+    }
 }
 
-/// Gets the `predicates_defined_on` the given `DefId` and processes them with
+/// Get the `required_predicates` for the given `def_id` and process them with
 /// `normalize_trait_clauses`.
 #[cfg(feature = "rustc")]
-fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
+fn normalized_required_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     def_id: RDefId,
 ) -> GenericPredicates {
-    let predicates = predicates_defined_on(s.base().tcx, def_id);
-    let pred_list = normalize_trait_clauses(s, predicates.predicates);
-    GenericPredicates {
-        parent: predicates.parent.sinto(s),
-        predicates: pred_list,
-    }
+    let tcx = s.base().tcx;
+    normalize_trait_clauses(s, required_predicates(tcx, def_id))
 }
 
-/// Gets the predicates defined on the given associated type and processes them with
+/// Get the `implied_predicates` for the given `def_id` and process them with
 /// `normalize_trait_clauses`.
 #[cfg(feature = "rustc")]
-fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) -> GenericPredicates {
+fn normalized_implied_predicates<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    def_id: RDefId,
+) -> GenericPredicates {
     let tcx = s.base().tcx;
-    let parent_id = tcx.parent(def_id);
-    // `item_bounds` cannot be called on a trait impl item, and returns empty on an inherent impl
-    // item. So we only call it for trait decl items.
-    let predicates = match tcx.def_kind(parent_id) {
-        rustc_hir::def::DefKind::Trait => {
-            // TODO: we probably want to use `explicit_item_bounds` instead, but should do so
-            // consistently.
-            let clauses = tcx.item_bounds(def_id).instantiate_identity();
-            use crate::rustc_middle::query::Key;
-            let span = clauses.default_span(tcx);
-            clauses.iter().map(|c| (c, span)).collect::<Vec<_>>()
-        }
-        _ => Vec::new(),
-    };
-    let predicates = normalize_trait_clauses(s, predicates.as_slice());
-    GenericPredicates {
-        parent: Some(parent_id.sinto(s)),
-        predicates,
-    }
+    normalize_trait_clauses(s, implied_predicates(tcx, def_id))
 }
