@@ -2,8 +2,6 @@ module Rust_primitives.Integers
 
 open FStar.Mul
 
-module LI = Lib.IntTypes
-
 #set-options "--max_fuel 0 --max_ifuel 1 --z3rlimit 20"
 
 val pow2_values: x:nat -> Lemma
@@ -29,132 +27,135 @@ val pow2_values: x:nat -> Lemma
    | _ -> True)
   [SMTPat (pow2 x)]
 
-type inttype = LI.inttype
-let unsigned = LI.unsigned
-let signed = LI.signed
+type inttype =
+  | I8 | I16 | I32 | I64 | I128 | ISIZE
+  | U8 | U16 | U32 | U64 | U128 | USIZE
+
+let unsigned t = match t with
+  | U8 | U16 | U32 | U64 | U128 | USIZE -> true
+  | I8 | I16 | I32 | I64 | I128 | ISIZE -> false
+
+let signed t = match t with
+  | U8 | U16 | U32 | U64 | U128 | USIZE -> false
+  | I8 | I16 | I32 | I64 | I128 | ISIZE -> true
+
 type uinttype = t:inttype{unsigned t}
-let int_t t = LI.int_t t LI.PUB
 
-let bits t = LI.bits t
-let u8_inttype = LI.U8
-let i8_inttype = LI.S8
-let u16_inttype = LI.U16
-let i16_inttype = LI.S16
-let u32_inttype = LI.U32
-let i32_inttype = LI.S32
-let u64_inttype = LI.U64
-let i64_inttype = LI.S64
-let u128_inttype = LI.U128
-let i128_inttype = LI.S128
-val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
-val isize_inttype: t:inttype{signed t /\ (t = LI.S32 \/ t = LI.S64)}
+val size_bits:n:nat{n == 32 \/ n == 64}
 
-type u8 = int_t LI.U8 
-type i8 = int_t LI.S8
-type u16 = int_t LI.U16
-type i16 = int_t LI.S16
-type u32 = int_t LI.U32
-type i32 = int_t LI.S32
-type u64 = int_t LI.U64
-type i64=  int_t LI.S64
-type u128 = int_t LI.U128
-type i128 = int_t LI.S128
-type usize = int_t usize_inttype
-type isize = int_t isize_inttype
+let bits t = match t with
+  | U8 | I8 -> 8 
+  | U16 | I16 -> 16
+  | U32 | I32 -> 32
+  | U64 | I64 -> 64
+  | U128 | I128 -> 128 
+  | USIZE | ISIZE -> size_bits 
 
-let minint (t:LI.inttype) =
+let minint (t:inttype) =
   if unsigned t then 0 else -(pow2 (bits t - 1))
-let maxint (t:LI.inttype) =
+
+let maxint (t:inttype) =
   if unsigned t then pow2 (bits t) - 1
   else pow2 (bits t - 1) - 1
-let modulus (t:LI.inttype) = pow2 (bits t)
 
-let max_usize = maxint usize_inttype
-let max_isize = maxint isize_inttype
-
-//let range_bits (n:int) (n:bits) : bool =
-//  minint t <= n && n <= maxint t
+let max_usize = maxint USIZE
+let max_isize = maxint ISIZE
 
 let range (n:int) (t:inttype) : bool =
   minint t <= n && n <= maxint t
-type range_t (t:inttype) = x:int{range x t}
+
+let range_t t = x:int{range x t}
+
+type int_t t = | MkInt: range_t t -> int_t t
+
+let u8_inttype = U8
+let i8_inttype = I8
+let u16_inttype = U16
+let i16_inttype = I16
+let u32_inttype = U32
+let i32_inttype = I32
+let u64_inttype = U64
+let i64_inttype = I64
+let u128_inttype = U128
+let i128_inttype = I128
+let usize_inttype = USIZE
+let isize_inttype = ISIZE
+
+type u8 = int_t U8 
+type i8 = int_t I8
+type u16 = int_t U16
+type i16 = int_t I16
+type u32 = int_t U32
+type i32 = int_t I32
+type u64 = int_t U64
+type i64=  int_t I64
+type u128 = int_t U128
+type i128 = int_t I128
+type usize = int_t USIZE
+type isize = int_t ISIZE
 
 [@(strict_on_arguments [0])]
-let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
+let v (#t:inttype) (x:int_t t) : range_t t = x._0
 
 [@(strict_on_arguments [0])]
-val mk_int (#t:inttype) (n:range_t t) : int_t t
+let mk_int (#t:inttype) (n:range_t t) : int_t t = MkInt n
 
-let mk_u8 x = FStar.UInt8.uint_to_t x
-let mk_i8  x = FStar.Int8.int_to_t x
-let mk_u16  x = FStar.UInt16.uint_to_t x
-let mk_i16  x = FStar.Int16.int_to_t x
-let mk_u32 x = FStar.UInt32.uint_to_t x
-let mk_i32  x = FStar.Int32.int_to_t x
-let mk_u64 x = FStar.UInt64.uint_to_t x
-let mk_i64  x = FStar.Int64.int_to_t x
-let mk_u128 x = FStar.UInt128.uint_to_t x
-let mk_i128  x = FStar.Int128.int_to_t x
-let mk_usize x = FStar.UInt32.uint_to_t x
-let mk_isize  x = FStar.Int32.int_to_t x
+let mk_int_v_lemma (#t:inttype) (a:int_t t) : Lemma
+  (mk_int #t (v #t a) == a)
+  [SMTPat (mk_int #t (v #t a))]
+  = ()
 
-let from_uint8 (x:FStar.UInt8.t) : u8  = x
-let from_int8 (x:FStar.Int8.t) : i8  = x
-let from_uint16 (x:FStar.UInt16.t) : u16  = x
-let from_int16 (x:FStar.Int16.t) : i16  = x
-let from_uint32 (x:FStar.UInt32.t) : u32  = x
-let from_int32 (x:FStar.Int32.t) : i32  = x
-let from_uint64 (x:FStar.UInt64.t) : u64  = x
-let from_int64 (x:FStar.Int64.t) : i64  = x
-let from_uint128 (x:FStar.UInt128.t) : u128  = x
-let from_int128 (x:FStar.Int128.t) : i128  = x
+let v_mk_int_lemma (#t:inttype) (n:range_t t) : Lemma
+  (v #t (mk_int #t n) == n)
+  [SMTPat (v #t (mk_int #t n))]
+  = ()
+
+let mk_u8 x = mk_int #U8 x
+let mk_i8  x = mk_int #I8 x
+let mk_u16  x = mk_int #U16 x
+let mk_i16  x = mk_int #I16 x
+let mk_u32 x = mk_int #U32 x
+let mk_i32  x = mk_int #I32 x
+let mk_u64 x = mk_int #U64 x
+let mk_i64  x = mk_int #I64 x
+let mk_u128 x = mk_int #U128 x
+let mk_i128  x = mk_int #I128 x
+let mk_usize x = mk_int #USIZE x
+let mk_isize  x = mk_int #ISIZE x
+
+let sz x = mk_usize x
+let isz  x = mk_isize x
+
+let from_uint8 (x:FStar.UInt8.t) : u8  = mk_int (FStar.UInt8.v x)
+let from_int8 (x:FStar.Int8.t) : i8  = mk_int (FStar.Int8.v x)
+let from_uint16 (x:FStar.UInt16.t) : u16  = mk_int (FStar.UInt16.v x)
+let from_int16 (x:FStar.Int16.t) : i16  = mk_int (FStar.Int16.v x)
+let from_uint32 (x:FStar.UInt32.t) : u32  = mk_int (FStar.UInt32.v x)
+let from_int32 (x:FStar.Int32.t) : i32  = mk_int (FStar.Int32.v x)
+let from_uint64 (x:FStar.UInt64.t) : u64  = mk_int (FStar.UInt64.v x)
+let from_int64 (x:FStar.Int64.t) : i64  = mk_int (FStar.Int64.v x)
+let from_uint128 (x:FStar.UInt128.t) : u128  = mk_int (FStar.UInt128.v x)
+let from_int128 (x:FStar.Int128.t) : i128  = mk_int (FStar.Int128.v x)
 let from_usize (x:FStar.UInt32.t) : usize  = mk_int (FStar.UInt32.v x)
 let from_isize (x:FStar.Int32.t) : isize  = mk_int (FStar.Int32.v x)
 
-let to_uint8 (x:u8) : FStar.UInt8.t = x
-let to_int8 (x:i8) : FStar.Int8.t  = x
-let to_uint16 (x:u16) : FStar.UInt16.t  = x
-let to_int16 (x:i16) : FStar.Int16.t  = x
-let to_uint32 (x:u32) : FStar.UInt32.t  = x
-let to_int32 (x:i32) : FStar.Int32.t  = x
-let to_uint64 (x:u64) : FStar.UInt64.t  = x
-let to_int64 (x:i64) : FStar.Int64.t  = x
-let to_uint128 (x:u128) : FStar.UInt128.t  = x
-let to_int128 (x:i128) : FStar.Int128.t  = x
+let to_uint8 (x:u8) : FStar.UInt8.t = FStar.UInt8.uint_to_t (v x)
+let to_int8 (x:i8) : FStar.Int8.t  = FStar.Int8.int_to_t (v x)
+let to_uint16 (x:u16) : FStar.UInt16.t  = FStar.UInt16.uint_to_t (v x)
+let to_int16 (x:i16) : FStar.Int16.t  = FStar.Int16.int_to_t (v x)
+let to_uint32 (x:u32) : FStar.UInt32.t  = FStar.UInt32.uint_to_t (v x)
+let to_int32 (x:i32) : FStar.Int32.t  = FStar.Int32.int_to_t (v x)
+let to_uint64 (x:u64) : FStar.UInt64.t  = FStar.UInt64.uint_to_t (v x)
+let to_int64 (x:i64) : FStar.Int64.t  = FStar.Int64.int_to_t (v x)
+let to_uint128 (x:u128) : FStar.UInt128.t  = FStar.UInt128.uint_to_t (v x)
+let to_int128 (x:i128) : FStar.Int128.t  = FStar.Int128.int_to_t (v x)
 
-
-[@(strict_on_arguments [0])]
-val mk_int_equiv_lemma #t (n:range_t t) :
-    Lemma (
-    match t with
-    | LI.U8 -> mk_int #u8_inttype n == UInt8.uint_to_t n   
-    | LI.S8 -> mk_int #i8_inttype n == Int8.int_to_t n   
-    | LI.U16 -> mk_int #u16_inttype n == UInt16.uint_to_t n   
-    | LI.S16 -> mk_int #i16_inttype n == Int16.int_to_t n   
-    | LI.U32 -> mk_int #u32_inttype n == UInt32.uint_to_t n   
-    | LI.S32 -> mk_int #i32_inttype n == Int32.int_to_t n   
-    | LI.U64 -> mk_int #u64_inttype n == UInt64.uint_to_t n   
-    | LI.S64 -> mk_int #i64_inttype n == Int64.int_to_t n   
-    | LI.U128 -> mk_int #u128_inttype n == UInt128.uint_to_t n   
-    | LI.S128 -> mk_int #i128_inttype n == Int128.int_to_t n  
-    | _ -> True)
-
-let sz (n:range_t usize_inttype) : usize = mk_int n
-let isz (n:range_t isize_inttype) : isize = mk_int n
-
-val mk_int_v_lemma: #t:inttype -> a:int_t t -> Lemma
-  (mk_int #t (v #t a) == a)
-  [SMTPat (mk_int #t (v #t a))]
-
-val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
-  (v #t (mk_int #t n) == n)
-  [SMTPat (v #t (mk_int #t n))]
+let modulus (t:inttype) = pow2 (bits t)
 
 (* Wrap-around modulo: wraps into [-p/2; p/2[ *)
-let op_At_Percent (v:int) (p:int{p>0/\ p%2=0}) : Tot int =
+let op_At_Percent (v:int) (p:int{p>0 /\ p%2=0}) : Tot int =
   let m = v % p in if m >= p/2 then m - p else m
 
-[@(strict_on_arguments [0])]
 let op_At_Percent_Dot x t : range_t t =
   if unsigned t then x % modulus t
   else x @% modulus t
@@ -168,89 +169,42 @@ let cast_mod (#t:inttype) (#t':inttype)
 
 /// Arithmetic operations
 /// 
+
 let add_mod (#t:inttype) (a:int_t t) (b:int_t t) =
     mk_int #t ((v a + v b) @%. t)
-
-val add_mod_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t
-  -> Lemma
-    (add_mod a b == LI.add_mod #t #LI.PUB a b)
 
 let add (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a + v b) t}) =
     mk_int #t (v a + v b)
 
-val add_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t{range (v a + v b) t}
-  -> Lemma
-    (add a b == LI.add #t #LI.PUB a b)
-
 let incr (#t:inttype) (a:int_t t{v a < maxint t}) =
     mk_int #t (v a + 1)
-
-val incr_equiv_lemma: #t:inttype
-  -> a:int_t t{v a < maxint t}
-  -> Lemma (incr a == LI.incr #t #LI.PUB a)
 
 let mul_mod (#t:inttype) (a:int_t t)
             (b:int_t t) =
             mk_int #t (v a * v b @%. t)
 
-val mul_mod_equiv_lemma: #t:uinttype{not (LI.U128? t)}
-  -> a:int_t t
-  -> b:int_t t
-  -> Lemma (mul_mod a b == LI.mul_mod #t #LI.PUB a b)
-
 let mul (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a * v b) t}) =
         mk_int #t (v a * v b)
 
-val mul_equiv_lemma: #t:uinttype{not (LI.U128? t)}
-  -> a:int_t t
-  -> b:int_t t{range (v a * v b) t}
-  -> Lemma (mul a b == LI.mul #t #LI.PUB a b)
-
 let sub_mod (#t:inttype) (a:int_t t) (b:int_t t) =
     mk_int #t ((v a - v b) @%. t)
-
-val sub_mod_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t
-  -> Lemma
-    (sub_mod a b == LI.sub_mod #t #LI.PUB a b)
 
 let sub (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a - v b) t}) =
     mk_int #t (v a - v b)
 
-val sub_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t{range (v a - v b) t}
-  -> Lemma
-    (sub a b == LI.sub #t #LI.PUB a b)
-
 let decr (#t:inttype) (a:int_t t{minint t < v a}) =
     mk_int #t (v a - 1)
-
-val decr_equiv_lemma: #t:inttype
-  -> a:int_t t{minint t < v a}
-  -> Lemma (decr a == LI.decr #t #LI.PUB a)
 
 let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0 /\ (unsigned t \/ range (v a / v b) t)}) =
   assert (unsigned t \/ range (v a / v b) t);
   mk_int #t (v a / v b)
-
+  
 let mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
   mk_int #t (v a % v b)
 
-
-val mod_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
-  -> a:int_t t
-  -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
-  -> Lemma (mod a b == LI.mod a b)
-  
 
 /// Comparison Operators
 /// 
@@ -264,6 +218,8 @@ let gte (#t:inttype) (a:int_t t) (b:int_t t) = v a >= v b
 
 /// Bitwise Operations
 
+/// Todo: define bitvector-based normalizable definitions
+///       for all these operations
 
 let ones (#t:inttype) : n:int_t t =
   if unsigned t then mk_int #t (pow2 (bits t) - 1)
@@ -274,8 +230,7 @@ let zero (#t:inttype) : n:int_t t =
 
 val lognot: #t:inttype -> int_t t -> int_t t
 val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
-  (lognot a == LI.lognot #t #LI.PUB a /\
-   lognot #t zero == ones /\
+  (lognot #t zero == ones /\
    lognot #t ones == zero /\
    lognot (lognot a) == a /\
    (signed t ==> v (lognot a) = -1 - v a) /\
@@ -286,9 +241,9 @@ val logxor: #t:inttype
   -> int_t t
   -> int_t t
   -> int_t t
+ 
 val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
-  (logxor a b == LI.logxor #t #LI.PUB a b /\
-   a `logxor` a == zero /\
+  (a `logxor` a == zero /\
    (a `logxor` b == zero ==> b == a) /\
    a `logxor` (a `logxor` b) == b /\
    a `logxor` (b `logxor` a) == b /\
@@ -303,8 +258,7 @@ val logand: #t:inttype
   -> int_t t
 
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logand a b == LI.logand #t #LI.PUB a b /\
-         logand a zero == zero /\
+  Lemma (logand a zero == zero /\
          logand zero a == zero /\
          logand a ones == a /\
          logand ones a == a /\
@@ -325,8 +279,7 @@ val logor: #t:inttype
   -> int_t t
 
 val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logor a b == LI.logor #t #LI.PUB a b /\
-         logor a zero == a /\
+  Lemma (logor a zero == a /\
          logor a ones == ones /\
          logor zero a == a /\
          logor ones a == ones /\
@@ -337,76 +290,40 @@ unfold type shiftval (t:inttype) (t':inttype) =
 unfold type rotval (t:inttype) (t':inttype) =
      b:int_t t'{v b > 0 /\ v b < bits t}
 
-let shift_right (#t:inttype) (#t':inttype)
-    (a:int_t t) (b:shiftval t t') =
-    LI.shift_right_lemma #t #LI.PUB a (LI.size (v b));
-    mk_int #t (v a / pow2 (v b))
+val shift_right (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t') : int_t t 
 
-val shift_right_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
-  -> Lemma
-    (v (cast b <: u32) < bits t /\
-     shift_right #t #t' a b ==
-     LI.shift_right #t #LI.PUB a (cast b))
-     
-let shift_left (#t:inttype) (#t':inttype)
-    (a:int_t t) (b:shiftval t t') =
-    let x:range_t t = (v a * pow2 (v b)) @%. t in
-    mk_int #t x
-
-val shift_left_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
-  -> Lemma
-    ((v a >= 0 /\ range (v a * pow2 (v b)) t) ==>
-     (v (cast b <: u32) < bits t /\
-      shift_left #t #t' a b ==
-      LI.shift_left #t #LI.PUB a (cast b)))
-
-val rotate_right: #t:uinttype -> #t':inttype
+val shift_left (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t') : int_t t
+ 
+val rotate_right: #t:inttype{unsigned t} -> #t':inttype
   -> a:int_t t
   -> rotval t t'
   -> int_t t
 
-val rotate_right_equiv_lemma: #t:uinttype -> #t':inttype
-  -> a:int_t t -> b:rotval t t'
-  -> Lemma (v (cast b <: u32) > 0 /\ 
-           rotate_right a b ==
-           LI.rotate_right #t #LI.PUB a (cast b))
-  
-val rotate_left: #t:uinttype -> #t':inttype
+val rotate_left: #t:inttype{unsigned t} -> #t':inttype
   -> a:int_t t
   -> rotval t t'
   -> int_t t
-
-val rotate_left_equiv_lemma: #t:uinttype -> #t':inttype
-  -> a:int_t t -> b:rotval t t'
-  -> Lemma (v (cast b <: u32) > 0 /\ 
-           rotate_left a b ==
-           LI.rotate_left #t #LI.PUB a (cast b))
 
 let shift_right_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t) : int_t t = shift_right u s
 
 let shift_left_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t{v u >= 0}) : int_t t = shift_left u s
 
-let rotate_right_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_right u s
+let rotate_right_i (#t:inttype{unsigned t}) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_right u s
 
-let rotate_left_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_left u s
+let rotate_left_i (#t:inttype{unsigned t}) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_left u s
 
 let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
     mk_int #t (abs (v a))
 
-val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
-  -> a:int_t t{minint t < v a}
-  -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
-
 let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
     mk_int #t (0 - (v a))
 
-val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
+val neg_equiv_lemma: #t:inttype{signed t /\ not (I128? t)}
   -> a:int_t t{range (0 - v a) t}
   -> Lemma (neg a == sub #t (mk_int 0) a /\
           (lognot a = sub (neg a) (mk_int 1)))
-
 
 
 ///

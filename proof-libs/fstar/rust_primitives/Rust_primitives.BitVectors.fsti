@@ -108,33 +108,33 @@ unfold let mask_inv_opt =
 /// targetting machine integer literals of type `i32`
 val get_bit_pow2_minus_one_i32
   (x: int {x < pow2 31 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 32})
-  : Lemma ( get_bit (FStar.Int32.int_to_t x) nth 
+  : Lemma ( get_bit (mk_i32 x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit (FStar.Int32.int_to_t x) nth)]
+  [SMTPat (get_bit (mk_i32 x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `i16`
 val get_bit_pow2_minus_one_i16
   (x: int {x < pow2 15 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
-  : Lemma ( get_bit (FStar.Int16.int_to_t x) nth 
+  : Lemma ( get_bit (mk_i16 x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit (FStar.Int16.int_to_t x) nth)]
+  [SMTPat (get_bit (mk_i16 x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u32`
 val get_bit_pow2_minus_one_u32
   (x: int {x < pow2 32 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 32})
-  : Lemma ( get_bit (FStar.UInt32.uint_to_t x) nth 
+  : Lemma ( get_bit (mk_u32 x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit (FStar.UInt16.uint_to_t x) nth)]
+  [SMTPat (get_bit (mk_u32 x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u16`
 val get_bit_pow2_minus_one_u16
   (x: int {x < pow2 16 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
-  : Lemma ( get_bit (FStar.UInt16.uint_to_t x) nth 
+  : Lemma ( get_bit (mk_u16 x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit (FStar.UInt16.uint_to_t x) nth)]
+  [SMTPat (get_bit (mk_u16 x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u8`  
@@ -150,7 +150,7 @@ val get_bit_pow2_minus_one_u8
   // `get_bit_pow2_minus_one` lemma.
   (t: _ {t == u8_inttype})  
   (x: int {x < pow2 8 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
-  : Lemma ( get_bit #t (FStar.UInt8.uint_to_t x) nth 
+  : Lemma ( get_bit #t (mk_u8 x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]
+  [SMTPat (get_bit #t (mk_u8 x) nth)]
 

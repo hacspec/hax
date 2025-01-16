@@ -5,7 +5,6 @@
 # sophisticated build system.
 #
 # We expect FSTAR_HOME to be set to your FSTAR repo/install directory
-# We expect HACL_HOME to be set to your HACL* repo location
 # We expect HAX_PROOF_LIBS_HOME to be set to the folder containing core, rust_primitives etc.
 #
 # ROOTS contains all the top-level F* files you wish to verify
@@ -32,7 +31,6 @@
 
 HAX_HOME      ?= $(shell git rev-parse --show-toplevel)
 FSTAR_HOME    ?= $(HAX_LIBS_HOME)/../../../FStar
-HACL_HOME     ?= $(HAX_LIBS_HOME)/../../../hacl-star
 FSTAR_BIN     ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
 
 HAX_PROOF_LIBS_HOME ?= $(HAX_HOME)/proof-libs/fstar
@@ -51,7 +49,7 @@ all:
 # *extend* the set of relevant files with the tests.
 ROOTS = $(wildcard *.fst)
 
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core $(HAX_LIBS_HOME)/proofs/fstar/extraction/
+FSTAR_INCLUDE_DIRS = $(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core $(HAX_LIBS_HOME)/proofs/fstar/extraction/
 
 
 FSTAR_FLAGS = --cmi \
