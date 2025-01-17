@@ -34,10 +34,10 @@ impl From<std::array::TryFromSliceError> for Error {
     }
 }
 
-#[hax::opaque_type]
+#[hax::opaque]
 pub struct Message(aead::Tag, Vec<u8>);
 
-#[hax::opaque_type]
+#[hax::opaque]
 pub struct KeyIv(libcrux::aead::Key, libcrux::aead::Iv);
 
 /* Wire formats */

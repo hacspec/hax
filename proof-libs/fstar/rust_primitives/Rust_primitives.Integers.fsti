@@ -293,9 +293,21 @@ unfold type rotval (t:inttype) (t':inttype) =
 val shift_right (#t:inttype) (#t':inttype)
     (a:int_t t) (b:shiftval t t') : int_t t 
 
+val shift_right_lemma (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t'):
+    Lemma (v (shift_right #t #t' a b) == (v a / pow2 (v b)))
+          [SMTPat (shift_right #t #t' a b)]
+    
 val shift_left (#t:inttype) (#t':inttype)
     (a:int_t t) (b:shiftval t t') : int_t t
- 
+
+val shift_left_positive_lemma (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t'):
+    Lemma (requires (unsigned t \/ v a >= 0))
+          (ensures ((v (shift_left #t #t' a b) == (v a * pow2 (v b)) @%. t)))
+          [SMTPat (shift_left #t #t' a b)]
+
+
 val rotate_right: #t:inttype{unsigned t} -> #t':inttype
   -> a:int_t t
   -> rotval t t'

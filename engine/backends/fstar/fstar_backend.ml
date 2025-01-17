@@ -152,53 +152,60 @@ struct
 
   let pnegative = function true -> "-" | false -> ""
 
-  let rec pliteral span (e : literal) =
+  (* Print a literal as an F* constant *)
+  let rec pliteral_as_const span (e : literal) =
     match e with
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
     | Int { value; kind = { size; signedness }; negative } ->
-        let open F.Const in
-        let size =
-          match size with
-          | S8 -> Int8
-          | S16 -> Int16
-          | S32 -> Int32
-          | S64 -> Int64
-          | S128 ->
-              Error.unimplemented ~issue_id:464
-                ~details:
-                  "Matching on u128 or i128 literals is not yet supported." span
-          | SSize ->
-              Error.unimplemented ~issue_id:464
-                ~details:
-                  "Matching on usize or isize literals is not yet supported. \
-                   As a work-around, instead of `match expr { 0 => ... }`, \
-                   please cast for instance to `u64` before: `match expr as \
-                   u64 { 0 => ... }`."
-                span
+        Error.unimplemented
+          ~details:"Integers cannot be printed as constants, they can only be printed as expressions." span
+    | Float _ ->
+        Error.unimplemented
+          ~details:"Floats cannot be printed as constants, they can only be printed as expressions." span
+    | Bool b -> F.Const.Const_bool b
+
+  (* Print a literal appearing in a pattern as an F* pattern *)
+  let rec pliteral_as_pat span (e : literal) =
+    match e with
+    | Int { value; kind = { size; signedness }; negative } ->
+        let pat_name =
+          F.pat @@ F.AST.PatName (F.lid [ "Rust_primitives"; "Integers";  "MkInt" ])
         in
-        F.Const.Const_int
-          ( pnegative negative ^ value,
-            Some
-              ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
-                size ) )
+	let mk_const c = F.AST.PatConst c |> F.pat in
+	let mk_int value negative =  mk_const (F.Const.Const_int (pnegative negative ^ value, None))
+    	in
+        F.pat_app pat_name
+        @@
+	[mk_int value negative]
     | Float _ ->
         Error.unimplemented ~issue_id:464
-          ~details:"Matching on f32 or f64 literals is not yet supported." span
-    | Bool b -> F.Const.Const_bool b
+          ~details:"Pattern matching on floats is not yet supported." span
+    | _ -> F.pat @@ F.AST.PatConst (pliteral_as_const span e)
 
   let pliteral_as_expr span (e : literal) =
     let mk_const c = F.AST.Const c |> F.term in
-    let mk_nat value negative =
+    let mk_int value negative =
       mk_const (F.Const.Const_int (pnegative negative ^ value, None))
     in
-    let wrap_app fn x n = F.mk_e_app (F.term_of_lid [ fn ]) [ mk_nat x n ] in
     match e with
-    | Int { value; kind = { size = SSize; signedness = sn }; negative = n } ->
-        wrap_app (match sn with Signed -> "isz" | Unsigned -> "sz") value n
-    | Int { value; kind = { size = S128; signedness = sn }; negative } ->
-        let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
-        wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | Int { value; kind = { size; signedness }; negative = n } ->
+        let f =
+          match (size, signedness) with
+          | S8, Signed -> F.lid ["mk_i8"]
+          | S16, Signed -> F.lid ["mk_i16"]
+          | S32, Signed -> F.lid ["mk_i32"]
+          | S64, Signed -> F.lid ["mk_i64"]
+          | S128, Signed -> F.lid ["mk_i128"]
+          | SSize, Signed -> F.lid ["mk_isize"]
+          | S8, Unsigned -> F.lid ["mk_u8"]
+          | S16, Unsigned -> F.lid ["mk_u16"]
+          | S32, Unsigned -> F.lid ["mk_u32"]
+          | S64, Unsigned -> F.lid ["mk_u64"]
+          | S128, Unsigned -> F.lid ["mk_u128"]
+          | SSize, Unsigned -> F.lid ["mk_usize"]
+        in
+        F.mk_e_app (F.term @@ F.AST.Name f) [ mk_int value n ]
     | Float { value; negative; _ } ->
         F.mk_e_app
           (F.term_of_lid [ "mk_float" ])
@@ -206,7 +213,7 @@ struct
             mk_const
               (F.Const.Const_string (pnegative negative ^ value, F.dummyRange));
           ]
-    | _ -> mk_const @@ pliteral span e
+    | _ -> mk_const @@ pliteral_as_const span e
 
   let pconcrete_ident (id : concrete_ident) =
     let id = U.Concrete_ident_view.to_view id in
@@ -458,7 +465,7 @@ struct
           @@
           if is_record then [ pat_rec () ]
           else List.map ~f:(fun { field; pat } -> ppat pat) fields
-    | PConstant { lit } -> F.pat @@ F.AST.PatConst (pliteral p.span lit)
+    | PConstant { lit } -> pliteral_as_pat p.span lit
     | _ -> .
 
   and pfield_pat ({ field; pat } : field_pat) =
