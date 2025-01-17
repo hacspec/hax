@@ -159,10 +159,16 @@ struct
     | Char c -> F.Const.Const_char (Char.to_int c)
     | Int { value; kind = { size; signedness }; negative } ->
         Error.unimplemented
-          ~details:"Integers cannot be printed as constants, they can only be printed as expressions." span
+          ~details:
+            "Integers cannot be printed as constants, they can only be printed \
+             as expressions."
+          span
     | Float _ ->
         Error.unimplemented
-          ~details:"Floats cannot be printed as constants, they can only be printed as expressions." span
+          ~details:
+            "Floats cannot be printed as constants, they can only be printed \
+             as expressions."
+          span
     | Bool b -> F.Const.Const_bool b
 
   (* Print a literal appearing in a pattern as an F* pattern *)
@@ -170,14 +176,14 @@ struct
     match e with
     | Int { value; kind = { size; signedness }; negative } ->
         let pat_name =
-          F.pat @@ F.AST.PatName (F.lid [ "Rust_primitives"; "Integers";  "MkInt" ])
+          F.pat
+          @@ F.AST.PatName (F.lid [ "Rust_primitives"; "Integers"; "MkInt" ])
         in
-	let mk_const c = F.AST.PatConst c |> F.pat in
-	let mk_int value negative =  mk_const (F.Const.Const_int (pnegative negative ^ value, None))
-    	in
-        F.pat_app pat_name
-        @@
-	[mk_int value negative]
+        let mk_const c = F.AST.PatConst c |> F.pat in
+        let mk_int value negative =
+          mk_const (F.Const.Const_int (pnegative negative ^ value, None))
+        in
+        F.pat_app pat_name @@ [ mk_int value negative ]
     | Float _ ->
         Error.unimplemented ~issue_id:464
           ~details:"Pattern matching on floats is not yet supported." span
@@ -192,18 +198,18 @@ struct
     | Int { value; kind = { size; signedness }; negative = n } ->
         let f =
           match (size, signedness) with
-          | S8, Signed -> F.lid ["mk_i8"]
-          | S16, Signed -> F.lid ["mk_i16"]
-          | S32, Signed -> F.lid ["mk_i32"]
-          | S64, Signed -> F.lid ["mk_i64"]
-          | S128, Signed -> F.lid ["mk_i128"]
-          | SSize, Signed -> F.lid ["mk_isize"]
-          | S8, Unsigned -> F.lid ["mk_u8"]
-          | S16, Unsigned -> F.lid ["mk_u16"]
-          | S32, Unsigned -> F.lid ["mk_u32"]
-          | S64, Unsigned -> F.lid ["mk_u64"]
-          | S128, Unsigned -> F.lid ["mk_u128"]
-          | SSize, Unsigned -> F.lid ["mk_usize"]
+          | S8, Signed -> F.lid [ "mk_i8" ]
+          | S16, Signed -> F.lid [ "mk_i16" ]
+          | S32, Signed -> F.lid [ "mk_i32" ]
+          | S64, Signed -> F.lid [ "mk_i64" ]
+          | S128, Signed -> F.lid [ "mk_i128" ]
+          | SSize, Signed -> F.lid [ "mk_isize" ]
+          | S8, Unsigned -> F.lid [ "mk_u8" ]
+          | S16, Unsigned -> F.lid [ "mk_u16" ]
+          | S32, Unsigned -> F.lid [ "mk_u32" ]
+          | S64, Unsigned -> F.lid [ "mk_u64" ]
+          | S128, Unsigned -> F.lid [ "mk_u128" ]
+          | SSize, Unsigned -> F.lid [ "mk_usize" ]
         in
         F.mk_e_app (F.term @@ F.AST.Name f) [ mk_int value n ]
     | Float { value; negative; _ } ->
