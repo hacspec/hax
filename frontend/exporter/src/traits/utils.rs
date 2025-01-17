@@ -50,7 +50,15 @@ pub fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> GenericPredicate
     result
 }
 
-/// The predicates that must hold to mention this item.
+/// The predicates that must hold to mention this item. E.g.
+///
+/// ```ignore
+/// // `U: OtherTrait` is required, `Self: Sized` is implied.
+/// trait Trait<U: OtherTrait>: Sized {
+///     // `T: Clone` is required, `Self::Type<T>: Debug` is implied.
+///     type Type<T: Clone>: Debug;
+/// }
+/// ```
 pub fn required_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPredicates<'tcx> {
     use DefKind::*;
     match tcx.def_kind(def_id) {
@@ -86,7 +94,15 @@ pub fn self_predicate<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> PolyTraitRef<'t
 
 /// The predicates that can be deduced from the presence of this item in a signature. We only
 /// consider predicates implied by traits here, not implied bounds such as `&'a T` implying `T:
-/// 'a`.
+/// 'a`. E.g.
+///
+/// ```ignore
+/// // `U: OtherTrait` is required, `Self: Sized` is implied.
+/// trait Trait<U: OtherTrait>: Sized {
+///     // `T: Clone` is required, `Self::Type<T>: Debug` is implied.
+///     type Type<T: Clone>: Debug;
+/// }
+/// ```
 pub fn implied_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> GenericPredicates<'tcx> {
     use DefKind::*;
     let parent = tcx.opt_parent(def_id);
