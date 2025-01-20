@@ -49,9 +49,10 @@ engine. Those should not be published on `crate.io`.
 2. `cargo-hax-engine-names-extract`
 
 ## Procedure
- 1. Bump the version number with `cargo release LEVEL --no-publish --no-tag --execute` (`cargo release --help` for more details on `LEVEL`). This will bump the version of every Rust crate, but also the version in `engine/dune-project`. This will also regenerate `engine/hax-engine.opam`. Note this will *not* publish the crate.
- 2. PR the change
- 3. when the PR is merged in main, checkout `main` and run `cargo release --execute`
+ 1. Move the contents of `CHANGELOG.md` under the `[Unreleased]` section to a new section named following the target version
+ 2. Bump the version number with `cargo release LEVEL --no-publish --no-tag --execute` (`cargo release --help` for more details on `LEVEL`). This will bump the version of every Rust crate, but also the version in `engine/dune-project`. This will also regenerate `engine/hax-engine.opam`. Note this will *not* publish the crate.
+ 3. PR the change
+ 4. when the PR is merged in main, checkout `main` and run `cargo release --execute`
 
 Note: for now, we are not publishing to Opam. Instead, let's just advertise the following for installation:
 ```bash
