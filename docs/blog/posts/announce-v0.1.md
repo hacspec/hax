@@ -60,7 +60,7 @@ Over the past year, hax has proven its versatility in various projects:
 
 While hax can handle a substantial portion of Rust code, certain limitations
 remain.
-Features like Generic Associated Types (GATs), Rust nightly features, specific
+Features like Generic Associated Types (GATs), some Rust nightly features, specific
 loop and pattern structures, and a range of mutations are not yet supported.
 
 ??? hint "Detailed list of unsupported features"
