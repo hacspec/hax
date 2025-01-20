@@ -31,9 +31,10 @@ release notes will clearly outline any backward compatibility issues.
 
 Hax currently boasts three actively used backends: ([F\*](https://fstar-lang.org/),
 [Rocq](https://rocq-prover.org/) and [SSProve](https://github.com/SSProve/ssprove)).
-While Cryspen primarily focuses on the F\* backend, [Bas Spitter](https://www.au.dk/en/spitters@cs.au.dk)
+While Cryspen primarily focuses on the F\* backend, [Bas Spitters](https://www.au.dk/en/spitters@cs.au.dk)
 and his team at the University of Aarhus are actively developing and utilizing
-the Rocq and SSProve backends.
+the Rocq and SSProve backends. Cryspen also supports an experimental backend for
+[ProVerif](https://bblanche.gitlabpages.inria.fr/proverif/).
 
 With this initial release, hax can process a significant subset of Rust code.
 Both the frontend, which extracts a JSON AST from the Rust compiler, and the
@@ -53,7 +54,7 @@ few months.
 
 Over the past year, hax has proven its versatility in various projects:
 - [Verifying Bertie](https://cryspen.com/post/hax-pv/): A TLS 1.3 implementation, verified with the ProVerif backend
-- [Verifying ML-KEM](https://cryspen.com/post/fospqc/): [A post quantum cryptographic algorithm](https://cryspen.com/post/ml-kem-verification) verified with the F\* backend
+- [Verifying ML-KEM](https://cryspen.com/post/ml-kem-verification): A post quantum cryptographic algorithm verified with the F\* backend
 - [Verifying Smart Contracts](https://github.com/hacspec/hacspec.github.io/blob/master/coqpl24-paper9-13.pdf): Leveraging the Rocq backend for enhanced security verification.
 
 #### The Road Ahead
