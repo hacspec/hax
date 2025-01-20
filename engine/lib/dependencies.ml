@@ -42,14 +42,14 @@ module Make (F : Features.T) = struct
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
 
-    module StableG = struct
+    module GInt = struct
       include Graph.Persistent.Digraph.Concrete (Int)
 
       let empty () = empty
     end
 
-    module Topological = Graph.Topological.Make_stable (StableG)
-    module GMap = Graph.Gmap.Edge (G) (StableG)
+    module Topological = Graph.Topological.Make_stable (GInt)
+    module Map_G_GInt = Graph.Gmap.Edge (G) (GInt)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -279,25 +279,21 @@ module Make (F : Features.T) = struct
       ItemGraph.of_items ~original_items:items items |> ItemGraph.Oper.mirror
     in
     let items_array = Array.of_list items in
-    let name_index =
-      items
-      |> List.mapi ~f:(fun i item -> (item.ident, i))
-      |> Map.of_alist_exn (module Concrete_ident)
-    in
-
     let lookup (index : int) = items_array.(index) in
     let stable_g =
-      ItemGraph.GMap.filter_map
-        (fun ((name1, name2) : concrete_ident * concrete_ident) ->
-          let to_index = Map.find name_index in
-          let i1, i2 = (to_index name1, to_index name2) in
-
-          Option.both i1 i2)
+      let to_index =
+        items
+        |> List.mapi ~f:(fun i item -> (item.ident, i))
+        |> Map.of_alist_exn (module Concrete_ident)
+        |> Map.find
+      in
+      ItemGraph.Map_G_GInt.filter_map
+        (to_index *** to_index >> uncurry Option.both)
         g
     in
     let stable_g =
       List.foldi items ~init:stable_g ~f:(fun i g _ ->
-          ItemGraph.StableG.add_vertex g i)
+          ItemGraph.GInt.add_vertex g i)
     in
     let items' =
       ItemGraph.Topological.fold List.cons stable_g [] |> List.map ~f:lookup
