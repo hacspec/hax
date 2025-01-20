@@ -41,7 +41,15 @@ module Make (F : Features.T) = struct
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
-    module Topological = Graph.Topological.Make_stable (G)
+
+    module StableG = struct
+      include Graph.Persistent.Digraph.Concrete (Int)
+
+      let empty () = empty
+    end
+
+    module Topological = Graph.Topological.Make_stable (StableG)
+    module GMap = Graph.Gmap.Edge (G) (StableG)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -270,13 +278,55 @@ module Make (F : Features.T) = struct
     let g =
       ItemGraph.of_items ~original_items:items items |> ItemGraph.Oper.mirror
     in
-    let lookup (name : concrete_ident) =
-      List.find ~f:(ident_of >> Concrete_ident.equal name) items
+    let items_array = Array.of_list items in
+    let name_index =
+      items
+      |> List.mapi ~f:(fun i item -> (item.ident, i))
+      |> Map.of_alist_exn (module Concrete_ident)
+    in
+
+    let lookup (index : int) = items_array.(index) in
+    let stable_g =
+      ItemGraph.GMap.filter_map
+        (fun ((name1, name2) : concrete_ident * concrete_ident) ->
+          let to_index = Map.find name_index in
+          let i1, i2 = (to_index name1, to_index name2) in
+
+          Option.both i1 i2)
+        g
+    in
+    let stable_g =
+      List.foldi items ~init:stable_g ~f:(fun i g _ ->
+          ItemGraph.StableG.add_vertex g i)
     in
     let items' =
-      ItemGraph.Topological.fold List.cons g []
-      |> List.filter_map ~f:lookup |> List.rev
+      ItemGraph.Topological.fold List.cons stable_g [] |> List.map ~f:lookup
     in
+    (* Stable topological sort doesn't guarantee to group cycles together.
+       We make this correction to ensure mutually recursive items are grouped. *)
+    let cycles =
+      ItemGraph.MutRec.SCC.scc_list g
+      |> List.filter ~f:(fun cycle -> List.length cycle > 1)
+    in
+    let items' =
+      List.fold items' ~init:[] ~f:(fun acc item ->
+          match
+            List.find cycles ~f:(fun cycle ->
+                List.mem cycle item.ident ~equal:[%eq: concrete_ident])
+          with
+          | Some _
+            when List.exists acc ~f:(fun els ->
+                     List.mem els item ~equal:[%eq: item]) ->
+              [] :: acc
+          | Some cycle ->
+              List.map cycle ~f:(fun ident ->
+                  List.find_exn items ~f:(fun item ->
+                      [%eq: concrete_ident] item.ident ident))
+              :: acc
+          | None -> [ item ] :: acc)
+      |> List.concat
+    in
+
     assert (
       let of_list =
         List.map ~f:ident_of >> Set.of_list (module Concrete_ident)
