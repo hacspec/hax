@@ -10,7 +10,8 @@ date: 2025-01-21
 
 We're thrilled to announce that hax is entering a new era of stability and
 growth with the launch of our new website, a fresh start at Cryspen,
-and our first official release, v0.1.0!
+and our first official release,
+[v0.1.0](https://github.com/cryspen/hax/releases/tag/cargo-hax-v0.1.0)!
 
 After an intense period of research and development, hax is transitioning to a
 more stable phase.
