@@ -398,9 +398,11 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 // Solve the trait constraints of the impl block.
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
-                let container_trait_refs =
+                // Prepend the container trait refs.
+                let mut combined_trait_refs =
                     solve_item_required_traits(s, container_def_id, container_generics);
-                trait_refs.extend(container_trait_refs);
+                combined_trait_refs.extend(std::mem::take(&mut trait_refs));
+                trait_refs = combined_trait_refs;
                 (generics.sinto(s), None)
             }
         }
