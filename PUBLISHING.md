@@ -58,3 +58,9 @@ Note: for now, we are not publishing to Opam. Instead, let's just advertise the 
 opam pin hax-engine https://github.com/hacspec/hax.git#the-release-tag
 opam install hax-engine
 ```
+
+## Notes
+`cargo release` reads the `Cargo.toml` of each crates of the workspace.
+Some creates are excluded from releasing: in their `Cargo.toml` manifest, they have `package.metadata.release.release` set to `false`.
+
+Also, `cli/subcommands/Cargo.toml` specifies pre-release replacements for the engine: the version of the engine is bumped automatically by `cargo release`.
