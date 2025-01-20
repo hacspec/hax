@@ -1099,11 +1099,12 @@ end) : EXPR = struct
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
     let goal = c_trait_ref span ie.trait.value in
     let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
-    match ie.args with
-    | [] -> impl
-    | args ->
-        let args = List.map ~f:(c_impl_expr span) args in
+    match ie.impl with
+    | Concrete { impl_exprs = []; _ } -> impl
+    | Concrete { impl_exprs; _ } ->
+        let args = List.map ~f:(c_impl_expr span) impl_exprs in
         { kind = ImplApp { impl; args }; goal }
+    | _ -> impl
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
     let trait = Concrete_ident.of_def_id Trait tr.def_id in
@@ -1137,7 +1138,7 @@ end) : EXPR = struct
           Parent { impl = { kind = item_kind; goal = trait_ref }; ident }
     in
     match ie with
-    | Concrete { id; generics } ->
+    | Concrete { id; generics; _ } ->
         let trait = Concrete_ident.of_def_id Impl id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
@@ -1146,7 +1147,7 @@ end) : EXPR = struct
         List.fold ~init ~f:browse_path path
     | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
-    | Builtin { trait } -> Builtin (c_trait_ref span trait.value)
+    | Builtin { trait; _ } -> Builtin (c_trait_ref span trait.value)
     | Error str -> failwith @@ "impl_expr_atom: Error " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value

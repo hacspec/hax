@@ -49,6 +49,8 @@ pub enum ImplExprAtom<'tcx> {
     Concrete {
         def_id: DefId,
         generics: GenericArgsRef<'tcx>,
+        /// The impl exprs that prove the clauses on the impl.
+        impl_exprs: Vec<ImplExpr<'tcx>>,
     },
     /// A context-bound clause like `where T: Trait`.
     LocalBound {
@@ -71,8 +73,18 @@ pub enum ImplExprAtom<'tcx> {
     /// `dyn Trait` implements `Trait` using a built-in implementation; this refers to that
     /// built-in implementation.
     Dyn,
-    /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
-    Builtin { r#trait: PolyTraitRef<'tcx> },
+    /// A built-in trait whose implementation is computed by the compiler, such as `FnMut`. This
+    /// morally points to an invisible `impl` block; as such it contains the information we may
+    /// need from one.
+    Builtin {
+        r#trait: PolyTraitRef<'tcx>,
+        /// The `ImplExpr`s required to satisfy the implied predicates on the trait declaration.
+        /// E.g. since `FnMut: FnOnce`, a built-in `T: FnMut` impl would have an `ImplExpr` for `T:
+        /// FnOnce`.
+        impl_exprs: Vec<ImplExpr<'tcx>>,
+        /// The values of the associated types for this trait.
+        types: Vec<(DefId, Ty<'tcx>)>,
+    },
     /// An error happened while resolving traits.
     Error(String),
 }
@@ -83,8 +95,6 @@ pub struct ImplExpr<'tcx> {
     pub r#trait: PolyTraitRef<'tcx>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom<'tcx>,
-    /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
-    pub args: Vec<Self>,
 }
 
 /// Items have various predicates in scope. `path_to` uses them as a starting point for trait
@@ -290,7 +300,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         // Resolve predicates required to mention the item.
         let nested_impl_exprs =
-            self.resolve_item_predicates(alias_ty.def_id, alias_ty.args, warn)?;
+            self.resolve_item_required_predicates(alias_ty.def_id, alias_ty.args, warn)?;
 
         // Add all the bounds on the corresponding associated item.
         self.extend(item_bounds.map(|(index, pred)| {
@@ -360,7 +370,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let tcx = self.tcx;
         let impl_source = shallow_resolve_trait_ref(tcx, self.param_env, erased_tref);
-        let nested;
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
@@ -368,15 +377,15 @@ impl<'tcx> PredicateSearcher<'tcx> {
                 ..
             })) => {
                 // Resolve the predicates required by the impl.
-                nested = self.resolve_item_predicates(impl_def_id, generics, warn)?;
+                let impl_exprs =
+                    self.resolve_item_required_predicates(impl_def_id, generics, warn)?;
                 ImplExprAtom::Concrete {
                     def_id: impl_def_id,
                     generics,
+                    impl_exprs,
                 }
             }
             Ok(ImplSource::Param(_)) => {
-                // Mentioning a local clause requires no extra predicates to hold.
-                nested = vec![];
                 match self.resolve_local(erased_tref.upcast(self.tcx), warn)? {
                     Some(candidate) => {
                         let path = candidate.path;
@@ -402,17 +411,45 @@ impl<'tcx> PredicateSearcher<'tcx> {
                     }
                 }
             }
-            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => {
-                nested = vec![];
-                ImplExprAtom::Dyn
-            }
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
             Ok(ImplSource::Builtin(_, _)) => {
-                // Builtin impls currently don't need nested predicates.
-                nested = vec![];
-                ImplExprAtom::Builtin { r#trait: *tref }
+                // Resolve the predicates implied by the trait.
+                let trait_def_id = erased_tref.skip_binder().def_id;
+                // If we wanted to not skip this binder, we'd have to instantiate the bound
+                // regions, solve, then wrap the result in a binder. And track  higher-kinded
+                // clauses better all over.
+                let impl_exprs = self.resolve_item_implied_predicates(
+                    trait_def_id,
+                    erased_tref.skip_binder().args,
+                    warn,
+                )?;
+                let types = tcx
+                    .associated_items(trait_def_id)
+                    .in_definition_order()
+                    .filter(|assoc| matches!(assoc.kind, AssocKind::Type))
+                    .filter_map(|assoc| {
+                        let ty = AliasTy::new(tcx, assoc.def_id, erased_tref.skip_binder().args)
+                            .to_ty(tcx);
+                        let ty = erase_and_norm(tcx, self.param_env, ty);
+                        if let TyKind::Alias(_, alias_ty) = ty.kind() {
+                            if alias_ty.def_id == assoc.def_id {
+                                warn(&format!("Failed to compute associated type {ty}"));
+                                // We can't return the unnormalized associated type as that would
+                                // make the trait ref contain itself, which would make hax's
+                                // `sinto` infrastructure loop.
+                                return None;
+                            }
+                        }
+                        Some((assoc.def_id, ty))
+                    })
+                    .collect();
+                ImplExprAtom::Builtin {
+                    r#trait: *tref,
+                    impl_exprs,
+                    types,
+                }
             }
             Err(e) => {
-                nested = vec![];
                 let msg = format!(
                     "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
                 );
@@ -423,13 +460,12 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         Ok(ImplExpr {
             r#impl: atom,
-            args: nested,
             r#trait: *tref,
         })
     }
 
     /// Resolve the predicates required by the given item.
-    pub fn resolve_item_predicates(
+    pub fn resolve_item_required_predicates(
         &mut self,
         def_id: DefId,
         generics: GenericArgsRef<'tcx>,
@@ -437,7 +473,32 @@ impl<'tcx> PredicateSearcher<'tcx> {
         warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         let tcx = self.tcx;
-        required_predicates(tcx, def_id)
+        self.resolve_predicates(generics, required_predicates(tcx, def_id), warn)
+    }
+
+    /// Resolve the predicates implied by the given item.
+    pub fn resolve_item_implied_predicates(
+        &mut self,
+        def_id: DefId,
+        generics: GenericArgsRef<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<Vec<ImplExpr<'tcx>>, String> {
+        let tcx = self.tcx;
+        self.resolve_predicates(generics, implied_predicates(tcx, def_id), warn)
+    }
+
+    /// Apply the given generics to the provided clauses and resolve the trait references in the
+    /// current context.
+    pub fn resolve_predicates(
+        &mut self,
+        generics: GenericArgsRef<'tcx>,
+        predicates: GenericPredicates<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<Vec<ImplExpr<'tcx>>, String> {
+        let tcx = self.tcx;
+        predicates
             .predicates
             .iter()
             .map(|(clause, _span)| *clause)
