@@ -93,21 +93,6 @@ val ff_generic': v_X: usize -> #v_U: Type0 -> v__x: v_U -> t_Param v_X
 
 let ff_generic (v_X: usize) (#v_U: Type0) = ff_generic' v_X #v_U
 
-class t_T2 (v_Self: Type0) = {
-  f_d_pre:Prims.unit -> Type0;
-  f_d_post:Prims.unit -> Prims.unit -> Type0;
-  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
-}
-
-/// Items can be forced to be transparent
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_T2_for_u8: t_T2 u8 =
-  {
-    f_d_pre = (fun (_: Prims.unit) -> false);
-    f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
-    f_d = fun (_: Prims.unit) -> ()
-  }
-
 class t_T (v_Self: Type0) = {
   f_Assoc:Type0;
   f_d_pre:Prims.unit -> Type0;
@@ -121,6 +106,21 @@ let impl_T_for_u8: t_T u8 =
   {
     f_Assoc = u8;
     f_d_pre = (fun (_: Prims.unit) -> true);
+    f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
+    f_d = fun (_: Prims.unit) -> ()
+  }
+
+class t_T2 (v_Self: Type0) = {
+  f_d_pre:Prims.unit -> Type0;
+  f_d_post:Prims.unit -> Prims.unit -> Type0;
+  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
+}
+
+/// Items can be forced to be transparent
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_T2_for_u8: t_T2 u8 =
+  {
+    f_d_pre = (fun (_: Prims.unit) -> false);
     f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
     f_d = fun (_: Prims.unit) -> ()
   }

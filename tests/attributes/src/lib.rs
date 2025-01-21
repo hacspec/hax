@@ -154,8 +154,8 @@ mod newtype_pattern {
     }
 }
 
-#[hax::fstar::before(r#"let before_${inlined_code} = "example before""#)]
-#[hax::fstar::after(r#"let ${inlined_code}_after = "example after""#)]
+#[hax::fstar::before(r#"let before_inlined_code = "example before""#)]
+#[hax::fstar::after(r#"let inlined_code_after = "example after""#)]
 fn inlined_code(foo: Foo) {
     const V: u8 = 12;
     let v_a = 13;

@@ -71,6 +71,8 @@ module%inlined_contents Make (F : Features.T) = struct
     let first_global_ident (pat : B.pat) : global_ident option =
       UB.Reducers.collect_global_idents#visit_pat () pat |> Set.choose
 
+    let counter = ref 0
+
     let rec dexpr' span (expr : A.expr') : B.expr' =
       quote_of_expr' span expr
       |> Option.map ~f:(fun quote : B.expr' -> B.Quote quote)
@@ -206,7 +208,18 @@ module%inlined_contents Make (F : Features.T) = struct
                      Quote { quote; origin }
                    in
                    let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
-                   (B.{ v; span; ident = item.ident; attrs }, position))
+                   counter := !counter + 1;
+                   ( B.
+                       {
+                         v;
+                         span;
+                         ident =
+                           (* TODO: Replace with a proper unique ident. *)
+                           Concrete_ident.Create.replace_last item.ident
+                             ("__hax_quote__" ^ Int.to_string !counter);
+                         attrs;
+                       },
+                     position ))
             |> List.partition_tf ~f:(snd >> [%matches? Types.Before])
             |> map_fst *** map_fst
           with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->

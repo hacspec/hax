@@ -163,9 +163,9 @@ module Traits.Impl_expr_in_goal
 open Core
 open FStar.Mul
 
-class t_T2 (v_Self: Type0) = { __marker_trait_t_T2:Prims.unit }
-
 class t_T1 (v_Self: Type0) = { f_Assoc:Type0 }
+
+class t_T2 (v_Self: Type0) = { __marker_trait_t_T2:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl

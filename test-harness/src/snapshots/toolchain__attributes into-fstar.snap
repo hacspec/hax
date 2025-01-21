@@ -92,6 +92,16 @@ open FStar.Mul
 
 unfold type t_Int = int
 
+unfold let add x y = x + y
+
+unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
+  {
+    f_Output = t_Int;
+    f_sub_pre = (fun (self: t_Int) (other: t_Int) -> true);
+    f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
+    f_sub = fun (self: t_Int) (other: t_Int) -> self + other
+  }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_1': Core.Clone.t_Clone t_Int
@@ -103,16 +113,6 @@ assume
 val impl': Core.Marker.t_Copy t_Int
 
 let impl = impl'
-
-unfold let add x y = x + y
-
-unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
-  {
-    f_Output = t_Int;
-    f_sub_pre = (fun (self: t_Int) (other: t_Int) -> true);
-    f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
-    f_sub = fun (self: t_Int) (other: t_Int) -> self + other
-  }
 '''
 "Attributes.Nested_refinement_elim.fst" = '''
 module Attributes.Nested_refinement_elim
@@ -516,8 +516,6 @@ type t_Foo = {
 
 let inlined_code__V: u8 = 12uy
 
-unfold let some_function _ = "hello from F*"
-
 let before_inlined_code = "example before"
 
 let inlined_code (foo: t_Foo) : Prims.unit =
@@ -530,4 +528,6 @@ let inlined_code (foo: t_Foo) : Prims.unit =
   ()
 
 let inlined_code_after = "example after"
+
+unfold let some_function _ = "hello from F*"
 '''

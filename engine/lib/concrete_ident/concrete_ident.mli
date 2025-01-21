@@ -39,6 +39,9 @@ module Create : sig
   (** [map_last f ident] applies [f] on the last chunk of [ident]'s
       path if it holds a string *)
 
+  val replace_last : t -> string -> t
+  (** [replace_last ident chunk] repalces the last chunk of [ident] by [chunk] *)
+
   val add_disambiguator : t -> int -> t
   (** [add_disambiguator ident d] changes the disambiguator on
       the last chunk of [ident]'s path to [d] *)
