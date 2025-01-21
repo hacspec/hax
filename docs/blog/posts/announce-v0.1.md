@@ -54,6 +54,7 @@ few months.
 #### Hax in Action
 
 Over the past year, hax has proven its versatility in various projects:
+
 - [Verifying Bertie](https://cryspen.com/post/hax-pv/): A TLS 1.3 implementation, verified with the ProVerif backend
 - [Verifying ML-KEM](https://cryspen.com/post/ml-kem-verification): A post quantum cryptographic algorithm verified with the F\* backend
 - [Verifying Smart Contracts](https://github.com/hacspec/hacspec.github.io/blob/master/coqpl24-paper9-13.pdf): Leveraging the Rocq backend for enhanced security verification.
