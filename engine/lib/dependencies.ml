@@ -332,24 +332,31 @@ module Make (F : Features.T) = struct
     in
     (* Quote items must be placed right before or after their origin *)
     let items' =
-      let quotes =
-        List.filter_map items' ~f:(fun item ->
+      let before_quotes, after_quotes, _ =
+        List.partition3_map items' ~f:(fun item ->
             match item.v with
-            | Quote { origin; _ } -> Some (origin, item)
-            | _ -> None)
+            | Quote { origin; _ } -> (
+                match origin.position with
+                | `Before -> `Fst (origin, item)
+                | `After -> `Snd (origin, item)
+                | `Replace -> `Trd ())
+            | _ -> `Trd ())
       in
-      List.fold quotes ~init:items' ~f:(fun items' (origin, quote_item) ->
-          match origin.position with
-          | `Before | `After ->
-              List.concat_map items' ~f:(fun item ->
-                  if [%eq: concrete_ident] origin.item_ident item.ident then
-                    match origin.position with
-                    | `After -> [ item; quote_item ]
-                    | _ -> [ quote_item; item ]
-                  else if [%eq: concrete_ident] quote_item.ident item.ident then
-                    []
-                  else [ item ])
-          | `Replace -> items')
+      let move_quote before origin quote_item =
+        List.concat_map ~f:(fun item ->
+            if [%eq: concrete_ident] origin.item_ident item.ident then
+              if before then [ quote_item; item ] else [ item; quote_item ]
+            else if [%eq: concrete_ident] quote_item.ident item.ident then []
+            else [ item ])
+      in
+      let before_quotes = List.rev before_quotes in
+      let items' =
+        List.fold before_quotes ~init:items'
+          ~f:(fun items' (origin, quote_item) ->
+            move_quote true origin quote_item items')
+      in
+      List.fold after_quotes ~init:items' ~f:(fun items' (origin, quote_item) ->
+          move_quote false origin quote_item items')
     in
 
     assert (
