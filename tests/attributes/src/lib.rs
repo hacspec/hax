@@ -381,3 +381,11 @@ mod requires_mut {
         }
     }
 }
+
+mod issue_1266 {
+    #[hax_lib::attributes]
+    trait T {
+        #[hax_lib::ensures(|_|true)]
+        fn v(x: &mut Self);
+    }
+}
