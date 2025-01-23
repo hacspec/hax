@@ -42,6 +42,7 @@ dependencies = [
 name = "attributes"
 version = "0.1.0"
 dependencies = [
+ "hax-bounded-integers",
  "hax-lib",
  "serde",
 ]
@@ -228,6 +229,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "duplicate"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de78e66ac9061e030587b2a2e75cc88f22304913c907b11307bca737141230cb"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+]
+
+[[package]]
 name = "dyn"
 version = "0.1.0"
 
@@ -319,6 +330,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
+name = "hax-bounded-integers"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "duplicate",
+ "hax-lib",
+ "paste",
+]
+
+[[package]]
 name = "hax-lib"
 version = "0.1.0"
 dependencies = [
@@ -366,6 +386,12 @@ dependencies = [
  "quote",
  "syn 2.0.28",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"

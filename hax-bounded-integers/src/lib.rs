@@ -1,6 +1,11 @@
 use hax_lib::Refinement;
 pub mod num_traits;
 
+pub mod _macro_utils {
+    pub use duplicate;
+    pub use paste;
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! derivate_binop_for_bounded {
@@ -21,7 +26,7 @@ macro_rules! derivate_binop_for_bounded {
     (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty,
      <$(const $cst_name:ident : $cst_ty:ty),*>
     ) => {
-        paste::paste!{
+        $crate::_macro_utils::paste::paste!{
             // BoundedT<A, B> <OP> BoundedT<C, D>
             impl<$(const [< $cst_name _LHS >]: $cst_ty,)* $(const [< $cst_name _RHS >]: $cst_ty,)*>
                 $trait<$bounded_t<$([< $cst_name _RHS >],)*>> for $bounded_t<$([< $cst_name _LHS >],)*>
@@ -75,7 +80,7 @@ macro_rules! derivate_assign_binop_for_bounded {
     (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty,
      <$(const $cst_name:ident : $cst_ty:ty),*>
     ) => {
-        paste::paste!{
+        $crate::_macro_utils::paste::paste!{
             // BoundedT<A, B> <OP> BoundedT<C, D>
             impl<$(const [< $cst_name _LHS >]: $cst_ty,)* $(const [< $cst_name _RHS >]: $cst_ty,)*>
                 $trait<$bounded_t<$([< $cst_name _RHS >],)*>> for $bounded_t<$([< $cst_name _LHS >],)*>
@@ -115,7 +120,7 @@ macro_rules! derivate_operations_for_bounded {
     ($bounded_t:ident($t: ident $($bytes:expr)?)$(,)?
      <$(const $cst_name:ident : $cst_ty:ty),*>
     ) => {
-          #[duplicate::duplicate_item(
+          #[$crate::_macro_utils::duplicate::duplicate_item(
               INTRO_CONSTANTS USE_CONSTANTS;
               [ $(const $cst_name:$cst_ty),* ] [ $($cst_name),* ];
           )]

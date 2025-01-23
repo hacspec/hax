@@ -362,6 +362,26 @@ let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_Bounded
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
+
+let t_BoundedAbsI16 (v_B: usize) =
+  x:
+  i16
+    { (Rust_primitives.Hax.Int.from_machine v_B <: Hax_lib.Int.t_Int) < (32768 <: Hax_lib.Int.t_Int) &&
+      (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) >=
+      (- (Rust_primitives.Hax.Int.from_machine v_B <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int) &&
+      (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <=
+      (Rust_primitives.Hax.Int.from_machine v_B <: Hax_lib.Int.t_Int) }
+
+let double_abs_i16 (v_N v_M: usize) (x: t_BoundedAbsI16 v_N)
+    : Prims.Pure (t_BoundedAbsI16 v_M)
+      (requires
+        (Rust_primitives.Hax.Int.from_machine v_M <: Hax_lib.Int.t_Int) <
+        (32768 <: Hax_lib.Int.t_Int) &&
+        (Rust_primitives.Hax.Int.from_machine v_M <: Hax_lib.Int.t_Int) =
+        ((Rust_primitives.Hax.Int.from_machine v_N <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int))
+      (fun _ -> Prims.l_True) = x *! 2s <: t_BoundedAbsI16 v_M
 '''
 "Attributes.Requires_mut.fst" = '''
 module Attributes.Requires_mut
