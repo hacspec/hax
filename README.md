@@ -3,27 +3,25 @@
 </p>
 
 <p align="center">
-  <a href="https://hacspec.org/">🌐 Website</a> |
-  <a href="https://hacspec.org/book">📖 Book</a> |
-  <a href="https://hacspec.org/blog">📝 Blog</a> |
+  <a href="https://hax.cryspen.com/">🌐 Website</a> |
+  <a href="https://hax.cryspen.com/blog">📝 Blog</a> |
   <a href="https://hacspec.zulipchat.com/">💬 Zulip</a> |
-  <a href="https://hacspec.org/hax/">🛠️ Internal docs</a> |
   <a href="https://hax-playground.cryspen.com/">🛝 Playground</a>
 </p>
 
 # Hax
 
-hax is a tool for high assurance translations that translates a large subset of
-Rust into formal languages such as [F\*](https://www.fstar-lang.org/) or [Coq](https://coq.inria.fr/).
-This extends the scope of the hacspec project, which was previously a DSL embedded in Rust,
-to a usable tool for verifying Rust programs.
+hax is a tool for high assurance translations of a large subset of
+Rust into formal languages such as [F\*](https://www.fstar-lang.org/) or [Rocq](https://rocq-prover.org/).
 
-> So what is hacspec now?
+<details>
+<summary> So what is hacspec now?</summary>
 
 hacspec is the functional subset of Rust that can be used, together with a hacspec
 standard library, to write succinct, executable, and verifiable specifications in
 Rust.
 These specifications can be translated into formal languages with hax.
+</details>
 
 <p align="center">
     <a href="https://hax-playground.cryspen.com/#fstar+tc/latest-main/gist=5252f86237adbca7fdeb7a8fea0b1648">
@@ -34,9 +32,9 @@ These specifications can be translated into formal languages with hax.
 ## Learn more
 
 Here are some resources for learning more about hax:
- - [Book](https://hacspec.org/book) (work in progress)
-    + [Quick start](https://hacspec.org/book/quick_start/intro.html)
-    + [Tutorial](https://hacspec.org/book/tutorial/index.html)
+ - [Manual](https://hax.cryspen.com/manual/index.html) (work in progress)
+    + [Quick start](https://hax.cryspen.com/manual/quick_start/index.html)
+    + [Tutorial](https://hax.cryspen.com/manual/tutorial/index.html)
  - [Examples](./examples/): the [examples directory](./examples/) contains
    a set of examples that show what hax can do for you.
  - Other [specifications](https://github.com/hacspec/specs) of cryptographic protocols.
@@ -113,9 +111,7 @@ that is where `setup.sh` will install hax.
 
 ## Supported Subset of the Rust Language
 
-Hax intends to support full Rust, with the two following exceptions, promoting a functional style:
- 1. no `unsafe` code (see https://github.com/hacspec/hax/issues/417);
- 2. mutable references (aka `&mut T`) on return types or when aliasing (see https://github.com/hacspec/hax/issues/420).
+Hax intends to support full Rust, with the one exception, promoting a functional style: mutable references (aka `&mut T`) on return types or when aliasing (see https://github.com/hacspec/hax/issues/420) are forbidden.
 
 Each unsupported Rust feature is documented as an issue labeled [`unsupported-rust`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust). When the issue is labeled [`wontfix-v1`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix%2Cwontfix-v1), that means we don't plan on supporting that feature soon.
 
@@ -125,7 +121,8 @@ Quicklinks:
 
 ## Hacking on Hax
 The documentation of the internal crate of hax and its engine can be
-found [here](https://hacspec.org/hax/).
+found [here for the engine](https://hax.cryspen.com/engine/index.html)
+and [here for the frontent](https://hax.cryspen.com/frontend/index.html).
 
 ### Edit the sources (Nix)
 

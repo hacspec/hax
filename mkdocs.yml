@@ -1,0 +1,80 @@
+site_name: hax
+repo_url: https://github.com/cryspen/hax
+site_url: https://hax.cryspen.com
+site_author: Cryspen
+repo_name: GitHub
+theme:
+  name: material
+  logo: static/img/logo.png
+  favicon: static/img/favicon.png
+  custom_dir: docs/overrides
+  palette:
+    primary: white
+  features:
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - navigation.sections
+    - navigation.path
+    - navigation.tabs
+    - header.autohide
+    - navigation.instant
+    - navigation.indexes
+  icon:
+    repo: fontawesome/brands/github
+    tag:
+      draft: material/sticker-outline
+      accepted: material/sticker-check-outline
+      proposed: material/sticker-plus-outline
+      deprecated: material/sticker-minus-outline
+      superseded: material/sticker-alert-outline
+      rejected: material/sticker-remove-outline
+extra_javascript:
+  - javascripts/hax_playground.js
+  - javascripts/ansi_up.js
+  - javascripts/fstar.js
+  - javascripts/lz-string.js
+extra_css:
+  - stylesheets/tags-colors.css
+  - stylesheets/hax_playground.css
+  - stylesheets/logo.css
+extra:
+  tags:
+    Draft: draft
+    Accepted: accepted
+    Proposed: proposed
+    Superseded: superseded
+    Deprecated: deprecated
+    Rejected: rejected
+markdown_extensions:
+  - attr_list
+  - tables
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+plugins:
+  - glightbox
+  - search
+  - offline
+  - blog
+  - mkdocs-nav-weight
+  - tags:
+      tags_file: RFCs/index.md

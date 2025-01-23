@@ -695,10 +695,10 @@ struct
   and pquote span { contents; _ } =
     List.map
       ~f:(function
-        | `Verbatim code -> code
-        | `Expr e -> pexpr e |> term_to_string
-        | `Pat p -> ppat p |> pat_to_string
-        | `Typ p -> pty span p |> term_to_string)
+        | Verbatim code -> code
+        | Expr e -> pexpr e |> term_to_string
+        | Pattern p -> ppat p |> pat_to_string
+        | Typ p -> pty span p |> term_to_string)
       contents
     |> String.concat
 
@@ -1611,7 +1611,6 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
   in
   Print.pitem item
-  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
        | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
@@ -1621,6 +1620,7 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
+  |> List.filter ~f:(function `Impl _, _ when no_impl -> false | _ -> true)
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
@@ -1810,6 +1810,7 @@ module TransformToInputLanguage =
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
   |> Phases.Bundle_cycles
+  |> Phases.Sort_items
   |> SubtypeToInputLanguage
   |> Identity
   ]

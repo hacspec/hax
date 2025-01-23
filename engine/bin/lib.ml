@@ -75,7 +75,6 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
   in
   Hax_io.write
     (ItemProcessed (List.filter_map ~f:(fun i -> Span.owner_hint i.span) items));
-  let items = Deps.sort items in
   (* Extract error reports for the items we actually extract *)
   let reports =
     List.concat_map

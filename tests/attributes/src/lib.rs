@@ -154,8 +154,8 @@ mod newtype_pattern {
     }
 }
 
-#[hax::fstar::before(r#"let before_${inlined_code} = "example before""#)]
-#[hax::fstar::after(r#"let ${inlined_code}_after = "example after""#)]
+#[hax::fstar::before(r#"let before_inlined_code = "example before""#)]
+#[hax::fstar::after(r#"let inlined_code_after = "example after""#)]
 fn inlined_code(foo: Foo) {
     const V: u8 = 12;
     let v_a = 13;
@@ -166,6 +166,14 @@ fn inlined_code(foo: Foo) {
         "
     );
 }
+
+#[hax::fstar::before(r#"let before_1 = "example before 1""#)]
+#[hax::fstar::before(r#"let before_2 = "example before 2""#)]
+#[hax::fstar::before(r#"let before_3 = "example before 3""#)]
+#[hax::fstar::after(r#"let after 1 = "example after 1""#)]
+#[hax::fstar::after(r#"let after 2 = "example after 2""#)]
+#[hax::fstar::after(r#"let after 3 = "example after 3""#)]
+fn mutliple_before_after() {}
 
 #[hax::fstar::replace(r#"unfold let $some_function _ = "hello from F*""#)]
 fn some_function() -> String {
@@ -379,5 +387,13 @@ mod requires_mut {
         fn i(x: u8, y: &mut u8) {
             ()
         }
+    }
+}
+
+mod issue_1266 {
+    #[hax_lib::attributes]
+    trait T {
+        #[hax_lib::ensures(|_|true)]
+        fn v(x: &mut Self);
     }
 }

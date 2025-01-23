@@ -730,14 +730,18 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; _ } -> (
+      | NamedConst { def_id = id; impl; args; _ } -> (
           let kind : Concrete_ident.Kind.t =
             match impl with Some _ -> AssociatedItem Value | _ -> Value
           in
           let f = GlobalVar (def_id kind id) in
           match impl with
           | Some impl ->
-              let trait = Some (c_impl_expr e.span impl, []) in
+              let trait =
+                Some
+                  ( c_impl_expr e.span impl,
+                    List.map ~f:(c_generic_value e.span) args )
+              in
               let f = { e = f; span; typ = TArrow ([], typ) } in
               App { f; trait; args = []; generic_args = []; bounds_impls = [] }
           | _ -> f)
@@ -1004,8 +1008,8 @@ end) : EXPR = struct
     | Float k ->
         TFloat
           (match k with F16 -> F16 | F32 -> F32 | F64 -> F64 | F128 -> F128)
-    | Arrow value ->
-        let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
+    | Arrow signature | Closure (_, { untupled_sig = signature; _ }) ->
+        let ({ inputs; output; _ } : Thir.ty_fn_sig) = signature.value in
         let inputs =
           if List.is_empty inputs then [ U.unit_typ ]
           else List.map ~f:(c_ty span) inputs
@@ -1095,11 +1099,12 @@ end) : EXPR = struct
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
     let goal = c_trait_ref span ie.trait.value in
     let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
-    match ie.args with
-    | [] -> impl
-    | args ->
-        let args = List.map ~f:(c_impl_expr span) args in
+    match ie.impl with
+    | Concrete { impl_exprs = []; _ } -> impl
+    | Concrete { impl_exprs; _ } ->
+        let args = List.map ~f:(c_impl_expr span) impl_exprs in
         { kind = ImplApp { impl; args }; goal }
+    | _ -> impl
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
     let trait = Concrete_ident.of_def_id Trait tr.def_id in
@@ -1133,7 +1138,7 @@ end) : EXPR = struct
           Parent { impl = { kind = item_kind; goal = trait_ref }; ident }
     in
     match ie with
-    | Concrete { id; generics } ->
+    | Concrete { id; generics; _ } ->
         let trait = Concrete_ident.of_def_id Impl id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
@@ -1142,7 +1147,7 @@ end) : EXPR = struct
         List.fold ~init ~f:browse_path path
     | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
-    | Builtin { trait } -> Builtin (c_trait_ref span trait.value)
+    | Builtin { trait; _ } -> Builtin (c_trait_ref span trait.value)
     | Error str -> failwith @@ "impl_expr_atom: Error " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value

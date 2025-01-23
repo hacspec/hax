@@ -42,39 +42,10 @@ Import RecordSetNotations.
 
 
 
-From Literals Require Import Hax_lib (t_int).
-Export Hax_lib (t_int).
-
-Record t_Foo : Type :=
-  {
-    f_field : t_u8;
-  }.
-Arguments t_Foo:clear implicits.
-Arguments t_Foo.
-Arguments Build_t_Foo.
-#[export] Instance settable_t_Foo : Settable _ :=
-  settable! (@Build_t_Foo) <f_field>.
-
 (* NotImplementedYet *)
 
-Definition v_CONSTANT : t_Foo :=
-  Build_t_Foo (3).
-
-Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_usize) : unit :=
-  let _ : t_u64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (x64)) (cast (xs)) in
-  let _ : t_u32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (x32)) (cast (x64))) (cast (xs)) in
-  let _ : t_u16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (x16)) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_u8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (x8) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  let _ : t_i8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
-  tt.
-
-Definition fn_pointer_cast (_ : unit) : unit :=
-  let f : t_u32 -> t_u32 := fun x =>
-    x in
-  tt.
+From Literals Require Import Hax_lib (t_int).
+Export Hax_lib (t_int).
 
 Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl__Int___unsafe_from_str ("0"%string))) (f_lt (x) (impl__Int___unsafe_from_str ("16"%string))) = true} : t_u8 :=
   let _ : t_Int := f_lift (3) in
@@ -100,8 +71,27 @@ Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl__Int___unsafe_from_s
   let _ : t_usize := impl__Int__to_usize (x) in
   impl__Int__to_u8 (f_add (x) (f_mul (x) (x))).
 
-Definition null : ascii :=
-  "\000"%char.
+Definition panic_with_msg (_ : unit) : unit :=
+  never_to_any (panic_fmt (impl_2__new_const (["with msg"%string]))).
+
+Record t_Foo : Type :=
+  {
+    f_field : t_u8;
+  }.
+Arguments t_Foo:clear implicits.
+Arguments t_Foo.
+Arguments Build_t_Foo.
+#[export] Instance settable_t_Foo : Settable _ :=
+  settable! (@Build_t_Foo) <f_field>.
+
+
+
+
+
+
+
+Definition v_CONSTANT : t_Foo :=
+  Build_t_Foo (3).
 
 Definition numeric (_ : unit) : unit :=
   let _ : t_usize := 123 in
@@ -132,16 +122,26 @@ Definition patterns (_ : unit) : unit :=
   end in
   tt.
 
-
-
-
-
-
-
-Definition panic_with_msg (_ : unit) : unit :=
-  never_to_any (panic_fmt (impl_2__new_const (["with msg"%string]))).
+Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_usize) : unit :=
+  let _ : t_u64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (x64)) (cast (xs)) in
+  let _ : t_u32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (x32)) (cast (x64))) (cast (xs)) in
+  let _ : t_u16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (x16)) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_u8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (x8) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i64 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i32 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i16 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  let _ : t_i8 := t_Add_f_add (t_Add_f_add (t_Add_f_add (t_Add_f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
+  tt.
 
 Definition empty_array (_ : unit) : unit :=
   let _ : t_Slice t_u8 := unsize ([]) in
   tt.
+
+Definition fn_pointer_cast (_ : unit) : unit :=
+  let f : t_u32 -> t_u32 := fun x =>
+    x in
+  tt.
+
+Definition null : ascii :=
+  "\000"%char.
 '''

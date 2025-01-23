@@ -2,7 +2,6 @@ open! Prelude
 open! Ast
 
 module%inlined_contents Make (F : Features.T) = struct
-  open Ast
   module FA = F
 
   module FB = struct
@@ -72,6 +71,8 @@ module%inlined_contents Make (F : Features.T) = struct
     let first_global_ident (pat : B.pat) : global_ident option =
       UB.Reducers.collect_global_idents#visit_pat () pat |> Set.choose
 
+    let counter = ref 0
+
     let rec dexpr' span (expr : A.expr') : B.expr' =
       quote_of_expr' span expr
       |> Option.map ~f:(fun quote : B.expr' -> B.Quote quote)
@@ -96,7 +97,7 @@ module%inlined_contents Make (F : Features.T) = struct
                 Error.assertion_failure span
                   "Malformed call to 'inline': cannot find string payload."
           in
-          let code =
+          let code : B.quote_content list =
             List.map bindings ~f:(fun (pat, e) ->
                 match
                   UB.Expect.pbinding_simple pat
@@ -112,7 +113,7 @@ module%inlined_contents Make (F : Features.T) = struct
                                 this may be a bug in the quote macros in \
                                 hax-lib.")
                     in
-                    `Expr { e with e = GlobalVar id }
+                    B.Expr { e with e = GlobalVar id }
                 | Some "_pat" ->
                     let pat =
                       extract_pattern e
@@ -121,7 +122,7 @@ module%inlined_contents Make (F : Features.T) = struct
                                "Could not extract pattern (case pat): this may \
                                 be a bug in the quote macros in hax-lib.")
                     in
-                    `Pat pat
+                    Pattern pat
                 | Some "_ty" ->
                     let typ =
                       match pat.typ with
@@ -134,33 +135,22 @@ module%inlined_contents Make (F : Features.T) = struct
                             "Malformed call to 'inline': expected type \
                              `Option<_>`."
                     in
-                    `Typ typ
-                | _ -> `Expr e)
+                    Typ typ
+                | _ -> Expr e)
           in
           let verbatim = split_str ~on:"SPLIT_QUOTE" str in
           let contents =
-            let rec f verbatim
-                (code :
-                  [ `Verbatim of string
-                  | `Expr of B.expr
-                  | `Pat of B.pat
-                  | `Typ of B.ty ]
-                  list) =
+            let rec f verbatim (code : B.quote_content list) =
               match (verbatim, code) with
-              | s :: s', code :: code' -> `Verbatim s :: code :: f s' code'
-              | [ s ], [] -> [ `Verbatim s ]
+              | s :: s', code :: code' -> B.Verbatim s :: code :: f s' code'
+              | [ s ], [] -> [ Verbatim s ]
               | [], [] -> []
               | _ ->
                   Error.assertion_failure span
                   @@ "Malformed call to 'inline'." ^ "\nverbatim="
                   ^ [%show: string list] verbatim
                   ^ "\ncode="
-                  ^ [%show:
-                      [ `Verbatim of string
-                      | `Expr of B.expr
-                      | `Pat of B.pat
-                      | `Typ of B.ty ]
-                      list] code
+                  ^ [%show: B.quote_content list] code
             in
             f verbatim code
           in
@@ -218,7 +208,18 @@ module%inlined_contents Make (F : Features.T) = struct
                      Quote { quote; origin }
                    in
                    let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
-                   (B.{ v; span; ident = item.ident; attrs }, position))
+                   counter := !counter + 1;
+                   ( B.
+                       {
+                         v;
+                         span;
+                         ident =
+                           (* TODO: Replace with a proper unique ident. *)
+                           Concrete_ident.Create.replace_last item.ident
+                             ("__hax_quote__" ^ Int.to_string !counter);
+                         attrs;
+                       },
+                     position ))
             |> List.partition_tf ~f:(snd >> [%matches? Types.Before])
             |> map_fst *** map_fst
           with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->

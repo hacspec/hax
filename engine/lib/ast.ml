@@ -328,12 +328,13 @@ functor
               interleaved with Rust code *)
 
     and expr = { e : expr'; span : span; typ : ty }
+    and quote = { contents : quote_content list; witness : F.quote }
 
-    and quote = {
-      contents :
-        [ `Verbatim of string | `Expr of expr | `Pat of pat | `Typ of ty ] list;
-      witness : F.quote;
-    }
+    and quote_content =
+      | Verbatim of string
+      | Expr of expr
+      | Pattern of pat
+      | Typ of ty
 
     and supported_monads =
       | MException of ty

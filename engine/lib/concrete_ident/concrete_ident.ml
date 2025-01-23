@@ -596,17 +596,16 @@ module Create = struct
     let len x = List.length x.def_id.path in
     let compare x y = len x - len y in
     let id = List.min_elt ~compare from |> Option.value_exn in
-    let parent = parent id in
     {
       kind = Kind.Value;
       def_id =
         {
-          parent.def_id with
+          id.def_id with
           path =
-            parent.def_id.path
+            id.def_id.path
             @ [
                 {
-                  data = TypeNs "rec_bundle";
+                  data = TypeNs "cyclic_bundle";
                   disambiguator = [%hash: t list] from;
                 };
               ];
@@ -632,17 +631,32 @@ module Create = struct
     let path = List.drop_last_exn old.def_id.path @ [ last ] in
     { old with def_id = { old.def_id with path } }
 
+  let replace_last old chunk =
+    {
+      old with
+      def_id =
+        {
+          old.def_id with
+          path =
+            List.drop_last_exn old.def_id.path
+            @ [ { data = Imported.ValueNs chunk; disambiguator = 0 } ];
+        };
+    }
+
   let constructor name =
     let path = name.def_id.path @ [ { data = Ctor; disambiguator = 0 } ] in
     { name with def_id = { name.def_id with path } }
 
   let add_disambiguator name disambiguator =
     let path = name.def_id.path in
-    let last = List.last_exn path in
-    let path =
-      List.drop_last_exn path @ [ { data = last.data; disambiguator } ]
-    in
-    { name with def_id = { name.def_id with path } }
+    if List.is_empty path then name
+    else
+      (* The following two `exn` function calls cannot fail as the path is not empty. *)
+      let last = List.last_exn path in
+      let path =
+        List.drop_last_exn path @ [ { data = last.data; disambiguator } ]
+      in
+      { name with def_id = { name.def_id with path } }
 end
 
 let lookup_raw_impl_info (impl : t) : Types.impl_infos option =

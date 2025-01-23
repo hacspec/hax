@@ -230,6 +230,7 @@ module Make (F : Features.T) = struct
                 Hashtbl.find_or_add s name ~default:(fun () ->
                     "i" ^ Int.to_string (Hashtbl.length s))
               in
+              let goal = super#visit_trait_goal (enabled, s) goal in
               GCType { goal; name = new_name }
           | _ -> super#visit_generic_constraint (enabled, s) gc
 
@@ -367,6 +368,10 @@ module Make (F : Features.T) = struct
                           bounds_impls;
                         };
                   }
+            (* Match scrutinees need to be ascribed as well
+               (see https://github.com/hacspec/hax/issues/1207).*)
+            | Match { scrutinee; arms } ->
+                { e with e = Match { scrutinee = ascribe scrutinee; arms } }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
                 if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e
@@ -654,6 +659,13 @@ module Make (F : Features.T) = struct
               (* Do *NOT* visit sub nodes *)
               self#zero
           | _ -> super#visit_expr' () e
+      end
+
+    let collect_attrs =
+      object (_self)
+        inherit [_] Visitors.reduce
+        inherit [_] expr_list_monoid
+        method! visit_attrs () attrs = attrs
       end
   end
 
@@ -1273,6 +1285,17 @@ module Make (F : Features.T) = struct
     include U
     module Map = Map.M (U)
   end
+
+  let group_items_by_namespace_generic to_namespace (items : item list) :
+      item list StringList.Map.t =
+    let h = Hashtbl.create (module StringList) in
+    List.iter items ~f:(fun item ->
+        let ns = to_namespace item.ident in
+        let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
+        items := !items @ [ item ]);
+    Map.of_iteri_exn
+      (module StringList)
+      ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
 end
 
 module MakeWithNamePolicy (F : Features.T) (NP : Concrete_ident.NAME_POLICY) =
@@ -1281,14 +1304,6 @@ struct
   open AST
   module Concrete_ident_view = Concrete_ident.MakeViewAPI (NP)
 
-  let group_items_by_namespace (items : item list) : item list StringList.Map.t
-      =
-    let h = Hashtbl.create (module StringList) in
-    List.iter items ~f:(fun item ->
-        let ns = Concrete_ident_view.to_namespace item.ident in
-        let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
-        items := !items @ [ item ]);
-    Map.of_iteri_exn
-      (module StringList)
-      ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
+  let group_items_by_namespace : item list -> item list StringList.Map.t =
+    group_items_by_namespace_generic Concrete_ident_view.to_namespace
 end
