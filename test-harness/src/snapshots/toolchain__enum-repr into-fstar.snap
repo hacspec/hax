@@ -33,15 +33,15 @@ module Enum_repr
 open Core
 open FStar.Mul
 
-let discriminant_EnumWithRepr_ExplicitDiscr1: u16 = mk_u16 1
-
-let discriminant_EnumWithRepr_ExplicitDiscr2: u16 = mk_u16 5
-
 type t_EnumWithRepr =
   | EnumWithRepr_ExplicitDiscr1 : t_EnumWithRepr
   | EnumWithRepr_ExplicitDiscr2 : t_EnumWithRepr
   | EnumWithRepr_ImplicitDiscrEmptyTuple : t_EnumWithRepr
   | EnumWithRepr_ImplicitDiscrEmptyStruct : t_EnumWithRepr
+
+let discriminant_EnumWithRepr_ExplicitDiscr1: u16 = mk_u16 1
+
+let discriminant_EnumWithRepr_ExplicitDiscr2: u16 = mk_u16 5
 
 let t_EnumWithRepr_cast_to_repr (x: t_EnumWithRepr) : u16 =
   match x <: t_EnumWithRepr with
@@ -64,7 +64,7 @@ let f (_: Prims.unit) : u32 =
 
 let ff__CONST: u16 = cast (discriminant_EnumWithRepr_ExplicitDiscr1 +! mk_u16 0 <: u16) <: u16
 
-let get_casted_repr (x: t_EnumWithRepr) : u64 = cast (t_EnumWithRepr_cast_to_repr x <: u16) <: u64
-
 let get_repr (x: t_EnumWithRepr) : u16 = t_EnumWithRepr_cast_to_repr x
+
+let get_casted_repr (x: t_EnumWithRepr) : u64 = cast (t_EnumWithRepr_cast_to_repr x <: u16) <: u64
 '''

@@ -31,3 +31,18 @@ mod mut_rec {
         f()
     }
 }
+
+mod independent_cycles {
+    fn a() {
+        c()
+    }
+    fn b() {
+        d()
+    }
+    fn c() {
+        a()
+    }
+    fn d() {
+        b()
+    }
+}

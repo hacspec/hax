@@ -94,41 +94,46 @@ module Naming
 open Core
 open FStar.Mul
 
-type t_Arity1 (v_T: Type0) = | Arity1 : v_T -> t_Arity1 v_T
-
-type t_B = | B : t_B
-
-let impl__B__f (self: t_B) : t_B = B <: t_B
-
-type t_C = { f_x:usize }
-
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B { f_x:usize }: t_Foo
-
-let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
 
 type t_Foo2 =
   | Foo2_A : t_Foo2
   | Foo2_B { f_x:usize }: t_Foo2
 
-class t_FooTrait (v_Self: Type0) = { f_ASSOCIATED_CONSTANT:usize }
+type t_B = | B : t_B
+
+type t_C = { f_x:usize }
+
+type t_X = | X : t_X
+
+let mk_c (_: Prims.unit) : t_C =
+  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = mk_usize 3 }) <: t_Foo in
+  let _:t_X = X <: t_X in
+  { f_x = mk_usize 3 } <: t_C
+
+let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
+
+let impl__B__f (self: t_B) : t_B = B <: t_B
 
 type t_Foobar = { f_a:t_Foo }
 
-type t_StructA = { f_a:usize }
+let ff__g (_: Prims.unit) : Prims.unit = ()
 
-type t_StructB = {
-  f_a:usize;
-  f_b:usize
-}
+let ff__g__impl__g (self: t_B) : usize = mk_usize 0
 
-type t_StructC = { f_a:usize }
+type t_f__g__impl__g__Foo =
+  | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
+  | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
 
-type t_StructD = {
-  f_a:usize;
-  f_b:usize
-}
+let ff__g__impl_1__g (self: t_Foo) : usize = mk_usize 1
+
+let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
+
+let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
+
+type t_Arity1 (v_T: Type0) = | Arity1 : v_T -> t_Arity1 v_T
 
 class t_T1 (v_Self: Type0) = { __marker_trait_t_T1:Prims.unit }
 
@@ -149,16 +154,19 @@ class t_T3_e_for_a (v_Self: Type0) = { __marker_trait_t_T3_e_for_a:Prims.unit }
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
 
-type t_X = | X : t_X
+type t_StructA = { f_a:usize }
 
-let v_INHERENT_CONSTANT: usize = mk_usize 3
+type t_StructB = {
+  f_a:usize;
+  f_b:usize
+}
 
-let constants
-      (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_FooTrait v_T)
-      (_: Prims.unit)
-    : usize =
-  (f_ASSOCIATED_CONSTANT #v_T #FStar.Tactics.Typeclasses.solve <: usize) +! v_INHERENT_CONSTANT
+type t_StructC = { f_a:usize }
+
+type t_StructD = {
+  f_a:usize;
+  f_b:usize
+}
 
 let construct_structs (a b: usize) : Prims.unit =
   let _:t_StructA = { f_a = a } <: t_StructA in
@@ -167,24 +175,16 @@ let construct_structs (a b: usize) : Prims.unit =
   let _:t_StructD = { f_a = a; f_b = b } <: t_StructD in
   ()
 
-let ff__g (_: Prims.unit) : Prims.unit = ()
+let v_INHERENT_CONSTANT: usize = mk_usize 3
 
-let ff__g__impl__g (self: t_B) : usize = mk_usize 0
+class t_FooTrait (v_Self: Type0) = { f_ASSOCIATED_CONSTANT:usize }
 
-type t_f__g__impl__g__Foo =
-  | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
-  | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
-
-let ff__g__impl_1__g (self: t_Foo) : usize = mk_usize 1
-
-let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
-
-let mk_c (_: Prims.unit) : t_C =
-  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = mk_usize 3 }) <: t_Foo in
-  let _:t_X = X <: t_X in
-  { f_x = mk_usize 3 } <: t_C
-
-let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
+let constants
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_FooTrait v_T)
+      (_: Prims.unit)
+    : usize =
+  (f_ASSOCIATED_CONSTANT #v_T #FStar.Tactics.Typeclasses.solve <: usize) +! v_INHERENT_CONSTANT
 
 /// From issue https://github.com/hacspec/hax/issues/839
 let string_shadows (v_string n: string) : Prims.unit = ()

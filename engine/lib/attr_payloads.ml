@@ -154,6 +154,7 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
   (* TODO: Maybe rename me `graph` or something? *)
   module type WITH_ITEMS = sig
     val item_uid_map : item UId.Map.t
+    val try_item_of_uid : UId.t -> item option
     val item_of_uid : UId.t -> item
     val associated_items_per_roles : attrs -> item list AssocRole.Map.t
     val associated_item : AssocRole.t -> attrs -> item option
@@ -222,8 +223,10 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
       in
       map_of_alist (module UId) l ~dup
 
+    let try_item_of_uid (uid : UId.t) : item option = Map.find item_uid_map uid
+
     let item_of_uid (uid : UId.t) : item =
-      Map.find item_uid_map uid
+      try_item_of_uid uid
       |> Option.value_or_thunk ~default:(fun () ->
              Error.assertion_failure (Span.dummy ())
              @@ "Could not find item with UID "
