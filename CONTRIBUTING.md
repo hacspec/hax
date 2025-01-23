@@ -50,6 +50,12 @@ window of 2 days, otherwise the PR will be reverted.
  - Try to avoid exceptions, if possible.
  - Never use `==`, which is the physical equality, and almost never what you want.
 
+### Changelog
+Our changelog format is based on https://keepachangelog.com/.
+Please add an entry in a subsection (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` -- see https://keepachangelog.com/en/1.0.0/#how) for each notable change.
+
+Please prefix with `engine:`, `frontend:` or similar.
+
 ## Styleguides
 
 ### Git Commit Messages

@@ -218,8 +218,6 @@ pub fn make_fn_decoration(
     mut generics: Option<Generics>,
     self_type: Option<Type>,
 ) -> (TokenStream, AttrPayload) {
-    let uid = ItemUid::fresh();
-    let mut_ref_inputs = unmut_references_in_inputs(&mut signature);
     let self_ident: Ident = syn::parse_quote! {self_};
     let error = {
         let mut rewriter = RewriteSelf::new(self_ident, self_type);
@@ -230,6 +228,8 @@ pub fn make_fn_decoration(
         }
         rewriter.get_error()
     };
+    let uid = ItemUid::fresh();
+    let mut_ref_inputs = unmut_references_in_inputs(&mut signature);
     let decoration = {
         let decoration_sig = {
             let mut sig = signature.clone();
