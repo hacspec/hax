@@ -1,0 +1,37 @@
+/* This sets the color of the ADR status tags see https://github.com/squidfunk/mkdocs-material/discussions/5101 */
+
+.md-typeset .md-tag--draft,
+.md-typeset .md-tag--draft[href] {
+    background-color: #5694ca;
+    color: white;
+}
+
+.md-typeset .md-tag--accepted,
+.md-typeset .md-tag--accepted[href] {
+    background-color: #00703c;
+    color: white;
+}
+
+.md-typeset .md-tag--deprecated,
+.md-typeset .md-tag--deprecated[href] {
+    background-color: #b1b4b6;
+    color: white;
+}
+
+.md-typeset .md-tag--proposed,
+.md-typeset .md-tag--proposed[href] {
+    background-color: #003078;
+    color: white;
+}
+
+.md-typeset .md-tag--rejected,
+.md-typeset .md-tag--rejected[href] {
+    background-color: #f47738;
+    color: white;
+}
+
+.md-typeset .md-tag--superseded,
+.md-typeset .md-tag--superseded[href] {
+    background-color: #505a5f;
+    color: white;
+}

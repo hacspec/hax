@@ -179,3 +179,14 @@ mod issue_1089 {
         x.map(|i| Some(i + y?))?
     }
 }
+
+/// issue 1175
+mod nested_return {
+    fn other_fun(rng: &mut i8) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn fun(rng: &mut i8) -> Result<(), ()> {
+        return Ok(other_fun(rng)?);
+    }
+}

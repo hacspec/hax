@@ -111,6 +111,24 @@ module Make
 struct
   open Ctx
 
+  module StringToFStar = struct
+    let catch_parsing_error (type a b) kind span (f : a -> b) x =
+      try f x
+      with e ->
+        let kind =
+          Types.FStarParseError
+            {
+              fstar_snippet = "";
+              details =
+                "While parsing a " ^ kind ^ ", error: "
+                ^ Base.Error.to_string_hum (Base.Error.of_exn e);
+            }
+        in
+        Error.raise { span; kind }
+
+    let term span = catch_parsing_error "term" span F.term_of_string
+  end
+
   let doc_to_string : PPrint.document -> string =
     FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
 
@@ -667,17 +685,17 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote quote -> pquote e.span quote |> F.term_of_string
+    | Quote quote -> pquote e.span quote |> StringToFStar.term e.span
     | _ -> .
 
   (** Prints a `quote` to a string *)
   and pquote span { contents; _ } =
     List.map
       ~f:(function
-        | `Verbatim code -> code
-        | `Expr e -> pexpr e |> term_to_string
-        | `Pat p -> ppat p |> pat_to_string
-        | `Typ p -> pty span p |> term_to_string)
+        | Verbatim code -> code
+        | Expr e -> pexpr e |> term_to_string
+        | Pattern p -> ppat p |> pat_to_string
+        | Typ p -> pty span p |> term_to_string)
       contents
     |> String.concat
 
@@ -1590,7 +1608,6 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
   in
   Print.pitem item
-  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
        | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
@@ -1600,6 +1617,7 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
+  |> List.filter ~f:(function `Impl _, _ when no_impl -> false | _ -> true)
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 

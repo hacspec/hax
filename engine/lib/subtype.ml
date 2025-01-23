@@ -305,10 +305,10 @@ struct
 
   and dquote (span : span) ({ contents; witness } : A.quote) : B.quote =
     let f = function
-      | `Verbatim code -> `Verbatim code
-      | `Expr e -> `Expr (dexpr e)
-      | `Pat p -> `Pat (dpat p)
-      | `Typ p -> `Typ (dty span p)
+      | A.Verbatim code -> B.Verbatim code
+      | Expr e -> Expr (dexpr e)
+      | Pattern p -> Pattern (dpat p)
+      | Typ p -> Typ (dty span p)
     in
     { contents = List.map ~f contents; witness = S.quote span witness }
 

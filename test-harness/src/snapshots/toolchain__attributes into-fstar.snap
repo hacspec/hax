@@ -114,6 +114,18 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
 
 unfold let add x y = x + y
 '''
+"Attributes.Issue_1266_.fst" = '''
+module Attributes.Issue_1266_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_T (v_Self: Type0) = {
+  f_v_pre:v_Self -> Type0;
+  f_v_post:x: v_Self -> x_future: v_Self -> pred: Type0{pred ==> true};
+  f_v:x0: v_Self -> Prims.Pure v_Self (f_v_pre x0) (fun result -> f_v_post x0 result)
+}
+'''
 "Attributes.Nested_refinement_elim.fst" = '''
 module Attributes.Nested_refinement_elim
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -130,11 +142,11 @@ module Attributes.Newtype_pattern
 open Core
 open FStar.Mul
 
+let v_MAX: usize = sz 10
+
 type t_SafeIndex = { f_i:f_i: usize{f_i <. v_MAX} }
 
 let impl__SafeIndex__as_usize (self: t_SafeIndex) : usize = self.f_i
-
-let v_MAX: usize = sz 10
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
@@ -156,6 +168,23 @@ module Attributes.Pre_post_on_traits_and_impls
 open Core
 open FStar.Mul
 
+type t_ViaAdd = | ViaAdd : t_ViaAdd
+
+type t_ViaMul = | ViaMul : t_ViaMul
+
+class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
+  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
+  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
+  f_method:x0: v_Self -> x1: u8
+    -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
+}
+
+let test
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
+      (x: v_T)
+    : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x 99uy <: u8) -! 88uy
+
 class t_Operation (v_Self: Type0) = {
   f_double_pre:x: u8
     -> pred:
@@ -173,17 +202,6 @@ class t_Operation (v_Self: Type0) = {
           (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int) };
   f_double:x0: u8 -> Prims.Pure u8 (f_double_pre x0) (fun result -> f_double_post x0 result)
 }
-
-class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
-  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
-  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
-  f_method:x0: v_Self -> x1: u8
-    -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
-}
-
-type t_ViaAdd = | ViaAdd : t_ViaAdd
-
-type t_ViaMul = | ViaMul : t_ViaMul
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: t_Operation t_ViaAdd =
@@ -218,12 +236,6 @@ let impl_1: t_Operation t_ViaMul =
         (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int));
     f_double = fun (x: u8) -> x *! 2uy
   }
-
-let test
-      (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
-      (x: v_T)
-    : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x 99uy <: u8) -! 88uy
 '''
 "Attributes.Refined_arithmetic.fst" = '''
 module Attributes.Refined_arithmetic
@@ -419,7 +431,7 @@ let impl: t_Foo Prims.unit =
     f_i
     =
     fun (x: u8) (y: u8) ->
-      let hax_temp_output:Prims.unit = () <: Prims.unit in
+      let _:Prims.unit = () <: Prims.unit in
       y
   }
 '''
@@ -466,12 +478,6 @@ module Attributes
 open Core
 open FStar.Mul
 
-type t_Foo = {
-  f_x:u32;
-  f_y:f_y: u32{f_y >. 3ul};
-  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
-}
-
 let inlined_code__V: u8 = 12uy
 
 let issue_844_ (v__x: u8)
@@ -483,6 +489,12 @@ let issue_844_ (v__x: u8)
           true) = v__x
 
 let u32_max: u32 = 90000ul
+
+type t_Foo = {
+  f_x:u32;
+  f_y:f_y: u32{f_y >. 3ul};
+  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
+}
 
 let swap_and_mut_req_ens (x y: u32)
     : Prims.Pure (u32 & u32 & u32)
@@ -516,6 +528,8 @@ let add3_lemma (x: u32)
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
 
+unfold let some_function _ = "hello from F*"
+
 let before_inlined_code = "example before"
 
 let inlined_code (foo: t_Foo) : Prims.unit =
@@ -528,6 +542,4 @@ let inlined_code (foo: t_Foo) : Prims.unit =
   ()
 
 let inlined_code_after = "example after"
-
-unfold let some_function _ = "hello from F*"
 '''
