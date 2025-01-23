@@ -900,6 +900,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn
   |> Phases.Bundle_cycles
+  |> Phases.Sort_items
   |> SubtypeToInputLanguage
   |> Identity
   ]

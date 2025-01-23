@@ -116,9 +116,10 @@ let run (options : Types.engine_options) : Types.output =
           ([%show: Diagnostics.Backend.t] M.backend));
     let items = apply_phases backend_options items in
     let with_items = Attrs.with_items items in
-    let module Deps = Dependencies.Make (InputLanguage) in
-    let items = Deps.global_sort items in
-    let bundles, _ = Deps.recursive_bundles items in
+    let bundles, _ =
+      let module DepGraph = Dependencies.Make (InputLanguage) in
+      DepGraph.recursive_bundles items
+    in
     let items =
       List.filter items ~f:(fun (i : AST.item) ->
           Attrs.late_skip i.attrs |> not)
