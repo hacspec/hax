@@ -37,11 +37,19 @@ module Make (F : Features.T) = struct
     let open Attrs.WithItems (struct
       let items = items
     end) in
-    raw_associated_item >> List.map ~f:(snd >> item_of_uid)
+    raw_associated_item >> List.filter_map ~f:(snd >> try_item_of_uid)
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
-    module Topological = Graph.Topological.Make_stable (G)
+
+    module GInt = struct
+      include Graph.Persistent.Digraph.Concrete (Int)
+
+      let empty () = empty
+    end
+
+    module Topological = Graph.Topological.Make_stable (GInt)
+    module Map_G_GInt = Graph.Gmap.Edge (G) (GInt)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -212,6 +220,10 @@ module Make (F : Features.T) = struct
 
     let of_items (items : item list) : G.t =
       let ig = ItemGraph.of_items ~original_items:items items in
+      let vertices =
+        List.fold items ~init:G.empty ~f:(fun g item ->
+            G.add_vertex g (Namespace.of_concrete_ident item.ident))
+      in
       List.map ~f:(ident_of >> (Namespace.of_concrete_ident &&& Fn.id)) items
       |> Map.of_alist_multi (module Namespace)
       |> Map.map
@@ -224,12 +236,17 @@ module Make (F : Features.T) = struct
              >> Set.to_list)
       |> Map.to_alist
       |> List.concat_map ~f:(fun (x, ys) -> List.map ~f:(fun y -> (x, y)) ys)
-      |> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
+      |> List.fold ~init:vertices ~f:(G.add_edge >> uncurry)
 
     module SCC = Graph.Components.Make (G)
 
     let cycles g : Namespace.Set.t list =
       SCC.scc_list g |> List.map ~f:(Set.of_list (module Namespace))
+
+    (** Returns the namespaces in topological order *)
+    let order g : Namespace.t list =
+      let module ModTopo = Graph.Topological.Make_stable (G) in
+      ModTopo.fold List.cons g []
 
     open Graph.Graphviz.Dot (struct
       include G
@@ -270,13 +287,81 @@ module Make (F : Features.T) = struct
     let g =
       ItemGraph.of_items ~original_items:items items |> ItemGraph.Oper.mirror
     in
-    let lookup (name : concrete_ident) =
-      List.find ~f:(ident_of >> Concrete_ident.equal name) items
+    let stable_g =
+      let to_index =
+        items
+        |> List.mapi ~f:(fun i item -> (item.ident, i))
+        |> Map.of_alist_exn (module Concrete_ident)
+        |> Map.find
+      in
+      ItemGraph.Map_G_GInt.filter_map
+        (to_index *** to_index >> uncurry Option.both)
+        g
+    in
+    let stable_g =
+      List.foldi items ~init:stable_g ~f:(fun i g _ ->
+          ItemGraph.GInt.add_vertex g i)
     in
     let items' =
-      ItemGraph.Topological.fold List.cons g []
-      |> List.filter_map ~f:lookup |> List.rev
+      let items_array = Array.of_list items in
+      let lookup (index : int) = items_array.(index) in
+      ItemGraph.Topological.fold List.cons stable_g [] |> List.map ~f:lookup
     in
+    (* Stable topological sort doesn't guarantee to group cycles together.
+       We make this correction to ensure mutually recursive items are grouped. *)
+    let items' =
+      let cycles =
+        ItemGraph.MutRec.SCC.scc_list g
+        |> List.filter ~f:(fun cycle -> List.length cycle > 1)
+      in
+      (* TODO: This can be optimized by using a set or a map
+         to avoid traversing all cycles at each iteration. *)
+      List.fold items' ~init:[] ~f:(fun acc item ->
+          match
+            List.find cycles ~f:(fun cycle ->
+                List.mem cycle item.ident ~equal:[%eq: concrete_ident])
+          with
+          | Some _
+            when List.exists acc ~f:(fun els ->
+                     List.mem els item ~equal:[%eq: item]) ->
+              [] :: acc
+          | Some cycle ->
+              List.map cycle ~f:(fun ident ->
+                  List.find_exn items ~f:(fun item ->
+                      [%eq: concrete_ident] item.ident ident))
+              :: acc
+          | None -> [ item ] :: acc)
+      |> List.concat
+    in
+    (* Quote items must be placed right before or after their origin *)
+    let items' =
+      let before_quotes, after_quotes, _ =
+        List.partition3_map items' ~f:(fun item ->
+            match item.v with
+            | Quote { origin; _ } -> (
+                match origin.position with
+                | `Before -> `Fst (origin, item)
+                | `After -> `Snd (origin, item)
+                | `Replace -> `Trd ())
+            | _ -> `Trd ())
+      in
+      let move_quote before origin quote_item =
+        List.concat_map ~f:(fun item ->
+            if [%eq: concrete_ident] origin.item_ident item.ident then
+              if before then [ quote_item; item ] else [ item; quote_item ]
+            else if [%eq: concrete_ident] quote_item.ident item.ident then []
+            else [ item ])
+      in
+      let before_quotes = List.rev before_quotes in
+      let items' =
+        List.fold before_quotes ~init:items'
+          ~f:(fun items' (origin, quote_item) ->
+            move_quote true origin quote_item items')
+      in
+      List.fold after_quotes ~init:items' ~f:(fun items' (origin, quote_item) ->
+          move_quote false origin quote_item items')
+    in
+
     assert (
       let of_list =
         List.map ~f:ident_of >> Set.of_list (module Concrete_ident)
@@ -285,6 +370,22 @@ module Make (F : Features.T) = struct
       let items' = of_list items' in
       Set.equal items items');
     items'
+
+  let global_sort (items : item list) : item list =
+    let sorted_by_namespace =
+      U.group_items_by_namespace_generic
+        Concrete_ident.DefaultViewAPI.to_namespace items
+      |> Map.data
+      |> List.map ~f:(fun items -> sort items)
+    in
+    let sorted_namespaces = ModGraph.order (ModGraph.of_items items) in
+    List.concat_map sorted_namespaces ~f:(fun namespace ->
+        List.find sorted_by_namespace ~f:(fun items ->
+            List.exists items ~f:(fun item ->
+                Namespace.equal
+                  (Namespace.of_concrete_ident item.ident)
+                  namespace))
+        |> Option.value ~default:[])
 
   let filter_by_inclusion_clauses' ~original_items
       (clauses : Types.inclusion_clause list) (items : item list) :
@@ -388,7 +489,12 @@ module Make (F : Features.T) = struct
             List.filter ~f:(fun att -> Attrs.late_skip [ att ]) item.attrs
           in
 
-          { item with v = Alias { name = old_ident; item = new_ident }; attrs })
+          {
+            item with
+            v = Alias { name = old_ident; item = new_ident };
+            attrs;
+            ident = old_ident;
+          })
     in
     item' :: aliases
 

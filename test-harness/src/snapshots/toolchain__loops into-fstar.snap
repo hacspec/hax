@@ -84,83 +84,6 @@ module Loops.Control_flow
 open Core
 open FStar.Mul
 
-type t_M = { f_m:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
-
-let impl__M__decoded_message (self: t_M)
-    : Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
-  match
-    Rust_primitives.Hax.Folds.fold_range_return (sz 0)
-      (Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global self.f_m <: usize)
-      (fun temp_0_ temp_1_ ->
-          let _:Prims.unit = temp_0_ in
-          let _:usize = temp_1_ in
-          true)
-      ()
-      (fun temp_0_ i ->
-          let _:Prims.unit = temp_0_ in
-          let i:usize = i in
-          if i >. sz 5 <: bool
-          then
-            Core.Ops.Control_flow.ControlFlow_Break
-            (Core.Ops.Control_flow.ControlFlow_Break
-              (Core.Option.Option_None
-                <:
-                Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
-              <:
-              Core.Ops.Control_flow.t_ControlFlow
-                (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
-                (Prims.unit & Prims.unit))
-            <:
-            Core.Ops.Control_flow.t_ControlFlow
-              (Core.Ops.Control_flow.t_ControlFlow
-                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
-                  (Prims.unit & Prims.unit)) Prims.unit
-          else
-            Core.Ops.Control_flow.ControlFlow_Continue ()
-            <:
-            Core.Ops.Control_flow.t_ControlFlow
-              (Core.Ops.Control_flow.t_ControlFlow
-                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
-                  (Prims.unit & Prims.unit)) Prims.unit)
-    <:
-    Core.Ops.Control_flow.t_ControlFlow
-      (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) Prims.unit
-  with
-  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
-  | Core.Ops.Control_flow.ControlFlow_Continue _ ->
-    Core.Option.Option_Some
-    (Core.Clone.f_clone #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-        #FStar.Tactics.Typeclasses.solve
-        self.f_m)
-    <:
-    Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-
-let bigger_power_2_ (x: i32) : i32 =
-  let pow:i32 = 1l in
-  Rust_primitives.f_while_loop_cf (fun pow ->
-        let pow:i32 = pow in
-        pow <. 1000000l <: bool)
-    pow
-    (fun pow ->
-        let pow:i32 = pow in
-        let pow:i32 = pow *! 2l in
-        if pow <. x
-        then
-          let pow:i32 = pow *! 3l in
-          if true
-          then
-            Core.Ops.Control_flow.ControlFlow_Break ((), pow <: (Prims.unit & i32))
-            <:
-            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
-          else
-            Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
-            <:
-            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
-        else
-          Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
-          <:
-          Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32)
-
 let double_sum (_: Prims.unit) : i32 =
   let sum:i32 = 0l in
   let sum:i32 =
@@ -214,6 +137,38 @@ let double_sum2 (_: Prims.unit) : i32 =
   in
   sum +! sum2
 
+let double_sum_return (v: t_Slice i32) : i32 =
+  let sum:i32 = 0l in
+  match
+    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
+          #FStar.Tactics.Typeclasses.solve
+          v
+        <:
+        Core.Slice.Iter.t_Iter i32)
+      sum
+      (fun sum i ->
+          let sum:i32 = sum in
+          let i:i32 = i in
+          if i <. 0l <: bool
+          then
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Ops.Control_flow.ControlFlow_Break 0l
+              <:
+              Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue (sum +! i <: i32)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow
+              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 i32
+  with
+  | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
+  | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
+
 let double_sum2_return (v: t_Slice i32) : i32 =
   let sum:i32 = 0l in
   let sum2:i32 = 0l in
@@ -248,37 +203,82 @@ let double_sum2_return (v: t_Slice i32) : i32 =
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2) -> sum +! sum2
 
-let double_sum_return (v: t_Slice i32) : i32 =
-  let sum:i32 = 0l in
+let bigger_power_2_ (x: i32) : i32 =
+  let pow:i32 = 1l in
+  Rust_primitives.f_while_loop_cf (fun pow ->
+        let pow:i32 = pow in
+        pow <. 1000000l <: bool)
+    pow
+    (fun pow ->
+        let pow:i32 = pow in
+        let pow:i32 = pow *! 2l in
+        if pow <. x
+        then
+          let pow:i32 = pow *! 3l in
+          if true
+          then
+            Core.Ops.Control_flow.ControlFlow_Break ((), pow <: (Prims.unit & i32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+          else
+            Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32
+        else
+          Core.Ops.Control_flow.ControlFlow_Continue (pow *! 2l)
+          <:
+          Core.Ops.Control_flow.t_ControlFlow (Prims.unit & i32) i32)
+
+type t_M = { f_m:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
+
+let impl__M__decoded_message (self: t_M)
+    : Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
   match
-    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
-          #FStar.Tactics.Typeclasses.solve
-          v
-        <:
-        Core.Slice.Iter.t_Iter i32)
-      sum
-      (fun sum i ->
-          let sum:i32 = sum in
-          let i:i32 = i in
-          if i <. 0l <: bool
+    Rust_primitives.Hax.Folds.fold_range_return (sz 0)
+      (Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global self.f_m <: usize)
+      (fun temp_0_ temp_1_ ->
+          let _:Prims.unit = temp_0_ in
+          let _:usize = temp_1_ in
+          true)
+      ()
+      (fun temp_0_ i ->
+          let _:Prims.unit = temp_0_ in
+          let i:usize = i in
+          if i >. sz 5 <: bool
           then
             Core.Ops.Control_flow.ControlFlow_Break
-            (Core.Ops.Control_flow.ControlFlow_Break 0l
+            (Core.Ops.Control_flow.ControlFlow_Break
+              (Core.Option.Option_None
+                <:
+                Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
               <:
-              Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32))
+              Core.Ops.Control_flow.t_ControlFlow
+                (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                (Prims.unit & Prims.unit))
             <:
             Core.Ops.Control_flow.t_ControlFlow
-              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32
+              (Core.Ops.Control_flow.t_ControlFlow
+                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                  (Prims.unit & Prims.unit)) Prims.unit
           else
-            Core.Ops.Control_flow.ControlFlow_Continue (sum +! i <: i32)
+            Core.Ops.Control_flow.ControlFlow_Continue ()
             <:
             Core.Ops.Control_flow.t_ControlFlow
-              (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+              (Core.Ops.Control_flow.t_ControlFlow
+                  (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
+                  (Prims.unit & Prims.unit)) Prims.unit)
     <:
-    Core.Ops.Control_flow.t_ControlFlow i32 i32
+    Core.Ops.Control_flow.t_ControlFlow
+      (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) Prims.unit
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
-  | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
+  | Core.Ops.Control_flow.ControlFlow_Continue _ ->
+    Core.Option.Option_Some
+    (Core.Clone.f_clone #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+        #FStar.Tactics.Typeclasses.solve
+        self.f_m)
+    <:
+    Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
 
 let nested (_: Prims.unit) : i32 =
   let sum:i32 = 0l in
@@ -384,7 +384,94 @@ module Loops.For_loops
 open Core
 open FStar.Mul
 
-let bool_returning (x: u8) : bool = x <. 10uy
+let range1 (_: Prims.unit) : usize =
+  let acc:usize = sz 0 in
+  let acc:usize =
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (sz 15)
+      (fun acc temp_1_ ->
+          let acc:usize = acc in
+          let _:usize = temp_1_ in
+          true)
+      acc
+      (fun acc i ->
+          let acc:usize = acc in
+          let i:usize = i in
+          acc +! i <: usize)
+  in
+  acc
+
+let range2 (n: usize) : usize =
+  let acc:usize = sz 0 in
+  let acc:usize =
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (n +! sz 10 <: usize)
+      (fun acc temp_1_ ->
+          let acc:usize = acc in
+          let _:usize = temp_1_ in
+          true)
+      acc
+      (fun acc i ->
+          let acc:usize = acc in
+          let i:usize = i in
+          (acc +! i <: usize) +! sz 1 <: usize)
+  in
+  acc
+
+let composed_range (n: usize) : usize =
+  let acc:usize = sz 0 in
+  let acc:usize =
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Chain.t_Chain
+              (Core.Ops.Range.t_Range usize) (Core.Ops.Range.t_Range usize))
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Iter.Traits.Iterator.f_chain #(Core.Ops.Range.t_Range usize)
+              #FStar.Tactics.Typeclasses.solve
+              #(Core.Ops.Range.t_Range usize)
+              ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
+                <:
+                Core.Ops.Range.t_Range usize)
+              ({
+                  Core.Ops.Range.f_start = n +! sz 10 <: usize;
+                  Core.Ops.Range.f_end = n +! sz 50 <: usize
+                }
+                <:
+                Core.Ops.Range.t_Range usize)
+            <:
+            Core.Iter.Adapters.Chain.t_Chain (Core.Ops.Range.t_Range usize)
+              (Core.Ops.Range.t_Range usize))
+        <:
+        Core.Iter.Adapters.Chain.t_Chain (Core.Ops.Range.t_Range usize)
+          (Core.Ops.Range.t_Range usize))
+      acc
+      (fun acc i ->
+          let acc:usize = acc in
+          let i:usize = i in
+          (acc +! i <: usize) +! sz 1 <: usize)
+  in
+  acc
+
+let rev_range (n: usize) : usize =
+  let acc:usize = sz 0 in
+  let acc:usize =
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Rev.t_Rev
+            (Core.Ops.Range.t_Range usize))
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Iter.Traits.Iterator.f_rev #(Core.Ops.Range.t_Range usize)
+              #FStar.Tactics.Typeclasses.solve
+              ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
+                <:
+                Core.Ops.Range.t_Range usize)
+            <:
+            Core.Iter.Adapters.Rev.t_Rev (Core.Ops.Range.t_Range usize))
+        <:
+        Core.Iter.Adapters.Rev.t_Rev (Core.Ops.Range.t_Range usize))
+      acc
+      (fun acc i ->
+          let acc:usize = acc in
+          let i:usize = i in
+          (acc +! i <: usize) +! sz 1 <: usize)
+  in
+  acc
 
 let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize = sz 0 in
@@ -441,97 +528,6 @@ let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global
           acc -! item <: usize)
   in
   acc
-
-let composed_range (n: usize) : usize =
-  let acc:usize = sz 0 in
-  let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Chain.t_Chain
-              (Core.Ops.Range.t_Range usize) (Core.Ops.Range.t_Range usize))
-          #FStar.Tactics.Typeclasses.solve
-          (Core.Iter.Traits.Iterator.f_chain #(Core.Ops.Range.t_Range usize)
-              #FStar.Tactics.Typeclasses.solve
-              #(Core.Ops.Range.t_Range usize)
-              ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
-                <:
-                Core.Ops.Range.t_Range usize)
-              ({
-                  Core.Ops.Range.f_start = n +! sz 10 <: usize;
-                  Core.Ops.Range.f_end = n +! sz 50 <: usize
-                }
-                <:
-                Core.Ops.Range.t_Range usize)
-            <:
-            Core.Iter.Adapters.Chain.t_Chain (Core.Ops.Range.t_Range usize)
-              (Core.Ops.Range.t_Range usize))
-        <:
-        Core.Iter.Adapters.Chain.t_Chain (Core.Ops.Range.t_Range usize)
-          (Core.Ops.Range.t_Range usize))
-      acc
-      (fun acc i ->
-          let acc:usize = acc in
-          let i:usize = i in
-          (acc +! i <: usize) +! sz 1 <: usize)
-  in
-  acc
-
-let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
-  let acc:usize = sz 0 in
-  let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Enumerate.t_Enumerate
-            (Core.Slice.Iter.t_Chunks usize))
-          #FStar.Tactics.Typeclasses.solve
-          (Core.Iter.Traits.Iterator.f_enumerate #(Core.Slice.Iter.t_Chunks usize)
-              #FStar.Tactics.Typeclasses.solve
-              (Core.Slice.impl__chunks #usize
-                  (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
-                      #FStar.Tactics.Typeclasses.solve
-                      arr
-                    <:
-                    t_Slice usize)
-                  (sz 4)
-                <:
-                Core.Slice.Iter.t_Chunks usize)
-            <:
-            Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Chunks usize))
-        <:
-        Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Chunks usize))
-      acc
-      (fun acc temp_1_ ->
-          let acc:usize = acc in
-          let i, chunk:(usize & t_Slice usize) = temp_1_ in
-          Rust_primitives.Hax.Folds.fold_enumerated_slice chunk
-            (fun acc temp_1_ ->
-                let acc:usize = acc in
-                let _:usize = temp_1_ in
-                true)
-            acc
-            (fun acc temp_1_ ->
-                let acc:usize = acc in
-                let j, x:(usize & usize) = temp_1_ in
-                (i +! j <: usize) +! x <: usize)
-          <:
-          usize)
-  in
-  acc
-
-let f (_: Prims.unit) : (u8 & Prims.unit) =
-  let acc:u8 = 0uy in
-  Rust_primitives.Hax.Folds.fold_range 1uy
-    10uy
-    (fun acc temp_1_ ->
-        let acc:u8 = acc in
-        let _:u8 = temp_1_ in
-        true)
-    acc
-    (fun acc i ->
-        let acc:u8 = acc in
-        let i:u8 = i in
-        let acc:u8 = acc +! i in
-        let _:bool = bool_returning i in
-        acc),
-  ()
-  <:
-  (u8 & Prims.unit)
 
 let iterator (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize = sz 0 in
@@ -644,103 +640,72 @@ let pattern (arr: Alloc.Vec.t_Vec (usize & usize) Alloc.Alloc.t_Global) : usize 
   in
   acc
 
-let range1 (_: Prims.unit) : usize =
+let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize = sz 0 in
   let acc:usize =
-    Rust_primitives.Hax.Folds.fold_range (sz 0)
-      (sz 15)
-      (fun acc temp_1_ ->
-          let acc:usize = acc in
-          let _:usize = temp_1_ in
-          true)
-      acc
-      (fun acc i ->
-          let acc:usize = acc in
-          let i:usize = i in
-          acc +! i <: usize)
-  in
-  acc
-
-let range2 (n: usize) : usize =
-  let acc:usize = sz 0 in
-  let acc:usize =
-    Rust_primitives.Hax.Folds.fold_range (sz 0)
-      (n +! sz 10 <: usize)
-      (fun acc temp_1_ ->
-          let acc:usize = acc in
-          let _:usize = temp_1_ in
-          true)
-      acc
-      (fun acc i ->
-          let acc:usize = acc in
-          let i:usize = i in
-          (acc +! i <: usize) +! sz 1 <: usize)
-  in
-  acc
-
-let rev_range (n: usize) : usize =
-  let acc:usize = sz 0 in
-  let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Rev.t_Rev
-            (Core.Ops.Range.t_Range usize))
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Enumerate.t_Enumerate
+            (Core.Slice.Iter.t_Chunks usize))
           #FStar.Tactics.Typeclasses.solve
-          (Core.Iter.Traits.Iterator.f_rev #(Core.Ops.Range.t_Range usize)
+          (Core.Iter.Traits.Iterator.f_enumerate #(Core.Slice.Iter.t_Chunks usize)
               #FStar.Tactics.Typeclasses.solve
-              ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
+              (Core.Slice.impl__chunks #usize
+                  (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+                      #FStar.Tactics.Typeclasses.solve
+                      arr
+                    <:
+                    t_Slice usize)
+                  (sz 4)
                 <:
-                Core.Ops.Range.t_Range usize)
+                Core.Slice.Iter.t_Chunks usize)
             <:
-            Core.Iter.Adapters.Rev.t_Rev (Core.Ops.Range.t_Range usize))
+            Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Chunks usize))
         <:
-        Core.Iter.Adapters.Rev.t_Rev (Core.Ops.Range.t_Range usize))
+        Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Chunks usize))
       acc
-      (fun acc i ->
+      (fun acc temp_1_ ->
           let acc:usize = acc in
-          let i:usize = i in
-          (acc +! i <: usize) +! sz 1 <: usize)
+          let i, chunk:(usize & t_Slice usize) = temp_1_ in
+          Rust_primitives.Hax.Folds.fold_enumerated_slice chunk
+            (fun acc temp_1_ ->
+                let acc:usize = acc in
+                let _:usize = temp_1_ in
+                true)
+            acc
+            (fun acc temp_1_ ->
+                let acc:usize = acc in
+                let j, x:(usize & usize) = temp_1_ in
+                (i +! j <: usize) +! x <: usize)
+          <:
+          usize)
   in
   acc
+
+let bool_returning (x: u8) : bool = x <. 10uy
+
+let f (_: Prims.unit) : (u8 & Prims.unit) =
+  let acc:u8 = 0uy in
+  Rust_primitives.Hax.Folds.fold_range 1uy
+    10uy
+    (fun acc temp_1_ ->
+        let acc:u8 = acc in
+        let _:u8 = temp_1_ in
+        true)
+    acc
+    (fun acc i ->
+        let acc:u8 = acc in
+        let i:u8 = i in
+        let acc:u8 = acc +! i in
+        let _:bool = bool_returning i in
+        acc),
+  ()
+  <:
+  (u8 & Prims.unit)
 '''
 "Loops.Recognized_loops.fst" = '''
 module Loops.Recognized_loops
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
-
-let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
-  let count:u64 = 0uL in
-  Rust_primitives.Hax.Folds.fold_enumerated_chunked_slice (sz 3)
-    slice
-    (fun count i ->
-        let count:u64 = count in
-        let i:usize = i in
-        i <= Core.Slice.impl__len #v_T slice <: usize)
-    count
-    (fun count i ->
-        let count:u64 = count in
-        let i:(usize & t_Slice v_T) = i in
-        let count:u64 = count +! 3uL in
-        count),
-  ()
-  <:
-  (u64 & Prims.unit)
-
-let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
-  let count:u64 = 0uL in
-  Rust_primitives.Hax.Folds.fold_enumerated_slice slice
-    (fun count i ->
-        let count:u64 = count in
-        let i:usize = i in
-        i <=. sz 10 <: bool)
-    count
-    (fun count i ->
-        let count:u64 = count in
-        let i:(usize & v_T) = i in
-        let count:u64 = count +! 2uL in
-        count),
-  ()
-  <:
-  (u64 & Prims.unit)
 
 let range (_: Prims.unit) : (u64 & Prims.unit) =
   let count:u64 = 0uL in
@@ -774,6 +739,41 @@ let range_step_by (_: Prims.unit) : (u64 & Prims.unit) =
         let count:u64 = count in
         let i:u8 = i in
         let count:u64 = count +! 1uL in
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
+
+let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_enumerated_slice slice
+    (fun count i ->
+        let count:u64 = count in
+        let i:usize = i in
+        i <=. sz 10 <: bool)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & v_T) = i in
+        let count:u64 = count +! 2uL in
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
+
+let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_enumerated_chunked_slice (sz 3)
+    slice
+    (fun count i ->
+        let count:u64 = count in
+        let i:usize = i in
+        i <= Core.Slice.impl__len #v_T slice <: usize)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & t_Slice v_T) = i in
+        let count:u64 = count +! 3uL in
         count),
   ()
   <:

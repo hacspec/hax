@@ -33,26 +33,23 @@ module Interface_only
 open Core
 open FStar.Mul
 
+/// This item contains unsafe blocks and raw references, two features
+/// not supported by hax. Thanks to the `-i` flag and the `+:`
+/// modifier, `f` is still extractable as an interface.
+/// Expressions within type are still extracted, as well as pre- and
+/// post-conditions.
+assume
+val f': x: u8
+  -> Prims.Pure (t_Array u8 (sz 4))
+      (requires x <. 254uy)
+      (ensures
+        fun r ->
+          let r:t_Array u8 (sz 4) = r in
+          (r.[ sz 0 ] <: u8) >. x)
+
+let f = f'
+
 type t_Bar = | Bar : t_Bar
-
-type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
-
-type t_Param (v_SIZE: usize) = { f_value:t_Array u8 v_SIZE }
-
-class t_T2 (v_Self: Type0) = {
-  f_d_pre:Prims.unit -> Type0;
-  f_d_post:Prims.unit -> Prims.unit -> Type0;
-  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
-}
-
-/// Items can be forced to be transparent
-[@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_T2_for_u8: t_T2 u8 =
-  {
-    f_d_pre = (fun (_: Prims.unit) -> false);
-    f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
-    f_d = fun (_: Prims.unit) -> ()
-  }
 
 /// Non-inherent implementations are extracted, their bodies are not
 /// dropped. This might be a bit surprising: see
@@ -75,33 +72,21 @@ val from__from': u8 -> t_Bar
 
 let from__from = from__from'
 
+type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_2': #v_T: Type0 -> Core.Convert.t_From (t_Holder v_T) Prims.unit
 
 let impl_2 (#v_T: Type0) = impl_2' #v_T
 
+type t_Param (v_SIZE: usize) = { f_value:t_Array u8 v_SIZE }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
 val impl_3': v_SIZE: usize -> Core.Convert.t_From (t_Param v_SIZE) Prims.unit
 
 let impl_3 (v_SIZE: usize) = impl_3' v_SIZE
-
-/// This item contains unsafe blocks and raw references, two features
-/// not supported by hax. Thanks to the `-i` flag and the `+:`
-/// modifier, `f` is still extractable as an interface.
-/// Expressions within type are still extracted, as well as pre- and
-/// post-conditions.
-assume
-val f': x: u8
-  -> Prims.Pure (t_Array u8 (sz 4))
-      (requires x <. 254uy)
-      (ensures
-        fun r ->
-          let r:t_Array u8 (sz 4) = r in
-          (r.[ sz 0 ] <: u8) >. x)
-
-let f = f'
 
 assume
 val ff_generic': v_X: usize -> #v_U: Type0 -> v__x: v_U -> t_Param v_X
@@ -121,6 +106,21 @@ let impl_T_for_u8: t_T u8 =
   {
     f_Assoc = u8;
     f_d_pre = (fun (_: Prims.unit) -> true);
+    f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
+    f_d = fun (_: Prims.unit) -> ()
+  }
+
+class t_T2 (v_Self: Type0) = {
+  f_d_pre:Prims.unit -> Type0;
+  f_d_post:Prims.unit -> Prims.unit -> Type0;
+  f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result)
+}
+
+/// Items can be forced to be transparent
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_T2_for_u8: t_T2 u8 =
+  {
+    f_d_pre = (fun (_: Prims.unit) -> false);
     f_d_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
     f_d = fun (_: Prims.unit) -> ()
   }

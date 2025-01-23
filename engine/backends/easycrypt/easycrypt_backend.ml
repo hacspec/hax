@@ -353,7 +353,7 @@ module TransformToInputLanguage =
   |> Phases.And_mut_defsite |> Phases.Reconstruct_asserts
   |> Phases.Reconstruct_for_loops |> Phases.Direct_and_mut |> Phases.Drop_blocks
   |> Phases.Reject.Continue |> Phases.Drop_references |> Phases.Bundle_cycles
-  |> RejectNotEC]
+  |> Phases.Sort_items |> RejectNotEC]
 
 let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
