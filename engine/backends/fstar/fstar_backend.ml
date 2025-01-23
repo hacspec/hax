@@ -276,7 +276,6 @@ struct
     [
       (c Rust_primitives__hax__array_of_list, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
-
       (c Rust_primitives__hax__machine_int__not, (1, "~."));
       (c Rust_primitives__hax__machine_int__add, (2, "+!"));
       (c Rust_primitives__hax__machine_int__sub, (2, "-!"));
@@ -294,10 +293,8 @@ struct
       (c Rust_primitives__hax__machine_int__lt, (2, "<."));
       (c Rust_primitives__hax__machine_int__gt, (2, ">."));
       (c Rust_primitives__hax__machine_int__ge, (2, ">=."));
-
       (`Primitive (LogicalOp And), (2, "&&"));
       (`Primitive (LogicalOp Or), (2, "||"));
-
       (c Rust_primitives__hax__int__add, (2, "+"));
       (c Rust_primitives__hax__int__sub, (2, "-"));
       (c Rust_primitives__hax__int__mul, (2, "*"));
