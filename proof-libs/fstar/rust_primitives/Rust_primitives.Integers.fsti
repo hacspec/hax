@@ -238,14 +238,9 @@ val decr_equiv_lemma: #t:inttype
   -> a:int_t t{minint t < v a}
   -> Lemma (decr a == LI.decr #t #LI.PUB a)
 
-let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  assume(unsigned t \/ range (v a / v b) t); // see issue #423
+let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0 /\ (unsigned t \/ range (v a / v b) t)}) =
+  assert (unsigned t \/ range (v a / v b) t);
   mk_int #t (v a / v b)
-  
-val div_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
-  -> a:int_t t
-  -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
-  -> Lemma (div a b == LI.div a b)
 
 let mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
   mk_int #t (v a % v b)

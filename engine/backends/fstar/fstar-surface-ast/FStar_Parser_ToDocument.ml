@@ -1000,6 +1000,31 @@ let separate_map_with_comments_kw :
                   let uu___2 = f prefix x in (uu___1, uu___2) in
                 let uu___1 = FStar_Compiler_List.fold_left fold_fun init xs1 in
                 FStar_Pervasives_Native.snd uu___1
+let (p_char_literal' :
+  FStar_Char.char -> FStar_BaseTypes.char -> FStar_Pprint.document) =
+  fun quote_char ->
+    fun c ->
+      str
+        (match c with
+         | 8 -> "\\b"
+         | 12 -> "\\f"
+         | 10 -> "\\n"
+         | 9 -> "\\t"
+         | 13 -> "\\r"
+         | 11 -> "\\v"
+         | 0 -> "\\0"
+         | c1 ->
+             let s = FStar_Compiler_Util.string_of_char c1 in
+             if quote_char = c1 then "\\" ^ s else s)
+let (p_char_literal : FStar_BaseTypes.char -> FStar_Pprint.document) =
+  fun c -> let uu___ = p_char_literal' 39 c in FStar_Pprint.squotes uu___
+let (p_string_literal : Prims.string -> FStar_Pprint.document) =
+  fun s ->
+    let quotation_mark = 34 in
+    let uu___ =
+      FStar_Pprint.concat_map (p_char_literal' quotation_mark)
+        (FStar_String.list_of_string s) in
+    FStar_Pprint.dquotes uu___
 let rec (p_decl : FStar_Parser_AST.decl -> FStar_Pprint.document) =
   fun d ->
     let qualifiers =
@@ -4524,10 +4549,7 @@ and (p_atomicTermNotQUident : FStar_Parser_AST.term -> FStar_Pprint.document)
         FStar_Ident.lid_equals lid FStar_Parser_Const.assume_lid ->
         str "assume"
     | FStar_Parser_AST.Tvar tv -> p_tvar tv
-    | FStar_Parser_AST.Const c ->
-        (match c with
-         | FStar_Const.Const_char x when x = 10 -> str "0x0Az"
-         | uu___ -> p_constant c)
+    | FStar_Parser_AST.Const c -> p_constant c
     | FStar_Parser_AST.Name lid when
         FStar_Ident.lid_equals lid FStar_Parser_Const.true_lid -> str "True"
     | FStar_Parser_AST.Name lid when
@@ -4732,10 +4754,8 @@ and (p_constant : FStar_Const.sconst -> FStar_Pprint.document) =
     | FStar_Const.Const_unit -> str "()"
     | FStar_Const.Const_bool b -> FStar_Pprint.doc_of_bool b
     | FStar_Const.Const_real r -> str (Prims.op_Hat r "R")
-    | FStar_Const.Const_char x -> FStar_Pprint.doc_of_char x
-    | FStar_Const.Const_string (s, uu___1) ->
-        let uu___2 = str (FStar_String.escaped s) in
-        FStar_Pprint.dquotes uu___2
+    | FStar_Const.Const_char x -> p_char_literal x
+    | FStar_Const.Const_string (s, uu___1) -> p_string_literal s
     | FStar_Const.Const_int (repr, sign_width_opt) ->
         let signedness uu___1 =
           match uu___1 with

@@ -62,6 +62,8 @@ pub enum ImplExprAtom {
         #[from(def_id)]
         id: GlobalIdent,
         generics: Vec<GenericArg>,
+        /// The impl exprs that prove the clauses on the impl.
+        impl_exprs: Vec<ImplExpr>,
     },
     /// A context-bound clause like `where T: Trait`.
     LocalBound {
@@ -90,8 +92,18 @@ pub enum ImplExprAtom {
     /// `dyn Trait` implements `Trait` using a built-in implementation; this refers to that
     /// built-in implementation.
     Dyn,
-    /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
-    Builtin { r#trait: Binder<TraitRef> },
+    /// A built-in trait whose implementation is computed by the compiler, such as `FnMut`. This
+    /// morally points to an invisible `impl` block; as such it contains the information we may
+    /// need from one.
+    Builtin {
+        r#trait: Binder<TraitRef>,
+        /// The `ImplExpr`s required to satisfy the implied predicates on the trait declaration.
+        /// E.g. since `FnMut: FnOnce`, a built-in `T: FnMut` impl would have an `ImplExpr` for `T:
+        /// FnOnce`.
+        impl_exprs: Vec<ImplExpr>,
+        /// The values of the associated types for this trait.
+        types: Vec<(DefId, Ty)>,
+    },
     /// An error happened while resolving traits.
     Error(String),
 }
@@ -108,8 +120,6 @@ pub struct ImplExpr {
     pub r#trait: Binder<TraitRef>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom,
-    /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
-    pub args: Vec<ImplExpr>,
 }
 
 /// Given a clause `clause` in the context of some impl block `impl_did`, susbts correctly `Self`
@@ -206,13 +216,15 @@ pub fn solve_item_implied_traits<'tcx, S: UnderOwnerState<'tcx>>(
 fn solve_item_traits_inner<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     generics: ty::GenericArgsRef<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    predicates: ty::GenericPredicates<'tcx>,
 ) -> Vec<ImplExpr> {
     use crate::rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let param_env = s.param_env();
-
     predicates
+        .predicates
+        .iter()
+        .map(|(clause, _span)| *clause)
         .filter_map(|clause| clause.as_trait_clause())
         .map(|clause| clause.to_poly_trait_ref())
         // Substitute the item generics
@@ -239,7 +251,7 @@ pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
 
     let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
     // The "self" predicate in the context of the trait.
-    let self_pred = self_predicate(tcx, tr_def_id).unwrap();
+    let self_pred = self_predicate(tcx, tr_def_id);
     // Substitute to be in the context of the current item.
     let generics = generics.truncate_to(tcx, tcx.generics_of(tr_def_id));
     let self_pred = EarlyBinder::bind(self_pred).instantiate(tcx, generics);

@@ -1,0 +1,41 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: patterns
+    manifest: patterns/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Patterns.fst" = '''
+module Patterns
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Other = | Other : i32 -> t_Other
+
+type t_Test = | Test_C1 : t_Other -> t_Test
+
+let impl__test (self: t_Test) : i32 = match self <: t_Test with | Test_C1 c -> c._0
+'''

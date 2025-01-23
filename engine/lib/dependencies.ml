@@ -88,8 +88,9 @@ module Make (F : Features.T) = struct
         =
       List.concat_map
         ~f:(fun i ->
+          let attrs = U.Reducers.collect_attrs#visit_item () i in
           let assoc =
-            uid_associated_items i.attrs |> List.map ~f:(fun i -> i.ident)
+            uid_associated_items attrs |> List.map ~f:(fun i -> i.ident)
           in
           vertices_of_item i @ assoc |> List.map ~f:(Fn.const i.ident &&& Fn.id))
         items
@@ -413,8 +414,12 @@ module Make (F : Features.T) = struct
     in
 
     let transform (bundle : item list) =
+      let module_names =
+        List.map ~f:(ident_of >> Concrete_ident.Create.parent) bundle
+        |> List.dedup_and_sort ~compare:Concrete_ident.compare
+      in
       let ns : Concrete_ident.t =
-        Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
+        Concrete_ident.Create.fresh_module ~from:module_names
       in
       let new_name_under_ns : Concrete_ident.t -> Concrete_ident.t =
         Concrete_ident.Create.move_under ~new_parent:ns
@@ -431,10 +436,7 @@ module Make (F : Features.T) = struct
             (List.mem duplicates (new_name_under_ns id)
                ~equal:Concrete_ident.equal)
         then id
-        else
-          Concrete_ident.Create.map_last
-            ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
-            id
+        else Concrete_ident.Create.add_disambiguator id (Concrete_ident.hash id)
       in
       let renamings =
         List.map
@@ -465,9 +467,19 @@ module Make (F : Features.T) = struct
                ])
       in
       let renamings =
-        Map.of_alist_exn
-          (module Concrete_ident)
-          (renamings @ variant_and_constructors_renamings)
+        match
+          Map.of_alist
+            (module Concrete_ident)
+            (renamings @ variant_and_constructors_renamings)
+        with
+        | `Duplicate_key dup ->
+            failwith
+              [%string
+                "Fatal error: in dependency analysis, we construct a renaming \
+                 key-value list with a guarantee of unicity in keys. However, \
+                 we found the following key twice:\n\
+                 %{[%show: concrete_ident] dup}"]
+        | `Ok value -> value
       in
       let rename =
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
@@ -493,7 +505,15 @@ module Make (F : Features.T) = struct
       include Comparable.Make (T)
     end in
     let bundle_of_item =
-      Hashtbl.of_alist_exn (module ComparableItem) bundle_transforms
+      match Hashtbl.of_alist (module ComparableItem) bundle_transforms with
+      | `Duplicate_key dup ->
+          failwith
+            [%string
+              "Fatal error: in dependency analysis, [bundles_transforms] is \
+               expected to be a key-value list with a guarantee of unicity in \
+               keys. However, we found the following key (an item) twice:\n\
+               %{U.Debug.item' dup}"]
+      | `Ok value -> value
     in
     let maybe_transform_item item =
       match Hashtbl.find bundle_of_item item with

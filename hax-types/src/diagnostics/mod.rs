@@ -68,6 +68,8 @@ impl std::fmt::Display for Diagnostics {
 
             Kind::NonTrivialAndMutFnInput => write!(f, "The support in hax of function with one or more inputs of type `&mut _` is limited. Onlu trivial patterns are allowed there: `fn f(x: &mut (T, U)) ...` is allowed while `f((x, y): &mut (T, U))` is rejected."),
 
+            Kind::FStarParseError { fstar_snippet, details: _ } => write!(f, "The following code snippet could not be parsed as valid F*:\n```\n{fstar_snippet}\n```"),
+
             _ => write!(f, "{:?}", self.kind),
         }
     }
@@ -135,7 +137,13 @@ pub enum Kind {
     /// An hax attribute (from `hax-lib-macros`) was rejected
     AttributeRejected {
         reason: String,
-    },
+    } = 12,
+
+    /// A snippet of F* code could not be parsed
+    FStarParseError {
+        fstar_snippet: String,
+        details: String,
+    } = 13,
 }
 
 impl Kind {

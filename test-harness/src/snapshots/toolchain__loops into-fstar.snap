@@ -27,6 +27,57 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Loops.And_mut_side_effect_loop.fst" = '''
+module Loops.And_mut_side_effect_loop
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let looping (array: t_Array u8 (sz 5)) : t_Array u8 (sz 5) =
+  let array:t_Array u8 (sz 5) =
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (Core.Slice.impl__len #u8 (array <: t_Slice u8) <: usize)
+      (fun array temp_1_ ->
+          let array:t_Array u8 (sz 5) = array in
+          let _:usize = temp_1_ in
+          true)
+      array
+      (fun array i ->
+          let array:t_Array u8 (sz 5) = array in
+          let i:usize = i in
+          Rust_primitives.Hax.Monomorphized_update_at.update_at_usize array
+            i
+            (cast (i <: usize) <: u8)
+          <:
+          t_Array u8 (sz 5))
+  in
+  array
+
+let looping_2_ (array: t_Array u8 (sz 5)) : t_Array u8 (sz 5) =
+  let array, result:(t_Array u8 (sz 5) & Prims.unit) =
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (Core.Slice.impl__len #u8 (array <: t_Slice u8) <: usize)
+      (fun array temp_1_ ->
+          let array:t_Array u8 (sz 5) = array in
+          let _:usize = temp_1_ in
+          true)
+      array
+      (fun array i ->
+          let array:t_Array u8 (sz 5) = array in
+          let i:usize = i in
+          Rust_primitives.Hax.Monomorphized_update_at.update_at_usize array
+            i
+            (cast (i <: usize) <: u8)
+          <:
+          t_Array u8 (sz 5)),
+    ()
+    <:
+    (t_Array u8 (sz 5) & Prims.unit)
+  in
+  let _:Prims.unit = admit () (* Panic freedom *) in
+  let _:Prims.unit = result in
+  array
+'''
 "Loops.Control_flow.fst" = '''
 module Loops.Control_flow
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -71,6 +122,9 @@ let impl__M__decoded_message (self: t_M)
               (Core.Ops.Control_flow.t_ControlFlow
                   (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
                   (Prims.unit & Prims.unit)) Prims.unit)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow
+      (Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) Prims.unit
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue _ ->
@@ -188,6 +242,8 @@ let double_sum2_return (v: t_Slice i32) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & (i32 & i32))) (i32 & i32))
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 (i32 & i32)
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue (sum, sum2) -> sum +! sum2
@@ -218,6 +274,8 @@ let double_sum_return (v: t_Slice i32) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 i32
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
@@ -314,6 +372,8 @@ let nested_return (_: Prims.unit) : i32 =
             <:
             Core.Ops.Control_flow.t_ControlFlow
               (Core.Ops.Control_flow.t_ControlFlow i32 (Prims.unit & i32)) i32)
+    <:
+    Core.Ops.Control_flow.t_ControlFlow i32 i32
   with
   | Core.Ops.Control_flow.ControlFlow_Break ret -> ret
   | Core.Ops.Control_flow.ControlFlow_Continue sum -> sum *! 2l
@@ -454,7 +514,7 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   in
   acc
 
-let f (_: Prims.unit) : u8 =
+let f (_: Prims.unit) : (u8 & Prims.unit) =
   let acc:u8 = 0uy in
   Rust_primitives.Hax.Folds.fold_range 1uy
     10uy
@@ -468,7 +528,10 @@ let f (_: Prims.unit) : u8 =
         let i:u8 = i in
         let acc:u8 = acc +! i in
         let _:bool = bool_returning i in
-        acc)
+        acc),
+  ()
+  <:
+  (u8 & Prims.unit)
 
 let iterator (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize = sz 0 in
@@ -644,22 +707,25 @@ module Loops.Recognized_loops
 open Core
 open FStar.Mul
 
-let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
   let count:u64 = 0uL in
   Rust_primitives.Hax.Folds.fold_enumerated_chunked_slice (sz 3)
     slice
     (fun count i ->
         let count:u64 = count in
         let i:usize = i in
-        i <= Core.Slice.impl__len #v_T slice)
+        i <= Core.Slice.impl__len #v_T slice <: usize)
     count
     (fun count i ->
         let count:u64 = count in
         let i:(usize & t_Slice v_T) = i in
         let count:u64 = count +! 3uL in
-        count)
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
 
-let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.unit) =
   let count:u64 = 0uL in
   Rust_primitives.Hax.Folds.fold_enumerated_slice slice
     (fun count i ->
@@ -671,9 +737,12 @@ let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
         let count:u64 = count in
         let i:(usize & v_T) = i in
         let count:u64 = count +! 2uL in
-        count)
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
 
-let range (_: Prims.unit) : u64 =
+let range (_: Prims.unit) : (u64 & Prims.unit) =
   let count:u64 = 0uL in
   Rust_primitives.Hax.Folds.fold_range 0uy
     10uy
@@ -686,9 +755,12 @@ let range (_: Prims.unit) : u64 =
         let count:u64 = count in
         let i:u8 = i in
         let count:u64 = count +! 1uL in
-        count)
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
 
-let range_step_by (_: Prims.unit) : u64 =
+let range_step_by (_: Prims.unit) : (u64 & Prims.unit) =
   let count:u64 = 0uL in
   Rust_primitives.Hax.Folds.fold_range_step_by 0uy
     10uy
@@ -702,7 +774,10 @@ let range_step_by (_: Prims.unit) : u64 =
         let count:u64 = count in
         let i:u8 = i in
         let count:u64 = count +! 1uL in
-        count)
+        count),
+  ()
+  <:
+  (u64 & Prims.unit)
 '''
 "Loops.While_loops.fst" = '''
 module Loops.While_loops

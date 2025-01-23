@@ -171,18 +171,19 @@ struct
               arms
           in
           let arms =
-            if List.is_empty arms then []
-            else
-              let m =
-                List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
-                |> List.reduce_exn ~f:(KnownMonads.lub span)
-              in
-              List.map
-                ~f:(fun (mself, (arm_pat, span, body, guard)) ->
-                  let body = KnownMonads.lift "Match" body mself.monad m in
-                  let arm_pat = { arm_pat with typ = body.typ } in
-                  ({ arm = { arm_pat; body; guard }; span } : B.arm))
-                arms
+            let m =
+              List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
+              |> List.reduce ~f:(KnownMonads.lub span)
+            in
+            match m with
+            | None -> [] (* [arms] is empty *)
+            | Some m ->
+                List.map
+                  ~f:(fun (mself, (arm_pat, span, body, guard)) ->
+                    let body = KnownMonads.lift "Match" body mself.monad m in
+                    let arm_pat = { arm_pat with typ = body.typ } in
+                    ({ arm = { arm_pat; body; guard }; span } : B.arm))
+                  arms
           in
           let typ =
             match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ

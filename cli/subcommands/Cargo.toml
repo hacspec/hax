@@ -54,6 +54,9 @@ hax-lib-macros-types = {workspace = true, features = ["schemars"]}
 version_check = "0.9"
 toml = "0.8"
 
+[package.metadata.release]
+pre-release-hook = ["dune", "build", "--root", "../../engine", "hax-engine.opam"]
+
 [[package.metadata.release.pre-release-replacements]]
 file = "../../engine/dune-project"
 search = "version [a-z0-9\\.-]+"

@@ -33,12 +33,12 @@ open Core
 open FStar.Mul
 
 let let_else (opt: Core.Option.t_Option u32) : bool =
-  match opt with
+  match opt <: Core.Option.t_Option u32 with
   | Core.Option.Option_Some x -> true
   | _ -> false
 
 let let_else_different_type (opt: Core.Option.t_Option u32) : bool =
-  match opt with
+  match opt <: Core.Option.t_Option u32 with
   | Core.Option.Option_Some x ->
     let_else (Core.Option.Option_Some (x +! 1ul <: u32) <: Core.Option.t_Option u32)
   | _ -> false
