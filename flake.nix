@@ -127,17 +127,19 @@
             hax-engine-names-extract = pkgs.hello;
           }).overrideAttrs (old: {
             name = "dune-project";
-            outputs = ["out"];
+            outputs = [ "out" ];
             buildPhase = ''
               dune describe installed-libraries > /tmp/dune-installed-libraries
 
               for package in $(grep -Po '^ {8}[(]\K\w+' dune-project); do
-                  version=$(cat /tmp/dune-installed-libraries | grep -Po "\b$package\b.*version: v?\K[0-9.]+" | head -n1 || true)
-                  version=$(echo "$version" | grep -Po "^\d+.\d+" || true)
+                  version=$(cat /tmp/dune-installed-libraries | grep -Po "\b$package\b.*version: \Kv?[0-9.]+" | head -n1 || true)
+                  version=$(echo "$version" | grep -Po "^v?\d+([.]\d+)*" || true)
                   if [ -z "${"$"}{version}" ]; then
                       continue
                   fi
-                  ${pkgs.sd}/bin/sd "(^ {8}[(]$package +)\([^)]+\)" '${"$"}{1}'"(= \"$version\")" dune-project
+                  ${pkgs.sd}/bin/sd "(^ {8}[(]$package +)\([^)]+\)" '${
+                    "$"
+                  }{1}'"(= \"$version\")" dune-project
                   echo "-> $package: $version"
               done
             '';
