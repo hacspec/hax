@@ -243,9 +243,10 @@ module Make (F : Features.T) = struct
     let cycles g : Namespace.Set.t list =
       SCC.scc_list g |> List.map ~f:(Set.of_list (module Namespace))
 
+    (** Returns the namespaces in topological order *)
     let order g : Namespace.t list =
       let module ModTopo = Graph.Topological.Make_stable (G) in
-      ModTopo.fold (fun ns l -> ns :: l) g []
+      ModTopo.fold List.cons g []
 
     open Graph.Graphviz.Dot (struct
       include G
@@ -313,6 +314,8 @@ module Make (F : Features.T) = struct
         ItemGraph.MutRec.SCC.scc_list g
         |> List.filter ~f:(fun cycle -> List.length cycle > 1)
       in
+      (* TODO: This can be optimized by using a set or a map
+         to avoid traversing all cycles at each iteration. *)
       List.fold items' ~init:[] ~f:(fun acc item ->
           match
             List.find cycles ~f:(fun cycle ->
