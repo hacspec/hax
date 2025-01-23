@@ -35,7 +35,7 @@ open FStar.Mul
 
 type t_Defaults (v_T: Type0) (v_N: usize) = | Defaults : t_Array v_T v_N -> t_Defaults v_T v_N
 
-let f (_: t_Defaults Prims.unit (sz 2)) : Prims.unit = ()
+let f (_: t_Defaults Prims.unit (mk_usize 2)) : Prims.unit = ()
 '''
 "Generics.Impl_generics.fst" = '''
 module Generics.Impl_generics
@@ -105,7 +105,7 @@ let dup
 
 let f (v_N x: usize) : usize = (v_N +! v_N <: usize) +! x
 
-let call_f (_: Prims.unit) : usize = (f (sz 10) (sz 3) <: usize) +! sz 3
+let call_f (_: Prims.unit) : usize = (f (mk_usize 10) (mk_usize 3) <: usize) +! mk_usize 3
 
 let g
       (v_N: usize)
@@ -131,19 +131,19 @@ let g
   v_N
 
 let call_g (_: Prims.unit) : usize =
-  (g (sz 3)
-      #(t_Array usize (sz 3))
-      (let list = [sz 42; sz 3; sz 49] in
+  (g (mk_usize 3)
+      #(t_Array usize (mk_usize 3))
+      (let list = [mk_usize 42; mk_usize 3; mk_usize 49] in
         FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
         Rust_primitives.Hax.array_of_list 3 list)
     <:
     usize) +!
-  sz 3
+  mk_usize 3
 
 let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
-  let acc:usize = v_LEN +! sz 9 in
+  let acc:usize = v_LEN +! mk_usize 9 in
   let acc:usize =
-    Rust_primitives.Hax.Folds.fold_range (sz 0)
+    Rust_primitives.Hax.Folds.fold_range (mk_usize 0)
       v_LEN
       (fun acc temp_1_ ->
           let acc:usize = acc in

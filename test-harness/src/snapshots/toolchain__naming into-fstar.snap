@@ -34,8 +34,8 @@ open FStar.Mul
 
 let debug (label value: u32) : Prims.unit =
   let _:Prims.unit =
-    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (sz 3)
-          (sz 2)
+    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (mk_usize 3)
+          (mk_usize 2)
           (let list = ["["; "] a="; "\n"] in
             FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
             Rust_primitives.Hax.array_of_list 3 list)
@@ -54,14 +54,14 @@ let debug (label value: u32) : Prims.unit =
 
 /// `f` stacks mutliple let bindings declaring different `a`s.
 let f (_: Prims.unit) : Prims.unit =
-  let a_1_:u32 = 104ul in
-  let a_2_:u32 = 205ul in
-  let a_3_:u32 = 306ul in
-  let a:u32 = 123ul in
-  let _:Prims.unit = debug 3ul a_3_ in
-  let _:Prims.unit = debug 2ul a_2_ in
-  let _:Prims.unit = debug 1ul a_1_ in
-  debug 4ul a
+  let a_1_:u32 = mk_u32 104 in
+  let a_2_:u32 = mk_u32 205 in
+  let a_3_:u32 = mk_u32 306 in
+  let a:u32 = mk_u32 123 in
+  let _:Prims.unit = debug (mk_u32 3) a_3_ in
+  let _:Prims.unit = debug (mk_u32 2) a_2_ in
+  let _:Prims.unit = debug (mk_u32 1) a_1_ in
+  debug (mk_u32 4) a
 
 /// `f` is expanded into `f_expand` below, while the execution of `f` gives:
 /// ```plaintext
@@ -71,14 +71,14 @@ let f (_: Prims.unit) : Prims.unit =
 ///  [last] a=123
 /// ```
 let ff_expand (_: Prims.unit) : Prims.unit =
-  let a:i32 = 104l in
-  let a:i32 = 205l in
-  let a:i32 = 306l in
-  let a:u32 = 123ul in
-  let _:Prims.unit = debug 3ul a in
-  let _:Prims.unit = debug 2ul a in
-  let _:Prims.unit = debug 1ul a in
-  debug 0ul a
+  let a:i32 = mk_i32 104 in
+  let a:i32 = mk_i32 205 in
+  let a:i32 = mk_i32 306 in
+  let a:u32 = mk_u32 123 in
+  let _:Prims.unit = debug (mk_u32 3) a in
+  let _:Prims.unit = debug (mk_u32 2) a in
+  let _:Prims.unit = debug (mk_u32 1) a in
+  debug (mk_u32 0) a
 '''
 "Naming.F.G.Impl_1.G.Hello.fst" = '''
 module Naming.F.G.Impl_1.G.Hello
@@ -151,7 +151,7 @@ let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
 
 type t_X = | X : t_X
 
-let v_INHERENT_CONSTANT: usize = sz 3
+let v_INHERENT_CONSTANT: usize = mk_usize 3
 
 let constants
       (#v_T: Type0)
@@ -169,20 +169,20 @@ let construct_structs (a b: usize) : Prims.unit =
 
 let ff__g (_: Prims.unit) : Prims.unit = ()
 
-let ff__g__impl__g (self: t_B) : usize = sz 0
+let ff__g__impl__g (self: t_B) : usize = mk_usize 0
 
 type t_f__g__impl__g__Foo =
   | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
   | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
 
-let ff__g__impl_1__g (self: t_Foo) : usize = sz 1
+let ff__g__impl_1__g (self: t_Foo) : usize = mk_usize 1
 
 let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
 
 let mk_c (_: Prims.unit) : t_C =
-  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = sz 3 }) <: t_Foo in
+  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = mk_usize 3 }) <: t_Foo in
   let _:t_X = X <: t_X in
-  { f_x = sz 3 } <: t_C
+  { f_x = mk_usize 3 } <: t_C
 
 let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
 

@@ -40,8 +40,8 @@ let t_Impossible_cast_to_repr (x: t_Impossible) : Rust_primitives.Hax.t_Never =
 
 let get_unchecked_example (slice: t_Slice u8)
     : Prims.Pure u8
-      (requires (Core.Slice.impl__len #u8 slice <: usize) >. sz 10)
-      (fun _ -> Prims.l_True) = Core.Slice.impl__get_unchecked #u8 #usize slice (sz 6)
+      (requires (Core.Slice.impl__len #u8 slice <: usize) >. mk_usize 10)
+      (fun _ -> Prims.l_True) = Core.Slice.impl__get_unchecked #u8 #usize slice (mk_usize 6)
 
 let impossible (_: Prims.unit) : Prims.Pure t_Impossible (requires false) (fun _ -> Prims.l_True) =
   Rust_primitives.Hax.never_to_any (Core.Hint.unreachable_unchecked ()
