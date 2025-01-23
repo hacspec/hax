@@ -167,6 +167,14 @@ fn inlined_code(foo: Foo) {
     );
 }
 
+#[hax::fstar::before(r#"let before_1 = "example before 1""#)]
+#[hax::fstar::before(r#"let before_2 = "example before 2""#)]
+#[hax::fstar::before(r#"let before_3 = "example before 3""#)]
+#[hax::fstar::after(r#"let after 1 = "example after 1""#)]
+#[hax::fstar::after(r#"let after 2 = "example after 2""#)]
+#[hax::fstar::after(r#"let after 3 = "example after 3""#)]
+fn mutliple_before_after() {}
+
 #[hax::fstar::replace(r#"unfold let $some_function _ = "hello from F*""#)]
 fn some_function() -> String {
     String::from("hello from Rust")

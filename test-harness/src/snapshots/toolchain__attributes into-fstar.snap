@@ -529,5 +529,19 @@ let inlined_code (foo: t_Foo) : Prims.unit =
 
 let inlined_code_after = "example after"
 
+let before_1 = "example before 1"
+
+let before_2 = "example before 2"
+
+let before_3 = "example before 3"
+
+let mutliple_before_after (_: Prims.unit) : Prims.unit = ()
+
+let after 1 = "example after 1"
+
+let after 2 = "example after 2"
+
+let after 3 = "example after 3"
+
 unfold let some_function _ = "hello from F*"
 '''
