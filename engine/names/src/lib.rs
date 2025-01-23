@@ -225,14 +225,14 @@ mod hax {
         fn div() {}
         fn mul() {}
         fn rem() {}
-	
+
         fn not() {}
-	fn bitxor() {}
-	fn bitor() {}
-	fn bitand() {}
+        fn bitxor() {}
+        fn bitor() {}
+        fn bitand() {}
         fn shl() {}
         fn shr() {}
-	
+
         fn eq() {}
         fn ne() {}
         fn le() {}
