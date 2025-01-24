@@ -88,8 +88,9 @@ let original_function_from_495_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) 
       #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
       (Core.Iter.Traits.Iterator.f_filter #(Core.Ops.Range.t_Range u8)
           #FStar.Tactics.Typeclasses.solve
-          ({ Core.Ops.Range.f_start = 0uy; Core.Ops.Range.f_end = 5uy } <: Core.Ops.Range.t_Range u8
-          )
+          ({ Core.Ops.Range.f_start = mk_u8 0; Core.Ops.Range.f_end = mk_u8 5 }
+            <:
+            Core.Ops.Range.t_Range u8)
           (fun i ->
               let i:u8 = i in
               let _, out:(Core.Slice.Iter.t_Iter u8 & bool) =
@@ -121,7 +122,9 @@ let minimized_1_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
     #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
     (Core.Iter.Traits.Iterator.f_filter #(Core.Ops.Range.t_Range u8)
         #FStar.Tactics.Typeclasses.solve
-        ({ Core.Ops.Range.f_start = 0uy; Core.Ops.Range.f_end = 5uy } <: Core.Ops.Range.t_Range u8)
+        ({ Core.Ops.Range.f_start = mk_u8 0; Core.Ops.Range.f_end = mk_u8 5 }
+          <:
+          Core.Ops.Range.t_Range u8)
         (fun temp_0_ ->
             let _:u8 = temp_0_ in
             true)
@@ -607,7 +610,7 @@ let closure_impl_expr_fngen
 
 type t_Error = | Error_Fail : t_Error
 
-let t_Error_cast_to_repr (x: t_Error) : isize = match x <: t_Error with | Error_Fail  -> isz 0
+let t_Error_cast_to_repr (x: t_Error) : isize = match x <: t_Error with | Error_Fail  -> mk_isize 0
 
 let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Error =
   fun temp_0_ ->
@@ -668,7 +671,7 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
   {
     f_AssocType = i32;
     f_AssocType_16668910951696008497 = FStar.Tactics.Typeclasses.solve;
-    f_N = sz 32;
+    f_N = mk_usize 32;
     f_assoc_f_pre = (fun (_: Prims.unit) -> true);
     f_assoc_f_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
     f_assoc_f = (fun (_: Prims.unit) -> () <: Prims.unit);

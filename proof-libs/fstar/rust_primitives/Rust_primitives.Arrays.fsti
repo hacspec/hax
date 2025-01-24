@@ -14,7 +14,7 @@ let length (#a: Type) (s: t_Slice a): usize = sz (Seq.length s)
 let contains (#t: eqtype) (s: t_Slice t) (x: t): bool = Seq.mem x s
 
 /// Converts an F* list into an array
-val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint Lib.IntTypes.U16}):
+val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint U16}):
     t_Array t (sz (FStar.List.Tot.length l))
 /// Converts an slice into a F* list
 val to_list (#t:Type) (s: t_Slice t): list t
@@ -42,7 +42,7 @@ val lemma_index_concat #t (x:t_Slice t) (y:t_Slice t{range (v (length x) + v (le
                     Seq.index (concat x y) (v i) == Seq.index x (v i)
                   else 
                     Seq.index (concat x y) (v i) == Seq.index y (v (i -! length x)))
-           [SMTPat (Seq.index (concat #t x y) i)]
+           [SMTPat (Seq.index (concat #t x y) (v i))]
 
 /// Take a subslice given `x` a slice and `i` and `j` two indexes
 let slice #t (x:t_Slice t) (i:usize{i <=. length x}) (j:usize{i <=. j /\ j <=. length x}):

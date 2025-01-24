@@ -40,6 +40,6 @@ let let_else (opt: Core.Option.t_Option u32) : bool =
 let let_else_different_type (opt: Core.Option.t_Option u32) : bool =
   match opt <: Core.Option.t_Option u32 with
   | Core.Option.Option_Some x ->
-    let_else (Core.Option.Option_Some (x +! 1ul <: u32) <: Core.Option.t_Option u32)
+    let_else (Core.Option.Option_Some (x +! mk_u32 1 <: u32) <: Core.Option.t_Option u32)
   | _ -> false
 '''

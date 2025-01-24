@@ -40,12 +40,12 @@ open FStar.Mul
 /// post-conditions.
 assume
 val f': x: u8
-  -> Prims.Pure (t_Array u8 (sz 4))
-      (requires x <. 254uy)
+  -> Prims.Pure (t_Array u8 (mk_usize 4))
+      (requires x <. mk_u8 254)
       (ensures
         fun r ->
-          let r:t_Array u8 (sz 4) = r in
-          (r.[ sz 0 ] <: u8) >. x)
+          let r:t_Array u8 (mk_usize 4) = r in
+          (r.[ mk_usize 0 ] <: u8) >. x)
 
 let f = f'
 

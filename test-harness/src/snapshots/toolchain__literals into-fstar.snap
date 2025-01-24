@@ -37,7 +37,7 @@ let math_integers (x: Hax_lib.Int.t_Int)
     : Prims.Pure u8
       (requires x > (0 <: Hax_lib.Int.t_Int) && x < (16 <: Hax_lib.Int.t_Int))
       (fun _ -> Prims.l_True) =
-  let _:Hax_lib.Int.t_Int = Rust_primitives.Hax.Int.from_machine (sz 3) in
+  let _:Hax_lib.Int.t_Int = Rust_primitives.Hax.Int.from_machine (mk_usize 3) in
   let _:bool =
     ((-340282366920938463463374607431768211455000) <: Hax_lib.Int.t_Int) >
     (340282366920938463463374607431768211455000 <: Hax_lib.Int.t_Int)
@@ -64,7 +64,8 @@ let math_integers (x: Hax_lib.Int.t_Int)
   Hax_lib.Int.impl__Int__to_u8 (x + (x * x <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int)
 
 let panic_with_msg (_: Prims.unit) : Prims.unit =
-  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (sz 1)
+  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (mk_usize 1
+            )
             (let list = ["with msg"] in
               FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
               Rust_primitives.Hax.array_of_list 1 list)
@@ -93,40 +94,40 @@ val impl_2': Core.Cmp.t_Eq t_Foo
 
 let impl_2 = impl_2'
 
-let v_CONSTANT: t_Foo = { f_field = 3uy } <: t_Foo
+let v_CONSTANT: t_Foo = { f_field = mk_u8 3 } <: t_Foo
 
 let numeric (_: Prims.unit) : Prims.unit =
-  let _:usize = sz 123 in
-  let _:isize = isz (-42) in
-  let _:isize = isz 42 in
-  let _:i32 = (-42l) in
-  let _:u128 = pub_u128 22222222222222222222 in
+  let _:usize = mk_usize 123 in
+  let _:isize = mk_isize (-42) in
+  let _:isize = mk_isize 42 in
+  let _:i32 = mk_i32 (-42) in
+  let _:u128 = mk_u128 22222222222222222222 in
   ()
 
 let patterns (_: Prims.unit) : Prims.unit =
   let _:Prims.unit =
-    match 1uy <: u8 with
-    | 2uy -> () <: Prims.unit
+    match mk_u8 1 <: u8 with
+    | Rust_primitives.Integers.MkInt 2 -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in
   let _:Prims.unit =
     match
       "hello",
-      (123l,
+      (mk_i32 123,
         (let list = ["a"; "b"] in
           FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
           Rust_primitives.Hax.array_of_list 2 list)
         <:
-        (i32 & t_Array string (sz 2)))
+        (i32 & t_Array string (mk_usize 2)))
       <:
-      (string & (i32 & t_Array string (sz 2)))
+      (string & (i32 & t_Array string (mk_usize 2)))
     with
-    | "hello", (123l, v__todo) -> () <: Prims.unit
+    | "hello", (Rust_primitives.Integers.MkInt 123, v__todo) -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in
   let _:Prims.unit =
-    match { f_field = 4uy } <: t_Foo with
-    | { f_field = 3uy } -> () <: Prims.unit
+    match { f_field = mk_u8 4 } <: t_Foo with
+    | { f_field = Rust_primitives.Integers.MkInt 3 } -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in
   ()

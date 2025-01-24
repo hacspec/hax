@@ -124,7 +124,7 @@ class t_T (v_Self: Type0) = {
   f_d_pre:Prims.unit -> Type0;
   f_d_post:Prims.unit -> Prims.unit -> Type0;
   f_d:x0: Prims.unit -> Prims.Pure Prims.unit (f_d_pre x0) (fun result -> f_d_post x0 result);
-  f_m_pre:self___: v_Self -> x: u8 -> pred: Type0{x =. 0uy ==> pred};
+  f_m_pre:self___: v_Self -> x: u8 -> pred: Type0{x =. mk_u8 0 ==> pred};
   f_m_post:v_Self -> u8 -> bool -> Type0;
   f_m:x0: v_Self -> x1: u8 -> Prims.Pure bool (f_m_pre x0 x1) (fun result -> f_m_post x0 x1 result)
 }

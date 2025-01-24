@@ -48,7 +48,7 @@ let impl: t_MyFrom u16 u8 =
   }
 
 let f (x: u8) : Core.Result.t_Result u16 u16 =
-  match Core.Result.Result_Err 1uy <: Core.Result.t_Result Prims.unit u8 with
+  match Core.Result.Result_Err (mk_u8 1) <: Core.Result.t_Result Prims.unit u8 with
   | Core.Result.Result_Ok _ ->
     Core.Result.Result_Ok (f_my_from #u16 #u8 #FStar.Tactics.Typeclasses.solve x)
     <:
@@ -118,18 +118,18 @@ let add3 (x y z: u32) : u32 =
 
 /// Exercise local mutation with control flow and loops
 let local_mutation (x: u32) : u32 =
-  let y:u32 = 0ul in
-  let x:u32 = Core.Num.impl__u32__wrapping_add x 1ul in
-  if x >. 3ul
+  let y:u32 = mk_u32 0 in
+  let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 1) in
+  if x >. mk_u32 3
   then
-    let x:u32 = Core.Num.impl__u32__wrapping_sub x 3ul in
-    let y:u32 = x /! 2ul in
-    let y:u32 = Core.Num.impl__u32__wrapping_add y 2ul in
+    let x:u32 = Core.Num.impl__u32__wrapping_sub x (mk_u32 3) in
+    let y:u32 = x /! mk_u32 2 in
+    let y:u32 = Core.Num.impl__u32__wrapping_add y (mk_u32 2) in
     let y:u32 =
       Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
               u32)
             #FStar.Tactics.Typeclasses.solve
-            ({ Core.Ops.Range.f_start = 0ul; Core.Ops.Range.f_end = 10ul }
+            ({ Core.Ops.Range.f_start = mk_u32 0; Core.Ops.Range.f_end = mk_u32 10 }
               <:
               Core.Ops.Range.t_Range u32)
           <:
@@ -144,45 +144,50 @@ let local_mutation (x: u32) : u32 =
   else
     let (x, y), hoist7:((u32 & u32) & u32) =
       match x <: u32 with
-      | 12ul ->
+      | Rust_primitives.Integers.MkInt 12 ->
         let y:u32 = Core.Num.impl__u32__wrapping_add x y in
-        (x, y <: (u32 & u32)), 3ul <: ((u32 & u32) & u32)
-      | 13ul ->
-        let x:u32 = Core.Num.impl__u32__wrapping_add x 1ul in
-        (x, y <: (u32 & u32)), add3 x (Core.Num.impl__u32__wrapping_add 123ul x <: u32) x
+        (x, y <: (u32 & u32)), mk_u32 3 <: ((u32 & u32) & u32)
+      | Rust_primitives.Integers.MkInt 13 ->
+        let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 1) in
+        (x, y <: (u32 & u32)), add3 x (Core.Num.impl__u32__wrapping_add (mk_u32 123) x <: u32) x
         <:
         ((u32 & u32) & u32)
-      | _ -> (x, y <: (u32 & u32)), 0ul <: ((u32 & u32) & u32)
+      | _ -> (x, y <: (u32 & u32)), mk_u32 0 <: ((u32 & u32) & u32)
     in
     let x:u32 = hoist7 in
     Core.Num.impl__u32__wrapping_add x y
 
 /// Exercise early returns with control flow and loops
 let early_returns (x: u32) : u32 =
-  if x >. 3ul
-  then 0ul
+  if x >. mk_u32 3
+  then mk_u32 0
   else
-    if x >. 30ul
+    if x >. mk_u32 30
     then
       match true <: bool with
-      | true -> 34ul
+      | true -> mk_u32 34
       | _ ->
-        let x, hoist11:(u32 & u32) = x, 3ul <: (u32 & u32) in
-        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist11 <: u32) x
+        let x, hoist11:(u32 & u32) = x, mk_u32 3 <: (u32 & u32) in
+        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add (mk_u32 123) hoist11
+            <:
+            u32)
+          x
     else
-      let x:u32 = x +! 9ul in
-      let x, hoist11:(u32 & u32) = x, x +! 1ul <: (u32 & u32) in
-      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist11 <: u32) x
+      let x:u32 = x +! mk_u32 9 in
+      let x, hoist11:(u32 & u32) = x, x +! mk_u32 1 <: (u32 & u32) in
+      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add (mk_u32 123) hoist11 <: u32
+        )
+        x
 
 let simplifiable_return (c1 c2 c3: bool) : i32 =
-  let x:i32 = 0l in
+  let x:i32 = mk_i32 0 in
   if c1
   then
     if c2
     then
-      let x:i32 = x +! 10l in
-      if c3 then 1l else x +! 1l
-    else x +! 1l
+      let x:i32 = x +! mk_i32 10 in
+      if c3 then mk_i32 1 else x +! mk_i32 1
+    else x +! mk_i32 1
   else x
 
 let simplifiable_question_mark (c: bool) (x: Core.Option.t_Option i32) : Core.Option.t_Option i32 =
@@ -190,20 +195,20 @@ let simplifiable_question_mark (c: bool) (x: Core.Option.t_Option i32) : Core.Op
   then
     match x <: Core.Option.t_Option i32 with
     | Core.Option.Option_Some hoist16 ->
-      let a:i32 = hoist16 +! 10l in
-      let b:i32 = 20l in
+      let a:i32 = hoist16 +! mk_i32 10 in
+      let b:i32 = mk_i32 20 in
       Core.Option.Option_Some (a +! b) <: Core.Option.t_Option i32
     | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option i32
   else
-    let a:i32 = 0l in
-    let b:i32 = 20l in
+    let a:i32 = mk_i32 0 in
+    let b:i32 = mk_i32 20 in
     Core.Option.Option_Some (a +! b) <: Core.Option.t_Option i32
 
 /// Question mark without error coercion
 let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
     : Core.Result.t_Result i8 u32 =
   match y <: Core.Result.t_Result Prims.unit u32 with
-  | Core.Result.Result_Ok _ -> Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32
+  | Core.Result.Result_Ok _ -> Core.Result.Result_Ok (mk_i8 0) <: Core.Result.t_Result i8 u32
   | Core.Result.Result_Err err -> Core.Result.Result_Err err <: Core.Result.t_Result i8 u32
 
 /// Question mark with an error coercion
@@ -220,18 +225,18 @@ let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
 let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.Option.t_Option u8 =
   match x <: Core.Option.t_Option u8 with
   | Core.Option.Option_Some hoist21 ->
-    if hoist21 >. 10uy
+    if hoist21 >. mk_u8 10
     then
       match x <: Core.Option.t_Option u8 with
       | Core.Option.Option_Some hoist23 ->
         (match
-            Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist23 3uy)
+            Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist23 (mk_u8 3))
             <:
             Core.Option.t_Option u8
           with
           | Core.Option.Option_Some hoist29 ->
             (match hoist29 <: u8 with
-              | 3uy ->
+              | Rust_primitives.Integers.MkInt 3 ->
                 (match Core.Option.Option_None <: Core.Option.t_Option u8 with
                   | Core.Option.Option_Some some ->
                     let v:u8 = some in
@@ -252,10 +257,12 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                       | Core.Option.Option_None  ->
                         Core.Option.Option_None <: Core.Option.t_Option u8)
                   | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option u8)
-              | 4uy ->
+              | Rust_primitives.Integers.MkInt 4 ->
                 (match z <: Core.Option.t_Option u64 with
                   | Core.Option.Option_Some hoist18 ->
-                    let v:u8 = 4uy +! (if hoist18 >. 4uL <: bool then 0uy else 3uy) in
+                    let v:u8 =
+                      mk_u8 4 +! (if hoist18 >. mk_u64 4 <: bool then mk_u8 0 else mk_u8 3)
+                    in
                     (match x <: Core.Option.t_Option u8 with
                       | Core.Option.Option_Some hoist30 ->
                         (match y <: Core.Option.t_Option u8 with
@@ -274,7 +281,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                         Core.Option.Option_None <: Core.Option.t_Option u8)
                   | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option u8)
               | _ ->
-                let v:u8 = 12uy in
+                let v:u8 = mk_u8 12 in
                 match x <: Core.Option.t_Option u8 with
                 | Core.Option.Option_Some hoist30 ->
                   (match y <: Core.Option.t_Option u8 with
@@ -303,7 +310,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                 with
                 | Core.Option.Option_Some hoist29 ->
                   (match hoist29 <: u8 with
-                    | 3uy ->
+                    | Rust_primitives.Integers.MkInt 3 ->
                       (match Core.Option.Option_None <: Core.Option.t_Option u8 with
                         | Core.Option.Option_Some some ->
                           let v:u8 = some in
@@ -325,10 +332,12 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                               Core.Option.Option_None <: Core.Option.t_Option u8)
                         | Core.Option.Option_None  ->
                           Core.Option.Option_None <: Core.Option.t_Option u8)
-                    | 4uy ->
+                    | Rust_primitives.Integers.MkInt 4 ->
                       (match z <: Core.Option.t_Option u64 with
                         | Core.Option.Option_Some hoist18 ->
-                          let v:u8 = 4uy +! (if hoist18 >. 4uL <: bool then 0uy else 3uy) in
+                          let v:u8 =
+                            mk_u8 4 +! (if hoist18 >. mk_u64 4 <: bool then mk_u8 0 else mk_u8 3)
+                          in
                           (match x <: Core.Option.t_Option u8 with
                             | Core.Option.Option_Some hoist30 ->
                               (match y <: Core.Option.t_Option u8 with
@@ -348,7 +357,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                         | Core.Option.Option_None  ->
                           Core.Option.Option_None <: Core.Option.t_Option u8)
                     | _ ->
-                      let v:u8 = 12uy in
+                      let v:u8 = mk_u8 12 in
                       match x <: Core.Option.t_Option u8 with
                       | Core.Option.Option_Some hoist30 ->
                         (match y <: Core.Option.t_Option u8 with
@@ -372,17 +381,17 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
 
 /// Test question mark on `Result`s with local mutation
 let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
-  if x >. 40ul
+  if x >. mk_u32 40
   then
-    let y:u32 = 0ul in
-    let x:u32 = Core.Num.impl__u32__wrapping_add x 3ul in
+    let y:u32 = mk_u32 0 in
+    let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 3) in
     let y:u32 = Core.Num.impl__u32__wrapping_add x y in
     let x:u32 = Core.Num.impl__u32__wrapping_add x y in
-    if x >. 90ul
+    if x >. mk_u32 90
     then
-      match Core.Result.Result_Err 12uy <: Core.Result.t_Result Prims.unit u8 with
+      match Core.Result.Result_Err (mk_u8 12) <: Core.Result.t_Result Prims.unit u8 with
       | Core.Result.Result_Ok ok ->
-        Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
+        Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
         <:
         Core.Result.t_Result u32 u32
       | Core.Result.Result_Err err ->
@@ -390,9 +399,13 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
         <:
         Core.Result.t_Result u32 u32
     else
-      Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x) <: Core.Result.t_Result u32 u32
+      Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
+      <:
+      Core.Result.t_Result u32 u32
   else
-    Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x) <: Core.Result.t_Result u32 u32
+    Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
+    <:
+    Core.Result.t_Result u32 u32
 
 type t_A = | A : t_A
 
@@ -400,7 +413,7 @@ type t_B = | B : t_B
 
 /// Combine `?` and early return
 let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
-  if x >. 123uy
+  if x >. mk_u8 123
   then
     match Core.Result.Result_Err (B <: t_B) <: Core.Result.t_Result t_A t_B with
     | Core.Result.Result_Ok hoist35 -> Core.Result.Result_Ok hoist35 <: Core.Result.t_Result t_A t_B
@@ -409,13 +422,13 @@ let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
 
 type t_Bar = {
   f_a:bool;
-  f_b:(t_Array (bool & bool) (sz 6) & bool)
+  f_b:(t_Array (bool & bool) (mk_usize 6) & bool)
 }
 
 type t_Foo = {
   f_x:bool;
   f_y:(bool & Alloc.Vec.t_Vec t_Bar Alloc.Alloc.t_Global);
-  f_z:t_Array t_Bar (sz 6);
+  f_z:t_Array t_Bar (mk_usize 6);
   f_bar:t_Bar
 }
 
@@ -437,11 +450,11 @@ let assign_non_trivial_lhs (foo: t_Foo) : t_Foo =
           _1
           =
           Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_bar.f_b._1
-            (sz 3)
-            ({ (foo.f_bar.f_b._1.[ sz 3 ] <: (bool & bool)) with _2 = true } <: (bool & bool))
+            (mk_usize 3)
+            ({ (foo.f_bar.f_b._1.[ mk_usize 3 ] <: (bool & bool)) with _2 = true } <: (bool & bool))
         }
         <:
-        (t_Array (bool & bool) (sz 6) & bool)
+        (t_Array (bool & bool) (mk_usize 6) & bool)
       }
       <:
       t_Bar
@@ -455,8 +468,8 @@ let assign_non_trivial_lhs (foo: t_Foo) : t_Foo =
       f_z
       =
       Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_z
-        (sz 3)
-        ({ (foo.f_z.[ sz 3 ] <: t_Bar) with f_a = true } <: t_Bar)
+        (mk_usize 3)
+        ({ (foo.f_z.[ mk_usize 3 ] <: t_Bar) with f_a = true } <: t_Bar)
     }
     <:
     t_Foo
@@ -471,32 +484,33 @@ let assign_non_trivial_lhs (foo: t_Foo) : t_Foo =
         _2
         =
         Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_y._2
-          (sz 3)
+          (mk_usize 3)
           ({
-              (foo.f_y._2.[ sz 3 ] <: t_Bar) with
+              (foo.f_y._2.[ mk_usize 3 ] <: t_Bar) with
               f_b
               =
               {
-                (foo.f_y._2.[ sz 3 ] <: t_Bar).f_b with
+                (foo.f_y._2.[ mk_usize 3 ] <: t_Bar).f_b with
                 _1
                 =
-                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize (foo.f_y._2.[ sz 3 ]
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize (foo.f_y._2.[ mk_usize 3
+                    ]
                     <:
                     t_Bar)
                     .f_b
                     ._1
-                  (sz 5)
+                  (mk_usize 5)
                   ({
-                      ((foo.f_y._2.[ sz 3 ] <: t_Bar).f_b._1.[ sz 5 ] <: (bool & bool)) with
+                      ((foo.f_y._2.[ mk_usize 3 ] <: t_Bar).f_b._1.[ mk_usize 5 ] <: (bool & bool)) with
                       _1 = true
                     }
                     <:
                     (bool & bool))
                 <:
-                t_Array (bool & bool) (sz 6)
+                t_Array (bool & bool) (mk_usize 6)
               }
               <:
-              (t_Array (bool & bool) (sz 6) & bool)
+              (t_Array (bool & bool) (mk_usize 6) & bool)
             }
             <:
             t_Bar)
