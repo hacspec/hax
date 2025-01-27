@@ -161,73 +161,73 @@ module%inlined_contents Make (F : Features.T) = struct
     [%%inline_defs "Item.*" - ditems]
 
     let ditems items =
-      let (module Attrs) = Attrs.with_items items in
-      let f (item : A.item) =
-        let before, after =
-          let map_fst = List.map ~f:fst in
-          try
-            let replace = Attrs.late_skip item.attrs in
-            Attrs.associated_items Attr_payloads.AssocRole.ItemQuote item.attrs
-            |> List.map ~f:(fun assoc_item ->
-                   let e : A.expr =
-                     assoc_item |> Attrs.expect_fn |> Attrs.expect_expr
-                   in
-                   let quote =
-                     UA.Expect.block e |> Option.value ~default:e
-                     |> quote_of_expr
-                     |> Option.value_or_thunk ~default:(fun _ ->
-                            Error.assertion_failure assoc_item.span
-                            @@ "Malformed `Quote` item: `quote_of_expr` \
-                                failed. Expression was:\n"
-                            (* ^ (UA.LiftToFullAst.expr e |> Print_rust.pexpr_str) *)
-                            ^ [%show: A.expr] e)
-                   in
-                   let span = e.span in
-                   let position, attr =
-                     Attrs.find_unique_attr assoc_item.attrs ~f:(function
-                       | ItemQuote q as attr -> Some (q.position, attr)
-                       | _ -> None)
-                     |> Option.value_or_thunk ~default:(fun _ ->
-                            Error.assertion_failure assoc_item.span
-                              "Malformed `Quote` item: could not find a \
-                               ItemQuote payload")
-                   in
-                   let v : B.item' =
-                     let origin : item_quote_origin =
-                       {
-                         item_kind = UA.kind_of_item item;
-                         item_ident = item.ident;
-                         position =
-                           (if replace then `Replace
-                            else
-                              match position with
-                              | After -> `After
-                              | Before -> `Before);
-                       }
-                     in
-                     Quote { quote; origin }
-                   in
-                   let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
-                   counter := !counter + 1;
-                   ( B.
-                       {
-                         v;
-                         span;
-                         ident =
-                           (* TODO: Replace with a proper unique ident. *)
-                           Concrete_ident.Create.replace_last item.ident
-                             ("__hax_quote__" ^ Int.to_string !counter);
-                         attrs;
-                       },
-                     position ))
-            |> List.partition_tf ~f:(snd >> [%matches? Types.Before])
-            |> map_fst *** map_fst
-          with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-            let error = Diagnostics.pretty_print_context_kind context kind in
-            let msg = error in
-            ([ B.make_hax_error_item item.span item.ident msg ], [])
+      let find_parent_item :
+          Attr_payloads.UId.t -> (Attr_payloads.AssocRole.t * A.item) option =
+        List.concat_map
+          ~f:(fun (item : A.item) ->
+            Attrs.raw_associated_item item.attrs
+            |> List.map ~f:(fun (role, child_uid) -> (child_uid, (role, item))))
+          items
+        |> Map.of_alist_exn (module Attr_payloads.UId)
+        |> Map.find
+      in
+      (* If [item] can be interpreted as a quote, return a `Quote` item *)
+      let item_as_quote (item : A.item) =
+        let* body =
+          match item.v with
+          | Fn { body = { e = Block { e; _ }; _ }; _ } -> Some e
+          | _ -> None
         in
-        before @ ditem item @ after
+        let* uid = Attrs.uid item.attrs in
+        let* role, _ = find_parent_item uid in
+        let*? () = [%equal: Attr_payloads.AssocRole.t] ItemQuote role in
+        let replace = Attrs.late_skip item.attrs in
+        let* role =
+          Attrs.find_unique_attr
+            ~f:(function ItemQuote q -> Some q | _ -> None)
+            item.attrs
+        in
+        let origin : item_quote_origin =
+          {
+            item_kind = UA.kind_of_item item;
+            item_ident = item.ident;
+            position =
+              (if replace then `Replace
+               else
+                 match role.position with After -> `After | Before -> `Before);
+          }
+        in
+        let quote =
+          quote_of_expr body
+          |> Option.value_or_thunk ~default:(fun _ ->
+                 Error.assertion_failure item.span
+                 @@ "Malformed `Quote` item: `quote_of_expr` failed. \
+                     Expression was:\n"
+                 ^ [%show: A.expr] body)
+        in
+        let attrs =
+          let is_late_skip =
+            [%matches? Types.ItemStatus (Included { late_skip = true })]
+          in
+          item.attrs |> Attr_payloads.payloads
+          |> List.filter ~f:(fst >> is_late_skip >> not)
+          |> List.map ~f:(fun (v, span) -> Attr_payloads.to_attr v span)
+        in
+        let A.{ span; ident; _ } = item in
+        Some B.{ v = Quote { quote; origin }; span; ident; attrs }
+      in
+      (* Wraps [item_as_quote] to handle exns and fallback to the original item if the item is not a quote. *)
+      let f i =
+        try
+          item_as_quote i
+          |> Option.map ~f:(fun i -> [ i ])
+          |> Option.value ~default:(ditem i)
+        with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+          let error = Diagnostics.pretty_print_context_kind context kind in
+          let cast_item : A.item -> Ast.Full.item = Stdlib.Obj.magic in
+          let ast = cast_item i |> Print_rust.pitem_str in
+          let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
+          [ B.make_hax_error_item i.span i.ident msg ]
       in
       List.concat_map ~f items
   end
