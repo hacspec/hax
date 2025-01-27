@@ -1741,24 +1741,7 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
           items
       in
       let items =
-        if erased then
-          [
-            (* Dummy associated item *)
-            {
-              ii_span = Span.of_thir item.span;
-              ii_generics = { params = []; constraints = [] };
-              ii_v =
-                IIFn
-                  {
-                    body = U.unit_expr span;
-                    params = [ U.make_unit_param span ];
-                  };
-              ii_ident =
-                Concrete_ident.of_name ~value:false
-                  Rust_primitives__hax__dropped_body;
-              ii_attrs = [];
-            };
-          ]
+        if erased then []
         else
           List.map
             ~f:(fun (item : Thir.impl_item) ->
