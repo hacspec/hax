@@ -1,5 +1,9 @@
 open! Prelude
 
+(** This is a hack that should be removed
+    (see https://github.com/hacspec/hax/issues/1078) *)
+let includes_for_bundled_trait_methods = ref false
+
 module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
   module U = Ast_utils.Make (F)
@@ -561,16 +565,33 @@ module Make (F : Features.T) = struct
                     ( name,
                       Concrete_ident.Create.move_under ~new_parent:new_name name
                     )))
+        | Some { v = Trait { items; _ }; _ }
+          when !includes_for_bundled_trait_methods ->
+            List.map items ~f:(fun { ti_ident; _ } ->
+                ( ti_ident,
+                  Concrete_ident.Create.move_under ~new_parent:new_name ti_ident
+                ))
         | _ -> []
       in
       let variant_and_constructors_renamings =
         List.concat_map ~f:variants_renamings renamings
         |> List.concat_map ~f:(fun (old_name, new_name) ->
-               [
-                 (old_name, new_name);
-                 ( Concrete_ident.Create.constructor old_name,
-                   Concrete_ident.Create.constructor new_name );
-               ])
+               let trait_methods_renamings =
+                 match from_ident old_name with
+                 | Some { v = Trait { items; _ }; _ }
+                   when not !includes_for_bundled_trait_methods ->
+                     List.map items ~f:(fun { ti_ident; _ } ->
+                         ( ti_ident,
+                           Concrete_ident.Create.move_under ~new_parent:new_name
+                             ti_ident ))
+                 | _ -> []
+               in
+               trait_methods_renamings
+               @ [
+                   (old_name, new_name);
+                   ( Concrete_ident.Create.constructor old_name,
+                     Concrete_ident.Create.constructor new_name );
+                 ])
       in
       let renamings =
         match
