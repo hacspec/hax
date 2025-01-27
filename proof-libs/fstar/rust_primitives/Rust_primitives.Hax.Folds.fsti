@@ -14,12 +14,44 @@ let nth_chunk_of #t
   =  Seq.slice s (Seq.length s_chunk * chunk_nth) (Seq.length s_chunk * (chunk_nth + 1))
   == s_chunk
 
-/// Fold function that is generated for `for` loops iterating on
-/// `s.chunks_exact(chunk_size).enumerate()`-like iterators
-val fold_enumerated_chunked_slice
+let rec fold_enumerated_chunked_slice_aux
   (#t: Type0) (#acc_t: Type0)
   (chunk_size: usize {v chunk_size > 0})
   (s: t_Slice t)
+  (inv: acc_t -> (i:nat{i <= Seq.length s / v chunk_size}) -> Type0)
+  (i: nat{i <= Seq.length s / v chunk_size})
+  (init: acc_t {inv init i})
+  (f: ( acc:acc_t
+      -> item:(usize & t_Slice t) {
+        let (i, s_chunk) = item in
+          v i < Seq.length s / v chunk_size
+        /\ length s_chunk == chunk_size
+        /\ nth_chunk_of s s_chunk (v i)
+        /\ inv acc (v i)
+      }
+      -> acc':acc_t {
+        inv acc' (v (fst item) + 1)
+      }
+      )
+  )
+  : Tot (result: acc_t {inv result (Seq.length s / v chunk_size)})
+        (decreases (Seq.length s / v chunk_size) - i)
+  = let num_chunks = Seq.length s / v chunk_size in
+    if i = num_chunks then init else begin
+      FStar.Math.Lemmas.lemma_mult_lt_right (v chunk_size) i num_chunks;
+      let start = i * v chunk_size in
+      let end_ = (i + 1) * v chunk_size in
+      let s_chunk = Seq.slice s start end_ in
+      let init' = f init (mk_int i, s_chunk) in
+      fold_enumerated_chunked_slice_aux chunk_size s inv (i + 1) init' f
+    end
+
+/// Fold function that is generated for `for` loops iterating on
+/// `s.chunks_exact(chunk_size).enumerate()`-like iterators
+let fold_enumerated_chunked_slice
+  (#t: Type0) (#acc_t: Type0)
+  (chunk_size: usize {v chunk_size > 0})
+  (s: t_Slice t {Seq.length s % v chunk_size = 0})
   (inv: acc_t -> (i:usize{v i <= Seq.length s / v chunk_size}) -> Type0)
   (init: acc_t {inv init (sz 0)})
   (f: ( acc:acc_t
@@ -36,6 +68,7 @@ val fold_enumerated_chunked_slice
       )
   )
   : result: acc_t {inv result (mk_int (Seq.length s / v chunk_size))}
+  = fold_enumerated_chunked_slice_aux chunk_size s (fun acc i -> inv acc (mk_int i)) 0 init f
 
 (**** `s.enumerate()` *)
 /// Fold function that is generated for `for` loops iterating on
