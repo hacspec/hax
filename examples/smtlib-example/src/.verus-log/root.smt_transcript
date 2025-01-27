@@ -1,0 +1,5159 @@
+;;;>>> QUERY
+(set-option :auto_config false)
+(set-option :smt.mbqi false)
+(set-option :smt.case_split 3)
+(set-option :smt.qi.eager_threshold 100.0)
+(set-option :smt.delay_units true)
+(set-option :smt.arith.solver 2)
+(set-option :smt.arith.nl false)
+(set-option :pi.enabled false)
+(set-option :rewriter.sort_disjunctions false)
+(declare-sort %%Function%% 0)
+(declare-sort FuelId 0)
+(declare-sort Fuel 0)
+(declare-const zero Fuel)
+(declare-fun succ (Fuel) Fuel)
+(declare-fun fuel_bool (FuelId) Bool)
+(declare-fun fuel_bool_default (FuelId) Bool)
+(declare-const fuel_defaults Bool)
+(assert
+ (=>
+  fuel_defaults
+  (forall ((id FuelId)) (!
+    (= (fuel_bool id) (fuel_bool_default id))
+    :pattern ((fuel_bool id))
+    :qid prelude_fuel_defaults
+    :skolemid skolem_prelude_fuel_defaults
+))))
+(declare-datatypes ((fndef 0)) (((fndef_singleton))))
+(declare-sort Poly 0)
+(declare-sort Height 0)
+(declare-fun I (Int) Poly)
+(declare-fun B (Bool) Poly)
+(declare-fun F (fndef) Poly)
+(declare-fun %I (Poly) Int)
+(declare-fun %B (Poly) Bool)
+(declare-fun %F (Poly) fndef)
+(declare-sort Type 0)
+(declare-const BOOL Type)
+(declare-const INT Type)
+(declare-const NAT Type)
+(declare-const CHAR Type)
+(declare-fun UINT (Int) Type)
+(declare-fun SINT (Int) Type)
+(declare-fun CONST_INT (Int) Type)
+(declare-sort Dcr 0)
+(declare-const $ Dcr)
+(declare-fun REF (Dcr) Dcr)
+(declare-fun MUT_REF (Dcr) Dcr)
+(declare-fun BOX (Dcr Type Dcr) Dcr)
+(declare-fun RC (Dcr Type Dcr) Dcr)
+(declare-fun ARC (Dcr Type Dcr) Dcr)
+(declare-fun GHOST (Dcr) Dcr)
+(declare-fun TRACKED (Dcr) Dcr)
+(declare-fun NEVER (Dcr) Dcr)
+(declare-fun CONST_PTR (Dcr) Dcr)
+(declare-fun ARRAY (Dcr Type Dcr Type) Type)
+(declare-fun SLICE (Dcr Type) Type)
+(declare-const STRSLICE Type)
+(declare-const ALLOCATOR_GLOBAL Type)
+(declare-fun PTR (Dcr Type) Type)
+(declare-fun has_type (Poly Type) Bool)
+(declare-fun as_type (Poly Type) Poly)
+(declare-fun mk_fun (%%Function%%) %%Function%%)
+(declare-fun const_int (Type) Int)
+(assert
+ (forall ((i Int)) (!
+   (= i (const_int (CONST_INT i)))
+   :pattern ((CONST_INT i))
+   :qid prelude_type_id_const_int
+   :skolemid skolem_prelude_type_id_const_int
+)))
+(assert
+ (forall ((b Bool)) (!
+   (has_type (B b) BOOL)
+   :pattern ((has_type (B b) BOOL))
+   :qid prelude_has_type_bool
+   :skolemid skolem_prelude_has_type_bool
+)))
+(assert
+ (forall ((x Poly) (t Type)) (!
+   (and
+    (has_type (as_type x t) t)
+    (=>
+     (has_type x t)
+     (= x (as_type x t))
+   ))
+   :pattern ((as_type x t))
+   :qid prelude_as_type
+   :skolemid skolem_prelude_as_type
+)))
+(assert
+ (forall ((x %%Function%%)) (!
+   (= (mk_fun x) x)
+   :pattern ((mk_fun x))
+   :qid prelude_mk_fun
+   :skolemid skolem_prelude_mk_fun
+)))
+(assert
+ (forall ((x Bool)) (!
+   (= x (%B (B x)))
+   :pattern ((B x))
+   :qid prelude_unbox_box_bool
+   :skolemid skolem_prelude_unbox_box_bool
+)))
+(assert
+ (forall ((x Int)) (!
+   (= x (%I (I x)))
+   :pattern ((I x))
+   :qid prelude_unbox_box_int
+   :skolemid skolem_prelude_unbox_box_int
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x BOOL)
+    (= x (B (%B x)))
+   )
+   :pattern ((has_type x BOOL))
+   :qid prelude_box_unbox_bool
+   :skolemid skolem_prelude_box_unbox_bool
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x INT)
+    (= x (I (%I x)))
+   )
+   :pattern ((has_type x INT))
+   :qid prelude_box_unbox_int
+   :skolemid skolem_prelude_box_unbox_int
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x NAT)
+    (= x (I (%I x)))
+   )
+   :pattern ((has_type x NAT))
+   :qid prelude_box_unbox_nat
+   :skolemid skolem_prelude_box_unbox_nat
+)))
+(assert
+ (forall ((bits Int) (x Poly)) (!
+   (=>
+    (has_type x (UINT bits))
+    (= x (I (%I x)))
+   )
+   :pattern ((has_type x (UINT bits)))
+   :qid prelude_box_unbox_uint
+   :skolemid skolem_prelude_box_unbox_uint
+)))
+(assert
+ (forall ((bits Int) (x Poly)) (!
+   (=>
+    (has_type x (SINT bits))
+    (= x (I (%I x)))
+   )
+   :pattern ((has_type x (SINT bits)))
+   :qid prelude_box_unbox_sint
+   :skolemid skolem_prelude_box_unbox_sint
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x CHAR)
+    (= x (I (%I x)))
+   )
+   :pattern ((has_type x CHAR))
+   :qid prelude_box_unbox_char
+   :skolemid skolem_prelude_box_unbox_char
+)))
+(declare-fun ext_eq (Bool Type Poly Poly) Bool)
+(assert
+ (forall ((deep Bool) (t Type) (x Poly) (y Poly)) (!
+   (= (= x y) (ext_eq deep t x y))
+   :pattern ((ext_eq deep t x y))
+   :qid prelude_ext_eq
+   :skolemid skolem_prelude_ext_eq
+)))
+(declare-const SZ Int)
+(assert
+ (or
+  (= SZ 32)
+  (= SZ 64)
+))
+(declare-fun uHi (Int) Int)
+(declare-fun iLo (Int) Int)
+(declare-fun iHi (Int) Int)
+(assert
+ (= (uHi 8) 256)
+)
+(assert
+ (= (uHi 16) 65536)
+)
+(assert
+ (= (uHi 32) 4294967296)
+)
+(assert
+ (= (uHi 64) 18446744073709551616)
+)
+(assert
+ (= (uHi 128) (+ 1 340282366920938463463374607431768211455))
+)
+(assert
+ (= (iLo 8) (- 128))
+)
+(assert
+ (= (iLo 16) (- 32768))
+)
+(assert
+ (= (iLo 32) (- 2147483648))
+)
+(assert
+ (= (iLo 64) (- 9223372036854775808))
+)
+(assert
+ (= (iLo 128) (- 170141183460469231731687303715884105728))
+)
+(assert
+ (= (iHi 8) 128)
+)
+(assert
+ (= (iHi 16) 32768)
+)
+(assert
+ (= (iHi 32) 2147483648)
+)
+(assert
+ (= (iHi 64) 9223372036854775808)
+)
+(assert
+ (= (iHi 128) 170141183460469231731687303715884105728)
+)
+(declare-fun nClip (Int) Int)
+(declare-fun uClip (Int Int) Int)
+(declare-fun iClip (Int Int) Int)
+(declare-fun charClip (Int) Int)
+(assert
+ (forall ((i Int)) (!
+   (and
+    (<= 0 (nClip i))
+    (=>
+     (<= 0 i)
+     (= i (nClip i))
+   ))
+   :pattern ((nClip i))
+   :qid prelude_nat_clip
+   :skolemid skolem_prelude_nat_clip
+)))
+(assert
+ (forall ((bits Int) (i Int)) (!
+   (and
+    (<= 0 (uClip bits i))
+    (< (uClip bits i) (uHi bits))
+    (=>
+     (and
+      (<= 0 i)
+      (< i (uHi bits))
+     )
+     (= i (uClip bits i))
+   ))
+   :pattern ((uClip bits i))
+   :qid prelude_u_clip
+   :skolemid skolem_prelude_u_clip
+)))
+(assert
+ (forall ((bits Int) (i Int)) (!
+   (and
+    (<= (iLo bits) (iClip bits i))
+    (< (iClip bits i) (iHi bits))
+    (=>
+     (and
+      (<= (iLo bits) i)
+      (< i (iHi bits))
+     )
+     (= i (iClip bits i))
+   ))
+   :pattern ((iClip bits i))
+   :qid prelude_i_clip
+   :skolemid skolem_prelude_i_clip
+)))
+(assert
+ (forall ((i Int)) (!
+   (and
+    (or
+     (and
+      (<= 0 (charClip i))
+      (<= (charClip i) 55295)
+     )
+     (and
+      (<= 57344 (charClip i))
+      (<= (charClip i) 1114111)
+    ))
+    (=>
+     (or
+      (and
+       (<= 0 i)
+       (<= i 55295)
+      )
+      (and
+       (<= 57344 i)
+       (<= i 1114111)
+     ))
+     (= i (charClip i))
+   ))
+   :pattern ((charClip i))
+   :qid prelude_char_clip
+   :skolemid skolem_prelude_char_clip
+)))
+(declare-fun uInv (Int Int) Bool)
+(declare-fun iInv (Int Int) Bool)
+(declare-fun charInv (Int) Bool)
+(assert
+ (forall ((bits Int) (i Int)) (!
+   (= (uInv bits i) (and
+     (<= 0 i)
+     (< i (uHi bits))
+   ))
+   :pattern ((uInv bits i))
+   :qid prelude_u_inv
+   :skolemid skolem_prelude_u_inv
+)))
+(assert
+ (forall ((bits Int) (i Int)) (!
+   (= (iInv bits i) (and
+     (<= (iLo bits) i)
+     (< i (iHi bits))
+   ))
+   :pattern ((iInv bits i))
+   :qid prelude_i_inv
+   :skolemid skolem_prelude_i_inv
+)))
+(assert
+ (forall ((i Int)) (!
+   (= (charInv i) (or
+     (and
+      (<= 0 i)
+      (<= i 55295)
+     )
+     (and
+      (<= 57344 i)
+      (<= i 1114111)
+   )))
+   :pattern ((charInv i))
+   :qid prelude_char_inv
+   :skolemid skolem_prelude_char_inv
+)))
+(assert
+ (forall ((x Int)) (!
+   (has_type (I x) INT)
+   :pattern ((has_type (I x) INT))
+   :qid prelude_has_type_int
+   :skolemid skolem_prelude_has_type_int
+)))
+(assert
+ (forall ((x Int)) (!
+   (=>
+    (<= 0 x)
+    (has_type (I x) NAT)
+   )
+   :pattern ((has_type (I x) NAT))
+   :qid prelude_has_type_nat
+   :skolemid skolem_prelude_has_type_nat
+)))
+(assert
+ (forall ((bits Int) (x Int)) (!
+   (=>
+    (uInv bits x)
+    (has_type (I x) (UINT bits))
+   )
+   :pattern ((has_type (I x) (UINT bits)))
+   :qid prelude_has_type_uint
+   :skolemid skolem_prelude_has_type_uint
+)))
+(assert
+ (forall ((bits Int) (x Int)) (!
+   (=>
+    (iInv bits x)
+    (has_type (I x) (SINT bits))
+   )
+   :pattern ((has_type (I x) (SINT bits)))
+   :qid prelude_has_type_sint
+   :skolemid skolem_prelude_has_type_sint
+)))
+(assert
+ (forall ((x Int)) (!
+   (=>
+    (charInv x)
+    (has_type (I x) CHAR)
+   )
+   :pattern ((has_type (I x) CHAR))
+   :qid prelude_has_type_char
+   :skolemid skolem_prelude_has_type_char
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x NAT)
+    (<= 0 (%I x))
+   )
+   :pattern ((has_type x NAT))
+   :qid prelude_unbox_int
+   :skolemid skolem_prelude_unbox_int
+)))
+(assert
+ (forall ((bits Int) (x Poly)) (!
+   (=>
+    (has_type x (UINT bits))
+    (uInv bits (%I x))
+   )
+   :pattern ((has_type x (UINT bits)))
+   :qid prelude_unbox_uint
+   :skolemid skolem_prelude_unbox_uint
+)))
+(assert
+ (forall ((bits Int) (x Poly)) (!
+   (=>
+    (has_type x (SINT bits))
+    (iInv bits (%I x))
+   )
+   :pattern ((has_type x (SINT bits)))
+   :qid prelude_unbox_sint
+   :skolemid skolem_prelude_unbox_sint
+)))
+(declare-fun Add (Int Int) Int)
+(declare-fun Sub (Int Int) Int)
+(declare-fun Mul (Int Int) Int)
+(declare-fun EucDiv (Int Int) Int)
+(declare-fun EucMod (Int Int) Int)
+(assert
+ (forall ((x Int) (y Int)) (!
+   (= (Add x y) (+ x y))
+   :pattern ((Add x y))
+   :qid prelude_add
+   :skolemid skolem_prelude_add
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (= (Sub x y) (- x y))
+   :pattern ((Sub x y))
+   :qid prelude_sub
+   :skolemid skolem_prelude_sub
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (= (Mul x y) (* x y))
+   :pattern ((Mul x y))
+   :qid prelude_mul
+   :skolemid skolem_prelude_mul
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (= (EucDiv x y) (div x y))
+   :pattern ((EucDiv x y))
+   :qid prelude_eucdiv
+   :skolemid skolem_prelude_eucdiv
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (= (EucMod x y) (mod x y))
+   :pattern ((EucMod x y))
+   :qid prelude_eucmod
+   :skolemid skolem_prelude_eucmod
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (=>
+    (and
+     (<= 0 x)
+     (<= 0 y)
+    )
+    (<= 0 (Mul x y))
+   )
+   :pattern ((Mul x y))
+   :qid prelude_mul_nats
+   :skolemid skolem_prelude_mul_nats
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (=>
+    (and
+     (<= 0 x)
+     (< 0 y)
+    )
+    (and
+     (<= 0 (EucDiv x y))
+     (<= (EucDiv x y) x)
+   ))
+   :pattern ((EucDiv x y))
+   :qid prelude_div_unsigned_in_bounds
+   :skolemid skolem_prelude_div_unsigned_in_bounds
+)))
+(assert
+ (forall ((x Int) (y Int)) (!
+   (=>
+    (and
+     (<= 0 x)
+     (< 0 y)
+    )
+    (and
+     (<= 0 (EucMod x y))
+     (< (EucMod x y) y)
+   ))
+   :pattern ((EucMod x y))
+   :qid prelude_mod_unsigned_in_bounds
+   :skolemid skolem_prelude_mod_unsigned_in_bounds
+)))
+(declare-fun bitxor (Poly Poly) Int)
+(declare-fun bitand (Poly Poly) Int)
+(declare-fun bitor (Poly Poly) Int)
+(declare-fun bitshr (Poly Poly) Int)
+(declare-fun bitshl (Poly Poly) Int)
+(declare-fun bitnot (Poly) Int)
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (uInv bits (%I x))
+     (uInv bits (%I y))
+    )
+    (uInv bits (bitxor x y))
+   )
+   :pattern ((uClip bits (bitxor x y)))
+   :qid prelude_bit_xor_u_inv
+   :skolemid skolem_prelude_bit_xor_u_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (iInv bits (%I x))
+     (iInv bits (%I y))
+    )
+    (iInv bits (bitxor x y))
+   )
+   :pattern ((iClip bits (bitxor x y)))
+   :qid prelude_bit_xor_i_inv
+   :skolemid skolem_prelude_bit_xor_i_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (uInv bits (%I x))
+     (uInv bits (%I y))
+    )
+    (uInv bits (bitor x y))
+   )
+   :pattern ((uClip bits (bitor x y)))
+   :qid prelude_bit_or_u_inv
+   :skolemid skolem_prelude_bit_or_u_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (iInv bits (%I x))
+     (iInv bits (%I y))
+    )
+    (iInv bits (bitor x y))
+   )
+   :pattern ((iClip bits (bitor x y)))
+   :qid prelude_bit_or_i_inv
+   :skolemid skolem_prelude_bit_or_i_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (uInv bits (%I x))
+     (uInv bits (%I y))
+    )
+    (uInv bits (bitand x y))
+   )
+   :pattern ((uClip bits (bitand x y)))
+   :qid prelude_bit_and_u_inv
+   :skolemid skolem_prelude_bit_and_u_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (iInv bits (%I x))
+     (iInv bits (%I y))
+    )
+    (iInv bits (bitand x y))
+   )
+   :pattern ((iClip bits (bitand x y)))
+   :qid prelude_bit_and_i_inv
+   :skolemid skolem_prelude_bit_and_i_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (uInv bits (%I x))
+     (<= 0 (%I y))
+    )
+    (uInv bits (bitshr x y))
+   )
+   :pattern ((uClip bits (bitshr x y)))
+   :qid prelude_bit_shr_u_inv
+   :skolemid skolem_prelude_bit_shr_u_inv
+)))
+(assert
+ (forall ((x Poly) (y Poly) (bits Int)) (!
+   (=>
+    (and
+     (iInv bits (%I x))
+     (<= 0 (%I y))
+    )
+    (iInv bits (bitshr x y))
+   )
+   :pattern ((iClip bits (bitshr x y)))
+   :qid prelude_bit_shr_i_inv
+   :skolemid skolem_prelude_bit_shr_i_inv
+)))
+(declare-fun singular_mod (Int Int) Int)
+(assert
+ (forall ((x Int) (y Int)) (!
+   (=>
+    (not (= y 0))
+    (= (EucMod x y) (singular_mod x y))
+   )
+   :pattern ((singular_mod x y))
+   :qid prelude_singularmod
+   :skolemid skolem_prelude_singularmod
+)))
+(declare-fun closure_req (Type Dcr Type Poly Poly) Bool)
+(declare-fun closure_ens (Type Dcr Type Poly Poly Poly) Bool)
+(declare-fun height (Poly) Height)
+(declare-fun height_lt (Height Height) Bool)
+(declare-fun fun_from_recursive_field (Poly) Poly)
+(declare-fun check_decrease_int (Int Int Bool) Bool)
+(assert
+ (forall ((cur Int) (prev Int) (otherwise Bool)) (!
+   (= (check_decrease_int cur prev otherwise) (or
+     (and
+      (<= 0 cur)
+      (< cur prev)
+     )
+     (and
+      (= cur prev)
+      otherwise
+   )))
+   :pattern ((check_decrease_int cur prev otherwise))
+   :qid prelude_check_decrease_int
+   :skolemid skolem_prelude_check_decrease_int
+)))
+(declare-fun check_decrease_height (Poly Poly Bool) Bool)
+(assert
+ (forall ((cur Poly) (prev Poly) (otherwise Bool)) (!
+   (= (check_decrease_height cur prev otherwise) (or
+     (height_lt (height cur) (height prev))
+     (and
+      (= (height cur) (height prev))
+      otherwise
+   )))
+   :pattern ((check_decrease_height cur prev otherwise))
+   :qid prelude_check_decrease_height
+   :skolemid skolem_prelude_check_decrease_height
+)))
+(assert
+ (forall ((x Height) (y Height)) (!
+   (= (height_lt x y) (and
+     ((_ partial-order 0) x y)
+     (not (= x y))
+   ))
+   :pattern ((height_lt x y))
+   :qid prelude_height_lt
+   :skolemid skolem_prelude_height_lt
+)))
+(declare-const fuel%vstd!std_specs.result.impl&%0.is_Ok. FuelId)
+(declare-const fuel%vstd!std_specs.result.impl&%0.get_Ok_0. FuelId)
+(declare-const fuel%lib_verus!impl&%2.arrow_verification_id. FuelId)
+(declare-const fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. FuelId)
+(declare-const fuel%vstd!array.group_array_axioms. FuelId)
+(declare-const fuel%vstd!map.group_map_axioms. FuelId)
+(declare-const fuel%vstd!multiset.group_multiset_axioms. FuelId)
+(declare-const fuel%vstd!raw_ptr.group_raw_ptr_axioms. FuelId)
+(declare-const fuel%vstd!seq.group_seq_axioms. FuelId)
+(declare-const fuel%vstd!seq_lib.group_seq_lib_default. FuelId)
+(declare-const fuel%vstd!set.group_set_axioms. FuelId)
+(declare-const fuel%vstd!set_lib.group_set_lib_axioms. FuelId)
+(declare-const fuel%vstd!slice.group_slice_axioms. FuelId)
+(declare-const fuel%vstd!string.group_string_axioms. FuelId)
+(declare-const fuel%vstd!std_specs.bits.group_bits_axioms. FuelId)
+(declare-const fuel%vstd!std_specs.control_flow.group_control_flow_axioms. FuelId)
+(declare-const fuel%vstd!std_specs.range.group_range_axioms. FuelId)
+(declare-const fuel%vstd!std_specs.vec.group_vec_axioms. FuelId)
+(declare-const fuel%vstd!group_vstd_default. FuelId)
+(assert
+ (distinct fuel%vstd!std_specs.result.impl&%0.is_Ok. fuel%vstd!std_specs.result.impl&%0.get_Ok_0.
+  fuel%lib_verus!impl&%2.arrow_verification_id. fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id.
+  fuel%vstd!array.group_array_axioms. fuel%vstd!map.group_map_axioms. fuel%vstd!multiset.group_multiset_axioms.
+  fuel%vstd!raw_ptr.group_raw_ptr_axioms. fuel%vstd!seq.group_seq_axioms. fuel%vstd!seq_lib.group_seq_lib_default.
+  fuel%vstd!set.group_set_axioms. fuel%vstd!set_lib.group_set_lib_axioms. fuel%vstd!slice.group_slice_axioms.
+  fuel%vstd!string.group_string_axioms. fuel%vstd!std_specs.bits.group_bits_axioms.
+  fuel%vstd!std_specs.control_flow.group_control_flow_axioms. fuel%vstd!std_specs.range.group_range_axioms.
+  fuel%vstd!std_specs.vec.group_vec_axioms. fuel%vstd!group_vstd_default.
+))
+(assert
+ (fuel_bool_default fuel%vstd!group_vstd_default.)
+)
+(assert
+ (=>
+  (fuel_bool_default fuel%vstd!group_vstd_default.)
+  (and
+   (fuel_bool_default fuel%vstd!seq.group_seq_axioms.)
+   (fuel_bool_default fuel%vstd!seq_lib.group_seq_lib_default.)
+   (fuel_bool_default fuel%vstd!map.group_map_axioms.)
+   (fuel_bool_default fuel%vstd!set.group_set_axioms.)
+   (fuel_bool_default fuel%vstd!set_lib.group_set_lib_axioms.)
+   (fuel_bool_default fuel%vstd!std_specs.bits.group_bits_axioms.)
+   (fuel_bool_default fuel%vstd!std_specs.control_flow.group_control_flow_axioms.)
+   (fuel_bool_default fuel%vstd!std_specs.vec.group_vec_axioms.)
+   (fuel_bool_default fuel%vstd!slice.group_slice_axioms.)
+   (fuel_bool_default fuel%vstd!array.group_array_axioms.)
+   (fuel_bool_default fuel%vstd!multiset.group_multiset_axioms.)
+   (fuel_bool_default fuel%vstd!string.group_string_axioms.)
+   (fuel_bool_default fuel%vstd!std_specs.range.group_range_axioms.)
+   (fuel_bool_default fuel%vstd!raw_ptr.group_raw_ptr_axioms.)
+)))
+(declare-datatypes ((core!result.Result. 0) (lib_verus!Error. 0) (lib_verus!State. 0)
+  (lib_verus!ProtocolLibrary. 0) (lib_verus!UnverifiedMessage. 0) (lib_verus!VerifiedMessage.
+   0
+  ) (tuple%0. 0)
+ ) (((core!result.Result./Ok (core!result.Result./Ok/?0 Poly)) (core!result.Result./Err
+    (core!result.Result./Err/?0 Poly)
+   )
+  ) ((lib_verus!Error./AuthenticationFailed) (lib_verus!Error./MessageTooOld) (lib_verus!Error./NotAcceptingNew)
+   (lib_verus!Error./NotReadyToApply) (lib_verus!Error./UnexpectedVerifiedMsg)
+  ) ((lib_verus!State./Idle) (lib_verus!State./WaitToApply (lib_verus!State./WaitToApply/?verification_id
+     Int
+   ))
+  ) ((lib_verus!ProtocolLibrary./ProtocolLibrary (lib_verus!ProtocolLibrary./ProtocolLibrary/?state
+     lib_verus!State.
+    ) (lib_verus!ProtocolLibrary./ProtocolLibrary/?value Int) (lib_verus!ProtocolLibrary./ProtocolLibrary/?last_changed
+     Int
+    ) (lib_verus!ProtocolLibrary./ProtocolLibrary/?msg_ctr Int)
+   )
+  ) ((lib_verus!UnverifiedMessage./UnverifiedMessage (lib_verus!UnverifiedMessage./UnverifiedMessage/?sender
+     Int
+    ) (lib_verus!UnverifiedMessage./UnverifiedMessage/?authenticator Int) (lib_verus!UnverifiedMessage./UnverifiedMessage/?timestamp
+     Int
+    ) (lib_verus!UnverifiedMessage./UnverifiedMessage/?value Int)
+   )
+  ) ((lib_verus!VerifiedMessage./VerifiedMessage (lib_verus!VerifiedMessage./VerifiedMessage/?sender
+     Int
+    ) (lib_verus!VerifiedMessage./VerifiedMessage/?timestamp Int) (lib_verus!VerifiedMessage./VerifiedMessage/?value
+     Int
+    ) (lib_verus!VerifiedMessage./VerifiedMessage/?verification_id Int)
+   )
+  ) ((tuple%0./tuple%0))
+))
+(declare-fun core!result.Result./Ok/0 (core!result.Result.) Poly)
+(declare-fun core!result.Result./Err/0 (core!result.Result.) Poly)
+(declare-fun lib_verus!State./WaitToApply/verification_id (lib_verus!State.) Int)
+(declare-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state (lib_verus!ProtocolLibrary.)
+ lib_verus!State.
+)
+(declare-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value (lib_verus!ProtocolLibrary.)
+ Int
+)
+(declare-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed (lib_verus!ProtocolLibrary.)
+ Int
+)
+(declare-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr (lib_verus!ProtocolLibrary.)
+ Int
+)
+(declare-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender (lib_verus!UnverifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator (lib_verus!UnverifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (lib_verus!UnverifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value (lib_verus!UnverifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!VerifiedMessage./VerifiedMessage/sender (lib_verus!VerifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp (lib_verus!VerifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!VerifiedMessage./VerifiedMessage/value (lib_verus!VerifiedMessage.)
+ Int
+)
+(declare-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id (lib_verus!VerifiedMessage.)
+ Int
+)
+(declare-fun TYPE%core!result.Result. (Dcr Type Dcr Type) Type)
+(declare-const TYPE%lib_verus!Error. Type)
+(declare-const TYPE%lib_verus!State. Type)
+(declare-const TYPE%lib_verus!ProtocolLibrary. Type)
+(declare-const TYPE%lib_verus!UnverifiedMessage. Type)
+(declare-const TYPE%lib_verus!VerifiedMessage. Type)
+(declare-const TYPE%tuple%0. Type)
+(declare-fun Poly%core!result.Result. (core!result.Result.) Poly)
+(declare-fun %Poly%core!result.Result. (Poly) core!result.Result.)
+(declare-fun Poly%lib_verus!Error. (lib_verus!Error.) Poly)
+(declare-fun %Poly%lib_verus!Error. (Poly) lib_verus!Error.)
+(declare-fun Poly%lib_verus!State. (lib_verus!State.) Poly)
+(declare-fun %Poly%lib_verus!State. (Poly) lib_verus!State.)
+(declare-fun Poly%lib_verus!ProtocolLibrary. (lib_verus!ProtocolLibrary.) Poly)
+(declare-fun %Poly%lib_verus!ProtocolLibrary. (Poly) lib_verus!ProtocolLibrary.)
+(declare-fun Poly%lib_verus!UnverifiedMessage. (lib_verus!UnverifiedMessage.) Poly)
+(declare-fun %Poly%lib_verus!UnverifiedMessage. (Poly) lib_verus!UnverifiedMessage.)
+(declare-fun Poly%lib_verus!VerifiedMessage. (lib_verus!VerifiedMessage.) Poly)
+(declare-fun %Poly%lib_verus!VerifiedMessage. (Poly) lib_verus!VerifiedMessage.)
+(declare-fun Poly%tuple%0. (tuple%0.) Poly)
+(declare-fun %Poly%tuple%0. (Poly) tuple%0.)
+(assert
+ (forall ((x core!result.Result.)) (!
+   (= x (%Poly%core!result.Result. (Poly%core!result.Result. x)))
+   :pattern ((Poly%core!result.Result. x))
+   :qid internal_core__result__Result_box_axiom_definition
+   :skolemid skolem_internal_core__result__Result_box_axiom_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (x Poly)) (!
+   (=>
+    (has_type x (TYPE%core!result.Result. T&. T& E&. E&))
+    (= x (Poly%core!result.Result. (%Poly%core!result.Result. x)))
+   )
+   :pattern ((has_type x (TYPE%core!result.Result. T&. T& E&. E&)))
+   :qid internal_core__result__Result_unbox_axiom_definition
+   :skolemid skolem_internal_core__result__Result_unbox_axiom_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (_0! Poly)) (!
+   (=>
+    (has_type _0! T&)
+    (has_type (Poly%core!result.Result. (core!result.Result./Ok _0!)) (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :pattern ((has_type (Poly%core!result.Result. (core!result.Result./Ok _0!)) (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :qid internal_core!result.Result./Ok_constructor_definition
+   :skolemid skolem_internal_core!result.Result./Ok_constructor_definition
+)))
+(assert
+ (forall ((x core!result.Result.)) (!
+   (= (core!result.Result./Ok/0 x) (core!result.Result./Ok/?0 x))
+   :pattern ((core!result.Result./Ok/0 x))
+   :qid internal_core!result.Result./Ok/0_accessor_definition
+   :skolemid skolem_internal_core!result.Result./Ok/0_accessor_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (x Poly)) (!
+   (=>
+    (has_type x (TYPE%core!result.Result. T&. T& E&. E&))
+    (has_type (core!result.Result./Ok/0 (%Poly%core!result.Result. x)) T&)
+   )
+   :pattern ((core!result.Result./Ok/0 (%Poly%core!result.Result. x)) (has_type x (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :qid internal_core!result.Result./Ok/0_invariant_definition
+   :skolemid skolem_internal_core!result.Result./Ok/0_invariant_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (_0! Poly)) (!
+   (=>
+    (has_type _0! E&)
+    (has_type (Poly%core!result.Result. (core!result.Result./Err _0!)) (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :pattern ((has_type (Poly%core!result.Result. (core!result.Result./Err _0!)) (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :qid internal_core!result.Result./Err_constructor_definition
+   :skolemid skolem_internal_core!result.Result./Err_constructor_definition
+)))
+(assert
+ (forall ((x core!result.Result.)) (!
+   (= (core!result.Result./Err/0 x) (core!result.Result./Err/?0 x))
+   :pattern ((core!result.Result./Err/0 x))
+   :qid internal_core!result.Result./Err/0_accessor_definition
+   :skolemid skolem_internal_core!result.Result./Err/0_accessor_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (x Poly)) (!
+   (=>
+    (has_type x (TYPE%core!result.Result. T&. T& E&. E&))
+    (has_type (core!result.Result./Err/0 (%Poly%core!result.Result. x)) E&)
+   )
+   :pattern ((core!result.Result./Err/0 (%Poly%core!result.Result. x)) (has_type x (TYPE%core!result.Result.
+      T&. T& E&. E&
+   )))
+   :qid internal_core!result.Result./Err/0_invariant_definition
+   :skolemid skolem_internal_core!result.Result./Err/0_invariant_definition
+)))
+(assert
+ (forall ((x core!result.Result.)) (!
+   (=>
+    (is-core!result.Result./Ok x)
+    (height_lt (height (core!result.Result./Ok/0 x)) (height (Poly%core!result.Result. x)))
+   )
+   :pattern ((height (core!result.Result./Ok/0 x)))
+   :qid prelude_datatype_height_core!result.Result./Ok/0
+   :skolemid skolem_prelude_datatype_height_core!result.Result./Ok/0
+)))
+(assert
+ (forall ((x core!result.Result.)) (!
+   (=>
+    (is-core!result.Result./Err x)
+    (height_lt (height (core!result.Result./Err/0 x)) (height (Poly%core!result.Result.
+       x
+   ))))
+   :pattern ((height (core!result.Result./Err/0 x)))
+   :qid prelude_datatype_height_core!result.Result./Err/0
+   :skolemid skolem_prelude_datatype_height_core!result.Result./Err/0
+)))
+(assert
+ (forall ((x lib_verus!Error.)) (!
+   (= x (%Poly%lib_verus!Error. (Poly%lib_verus!Error. x)))
+   :pattern ((Poly%lib_verus!Error. x))
+   :qid internal_lib_verus__Error_box_axiom_definition
+   :skolemid skolem_internal_lib_verus__Error_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!Error.)
+    (= x (Poly%lib_verus!Error. (%Poly%lib_verus!Error. x)))
+   )
+   :pattern ((has_type x TYPE%lib_verus!Error.))
+   :qid internal_lib_verus__Error_unbox_axiom_definition
+   :skolemid skolem_internal_lib_verus__Error_unbox_axiom_definition
+)))
+(assert
+ (forall ((x lib_verus!Error.)) (!
+   (has_type (Poly%lib_verus!Error. x) TYPE%lib_verus!Error.)
+   :pattern ((has_type (Poly%lib_verus!Error. x) TYPE%lib_verus!Error.))
+   :qid internal_lib_verus__Error_has_type_always_definition
+   :skolemid skolem_internal_lib_verus__Error_has_type_always_definition
+)))
+(assert
+ (forall ((x lib_verus!State.)) (!
+   (= x (%Poly%lib_verus!State. (Poly%lib_verus!State. x)))
+   :pattern ((Poly%lib_verus!State. x))
+   :qid internal_lib_verus__State_box_axiom_definition
+   :skolemid skolem_internal_lib_verus__State_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!State.)
+    (= x (Poly%lib_verus!State. (%Poly%lib_verus!State. x)))
+   )
+   :pattern ((has_type x TYPE%lib_verus!State.))
+   :qid internal_lib_verus__State_unbox_axiom_definition
+   :skolemid skolem_internal_lib_verus__State_unbox_axiom_definition
+)))
+(assert
+ (has_type (Poly%lib_verus!State. lib_verus!State./Idle) TYPE%lib_verus!State.)
+)
+(assert
+ (forall ((_verification_id! Int)) (!
+   (=>
+    (uInv SZ _verification_id!)
+    (has_type (Poly%lib_verus!State. (lib_verus!State./WaitToApply _verification_id!))
+     TYPE%lib_verus!State.
+   ))
+   :pattern ((has_type (Poly%lib_verus!State. (lib_verus!State./WaitToApply _verification_id!))
+     TYPE%lib_verus!State.
+   ))
+   :qid internal_lib_verus!State./WaitToApply_constructor_definition
+   :skolemid skolem_internal_lib_verus!State./WaitToApply_constructor_definition
+)))
+(assert
+ (forall ((x lib_verus!State.)) (!
+   (= (lib_verus!State./WaitToApply/verification_id x) (lib_verus!State./WaitToApply/?verification_id
+     x
+   ))
+   :pattern ((lib_verus!State./WaitToApply/verification_id x))
+   :qid internal_lib_verus!State./WaitToApply/verification_id_accessor_definition
+   :skolemid skolem_internal_lib_verus!State./WaitToApply/verification_id_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!State.)
+    (uInv SZ (lib_verus!State./WaitToApply/verification_id (%Poly%lib_verus!State. x)))
+   )
+   :pattern ((lib_verus!State./WaitToApply/verification_id (%Poly%lib_verus!State. x))
+    (has_type x TYPE%lib_verus!State.)
+   )
+   :qid internal_lib_verus!State./WaitToApply/verification_id_invariant_definition
+   :skolemid skolem_internal_lib_verus!State./WaitToApply/verification_id_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!ProtocolLibrary.)) (!
+   (= x (%Poly%lib_verus!ProtocolLibrary. (Poly%lib_verus!ProtocolLibrary. x)))
+   :pattern ((Poly%lib_verus!ProtocolLibrary. x))
+   :qid internal_lib_verus__ProtocolLibrary_box_axiom_definition
+   :skolemid skolem_internal_lib_verus__ProtocolLibrary_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!ProtocolLibrary.)
+    (= x (Poly%lib_verus!ProtocolLibrary. (%Poly%lib_verus!ProtocolLibrary. x)))
+   )
+   :pattern ((has_type x TYPE%lib_verus!ProtocolLibrary.))
+   :qid internal_lib_verus__ProtocolLibrary_unbox_axiom_definition
+   :skolemid skolem_internal_lib_verus__ProtocolLibrary_unbox_axiom_definition
+)))
+(assert
+ (forall ((_state! lib_verus!State.) (_value! Int) (_last_changed! Int) (_msg_ctr! Int))
+  (!
+   (=>
+    (and
+     (has_type (Poly%lib_verus!State. _state!) TYPE%lib_verus!State.)
+     (uInv SZ _value!)
+     (uInv SZ _last_changed!)
+     (uInv SZ _msg_ctr!)
+    )
+    (has_type (Poly%lib_verus!ProtocolLibrary. (lib_verus!ProtocolLibrary./ProtocolLibrary
+       _state! _value! _last_changed! _msg_ctr!
+      )
+     ) TYPE%lib_verus!ProtocolLibrary.
+   ))
+   :pattern ((has_type (Poly%lib_verus!ProtocolLibrary. (lib_verus!ProtocolLibrary./ProtocolLibrary
+       _state! _value! _last_changed! _msg_ctr!
+      )
+     ) TYPE%lib_verus!ProtocolLibrary.
+   ))
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary_constructor_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary_constructor_definition
+)))
+(assert
+ (forall ((x lib_verus!ProtocolLibrary.)) (!
+   (= (lib_verus!ProtocolLibrary./ProtocolLibrary/state x) (lib_verus!ProtocolLibrary./ProtocolLibrary/?state
+     x
+   ))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/state x))
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/state_accessor_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/state_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!ProtocolLibrary.)
+    (has_type (Poly%lib_verus!State. (lib_verus!ProtocolLibrary./ProtocolLibrary/state (
+        %Poly%lib_verus!ProtocolLibrary. x
+      ))
+     ) TYPE%lib_verus!State.
+   ))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/state (%Poly%lib_verus!ProtocolLibrary.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!ProtocolLibrary.)
+   )
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/state_invariant_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/state_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!ProtocolLibrary.)) (!
+   (= (lib_verus!ProtocolLibrary./ProtocolLibrary/value x) (lib_verus!ProtocolLibrary./ProtocolLibrary/?value
+     x
+   ))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/value x))
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/value_accessor_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/value_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!ProtocolLibrary.)
+    (uInv SZ (lib_verus!ProtocolLibrary./ProtocolLibrary/value (%Poly%lib_verus!ProtocolLibrary.
+       x
+   ))))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/value (%Poly%lib_verus!ProtocolLibrary.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!ProtocolLibrary.)
+   )
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/value_invariant_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/value_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!ProtocolLibrary.)) (!
+   (= (lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed x) (lib_verus!ProtocolLibrary./ProtocolLibrary/?last_changed
+     x
+   ))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed x))
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed_accessor_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!ProtocolLibrary.)
+    (uInv SZ (lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed (%Poly%lib_verus!ProtocolLibrary.
+       x
+   ))))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed (%Poly%lib_verus!ProtocolLibrary.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!ProtocolLibrary.)
+   )
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed_invariant_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!ProtocolLibrary.)) (!
+   (= (lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr x) (lib_verus!ProtocolLibrary./ProtocolLibrary/?msg_ctr
+     x
+   ))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr x))
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr_accessor_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!ProtocolLibrary.)
+    (uInv SZ (lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr (%Poly%lib_verus!ProtocolLibrary.
+       x
+   ))))
+   :pattern ((lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr (%Poly%lib_verus!ProtocolLibrary.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!ProtocolLibrary.)
+   )
+   :qid internal_lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr_invariant_definition
+   :skolemid skolem_internal_lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!UnverifiedMessage.)) (!
+   (= x (%Poly%lib_verus!UnverifiedMessage. (Poly%lib_verus!UnverifiedMessage. x)))
+   :pattern ((Poly%lib_verus!UnverifiedMessage. x))
+   :qid internal_lib_verus__UnverifiedMessage_box_axiom_definition
+   :skolemid skolem_internal_lib_verus__UnverifiedMessage_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!UnverifiedMessage.)
+    (= x (Poly%lib_verus!UnverifiedMessage. (%Poly%lib_verus!UnverifiedMessage. x)))
+   )
+   :pattern ((has_type x TYPE%lib_verus!UnverifiedMessage.))
+   :qid internal_lib_verus__UnverifiedMessage_unbox_axiom_definition
+   :skolemid skolem_internal_lib_verus__UnverifiedMessage_unbox_axiom_definition
+)))
+(assert
+ (forall ((_sender! Int) (_authenticator! Int) (_timestamp! Int) (_value! Int)) (!
+   (=>
+    (and
+     (uInv SZ _sender!)
+     (uInv SZ _authenticator!)
+     (uInv SZ _timestamp!)
+     (uInv SZ _value!)
+    )
+    (has_type (Poly%lib_verus!UnverifiedMessage. (lib_verus!UnverifiedMessage./UnverifiedMessage
+       _sender! _authenticator! _timestamp! _value!
+      )
+     ) TYPE%lib_verus!UnverifiedMessage.
+   ))
+   :pattern ((has_type (Poly%lib_verus!UnverifiedMessage. (lib_verus!UnverifiedMessage./UnverifiedMessage
+       _sender! _authenticator! _timestamp! _value!
+      )
+     ) TYPE%lib_verus!UnverifiedMessage.
+   ))
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage_constructor_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage_constructor_definition
+)))
+(assert
+ (forall ((x lib_verus!UnverifiedMessage.)) (!
+   (= (lib_verus!UnverifiedMessage./UnverifiedMessage/sender x) (lib_verus!UnverifiedMessage./UnverifiedMessage/?sender
+     x
+   ))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/sender x))
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/sender_accessor_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/sender_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!UnverifiedMessage.)
+    (uInv SZ (lib_verus!UnverifiedMessage./UnverifiedMessage/sender (%Poly%lib_verus!UnverifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/sender (%Poly%lib_verus!UnverifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!UnverifiedMessage.)
+   )
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/sender_invariant_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/sender_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!UnverifiedMessage.)) (!
+   (= (lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator x) (lib_verus!UnverifiedMessage./UnverifiedMessage/?authenticator
+     x
+   ))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator x))
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator_accessor_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!UnverifiedMessage.)
+    (uInv SZ (lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator (%Poly%lib_verus!UnverifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator (%Poly%lib_verus!UnverifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!UnverifiedMessage.)
+   )
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator_invariant_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!UnverifiedMessage.)) (!
+   (= (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp x) (lib_verus!UnverifiedMessage./UnverifiedMessage/?timestamp
+     x
+   ))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp x))
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp_accessor_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!UnverifiedMessage.)
+    (uInv SZ (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!UnverifiedMessage.)
+   )
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp_invariant_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!UnverifiedMessage.)) (!
+   (= (lib_verus!UnverifiedMessage./UnverifiedMessage/value x) (lib_verus!UnverifiedMessage./UnverifiedMessage/?value
+     x
+   ))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/value x))
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/value_accessor_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/value_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!UnverifiedMessage.)
+    (uInv SZ (lib_verus!UnverifiedMessage./UnverifiedMessage/value (%Poly%lib_verus!UnverifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!UnverifiedMessage./UnverifiedMessage/value (%Poly%lib_verus!UnverifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!UnverifiedMessage.)
+   )
+   :qid internal_lib_verus!UnverifiedMessage./UnverifiedMessage/value_invariant_definition
+   :skolemid skolem_internal_lib_verus!UnverifiedMessage./UnverifiedMessage/value_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!VerifiedMessage.)) (!
+   (= x (%Poly%lib_verus!VerifiedMessage. (Poly%lib_verus!VerifiedMessage. x)))
+   :pattern ((Poly%lib_verus!VerifiedMessage. x))
+   :qid internal_lib_verus__VerifiedMessage_box_axiom_definition
+   :skolemid skolem_internal_lib_verus__VerifiedMessage_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!VerifiedMessage.)
+    (= x (Poly%lib_verus!VerifiedMessage. (%Poly%lib_verus!VerifiedMessage. x)))
+   )
+   :pattern ((has_type x TYPE%lib_verus!VerifiedMessage.))
+   :qid internal_lib_verus__VerifiedMessage_unbox_axiom_definition
+   :skolemid skolem_internal_lib_verus__VerifiedMessage_unbox_axiom_definition
+)))
+(assert
+ (forall ((_sender! Int) (_timestamp! Int) (_value! Int) (_verification_id! Int)) (
+   !
+   (=>
+    (and
+     (uInv SZ _sender!)
+     (uInv SZ _timestamp!)
+     (uInv SZ _value!)
+     (uInv SZ _verification_id!)
+    )
+    (has_type (Poly%lib_verus!VerifiedMessage. (lib_verus!VerifiedMessage./VerifiedMessage
+       _sender! _timestamp! _value! _verification_id!
+      )
+     ) TYPE%lib_verus!VerifiedMessage.
+   ))
+   :pattern ((has_type (Poly%lib_verus!VerifiedMessage. (lib_verus!VerifiedMessage./VerifiedMessage
+       _sender! _timestamp! _value! _verification_id!
+      )
+     ) TYPE%lib_verus!VerifiedMessage.
+   ))
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage_constructor_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage_constructor_definition
+)))
+(assert
+ (forall ((x lib_verus!VerifiedMessage.)) (!
+   (= (lib_verus!VerifiedMessage./VerifiedMessage/sender x) (lib_verus!VerifiedMessage./VerifiedMessage/?sender
+     x
+   ))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/sender x))
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/sender_accessor_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/sender_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!VerifiedMessage.)
+    (uInv SZ (lib_verus!VerifiedMessage./VerifiedMessage/sender (%Poly%lib_verus!VerifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/sender (%Poly%lib_verus!VerifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!VerifiedMessage.)
+   )
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/sender_invariant_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/sender_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!VerifiedMessage.)) (!
+   (= (lib_verus!VerifiedMessage./VerifiedMessage/timestamp x) (lib_verus!VerifiedMessage./VerifiedMessage/?timestamp
+     x
+   ))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/timestamp x))
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/timestamp_accessor_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/timestamp_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!VerifiedMessage.)
+    (uInv SZ (lib_verus!VerifiedMessage./VerifiedMessage/timestamp (%Poly%lib_verus!VerifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/timestamp (%Poly%lib_verus!VerifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!VerifiedMessage.)
+   )
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/timestamp_invariant_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/timestamp_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!VerifiedMessage.)) (!
+   (= (lib_verus!VerifiedMessage./VerifiedMessage/value x) (lib_verus!VerifiedMessage./VerifiedMessage/?value
+     x
+   ))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/value x))
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/value_accessor_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/value_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!VerifiedMessage.)
+    (uInv SZ (lib_verus!VerifiedMessage./VerifiedMessage/value (%Poly%lib_verus!VerifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/value (%Poly%lib_verus!VerifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!VerifiedMessage.)
+   )
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/value_invariant_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/value_invariant_definition
+)))
+(assert
+ (forall ((x lib_verus!VerifiedMessage.)) (!
+   (= (lib_verus!VerifiedMessage./VerifiedMessage/verification_id x) (lib_verus!VerifiedMessage./VerifiedMessage/?verification_id
+     x
+   ))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/verification_id x))
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/verification_id_accessor_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/verification_id_accessor_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%lib_verus!VerifiedMessage.)
+    (uInv SZ (lib_verus!VerifiedMessage./VerifiedMessage/verification_id (%Poly%lib_verus!VerifiedMessage.
+       x
+   ))))
+   :pattern ((lib_verus!VerifiedMessage./VerifiedMessage/verification_id (%Poly%lib_verus!VerifiedMessage.
+      x
+     )
+    ) (has_type x TYPE%lib_verus!VerifiedMessage.)
+   )
+   :qid internal_lib_verus!VerifiedMessage./VerifiedMessage/verification_id_invariant_definition
+   :skolemid skolem_internal_lib_verus!VerifiedMessage./VerifiedMessage/verification_id_invariant_definition
+)))
+(assert
+ (forall ((x tuple%0.)) (!
+   (= x (%Poly%tuple%0. (Poly%tuple%0. x)))
+   :pattern ((Poly%tuple%0. x))
+   :qid internal_crate__tuple__0_box_axiom_definition
+   :skolemid skolem_internal_crate__tuple__0_box_axiom_definition
+)))
+(assert
+ (forall ((x Poly)) (!
+   (=>
+    (has_type x TYPE%tuple%0.)
+    (= x (Poly%tuple%0. (%Poly%tuple%0. x)))
+   )
+   :pattern ((has_type x TYPE%tuple%0.))
+   :qid internal_crate__tuple__0_unbox_axiom_definition
+   :skolemid skolem_internal_crate__tuple__0_unbox_axiom_definition
+)))
+(assert
+ (forall ((x tuple%0.)) (!
+   (has_type (Poly%tuple%0. x) TYPE%tuple%0.)
+   :pattern ((has_type (Poly%tuple%0. x) TYPE%tuple%0.))
+   :qid internal_crate__tuple__0_has_type_always_definition
+   :skolemid skolem_internal_crate__tuple__0_has_type_always_definition
+)))
+(declare-fun tr_bound%core!fmt.Debug. (Dcr Type) Bool)
+(declare-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. (Dcr Type Dcr
+  Type Dcr Type
+ ) Bool
+)
+(assert
+ (forall ((Self%&. Dcr) (Self%& Type)) (!
+   true
+   :pattern ((tr_bound%core!fmt.Debug. Self%&. Self%&))
+   :qid internal_core__fmt__Debug_trait_type_bounds_definition
+   :skolemid skolem_internal_core__fmt__Debug_trait_type_bounds_definition
+)))
+(assert
+ (forall ((Self%&. Dcr) (Self%& Type) (T&. Dcr) (T& Type) (E&. Dcr) (E& Type)) (!
+   true
+   :pattern ((tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. Self%&. Self%& T&.
+     T& E&. E&
+   ))
+   :qid internal_vstd__std_specs__result__ResultAdditionalSpecFns_trait_type_bounds_definition
+   :skolemid skolem_internal_vstd__std_specs__result__ResultAdditionalSpecFns_trait_type_bounds_definition
+)))
+(declare-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? (Dcr Type Dcr Type
+  Dcr Type Poly
+ ) Poly
+)
+(declare-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? (Dcr Type
+  Dcr Type Dcr Type Poly
+ ) Poly
+)
+(declare-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? (Dcr Type Dcr
+  Type Dcr Type Poly
+ ) Poly
+)
+(declare-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? (Dcr
+  Type Dcr Type Dcr Type Poly
+ ) Poly
+)
+(declare-fun lib_verus!impl&%2.arrow_verification_id.? (Poly) Int)
+(declare-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? (Poly) Int)
+(assert
+ (forall ((Self%&. Dcr) (Self%& Type) (T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (self!
+    Poly
+   )
+  ) (!
+   (=>
+    (has_type self! Self%&)
+    (has_type (vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? Self%&. Self%& T&.
+      T& E&. E& self!
+     ) BOOL
+   ))
+   :pattern ((vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? Self%&. Self%& T&.
+     T& E&. E& self!
+   ))
+   :qid internal_vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.?_pre_post_definition
+   :skolemid skolem_internal_vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.?_pre_post_definition
+)))
+(assert
+ (forall ((Self%&. Dcr) (Self%& Type) (T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (self!
+    Poly
+   )
+  ) (!
+   (=>
+    (has_type self! Self%&)
+    (has_type (vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? Self%&. Self%&
+      T&. T& E&. E& self!
+     ) T&
+   ))
+   :pattern ((vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? Self%&. Self%&
+     T&. T& E&. E& self!
+   ))
+   :qid internal_vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.?_pre_post_definition
+   :skolemid skolem_internal_vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.?_pre_post_definition
+)))
+(assert
+ (fuel_bool_default fuel%vstd!std_specs.result.impl&%0.is_Ok.)
+)
+(assert
+ (=>
+  (fuel_bool fuel%vstd!std_specs.result.impl&%0.is_Ok.)
+  (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (self! Poly)) (!
+    (= (vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? $ (TYPE%core!result.Result.
+       T&. T& E&. E&
+      ) T&. T& E&. E& self!
+     ) (B (is-core!result.Result./Ok (%Poly%core!result.Result. self!)))
+    )
+    :pattern ((vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? $ (TYPE%core!result.Result.
+       T&. T& E&. E&
+      ) T&. T& E&. E& self!
+    ))
+    :qid internal_vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.?_definition
+    :skolemid skolem_internal_vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.?_definition
+))))
+(assert
+ (fuel_bool_default fuel%vstd!std_specs.result.impl&%0.get_Ok_0.)
+)
+(assert
+ (=>
+  (fuel_bool fuel%vstd!std_specs.result.impl&%0.get_Ok_0.)
+  (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (self! Poly)) (!
+    (= (vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? $ (TYPE%core!result.Result.
+       T&. T& E&. E&
+      ) T&. T& E&. E& self!
+     ) (core!result.Result./Ok/0 (%Poly%core!result.Result. self!))
+    )
+    :pattern ((vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? $ (TYPE%core!result.Result.
+       T&. T& E&. E&
+      ) T&. T& E&. E& self!
+    ))
+    :qid internal_vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.?_definition
+    :skolemid skolem_internal_vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.?_definition
+))))
+(declare-fun req%core!result.impl&%0.unwrap. (Dcr Type Dcr Type core!result.Result.)
+ Bool
+)
+(declare-const %%global_location_label%%0 Bool)
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (result! core!result.Result.)) (!
+   (= (req%core!result.impl&%0.unwrap. T&. T& E&. E& result!) (=>
+     %%global_location_label%%0
+     (is-core!result.Result./Ok result!)
+   ))
+   :pattern ((req%core!result.impl&%0.unwrap. T&. T& E&. E& result!))
+   :qid internal_req__core!result.impl&__0.unwrap._definition
+   :skolemid skolem_internal_req__core!result.impl&__0.unwrap._definition
+)))
+(declare-fun ens%core!result.impl&%0.unwrap. (Dcr Type Dcr Type core!result.Result.
+  Poly
+ ) Bool
+)
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type) (result! core!result.Result.) (t! Poly))
+  (!
+   (= (ens%core!result.impl&%0.unwrap. T&. T& E&. E& result! t!) (and
+     (has_type t! T&)
+     (= t! (core!result.Result./Ok/0 (%Poly%core!result.Result. (Poly%core!result.Result.
+         result!
+   ))))))
+   :pattern ((ens%core!result.impl&%0.unwrap. T&. T& E&. E& result! t!))
+   :qid internal_ens__core!result.impl&__0.unwrap._definition
+   :skolemid skolem_internal_ens__core!result.impl&__0.unwrap._definition
+)))
+(assert
+ (fuel_bool_default fuel%lib_verus!impl&%2.arrow_verification_id.)
+)
+(assert
+ (=>
+  (fuel_bool fuel%lib_verus!impl&%2.arrow_verification_id.)
+  (forall ((self! Poly)) (!
+    (= (lib_verus!impl&%2.arrow_verification_id.? self!) (lib_verus!State./WaitToApply/verification_id
+      (%Poly%lib_verus!State. self!)
+    ))
+    :pattern ((lib_verus!impl&%2.arrow_verification_id.? self!))
+    :qid internal_lib_verus!impl&__2.arrow_verification_id.?_definition
+    :skolemid skolem_internal_lib_verus!impl&__2.arrow_verification_id.?_definition
+))))
+(assert
+ (forall ((self! Poly)) (!
+   (=>
+    (has_type self! TYPE%lib_verus!State.)
+    (uInv SZ (lib_verus!impl&%2.arrow_verification_id.? self!))
+   )
+   :pattern ((lib_verus!impl&%2.arrow_verification_id.? self!))
+   :qid internal_lib_verus!impl&__2.arrow_verification_id.?_pre_post_definition
+   :skolemid skolem_internal_lib_verus!impl&__2.arrow_verification_id.?_pre_post_definition
+)))
+(assert
+ (fuel_bool_default fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id.)
+)
+(assert
+ (=>
+  (fuel_bool fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id.)
+  (forall ((self! Poly)) (!
+    (= (lib_verus!impl&%2.arrow_WaitToApply_verification_id.? self!) (lib_verus!State./WaitToApply/verification_id
+      (%Poly%lib_verus!State. self!)
+    ))
+    :pattern ((lib_verus!impl&%2.arrow_WaitToApply_verification_id.? self!))
+    :qid internal_lib_verus!impl&__2.arrow_WaitToApply_verification_id.?_definition
+    :skolemid skolem_internal_lib_verus!impl&__2.arrow_WaitToApply_verification_id.?_definition
+))))
+(assert
+ (forall ((self! Poly)) (!
+   (=>
+    (has_type self! TYPE%lib_verus!State.)
+    (uInv SZ (lib_verus!impl&%2.arrow_WaitToApply_verification_id.? self!))
+   )
+   :pattern ((lib_verus!impl&%2.arrow_WaitToApply_verification_id.? self!))
+   :qid internal_lib_verus!impl&__2.arrow_WaitToApply_verification_id.?_pre_post_definition
+   :skolemid skolem_internal_lib_verus!impl&__2.arrow_WaitToApply_verification_id.?_pre_post_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type)) (!
+   (tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. $ (TYPE%core!result.Result.
+     T&. T& E&. E&
+    ) T&. T& E&. E&
+   )
+   :pattern ((tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. $ (TYPE%core!result.Result.
+      T&. T& E&. E&
+     ) T&. T& E&. E&
+   ))
+   :qid internal_vstd__std_specs__result__impl&__0_trait_impl_definition
+   :skolemid skolem_internal_vstd__std_specs__result__impl&__0_trait_impl_definition
+)))
+(assert
+ (forall ((T&. Dcr) (T& Type) (E&. Dcr) (E& Type)) (!
+   (=>
+    (and
+     (tr_bound%core!fmt.Debug. T&. T&)
+     (tr_bound%core!fmt.Debug. E&. E&)
+    )
+    (tr_bound%core!fmt.Debug. $ (TYPE%core!result.Result. T&. T& E&. E&))
+   )
+   :pattern ((tr_bound%core!fmt.Debug. $ (TYPE%core!result.Result. T&. T& E&. E&)))
+   :qid internal_core__result__impl&__35_trait_impl_definition
+   :skolemid skolem_internal_core__result__impl&__35_trait_impl_definition
+)))
+(assert
+ (tr_bound%core!fmt.Debug. $ (UINT SZ))
+)
+(assert
+ (forall ((T&. Dcr) (T& Type)) (!
+   (=>
+    (tr_bound%core!fmt.Debug. T&. T&)
+    (tr_bound%core!fmt.Debug. (REF T&.) T&)
+   )
+   :pattern ((tr_bound%core!fmt.Debug. (REF T&.) T&))
+   :qid internal_core__fmt__impl&__53_trait_impl_definition
+   :skolemid skolem_internal_core__fmt__impl&__53_trait_impl_definition
+)))
+(assert
+ (tr_bound%core!fmt.Debug. $ BOOL)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%tuple%0.)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%lib_verus!Error.)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%lib_verus!State.)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%lib_verus!ProtocolLibrary.)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%lib_verus!UnverifiedMessage.)
+)
+(assert
+ (tr_bound%core!fmt.Debug. $ TYPE%lib_verus!VerifiedMessage.)
+)
+(declare-fun ens%lib_verus!impl&%4.default. (Int lib_verus!ProtocolLibrary.) Bool)
+(assert
+ (forall ((no%param Int) (%return! lib_verus!ProtocolLibrary.)) (!
+   (= (ens%lib_verus!impl&%4.default. no%param %return!) (has_type (Poly%lib_verus!ProtocolLibrary.
+      %return!
+     ) TYPE%lib_verus!ProtocolLibrary.
+   ))
+   :pattern ((ens%lib_verus!impl&%4.default. no%param %return!))
+   :qid internal_ens__lib_verus!impl&__4.default._definition
+   :skolemid skolem_internal_ens__lib_verus!impl&__4.default._definition
+)))
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:max-memory   21.03
+ :memory       21.03
+ :num-allocs   515636
+ :rlimit-count 2064)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! lib_verus!ProtocolLibrary.)
+(declare-const no%param Int)
+(assert
+  fuel_defaults
+ )
+(assert
+  (not true)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs            17
+ :binary-propagations  172
+ :datatype-accessor-ax 1
+ :max-generation       1
+ :max-memory           21.51
+ :memory               21.51
+ :mk-bool-var          342
+ :mk-clause            1
+ :mk-clause-binary     179
+ :num-allocs           687062
+ :num-checks           1
+ :propagations         172
+ :quant-instantiations 2
+ :rlimit-count         23217)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! Bool)
+(declare-const self! lib_verus!UnverifiedMessage.)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!UnverifiedMessage. self!) TYPE%lib_verus!UnverifiedMessage.)
+ )
+(declare-const %%location_label%%0 Bool)
+(declare-const %%location_label%%1 Bool)
+(declare-const %%location_label%%2 Bool)
+(declare-const %%location_label%%3 Bool)
+(declare-const %%location_label%%4 Bool)
+(assert
+  (not (and
+    (=>
+     %%location_label%%0
+     (uInv SZ (Mul 2 (lib_verus!UnverifiedMessage./UnverifiedMessage/sender (%Poly%lib_verus!UnverifiedMessage.
+         (Poly%lib_verus!UnverifiedMessage. self!)
+    )))))
+    (and
+     (=>
+      %%location_label%%1
+      (uInv SZ (Mul 3 (lib_verus!UnverifiedMessage./UnverifiedMessage/value (%Poly%lib_verus!UnverifiedMessage.
+          (Poly%lib_verus!UnverifiedMessage. self!)
+     )))))
+     (and
+      (=>
+       %%location_label%%2
+       (uInv SZ (Add (uClip SZ (Mul 2 (lib_verus!UnverifiedMessage./UnverifiedMessage/sender
+            (%Poly%lib_verus!UnverifiedMessage. (Poly%lib_verus!UnverifiedMessage. self!))
+          ))
+         ) (uClip SZ (Mul 3 (lib_verus!UnverifiedMessage./UnverifiedMessage/value (%Poly%lib_verus!UnverifiedMessage.
+             (Poly%lib_verus!UnverifiedMessage. self!)
+      )))))))
+      (and
+       (=>
+        %%location_label%%3
+        (uInv SZ (Mul 5 (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+            (Poly%lib_verus!UnverifiedMessage. self!)
+       )))))
+       (=>
+        %%location_label%%4
+        (uInv SZ (Add (uClip SZ (Add (uClip SZ (Mul 2 (lib_verus!UnverifiedMessage./UnverifiedMessage/sender
+               (%Poly%lib_verus!UnverifiedMessage. (Poly%lib_verus!UnverifiedMessage. self!))
+             ))
+            ) (uClip SZ (Mul 3 (lib_verus!UnverifiedMessage./UnverifiedMessage/value (%Poly%lib_verus!UnverifiedMessage.
+                (Poly%lib_verus!UnverifiedMessage. self!)
+           )))))
+          ) (uClip SZ (Mul 5 (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+              (Poly%lib_verus!UnverifiedMessage. self!)
+ )))))))))))))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unknown
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :reason-unknown)
+;;;<<<
+;;;>>> RESPONSE
+(:reason-unknown "(incomplete quantifiers)")
+;;;<<<
+;;;>>> QUERY
+(get-model)
+;;;<<<
+;;;>>> RESPONSE
+(
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!8 FuelId!val!10 FuelId!val!18 FuelId!val!3 FuelId!val!15 FuelId!val!0 FuelId!val!9 FuelId!val!2 FuelId!val!5 FuelId!val!6 FuelId!val!4 FuelId!val!1 FuelId!val!7 FuelId!val!11 FuelId!val!13 FuelId!val!17 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!8)
+              (= x FuelId!val!10)
+              (= x FuelId!val!18)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!2)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!4)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!11)
+              (= x FuelId!val!13)
+              (= x FuelId!val!17)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!6 Type!val!3 Type!val!4 Type!val!1 Type!val!7 Type!val!2 Type!val!0 Type!val!5 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!6 () Type)
+  (declare-fun Type!val!3 () Type)
+  (declare-fun Type!val!4 () Type)
+  (declare-fun Type!val!1 () Type)
+  (declare-fun Type!val!7 () Type)
+  (declare-fun Type!val!2 () Type)
+  (declare-fun Type!val!0 () Type)
+  (declare-fun Type!val!5 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type))
+          (or (= x Type!val!6)
+              (= x Type!val!3)
+              (= x Type!val!4)
+              (= x Type!val!1)
+              (= x Type!val!7)
+              (= x Type!val!2)
+              (= x Type!val!0)
+              (= x Type!val!5)))
+  ;; -----------
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for Poly:
+  ;;   Poly!val!1 Poly!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Poly!val!1 () Poly)
+  (declare-fun Poly!val!0 () Poly)
+  ;; cardinality constraint:
+  (forall ((x Poly)) (or (= x Poly!val!1) (= x Poly!val!0)))
+  ;; -----------
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!15)
+  (define-fun TYPE%lib_verus!VerifiedMessage. () Type
+    Type!val!7)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.is_Ok. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%lib_verus!impl&%2.arrow_verification_id. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!map.group_map_axioms. () FuelId
+    FuelId!val!5)
+  (define-fun TYPE%lib_verus!UnverifiedMessage. () Type
+    Type!val!6)
+  (define-fun fuel%vstd!set.group_set_axioms. () FuelId
+    FuelId!val!10)
+  (define-fun %%location_label%%0 () Bool
+    true)
+  (define-fun TYPE%lib_verus!State. () Type
+    Type!val!0)
+  (define-fun self! () lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 2147483648 1 4 6))
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!16)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!set_lib.group_set_lib_axioms. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!4)
+  (define-fun TYPE%lib_verus!ProtocolLibrary. () Type
+    Type!val!5)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!12)
+  (define-fun BOOL () Type
+    Type!val!2)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!3)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.get_Ok_0. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!9)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun TYPE%lib_verus!Error. () Type
+    Type!val!4)
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!seq.group_seq_axioms. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!7)
+  (define-fun %return! () Bool
+    false)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!6)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun CHAR () Type
+    Type!val!6)
+  (define-fun %%location_label%%1 () Bool
+    false)
+  (define-fun %%location_label%%4 () Bool
+    false)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!6)
+  (define-fun INT () Type
+    Type!val!6)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun NAT () Type
+    Type!val!6)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!1)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun Poly%lib_verus!State. ((x!0 lib_verus!State.)) Poly
+    Poly!val!0)
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    4294967296)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    2147483648)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    (ite (and (= x!0 32) (= x!1 2147483648)) true
+      false))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun %Poly%lib_verus!State. ((x!0 Poly)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %Poly%lib_verus!UnverifiedMessage. ((x!0 Poly)) lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 2147483648 1 4 6))
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun tr_bound%core!fmt.Debug. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun Poly%lib_verus!UnverifiedMessage. ((x!0
+    lib_verus!UnverifiedMessage.)) Poly
+    Poly!val!1)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    true)
+  (define-fun Poly%core!result.Result. ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun MUT_REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun Poly%lib_verus!ProtocolLibrary. ((x!0 lib_verus!ProtocolLibrary.)) Poly
+    Poly!val!1)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state ((x!0
+    lib_verus!ProtocolLibrary.)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)) Bool
+    false)
+  (define-fun %Poly%lib_verus!Error. ((x!0 Poly)) lib_verus!Error.
+    lib_verus!Error./AuthenticationFailed)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun check_decrease_int ((x!0 Int) (x!1 Int) (x!2 Bool)) Bool
+    false)
+  (define-fun lib_verus!impl&%2.arrow_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!1)
+  (define-fun %Poly%lib_verus!ProtocolLibrary. ((x!0 Poly)) lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 0 0 0))
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/sender ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun ens%lib_verus!impl&%4.default. ((x!0 Int)
+   (x!1 lib_verus!ProtocolLibrary.)) Bool
+    false)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun %Poly%lib_verus!VerifiedMessage. ((x!0 Poly)) lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 0 0 0 0))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun Poly%lib_verus!Error. ((x!0 lib_verus!Error.)) Poly
+    Poly!val!1)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun core!result.Result./Err/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/value ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun core!result.Result./Ok/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun req%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)) Bool
+    false)
+  (define-fun Poly%lib_verus!VerifiedMessage. ((x!0 lib_verus!VerifiedMessage.)) Poly
+    Poly!val!1)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun ens%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!1)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun TYPE%core!result.Result. ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!1)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun mk_fun ((x!0 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun lib_verus!State./WaitToApply/verification_id ((x!0 lib_verus!State.)) Int
+    0)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!1)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %Poly%core!result.Result. ((x!0 Poly)) core!result.Result.
+    (core!result.Result./Ok Poly!val!0))
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+;;;<<<
+;;;>>> QUERY
+(assert
+  (not %%location_label%%0)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unknown
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :reason-unknown)
+;;;<<<
+;;;>>> RESPONSE
+(:reason-unknown "(incomplete quantifiers)")
+;;;<<<
+;;;>>> QUERY
+(get-model)
+;;;<<<
+;;;>>> RESPONSE
+(
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!8 FuelId!val!10 FuelId!val!18 FuelId!val!3 FuelId!val!15 FuelId!val!0 FuelId!val!9 FuelId!val!2 FuelId!val!5 FuelId!val!6 FuelId!val!4 FuelId!val!1 FuelId!val!7 FuelId!val!11 FuelId!val!13 FuelId!val!17 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!8)
+              (= x FuelId!val!10)
+              (= x FuelId!val!18)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!2)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!4)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!11)
+              (= x FuelId!val!13)
+              (= x FuelId!val!17)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!6 Type!val!3 Type!val!4 Type!val!1 Type!val!7 Type!val!2 Type!val!0 Type!val!5 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!6 () Type)
+  (declare-fun Type!val!3 () Type)
+  (declare-fun Type!val!4 () Type)
+  (declare-fun Type!val!1 () Type)
+  (declare-fun Type!val!7 () Type)
+  (declare-fun Type!val!2 () Type)
+  (declare-fun Type!val!0 () Type)
+  (declare-fun Type!val!5 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type))
+          (or (= x Type!val!6)
+              (= x Type!val!3)
+              (= x Type!val!4)
+              (= x Type!val!1)
+              (= x Type!val!7)
+              (= x Type!val!2)
+              (= x Type!val!0)
+              (= x Type!val!5)))
+  ;; -----------
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for Poly:
+  ;;   Poly!val!1 Poly!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Poly!val!1 () Poly)
+  (declare-fun Poly!val!0 () Poly)
+  ;; cardinality constraint:
+  (forall ((x Poly)) (or (= x Poly!val!1) (= x Poly!val!0)))
+  ;; -----------
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!15)
+  (define-fun TYPE%lib_verus!VerifiedMessage. () Type
+    Type!val!7)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.is_Ok. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%lib_verus!impl&%2.arrow_verification_id. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!map.group_map_axioms. () FuelId
+    FuelId!val!5)
+  (define-fun TYPE%lib_verus!UnverifiedMessage. () Type
+    Type!val!6)
+  (define-fun fuel%vstd!set.group_set_axioms. () FuelId
+    FuelId!val!10)
+  (define-fun %%location_label%%0 () Bool
+    false)
+  (define-fun TYPE%lib_verus!State. () Type
+    Type!val!0)
+  (define-fun self! () lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 0 1 4 1431655766))
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!16)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!set_lib.group_set_lib_axioms. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!4)
+  (define-fun TYPE%lib_verus!ProtocolLibrary. () Type
+    Type!val!5)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!12)
+  (define-fun BOOL () Type
+    Type!val!2)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!3)
+  (define-fun %%location_label%%1 () Bool
+    true)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.get_Ok_0. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!9)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun TYPE%lib_verus!Error. () Type
+    Type!val!4)
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!seq.group_seq_axioms. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!7)
+  (define-fun %return! () Bool
+    false)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!6)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun CHAR () Type
+    Type!val!6)
+  (define-fun %%location_label%%4 () Bool
+    false)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!6)
+  (define-fun INT () Type
+    Type!val!6)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun NAT () Type
+    Type!val!6)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!1)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun Poly%lib_verus!State. ((x!0 lib_verus!State.)) Poly
+    Poly!val!0)
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    4294967298)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    1431655766)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    (ite (and (= x!0 32) (= x!1 1431655766)) true
+      false))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun %Poly%lib_verus!State. ((x!0 Poly)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %Poly%lib_verus!UnverifiedMessage. ((x!0 Poly)) lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 0 1 4 1431655766))
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun tr_bound%core!fmt.Debug. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun Poly%lib_verus!UnverifiedMessage. ((x!0
+    lib_verus!UnverifiedMessage.)) Poly
+    Poly!val!1)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    true)
+  (define-fun Poly%core!result.Result. ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun MUT_REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun Poly%lib_verus!ProtocolLibrary. ((x!0 lib_verus!ProtocolLibrary.)) Poly
+    Poly!val!1)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state ((x!0
+    lib_verus!ProtocolLibrary.)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)) Bool
+    false)
+  (define-fun %Poly%lib_verus!Error. ((x!0 Poly)) lib_verus!Error.
+    lib_verus!Error./AuthenticationFailed)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun check_decrease_int ((x!0 Int) (x!1 Int) (x!2 Bool)) Bool
+    false)
+  (define-fun lib_verus!impl&%2.arrow_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!1)
+  (define-fun %Poly%lib_verus!ProtocolLibrary. ((x!0 Poly)) lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 0 0 0))
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/sender ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun ens%lib_verus!impl&%4.default. ((x!0 Int)
+   (x!1 lib_verus!ProtocolLibrary.)) Bool
+    false)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun %Poly%lib_verus!VerifiedMessage. ((x!0 Poly)) lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 0 0 0 0))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun Poly%lib_verus!Error. ((x!0 lib_verus!Error.)) Poly
+    Poly!val!1)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun core!result.Result./Err/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/value ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun core!result.Result./Ok/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun req%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)) Bool
+    false)
+  (define-fun Poly%lib_verus!VerifiedMessage. ((x!0 lib_verus!VerifiedMessage.)) Poly
+    Poly!val!1)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun ens%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!1)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun TYPE%core!result.Result. ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!1)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun mk_fun ((x!0 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun lib_verus!State./WaitToApply/verification_id ((x!0 lib_verus!State.)) Int
+    0)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!1)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %Poly%core!result.Result. ((x!0 Poly)) core!result.Result.
+    (core!result.Result./Ok Poly!val!0))
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+;;;<<<
+;;;>>> QUERY
+(assert
+  (not %%location_label%%1)
+ )
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 98
+ :arith-assert-lower        12
+ :arith-assert-upper        9
+ :arith-bound-prop          2
+ :arith-branch-var          1
+ :arith-eq-adapter          6
+ :arith-fixed-eqs           2
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            5
+ :arith-patches             1
+ :arith-pivots              14
+ :arith-row-summations      12
+ :arith-tableau-max-columns 35
+ :arith-tableau-max-rows    5
+ :binary-propagations       181
+ :conflicts                 4
+ :datatype-accessor-ax      6
+ :datatype-constructor-ax   5
+ :decisions                 9
+ :del-clause                78
+ :final-checks              3
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               423
+ :mk-clause                 79
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                3
+ :propagations              212
+ :quant-instantiations      20
+ :rlimit-count              25166
+ :time                      0.00)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! Bool)
+(declare-const self! lib_verus!UnverifiedMessage.)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!UnverifiedMessage. self!) TYPE%lib_verus!UnverifiedMessage.)
+ )
+(assert
+  (not true)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(declare-fun ens%lib_verus!impl&%8.validate. (lib_verus!ProtocolLibrary. lib_verus!ProtocolLibrary.
+  lib_verus!UnverifiedMessage. core!result.Result.
+ ) Bool
+)
+(assert
+ (forall ((pre%self! lib_verus!ProtocolLibrary.) (self! lib_verus!ProtocolLibrary.)
+   (msg! lib_verus!UnverifiedMessage.) (%return! core!result.Result.)
+  ) (!
+   (= (ens%lib_verus!impl&%8.validate. pre%self! self! msg! %return!) (and
+     (has_type (Poly%core!result.Result. %return!) (TYPE%core!result.Result. $ TYPE%lib_verus!VerifiedMessage.
+       $ TYPE%lib_verus!Error.
+     ))
+     (has_type (Poly%lib_verus!ProtocolLibrary. self!) TYPE%lib_verus!ProtocolLibrary.)
+   ))
+   :pattern ((ens%lib_verus!impl&%8.validate. pre%self! self! msg! %return!))
+   :qid internal_ens__lib_verus!impl&__8.validate._definition
+   :skolemid skolem_internal_ens__lib_verus!impl&__8.validate._definition
+)))
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 98
+ :arith-assert-lower        12
+ :arith-assert-upper        9
+ :arith-bound-prop          2
+ :arith-branch-var          1
+ :arith-eq-adapter          6
+ :arith-fixed-eqs           2
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            5
+ :arith-patches             1
+ :arith-pivots              14
+ :arith-row-summations      12
+ :arith-tableau-max-columns 35
+ :arith-tableau-max-rows    5
+ :binary-propagations       181
+ :conflicts                 4
+ :datatype-accessor-ax      6
+ :datatype-constructor-ax   5
+ :decisions                 9
+ :del-clause                78
+ :final-checks              3
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               423
+ :mk-clause                 79
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                4
+ :propagations              212
+ :quant-instantiations      20
+ :rlimit-count              25207)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! core!result.Result.)
+(declare-const self!@0 lib_verus!ProtocolLibrary.)
+(declare-const msg! lib_verus!UnverifiedMessage.)
+(declare-const tmp%1 Bool)
+(declare-const tmp%2 Int)
+(declare-const tmp%3 lib_verus!State.)
+(declare-const verification_id@ Int)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!ProtocolLibrary. self!@0) TYPE%lib_verus!ProtocolLibrary.)
+ )
+(assert
+  (has_type (Poly%lib_verus!UnverifiedMessage. msg!) TYPE%lib_verus!UnverifiedMessage.)
+ )
+(declare-const self!@1 lib_verus!ProtocolLibrary.)
+(declare-const self!@2 lib_verus!ProtocolLibrary.)
+(declare-const %%switch_label%%0 Bool)
+(declare-const %%switch_label%%1 Bool)
+(declare-const %%switch_label%%2 Bool)
+(declare-const %%location_label%%0 Bool)
+(assert
+  (not (or
+    (=>
+     (not (not (let
+        ((tmp%%$ (lib_verus!ProtocolLibrary./ProtocolLibrary/state (%Poly%lib_verus!ProtocolLibrary.
+            (Poly%lib_verus!ProtocolLibrary. self!@0)
+        ))))
+        (is-lib_verus!State./Idle tmp%%$)
+     )))
+     %%switch_label%%2
+    )
+    (and
+     (not %%switch_label%%2)
+     (or
+      (=>
+       (not (not tmp%1))
+       %%switch_label%%1
+      )
+      (and
+       (not %%switch_label%%1)
+       (or
+        (=>
+         (not (< (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+             (Poly%lib_verus!UnverifiedMessage. msg!)
+            )
+           ) (lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed (%Poly%lib_verus!ProtocolLibrary.
+             (Poly%lib_verus!ProtocolLibrary. self!@0)
+         ))))
+         %%switch_label%%0
+        )
+        (and
+         (not %%switch_label%%0)
+         (=>
+          (= verification_id@ (lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr (%Poly%lib_verus!ProtocolLibrary.
+             (Poly%lib_verus!ProtocolLibrary. self!@0)
+          )))
+          (=>
+           %%location_label%%0
+           (uInv SZ (Add (lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr (%Poly%lib_verus!ProtocolLibrary.
+               (Poly%lib_verus!ProtocolLibrary. self!@0)
+              )
+             ) 1
+ ))))))))))))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unknown
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :reason-unknown)
+;;;<<<
+;;;>>> RESPONSE
+(:reason-unknown "(incomplete quantifiers)")
+;;;<<<
+;;;>>> QUERY
+(get-model)
+;;;<<<
+;;;>>> RESPONSE
+(
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!8 FuelId!val!10 FuelId!val!18 FuelId!val!3 FuelId!val!15 FuelId!val!0 FuelId!val!9 FuelId!val!2 FuelId!val!5 FuelId!val!6 FuelId!val!4 FuelId!val!1 FuelId!val!7 FuelId!val!11 FuelId!val!13 FuelId!val!17 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!8)
+              (= x FuelId!val!10)
+              (= x FuelId!val!18)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!2)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!4)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!11)
+              (= x FuelId!val!13)
+              (= x FuelId!val!17)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!6 Type!val!3 Type!val!4 Type!val!1 Type!val!7 Type!val!2 Type!val!0 Type!val!5 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!6 () Type)
+  (declare-fun Type!val!3 () Type)
+  (declare-fun Type!val!4 () Type)
+  (declare-fun Type!val!1 () Type)
+  (declare-fun Type!val!7 () Type)
+  (declare-fun Type!val!2 () Type)
+  (declare-fun Type!val!0 () Type)
+  (declare-fun Type!val!5 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type))
+          (or (= x Type!val!6)
+              (= x Type!val!3)
+              (= x Type!val!4)
+              (= x Type!val!1)
+              (= x Type!val!7)
+              (= x Type!val!2)
+              (= x Type!val!0)
+              (= x Type!val!5)))
+  ;; -----------
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for Poly:
+  ;;   Poly!val!1 Poly!val!2 Poly!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Poly!val!1 () Poly)
+  (declare-fun Poly!val!2 () Poly)
+  (declare-fun Poly!val!0 () Poly)
+  ;; cardinality constraint:
+  (forall ((x Poly)) (or (= x Poly!val!1) (= x Poly!val!2) (= x Poly!val!0)))
+  ;; -----------
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!15)
+  (define-fun TYPE%lib_verus!VerifiedMessage. () Type
+    Type!val!7)
+  (define-fun %%switch_label%%1 () Bool
+    false)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.is_Ok. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%lib_verus!impl&%2.arrow_verification_id. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!map.group_map_axioms. () FuelId
+    FuelId!val!5)
+  (define-fun TYPE%lib_verus!UnverifiedMessage. () Type
+    Type!val!6)
+  (define-fun fuel%vstd!set.group_set_axioms. () FuelId
+    FuelId!val!10)
+  (define-fun %%location_label%%0 () Bool
+    true)
+  (define-fun TYPE%lib_verus!State. () Type
+    Type!val!0)
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!16)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!set_lib.group_set_lib_axioms. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!4)
+  (define-fun tmp%1 () Bool
+    true)
+  (define-fun TYPE%lib_verus!ProtocolLibrary. () Type
+    Type!val!5)
+  (define-fun %%switch_label%%2 () Bool
+    false)
+  (define-fun verification_id@ () Int
+    4294967295)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!12)
+  (define-fun BOOL () Type
+    Type!val!2)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!3)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.get_Ok_0. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!9)
+  (define-fun %%switch_label%%0 () Bool
+    false)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun SZ () Int
+    32)
+  (define-fun TYPE%lib_verus!Error. () Type
+    Type!val!4)
+  (define-fun self!@0 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary
+  lib_verus!State./Idle
+  2
+  0
+  4294967295))
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!14)
+  (define-fun msg! () lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 3 4 0 5))
+  (define-fun fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!seq.group_seq_axioms. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!7)
+  (define-fun %return! () core!result.Result.
+    (core!result.Result./Ok Poly!val!0))
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!6)
+  (define-fun CHAR () Type
+    Type!val!6)
+  (define-fun tmp%2 () Int
+    0)
+  (define-fun NAT () Type
+    Type!val!6)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun tmp%3 () lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!6)
+  (define-fun INT () Type
+    Type!val!6)
+  (define-fun self!@2 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 0 0 0))
+  (define-fun self!@1 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 0 0 0))
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!1)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun Poly%lib_verus!State. ((x!0 lib_verus!State.)) Poly
+    Poly!val!0)
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun Poly%lib_verus!ProtocolLibrary. ((x!0 lib_verus!ProtocolLibrary.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    4294967295)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state ((x!0
+    lib_verus!ProtocolLibrary.)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %Poly%lib_verus!ProtocolLibrary. ((x!0 Poly)) lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary
+      lib_verus!State./Idle
+      2
+      0
+      4294967295))
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    4294967296)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    (ite (and (= x!0 32) (= x!1 4294967296)) false
+      true))
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun %Poly%lib_verus!State. ((x!0 Poly)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %Poly%lib_verus!UnverifiedMessage. ((x!0 Poly)) lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 3 4 0 5))
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun tr_bound%core!fmt.Debug. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun Poly%lib_verus!UnverifiedMessage. ((x!0
+    lib_verus!UnverifiedMessage.)) Poly
+    Poly!val!2)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    true)
+  (define-fun MUT_REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)) Bool
+    false)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/sender ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun Poly%lib_verus!Error. ((x!0 lib_verus!Error.)) Poly
+    Poly!val!1)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun core!result.Result./Err/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/value ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!1)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun core!result.Result./Ok/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun mk_fun ((x!0 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun lib_verus!State./WaitToApply/verification_id ((x!0 lib_verus!State.)) Int
+    0)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!1)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun Poly%core!result.Result. ((x!0 core!result.Result.)) Poly
+    Poly!val!1)
+  (define-fun ens%lib_verus!impl&%8.validate. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 lib_verus!UnverifiedMessage.)
+   (x!3 core!result.Result.)) Bool
+    false)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %Poly%lib_verus!Error. ((x!0 Poly)) lib_verus!Error.
+    lib_verus!Error./AuthenticationFailed)
+  (define-fun check_decrease_int ((x!0 Int) (x!1 Int) (x!2 Bool)) Bool
+    false)
+  (define-fun lib_verus!impl&%2.arrow_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun ens%lib_verus!impl&%4.default. ((x!0 Int)
+   (x!1 lib_verus!ProtocolLibrary.)) Bool
+    false)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!1)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%lib_verus!VerifiedMessage. ((x!0 Poly)) lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 0 0 0 0))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!1)
+  (define-fun req%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)) Bool
+    false)
+  (define-fun Poly%lib_verus!VerifiedMessage. ((x!0 lib_verus!VerifiedMessage.)) Poly
+    Poly!val!1)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun ens%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!1)
+  (define-fun TYPE%core!result.Result. ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!1)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun %Poly%core!result.Result. ((x!0 Poly)) core!result.Result.
+    (core!result.Result./Ok Poly!val!0))
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+;;;<<<
+;;;>>> QUERY
+(assert
+  (not %%location_label%%0)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 190
+ :arith-assert-lower        22
+ :arith-assert-upper        18
+ :arith-assume-eqs          1
+ :arith-bound-prop          3
+ :arith-branch-var          1
+ :arith-eq-adapter          12
+ :arith-fixed-eqs           5
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            9
+ :arith-patches             1
+ :arith-pivots              27
+ :arith-row-summations      32
+ :arith-tableau-max-columns 38
+ :arith-tableau-max-rows    9
+ :binary-propagations       186
+ :conflicts                 9
+ :datatype-accessor-ax      12
+ :datatype-constructor-ax   12
+ :decisions                 15
+ :del-clause                137
+ :final-checks              5
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               496
+ :mk-clause                 138
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                6
+ :propagations              239
+ :quant-instantiations      40
+ :rlimit-count              27434)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! core!result.Result.)
+(declare-const self!@0 lib_verus!ProtocolLibrary.)
+(declare-const msg! lib_verus!UnverifiedMessage.)
+(declare-const tmp%1 Bool)
+(declare-const tmp%2 Int)
+(declare-const tmp%3 lib_verus!State.)
+(declare-const verification_id@ Int)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!ProtocolLibrary. self!@0) TYPE%lib_verus!ProtocolLibrary.)
+ )
+(assert
+  (has_type (Poly%lib_verus!UnverifiedMessage. msg!) TYPE%lib_verus!UnverifiedMessage.)
+ )
+(declare-const self!@1 lib_verus!ProtocolLibrary.)
+(declare-const self!@2 lib_verus!ProtocolLibrary.)
+(declare-const %%switch_label%%0 Bool)
+(declare-const %%switch_label%%1 Bool)
+(declare-const %%switch_label%%2 Bool)
+(assert
+  (not (or
+    (=>
+     (not (not (let
+        ((tmp%%$ (lib_verus!ProtocolLibrary./ProtocolLibrary/state (%Poly%lib_verus!ProtocolLibrary.
+            (Poly%lib_verus!ProtocolLibrary. self!@0)
+        ))))
+        (is-lib_verus!State./Idle tmp%%$)
+     )))
+     %%switch_label%%2
+    )
+    (and
+     (not %%switch_label%%2)
+     (or
+      (=>
+       (not (not tmp%1))
+       %%switch_label%%1
+      )
+      (and
+       (not %%switch_label%%1)
+       (or
+        (=>
+         (not (< (lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp (%Poly%lib_verus!UnverifiedMessage.
+             (Poly%lib_verus!UnverifiedMessage. msg!)
+            )
+           ) (lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed (%Poly%lib_verus!ProtocolLibrary.
+             (Poly%lib_verus!ProtocolLibrary. self!@0)
+         ))))
+         %%switch_label%%0
+        )
+        (not %%switch_label%%0)
+ )))))))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(declare-fun ens%lib_verus!impl&%8.apply. (lib_verus!ProtocolLibrary. lib_verus!ProtocolLibrary.
+  lib_verus!VerifiedMessage. core!result.Result.
+ ) Bool
+)
+(assert
+ (forall ((pre%self! lib_verus!ProtocolLibrary.) (self! lib_verus!ProtocolLibrary.)
+   (msg! lib_verus!VerifiedMessage.) (%return! core!result.Result.)
+  ) (!
+   (= (ens%lib_verus!impl&%8.apply. pre%self! self! msg! %return!) (and
+     (has_type (Poly%core!result.Result. %return!) (TYPE%core!result.Result. $ TYPE%tuple%0.
+       $ TYPE%lib_verus!Error.
+     ))
+     (has_type (Poly%lib_verus!ProtocolLibrary. self!) TYPE%lib_verus!ProtocolLibrary.)
+   ))
+   :pattern ((ens%lib_verus!impl&%8.apply. pre%self! self! msg! %return!))
+   :qid internal_ens__lib_verus!impl&__8.apply._definition
+   :skolemid skolem_internal_ens__lib_verus!impl&__8.apply._definition
+)))
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 190
+ :arith-assert-lower        22
+ :arith-assert-upper        18
+ :arith-assume-eqs          1
+ :arith-bound-prop          3
+ :arith-branch-var          1
+ :arith-eq-adapter          12
+ :arith-fixed-eqs           5
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            9
+ :arith-patches             1
+ :arith-pivots              27
+ :arith-row-summations      32
+ :arith-tableau-max-columns 38
+ :arith-tableau-max-rows    9
+ :binary-propagations       186
+ :conflicts                 9
+ :datatype-accessor-ax      12
+ :datatype-constructor-ax   12
+ :decisions                 15
+ :del-clause                137
+ :final-checks              5
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               496
+ :mk-clause                 138
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                7
+ :propagations              239
+ :quant-instantiations      40
+ :rlimit-count              27532)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! core!result.Result.)
+(declare-const self!@0 lib_verus!ProtocolLibrary.)
+(declare-const msg! lib_verus!VerifiedMessage.)
+(declare-const verification_id@ Int)
+(declare-const tmp%%@ lib_verus!State.)
+(declare-const tmp%1 Int)
+(declare-const tmp%2 Int)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!ProtocolLibrary. self!@0) TYPE%lib_verus!ProtocolLibrary.)
+ )
+(assert
+  (has_type (Poly%lib_verus!VerifiedMessage. msg!) TYPE%lib_verus!VerifiedMessage.)
+ )
+(declare-const self!@1 lib_verus!ProtocolLibrary.)
+(declare-const self!@2 lib_verus!ProtocolLibrary.)
+(declare-const %%switch_label%%0 Bool)
+(declare-const %%switch_label%%1 Bool)
+(assert
+  (not (=>
+    (= tmp%%@ (lib_verus!ProtocolLibrary./ProtocolLibrary/state (%Poly%lib_verus!ProtocolLibrary.
+       (Poly%lib_verus!ProtocolLibrary. self!@0)
+    )))
+    (or
+     (=>
+      (not (is-lib_verus!State./Idle tmp%%@))
+      (=>
+       (= verification_id@ (lib_verus!State./WaitToApply/verification_id (%Poly%lib_verus!State.
+          (Poly%lib_verus!State. tmp%%@)
+       )))
+       (or
+        (=>
+         (not (not (= verification_id@ (lib_verus!VerifiedMessage./VerifiedMessage/verification_id
+             (%Poly%lib_verus!VerifiedMessage. (Poly%lib_verus!VerifiedMessage. msg!))
+         ))))
+         %%switch_label%%1
+        )
+        (and
+         (not %%switch_label%%1)
+         %%switch_label%%0
+     ))))
+     (not %%switch_label%%0)
+ ))))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(declare-fun ens%lib_verus!impl&%8.abort. (lib_verus!ProtocolLibrary. lib_verus!ProtocolLibrary.
+  core!result.Result.
+ ) Bool
+)
+(assert
+ (forall ((pre%self! lib_verus!ProtocolLibrary.) (self! lib_verus!ProtocolLibrary.)
+   (%return! core!result.Result.)
+  ) (!
+   (= (ens%lib_verus!impl&%8.abort. pre%self! self! %return!) (and
+     (has_type (Poly%core!result.Result. %return!) (TYPE%core!result.Result. $ TYPE%tuple%0.
+       $ TYPE%lib_verus!Error.
+     ))
+     (has_type (Poly%lib_verus!ProtocolLibrary. self!) TYPE%lib_verus!ProtocolLibrary.)
+   ))
+   :pattern ((ens%lib_verus!impl&%8.abort. pre%self! self! %return!))
+   :qid internal_ens__lib_verus!impl&__8.abort._definition
+   :skolemid skolem_internal_ens__lib_verus!impl&__8.abort._definition
+)))
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 190
+ :arith-assert-lower        22
+ :arith-assert-upper        18
+ :arith-assume-eqs          1
+ :arith-bound-prop          3
+ :arith-branch-var          1
+ :arith-eq-adapter          12
+ :arith-fixed-eqs           5
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            9
+ :arith-patches             1
+ :arith-pivots              27
+ :arith-row-summations      32
+ :arith-tableau-max-columns 38
+ :arith-tableau-max-rows    9
+ :binary-propagations       186
+ :conflicts                 9
+ :datatype-accessor-ax      12
+ :datatype-constructor-ax   12
+ :decisions                 15
+ :del-clause                137
+ :final-checks              5
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               497
+ :mk-clause                 138
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                8
+ :propagations              239
+ :quant-instantiations      40
+ :rlimit-count              27966)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! core!result.Result.)
+(declare-const self!@0 lib_verus!ProtocolLibrary.)
+(declare-const tmp%1 lib_verus!State.)
+(assert
+  fuel_defaults
+ )
+(assert
+  (has_type (Poly%lib_verus!ProtocolLibrary. self!@0) TYPE%lib_verus!ProtocolLibrary.)
+ )
+(declare-const self!@1 lib_verus!ProtocolLibrary.)
+(declare-const %%switch_label%%0 Bool)
+(assert
+  (not (or
+    (=>
+     (not (not (let
+        ((tmp%%$ (lib_verus!ProtocolLibrary./ProtocolLibrary/state (%Poly%lib_verus!ProtocolLibrary.
+            (Poly%lib_verus!ProtocolLibrary. self!@0)
+        ))))
+        (is-lib_verus!State./WaitToApply tmp%%$)
+     )))
+     %%switch_label%%0
+    )
+    (not %%switch_label%%0)
+ )))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 190
+ :arith-assert-lower        22
+ :arith-assert-upper        18
+ :arith-assume-eqs          1
+ :arith-bound-prop          3
+ :arith-branch-var          1
+ :arith-eq-adapter          12
+ :arith-fixed-eqs           5
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            9
+ :arith-patches             1
+ :arith-pivots              27
+ :arith-row-summations      32
+ :arith-tableau-max-columns 38
+ :arith-tableau-max-rows    9
+ :binary-propagations       186
+ :conflicts                 9
+ :datatype-accessor-ax      12
+ :datatype-constructor-ax   12
+ :decisions                 15
+ :del-clause                137
+ :final-checks              5
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               498
+ :mk-clause                 138
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                9
+ :propagations              239
+ :quant-instantiations      40
+ :rlimit-count              28213)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const %return! Bool)
+(declare-const sender! Int)
+(declare-const timestamp! Int)
+(declare-const value! Int)
+(assert
+  fuel_defaults
+ )
+(assert
+  (uInv SZ sender!)
+ )
+(assert
+  (uInv SZ timestamp!)
+ )
+(assert
+  (uInv SZ value!)
+ )
+(assert
+  (not true)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 190
+ :arith-assert-lower        22
+ :arith-assert-upper        18
+ :arith-assume-eqs          1
+ :arith-bound-prop          3
+ :arith-branch-var          1
+ :arith-eq-adapter          12
+ :arith-fixed-eqs           5
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            9
+ :arith-patches             1
+ :arith-pivots              27
+ :arith-row-summations      32
+ :arith-tableau-max-columns 38
+ :arith-tableau-max-rows    9
+ :binary-propagations       186
+ :conflicts                 9
+ :datatype-accessor-ax      12
+ :datatype-constructor-ax   12
+ :decisions                 15
+ :del-clause                137
+ :final-checks              5
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                21.80
+ :memory                    21.80
+ :mk-bool-var               498
+ :mk-clause                 138
+ :mk-clause-binary          179
+ :num-allocs                827126
+ :num-checks                10
+ :propagations              239
+ :quant-instantiations      40
+ :rlimit-count              28237)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const no%param Int)
+(declare-const tmp%1 core!result.Result.)
+(declare-const tmp%2 Poly)
+(declare-const tmp%3 core!result.Result.)
+(declare-const tmp%4 Poly)
+(declare-const proto@0 lib_verus!ProtocolLibrary.)
+(declare-const msg@ lib_verus!UnverifiedMessage.)
+(declare-const msg$1@ lib_verus!VerifiedMessage.)
+(assert
+  fuel_defaults
+ )
+(declare-const proto@1 lib_verus!ProtocolLibrary.)
+(declare-const proto@2 lib_verus!ProtocolLibrary.)
+(declare-const %%location_label%%0 Bool)
+(declare-const %%location_label%%1 Bool)
+(declare-const %%location_label%%2 Bool)
+(declare-const %%location_label%%3 Bool)
+(declare-const %%location_label%%4 Bool)
+(declare-const %%location_label%%5 Bool)
+(assert
+  (not (=>
+    (ens%lib_verus!impl&%4.default. 0 proto@0)
+    (and
+     (=>
+      %%location_label%%0
+      (uInv SZ (Mul 2 3))
+     )
+     (and
+      (=>
+       %%location_label%%1
+       (uInv SZ (Mul 3 42))
+      )
+      (and
+       (=>
+        %%location_label%%2
+        (uInv SZ (Add (uClip SZ (Mul 2 3)) (uClip SZ (Mul 3 42))))
+       )
+       (and
+        (=>
+         %%location_label%%3
+         (uInv SZ (Add (uClip SZ (Add (uClip SZ (Mul 2 3)) (uClip SZ (Mul 3 42)))) 5))
+        )
+        (=>
+         (= msg@ (lib_verus!UnverifiedMessage./UnverifiedMessage (%I (I 3)) (%I (I (uClip SZ (Add
+               (uClip SZ (Add (uClip SZ (Mul 2 3)) (uClip SZ (Mul 3 42)))) 5
+            )))
+           ) (%I (I 1)) (%I (I 42))
+         ))
+         (=>
+          (has_type (Poly%lib_verus!ProtocolLibrary. proto@1) TYPE%lib_verus!ProtocolLibrary.)
+          (=>
+           (ens%lib_verus!impl&%8.validate. proto@0 proto@1 msg@ tmp%1)
+           (and
+            (=>
+             %%location_label%%4
+             (req%core!result.impl&%0.unwrap. $ TYPE%lib_verus!VerifiedMessage. $ TYPE%lib_verus!Error.
+              tmp%1
+            ))
+            (=>
+             (ens%core!result.impl&%0.unwrap. $ TYPE%lib_verus!VerifiedMessage. $ TYPE%lib_verus!Error.
+              tmp%1 tmp%2
+             )
+             (=>
+              (= msg$1@ (%Poly%lib_verus!VerifiedMessage. tmp%2))
+              (=>
+               (has_type (Poly%lib_verus!ProtocolLibrary. proto@2) TYPE%lib_verus!ProtocolLibrary.)
+               (=>
+                (ens%lib_verus!impl&%8.apply. proto@1 proto@2 msg$1@ tmp%3)
+                (=>
+                 %%location_label%%5
+                 (req%core!result.impl&%0.unwrap. $ TYPE%tuple%0. $ TYPE%lib_verus!Error. tmp%3)
+ ))))))))))))))))
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unknown
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :reason-unknown)
+;;;<<<
+;;;>>> RESPONSE
+(:reason-unknown "(incomplete quantifiers)")
+;;;<<<
+;;;>>> QUERY
+(get-model)
+;;;<<<
+;;;>>> RESPONSE
+(
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!8 FuelId!val!10 FuelId!val!18 FuelId!val!3 FuelId!val!15 FuelId!val!0 FuelId!val!9 FuelId!val!2 FuelId!val!5 FuelId!val!6 FuelId!val!4 FuelId!val!1 FuelId!val!7 FuelId!val!11 FuelId!val!13 FuelId!val!17 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!8)
+              (= x FuelId!val!10)
+              (= x FuelId!val!18)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!2)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!4)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!11)
+              (= x FuelId!val!13)
+              (= x FuelId!val!17)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!6 Type!val!8 Type!val!3 Type!val!4 Type!val!1 Type!val!7 Type!val!2 Type!val!0 Type!val!5 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!6 () Type)
+  (declare-fun Type!val!8 () Type)
+  (declare-fun Type!val!3 () Type)
+  (declare-fun Type!val!4 () Type)
+  (declare-fun Type!val!1 () Type)
+  (declare-fun Type!val!7 () Type)
+  (declare-fun Type!val!2 () Type)
+  (declare-fun Type!val!0 () Type)
+  (declare-fun Type!val!5 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type))
+          (or (= x Type!val!6)
+              (= x Type!val!8)
+              (= x Type!val!3)
+              (= x Type!val!4)
+              (= x Type!val!1)
+              (= x Type!val!7)
+              (= x Type!val!2)
+              (= x Type!val!0)
+              (= x Type!val!5)))
+  ;; -----------
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for Poly:
+  ;;   Poly!val!5 Poly!val!1 Poly!val!7 Poly!val!3 Poly!val!8 Poly!val!0 Poly!val!6 Poly!val!2 Poly!val!9 Poly!val!4 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Poly!val!5 () Poly)
+  (declare-fun Poly!val!1 () Poly)
+  (declare-fun Poly!val!7 () Poly)
+  (declare-fun Poly!val!3 () Poly)
+  (declare-fun Poly!val!8 () Poly)
+  (declare-fun Poly!val!0 () Poly)
+  (declare-fun Poly!val!6 () Poly)
+  (declare-fun Poly!val!2 () Poly)
+  (declare-fun Poly!val!9 () Poly)
+  (declare-fun Poly!val!4 () Poly)
+  ;; cardinality constraint:
+  (forall ((x Poly))
+          (or (= x Poly!val!5)
+              (= x Poly!val!1)
+              (= x Poly!val!7)
+              (= x Poly!val!3)
+              (= x Poly!val!8)
+              (= x Poly!val!0)
+              (= x Poly!val!6)
+              (= x Poly!val!2)
+              (= x Poly!val!9)
+              (= x Poly!val!4)))
+  ;; -----------
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!15)
+  (define-fun TYPE%lib_verus!VerifiedMessage. () Type
+    Type!val!7)
+  (define-fun proto@2 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 13 14 15))
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.is_Ok. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%lib_verus!impl&%2.arrow_verification_id. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!13)
+  (define-fun %%location_label%%4 () Bool
+    true)
+  (define-fun fuel%vstd!map.group_map_axioms. () FuelId
+    FuelId!val!5)
+  (define-fun TYPE%lib_verus!UnverifiedMessage. () Type
+    Type!val!6)
+  (define-fun fuel%vstd!set.group_set_axioms. () FuelId
+    FuelId!val!10)
+  (define-fun TYPE%lib_verus!State. () Type
+    Type!val!0)
+  (define-fun msg@ () lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 3 137 1 42))
+  (define-fun proto@1 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 10 11 12))
+  (define-fun proto@0 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 4 7 9))
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!16)
+  (define-fun tmp%3 () core!result.Result.
+    (core!result.Result./Ok Poly!val!9))
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!set_lib.group_set_lib_axioms. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!4)
+  (define-fun TYPE%lib_verus!ProtocolLibrary. () Type
+    Type!val!5)
+  (define-fun %%global_location_label%%0 () Bool
+    true)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!12)
+  (define-fun BOOL () Type
+    Type!val!2)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!3)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.get_Ok_0. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!9)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun TYPE%lib_verus!Error. () Type
+    Type!val!4)
+  (define-fun tmp%1 () core!result.Result.
+    (core!result.Result./Err Poly!val!8))
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!seq.group_seq_axioms. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!7)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!6)
+  (define-fun %%location_label%%1 () Bool
+    false)
+  (define-fun CHAR () Type
+    Type!val!6)
+  (define-fun tmp%2 () Poly
+    Poly!val!5)
+  (define-fun no%param () Int
+    0)
+  (define-fun tmp%4 () Poly
+    Poly!val!5)
+  (define-fun %%location_label%%5 () Bool
+    false)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun NAT () Type
+    Type!val!6)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun %%location_label%%0 () Bool
+    false)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun msg$1@ () lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 0 0 0 0))
+  (define-fun STRSLICE () Type
+    Type!val!6)
+  (define-fun INT () Type
+    Type!val!6)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 32) (= x!1 126)) 126
+    (ite (and (= x!0 32) (= x!1 132)) 132
+    (ite (and (= x!0 32) (= x!1 137)) 137
+      6))))
+  (define-fun ens%lib_verus!impl&%8.validate. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 lib_verus!UnverifiedMessage.)
+   (x!3 core!result.Result.)) Bool
+    true)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!1)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun Poly%lib_verus!State. ((x!0 lib_verus!State.)) Poly
+    Poly!val!0)
+  (define-fun Poly%core!result.Result. ((x!0 core!result.Result.)) Poly
+    Poly!val!7)
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun ens%lib_verus!impl&%4.default. ((x!0 Int)
+   (x!1 lib_verus!ProtocolLibrary.)) Bool
+    true)
+  (define-fun Poly%lib_verus!ProtocolLibrary. ((x!0 lib_verus!ProtocolLibrary.)) Poly
+    (ite (= x!0
+            (lib_verus!ProtocolLibrary./ProtocolLibrary
+              lib_verus!State./Idle
+              4
+              7
+              9))
+      Poly!val!5
+      Poly!val!6))
+  (define-fun %Poly%lib_verus!ProtocolLibrary. ((x!0 Poly)) lib_verus!ProtocolLibrary.
+    (ite (= x!0 Poly!val!6)
+      (lib_verus!ProtocolLibrary./ProtocolLibrary
+        lib_verus!State./Idle
+        10
+        11
+        12)
+      (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 4 7 9)))
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    true)
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 3) (= x!1 42)) 126
+      6))
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 132) (= x!1 5)) 137
+      132))
+  (define-fun I ((x!0 Int)) Poly
+    (ite (= x!0 137) Poly!val!2
+    (ite (= x!0 1) Poly!val!3
+    (ite (= x!0 42) Poly!val!4
+      Poly!val!1))))
+  (define-fun %I ((x!0 Poly)) Int
+    (ite (= x!0 Poly!val!2) 137
+    (ite (= x!0 Poly!val!3) 1
+    (ite (= x!0 Poly!val!4) 42
+      3))))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun req%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)) Bool
+    false)
+  (define-fun %Poly%lib_verus!State. ((x!0 Poly)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun TYPE%core!result.Result. ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!8)
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun tr_bound%core!fmt.Debug. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun %Poly%core!result.Result. ((x!0 Poly)) core!result.Result.
+    (core!result.Result./Err Poly!val!8))
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    true)
+  (define-fun MUT_REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)) Bool
+    false)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state ((x!0
+    lib_verus!ProtocolLibrary.)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!5)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/sender ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun ens%lib_verus!impl&%8.apply. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 lib_verus!VerifiedMessage.)
+   (x!3 core!result.Result.)) Bool
+    false)
+  (define-fun Poly%lib_verus!Error. ((x!0 lib_verus!Error.)) Poly
+    Poly!val!5)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun core!result.Result./Err/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!5)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/value ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun ens%lib_verus!impl&%8.abort. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 core!result.Result.)) Bool
+    false)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!5)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun core!result.Result./Ok/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!5)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun %Poly%lib_verus!UnverifiedMessage. ((x!0 Poly)) lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 0 0 0 0))
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun mk_fun ((x!0 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun lib_verus!State./WaitToApply/verification_id ((x!0 lib_verus!State.)) Int
+    0)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!5)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %Poly%lib_verus!Error. ((x!0 Poly)) lib_verus!Error.
+    lib_verus!Error./AuthenticationFailed)
+  (define-fun check_decrease_int ((x!0 Int) (x!1 Int) (x!2 Bool)) Bool
+    false)
+  (define-fun lib_verus!impl&%2.arrow_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun Poly%lib_verus!UnverifiedMessage. ((x!0
+    lib_verus!UnverifiedMessage.)) Poly
+    Poly!val!5)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%lib_verus!VerifiedMessage. ((x!0 Poly)) lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 0 0 0 0))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!5)
+  (define-fun Poly%lib_verus!VerifiedMessage. ((x!0 lib_verus!VerifiedMessage.)) Poly
+    Poly!val!5)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun ens%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!5)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+;;;<<<
+;;;>>> QUERY
+(assert
+  (not %%location_label%%4)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unknown
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :reason-unknown)
+;;;<<<
+;;;>>> RESPONSE
+(:reason-unknown "(incomplete quantifiers)")
+;;;<<<
+;;;>>> QUERY
+(get-model)
+;;;<<<
+;;;>>> RESPONSE
+(
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!8 FuelId!val!10 FuelId!val!18 FuelId!val!3 FuelId!val!15 FuelId!val!0 FuelId!val!9 FuelId!val!2 FuelId!val!5 FuelId!val!6 FuelId!val!4 FuelId!val!1 FuelId!val!7 FuelId!val!11 FuelId!val!13 FuelId!val!17 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!8)
+              (= x FuelId!val!10)
+              (= x FuelId!val!18)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!2)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!4)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!11)
+              (= x FuelId!val!13)
+              (= x FuelId!val!17)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!6 Type!val!8 Type!val!3 Type!val!4 Type!val!9 Type!val!1 Type!val!7 Type!val!2 Type!val!0 Type!val!5 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!6 () Type)
+  (declare-fun Type!val!8 () Type)
+  (declare-fun Type!val!3 () Type)
+  (declare-fun Type!val!4 () Type)
+  (declare-fun Type!val!9 () Type)
+  (declare-fun Type!val!1 () Type)
+  (declare-fun Type!val!7 () Type)
+  (declare-fun Type!val!2 () Type)
+  (declare-fun Type!val!0 () Type)
+  (declare-fun Type!val!5 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type))
+          (or (= x Type!val!6)
+              (= x Type!val!8)
+              (= x Type!val!3)
+              (= x Type!val!4)
+              (= x Type!val!9)
+              (= x Type!val!1)
+              (= x Type!val!7)
+              (= x Type!val!2)
+              (= x Type!val!0)
+              (= x Type!val!5)))
+  ;; -----------
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for Poly:
+  ;;   Poly!val!5 Poly!val!1 Poly!val!7 Poly!val!3 Poly!val!8 Poly!val!11 Poly!val!0 Poly!val!10 Poly!val!6 Poly!val!2 Poly!val!9 Poly!val!4 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Poly!val!5 () Poly)
+  (declare-fun Poly!val!1 () Poly)
+  (declare-fun Poly!val!7 () Poly)
+  (declare-fun Poly!val!3 () Poly)
+  (declare-fun Poly!val!8 () Poly)
+  (declare-fun Poly!val!11 () Poly)
+  (declare-fun Poly!val!0 () Poly)
+  (declare-fun Poly!val!10 () Poly)
+  (declare-fun Poly!val!6 () Poly)
+  (declare-fun Poly!val!2 () Poly)
+  (declare-fun Poly!val!9 () Poly)
+  (declare-fun Poly!val!4 () Poly)
+  ;; cardinality constraint:
+  (forall ((x Poly))
+          (or (= x Poly!val!5)
+              (= x Poly!val!1)
+              (= x Poly!val!7)
+              (= x Poly!val!3)
+              (= x Poly!val!8)
+              (= x Poly!val!11)
+              (= x Poly!val!0)
+              (= x Poly!val!10)
+              (= x Poly!val!6)
+              (= x Poly!val!2)
+              (= x Poly!val!9)
+              (= x Poly!val!4)))
+  ;; -----------
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!15)
+  (define-fun TYPE%lib_verus!VerifiedMessage. () Type
+    Type!val!7)
+  (define-fun proto@2 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 18 19 20))
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.is_Ok. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%lib_verus!impl&%2.arrow_verification_id. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!13)
+  (define-fun %%location_label%%4 () Bool
+    false)
+  (define-fun fuel%vstd!map.group_map_axioms. () FuelId
+    FuelId!val!5)
+  (define-fun TYPE%lib_verus!UnverifiedMessage. () Type
+    Type!val!6)
+  (define-fun TYPE%lib_verus!State. () Type
+    Type!val!0)
+  (define-fun fuel%vstd!set.group_set_axioms. () FuelId
+    FuelId!val!10)
+  (define-fun msg@ () lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 3 137 1 42))
+  (define-fun %%location_label%%5 () Bool
+    true)
+  (define-fun proto@0 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 4 7 9))
+  (define-fun proto@1 () lib_verus!ProtocolLibrary.
+    (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 10 11 12))
+  (define-fun tmp%2 () Poly
+    Poly!val!9)
+  (define-fun msg$1@ () lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 13 14 15 17))
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!16)
+  (define-fun tmp%3 () core!result.Result.
+    (core!result.Result./Err Poly!val!10))
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!set_lib.group_set_lib_axioms. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!4)
+  (define-fun TYPE%lib_verus!ProtocolLibrary. () Type
+    Type!val!5)
+  (define-fun %%global_location_label%%0 () Bool
+    true)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!12)
+  (define-fun BOOL () Type
+    Type!val!2)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!3)
+  (define-fun fuel%vstd!std_specs.result.impl&%0.get_Ok_0. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!9)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun TYPE%lib_verus!Error. () Type
+    Type!val!4)
+  (define-fun tmp%1 () core!result.Result.
+    (core!result.Result./Ok Poly!val!9))
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%lib_verus!impl&%2.arrow_WaitToApply_verification_id. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!seq.group_seq_axioms. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!7)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!6)
+  (define-fun %%location_label%%1 () Bool
+    false)
+  (define-fun CHAR () Type
+    Type!val!6)
+  (define-fun no%param () Int
+    0)
+  (define-fun tmp%4 () Poly
+    Poly!val!5)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun NAT () Type
+    Type!val!6)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun %%location_label%%0 () Bool
+    false)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun STRSLICE () Type
+    Type!val!6)
+  (define-fun INT () Type
+    Type!val!6)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 32) (= x!1 126)) 126
+    (ite (and (= x!0 32) (= x!1 6)) 6
+    (ite (and (= x!0 32) (= x!1 132)) 132
+      137))))
+  (define-fun ens%lib_verus!impl&%8.validate. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 lib_verus!UnverifiedMessage.)
+   (x!3 core!result.Result.)) Bool
+    true)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun Poly%lib_verus!State. ((x!0 lib_verus!State.)) Poly
+    Poly!val!0)
+  (define-fun ens%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)
+   (x!5 Poly)) Bool
+    true)
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun ens%lib_verus!impl&%4.default. ((x!0 Int)
+   (x!1 lib_verus!ProtocolLibrary.)) Bool
+    true)
+  (define-fun Poly%lib_verus!ProtocolLibrary. ((x!0 lib_verus!ProtocolLibrary.)) Poly
+    (ite (= x!0
+            (lib_verus!ProtocolLibrary./ProtocolLibrary
+              lib_verus!State./Idle
+              18
+              19
+              20))
+      Poly!val!8
+    (ite (= x!0
+            (lib_verus!ProtocolLibrary./ProtocolLibrary
+              lib_verus!State./Idle
+              4
+              7
+              9))
+      Poly!val!5
+      Poly!val!7)))
+  (define-fun core!result.Result./Ok/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!9)
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 3) (= x!1 42)) 126
+      6))
+  (define-fun %I ((x!0 Poly)) Int
+    (ite (= x!0 Poly!val!2) 137
+    (ite (= x!0 Poly!val!3) 1
+    (ite (= x!0 Poly!val!4) 42
+      3))))
+  (define-fun I ((x!0 Int)) Poly
+    (ite (= x!0 137) Poly!val!2
+    (ite (= x!0 1) Poly!val!3
+    (ite (= x!0 42) Poly!val!4
+      Poly!val!1))))
+  (define-fun ens%lib_verus!impl&%8.apply. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 lib_verus!VerifiedMessage.)
+   (x!3 core!result.Result.)) Bool
+    true)
+  (define-fun TYPE%core!result.Result. ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    (ite (and (= x!0 Dcr!val!0)
+              (= x!1 Type!val!3)
+              (= x!2 Dcr!val!0)
+              (= x!3 Type!val!4))
+      Type!val!9
+      Type!val!8))
+  (define-fun %Poly%lib_verus!State. ((x!0 Poly)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    true)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!1)
+  (define-fun Poly%core!result.Result. ((x!0 core!result.Result.)) Poly
+    (ite (= x!0 (core!result.Result./Err Poly!val!10)) Poly!val!11
+      Poly!val!6))
+  (define-fun %Poly%lib_verus!ProtocolLibrary. ((x!0 Poly)) lib_verus!ProtocolLibrary.
+    (ite (= x!0 Poly!val!7)
+      (lib_verus!ProtocolLibrary./ProtocolLibrary
+        lib_verus!State./Idle
+        10
+        11
+        12)
+    (ite (= x!0 Poly!val!8)
+      (lib_verus!ProtocolLibrary./ProtocolLibrary
+        lib_verus!State./Idle
+        18
+        19
+        20)
+      (lib_verus!ProtocolLibrary./ProtocolLibrary lib_verus!State./Idle 4 7 9))))
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 132) (= x!1 5)) 137
+      132))
+  (define-fun %Poly%lib_verus!VerifiedMessage. ((x!0 Poly)) lib_verus!VerifiedMessage.
+    (lib_verus!VerifiedMessage./VerifiedMessage 13 14 15 17))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun Poly%lib_verus!VerifiedMessage. ((x!0 lib_verus!VerifiedMessage.)) Poly
+    Poly!val!9)
+  (define-fun req%core!result.impl&%0.unwrap. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 core!result.Result.)) Bool
+    false)
+  (define-fun tr_bound%core!fmt.Debug. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun %Poly%core!result.Result. ((x!0 Poly)) core!result.Result.
+    (ite (= x!0 Poly!val!11) (core!result.Result./Err Poly!val!10)
+      (core!result.Result./Ok Poly!val!9)))
+  (define-fun MUT_REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%vstd!std_specs.result.ResultAdditionalSpecFns. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)) Bool
+    false)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/state ((x!0
+    lib_verus!ProtocolLibrary.)) lib_verus!State.
+    lib_verus!State./Idle)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!5)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/sender ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/msg_ctr ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun Poly%lib_verus!Error. ((x!0 lib_verus!Error.)) Poly
+    Poly!val!5)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun core!result.Result./Err/0 ((x!0 core!result.Result.)) Poly
+    Poly!val!5)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/sender ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!impl&%2.arrow_WaitToApply_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/value ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun ens%lib_verus!impl&%8.abort. ((x!0 lib_verus!ProtocolLibrary.)
+   (x!1 lib_verus!ProtocolLibrary.)
+   (x!2 core!result.Result.)) Bool
+    false)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!5)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/timestamp ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun lib_verus!VerifiedMessage./VerifiedMessage/verification_id ((x!0
+    lib_verus!VerifiedMessage.)) Int
+    0)
+  (define-fun %Poly%lib_verus!UnverifiedMessage. ((x!0 Poly)) lib_verus!UnverifiedMessage.
+    (lib_verus!UnverifiedMessage./UnverifiedMessage 0 0 0 0))
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun mk_fun ((x!0 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!6)
+  (define-fun lib_verus!State./WaitToApply/verification_id ((x!0 lib_verus!State.)) Int
+    0)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!5)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/last_changed ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!6)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/timestamp ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %Poly%lib_verus!Error. ((x!0 Poly)) lib_verus!Error.
+    lib_verus!Error./AuthenticationFailed)
+  (define-fun check_decrease_int ((x!0 Int) (x!1 Int) (x!2 Bool)) Bool
+    false)
+  (define-fun lib_verus!impl&%2.arrow_verification_id.? ((x!0 Poly)) Int
+    0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.get_Ok_0%default%.? ((x!0
+    Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun Poly%lib_verus!UnverifiedMessage. ((x!0
+    lib_verus!UnverifiedMessage.)) Poly
+    Poly!val!5)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/authenticator ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun vstd!std_specs.result.ResultAdditionalSpecFns.is_Ok.? ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)
+   (x!4 Dcr)
+   (x!5 Type)
+   (x!6 Poly)) Poly
+    Poly!val!5)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun lib_verus!UnverifiedMessage./UnverifiedMessage/value ((x!0
+    lib_verus!UnverifiedMessage.)) Int
+    0)
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun lib_verus!ProtocolLibrary./ProtocolLibrary/value ((x!0
+    lib_verus!ProtocolLibrary.)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!6)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!5)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!5)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+;;;<<<
+;;;>>> QUERY
+(assert
+  (not %%location_label%%5)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(assert
+  true
+ )
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(pop)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                 556
+ :arith-assert-lower        139
+ :arith-assert-upper        83
+ :arith-assume-eqs          1
+ :arith-bound-prop          14
+ :arith-branch-var          1
+ :arith-conflicts           6
+ :arith-eq-adapter          71
+ :arith-fixed-eqs           31
+ :arith-gcd-tests           3
+ :arith-ineq-splits         1
+ :arith-num-rows            23
+ :arith-offset-eqs          18
+ :arith-patches             1
+ :arith-pivots              88
+ :arith-row-summations      184
+ :arith-tableau-max-columns 67
+ :arith-tableau-max-rows    23
+ :binary-propagations       196
+ :conflicts                 24
+ :datatype-accessor-ax      31
+ :datatype-constructor-ax   36
+ :datatype-splits           8
+ :decisions                 40
+ :del-clause                671
+ :final-checks              9
+ :interface-eqs             1
+ :max-generation            2
+ :max-memory                22.10
+ :memory                    22.10
+ :minimized-lits            22
+ :mk-bool-var               939
+ :mk-clause                 672
+ :mk-clause-binary          179
+ :num-allocs                1118178
+ :num-checks                13
+ :propagations              519
+ :quant-instantiations      137
+ :rlimit-count              37364)
+;;;<<<
+;;;>>> QUERY
+(push)
+(declare-const no%param Int)
+(declare-const tmp%1 core!result.Result.)
+(declare-const tmp%2 Poly)
+(declare-const tmp%3 core!result.Result.)
+(declare-const tmp%4 Poly)
+(declare-const proto@0 lib_verus!ProtocolLibrary.)
+(declare-const msg@ lib_verus!UnverifiedMessage.)
+(declare-const msg$1@ lib_verus!VerifiedMessage.)
+(assert
+  fuel_defaults
+ )
+(declare-const proto@1 lib_verus!ProtocolLibrary.)
+(declare-const proto@2 lib_verus!ProtocolLibrary.)
+(assert
+  (not true)
+ )
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.12.5")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
