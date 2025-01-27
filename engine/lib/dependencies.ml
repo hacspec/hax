@@ -26,7 +26,7 @@ module Make (F : Features.T) = struct
           ~f:(fun variant ->
             let fields =
               List.map ~f:fst3 variant.arguments
-              |> List.filter ~f:is_field_anonymous
+              |> List.filter ~f:(not << is_field_anonymous)
             in
 
             variant.name :: fields)
