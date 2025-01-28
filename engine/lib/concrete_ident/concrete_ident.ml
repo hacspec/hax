@@ -212,11 +212,7 @@ module MakeToString (R : VIEW_RENDERER) = struct
       To generate a fresh name, we use the set of rendered names.
       *)
   let per_module :
-      ( string list,
-        (View.RelPath.t, t) Hashtbl.t
-        * string Hash_set.t
-        * (t, string) Hashtbl.t )
-      Hashtbl.t =
+      (string list, string Hash_set.t * (t, string) Hashtbl.t) Hashtbl.t =
     Hashtbl.create
       (module struct
         type t = string list [@@deriving hash, compare, sexp, eq]
@@ -226,12 +222,10 @@ module MakeToString (R : VIEW_RENDERER) = struct
     let Concrete_ident_view.{ mod_path; rel_path } = to_view i in
     let path = List.map ~f:R.render_module mod_path in
     (* Retrieve the various maps. *)
-    let rel_path_map, name_set, memo =
+    let name_set, memo =
       Hashtbl.find_or_add per_module
         ~default:(fun _ ->
-          ( Hashtbl.create (module View.RelPath),
-            Hash_set.create (module String),
-            Hashtbl.create (module T) ))
+          (Hash_set.create (module String), Hashtbl.create (module T)))
         path
     in
     (* If we rendered [i] already in the past, just use that. *)
@@ -262,31 +256,39 @@ module MakeToString (R : VIEW_RENDERER) = struct
               escape_sep name
             else name
           in
+          let is_assoc (rel_path : View.RelPath.t) : bool =
+            match List.last rel_path with
+            | Some (`AssociatedItem _) -> true
+            | _ -> false
+          in
           let name =
-            match Hashtbl.find rel_path_map rel_path with
-            | Some _ when moved_into_fresh_ns ->
-                let path : View.ModPath.t =
-                  (View.of_def_id i.def_id).mod_path
-                in
-                let path = List.map ~f:R.render_module path in
-                (* Generates the list of all prefixes of reversed `path` *)
-                List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
-                    let acc = chunk :: acc in
-                    (acc, acc))
-                (* We want to try small prefixes first *)
-                |> List.map ~f:List.rev
-                (* We generate a fake path with module ancestors *)
-                |> List.map ~f:(fun path ->
-                       name ^ "__from__"
-                       ^ String.concat ~sep:"__"
-                           path (* This might shadow, we should escape *))
-                   (* Find the shortest name that doesn't exist already *)
-                |> List.find ~f:(Hash_set.mem name_set >> not)
-                |> Option.value_exn
-            | _ -> name
+            if
+              Hash_set.mem name_set name && moved_into_fresh_ns
+              && (not << is_assoc) rel_path
+              (* If this rel_path already exists in a fresh namespace,
+                 then we have a duplicate and we should disambiguate.
+                 Unless for associated items which correspond to trait
+                 methods which may be repeated (with their implementations). *)
+            then
+              let path : View.ModPath.t = (View.of_def_id i.def_id).mod_path in
+              let path = List.map ~f:R.render_module path in
+              (* Generates the list of all prefixes of reversed `path` *)
+              List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
+                  let acc = chunk :: acc in
+                  (acc, acc))
+              (* We want to try small prefixes first *)
+              |> List.map ~f:List.rev
+              (* We generate a fake path with module ancestors *)
+              |> List.map ~f:(fun path ->
+                     name ^ "__from__"
+                     ^ String.concat ~sep:"__"
+                         path (* This might shadow, we should escape *))
+                 (* Find the shortest name that doesn't exist already *)
+              |> List.find ~f:(Hash_set.mem name_set >> not)
+              |> Option.value_exn
+            else name
           in
           (* Update the maps and hashtables *)
-          let _ = Hashtbl.add rel_path_map ~key:rel_path ~data:i in
           let _ = Hash_set.add name_set name in
           let _ = Hashtbl.add memo ~key:i ~data:name in
           name
