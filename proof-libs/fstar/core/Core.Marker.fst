@@ -48,3 +48,7 @@ class t_Clone (h: Type) = {
 instance t_Clone_all t: t_Clone t = {
   dummy_clone_field = ()
 }
+
+class t_StructuralPartialEq (h: Type) = {
+  dummy_eq_field: unit
+}

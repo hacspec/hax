@@ -51,3 +51,9 @@ val ord_u64: t_Ord u64
 
 [@FStar.Tactics.Typeclasses.tcinstance]
 val ord_reverse t {| t_Ord t |}: t_Ord (t_Reverse t)
+
+class t_Eq (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_14765399066043115604:Core.Cmp.t_PartialEq
+    v_Self v_Self
+}
+
