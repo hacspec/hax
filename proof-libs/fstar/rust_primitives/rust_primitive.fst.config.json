@@ -1,0 +1,12 @@
+{
+    "fstar_exe": "fstar.exe",
+    "options": [
+        "--cache_dir",
+        "/Users/lucasfranceschino/repos/hax/hax-lib-deffold_enumerated_chunked_slice/hax-lib/.cache"
+    ],
+    "include_dirs": [
+        "/Users/lucasfranceschino/repos/hax/hax-lib-deffold_enumerated_chunked_slice/proof-libs/fstar/rust_primitives",
+        "/Users/lucasfranceschino/repos/hax/hax-lib-deffold_enumerated_chunked_slice/proof-libs/fstar/core",
+        "/Users/lucasfranceschino/repos/hax/hax-lib-deffold_enumerated_chunked_slice/hax-lib/proofs/fstar/extraction/"
+    ]
+}

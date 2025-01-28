@@ -82,10 +82,12 @@ verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
 %.fst-in:
 	$(info $(FSTAR_FLAGS) \
 	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fst.hints)
+	@touch $@.fst-in
 
 %.fsti-in:
 	$(info $(FSTAR_FLAGS) \
 	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fsti.hints)
+	@touch $@.fst-in
 
 
 # Clean targets

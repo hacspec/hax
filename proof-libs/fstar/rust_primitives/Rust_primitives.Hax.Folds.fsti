@@ -14,10 +14,11 @@ let nth_chunk_of #t
   =  Seq.slice s (Seq.length s_chunk * chunk_nth) (Seq.length s_chunk * (chunk_nth + 1))
   == s_chunk
 
+#push-options "--z3rlimit 90"
 let rec fold_enumerated_chunked_slice_aux
   (#t: Type0) (#acc_t: Type0)
   (chunk_size: usize {v chunk_size > 0})
-  (s: t_Slice t)
+  (s: t_Slice t {Seq.length s % v chunk_size = 0})
   (inv: acc_t -> (i:nat{i <= Seq.length s / v chunk_size}) -> Type0)
   (i: nat{i <= Seq.length s / v chunk_size})
   (init: acc_t {inv init i})
@@ -45,6 +46,7 @@ let rec fold_enumerated_chunked_slice_aux
       let init' = f init (mk_int i, s_chunk) in
       fold_enumerated_chunked_slice_aux chunk_size s inv (i + 1) init' f
     end
+#pop-options
 
 /// Fold function that is generated for `for` loops iterating on
 /// `s.chunks_exact(chunk_size).enumerate()`-like iterators
@@ -69,6 +71,83 @@ let fold_enumerated_chunked_slice
   )
   : result: acc_t {inv result (mk_int (Seq.length s / v chunk_size))}
   = fold_enumerated_chunked_slice_aux chunk_size s (fun acc i -> inv acc (mk_int i)) 0 init f
+
+open Core.Ops
+open Core.Ops.Index
+open Rust_primitives
+
+type t_Coefficients = {
+  f_values: t_Array i32 (mk_int 8)
+}
+
+#push-options "--z3rlimit 80"
+let serialize
+      (simd_unit: t_Coefficients)
+      (serialized: t_Slice u8 {Seq.length serialized <= 6})
+     =
+  let serialized:t_Slice u8 =
+    match cast (Core.Slice.impl__len #u8 serialized <: usize) <: u8 with
+    | Rust_primitives.Integers.MkInt 4 ->
+      let serialized:t_Slice u8 =
+        fold_enumerated_chunked_slice (mk_usize 2)
+          (simd_unit.f_values <: t_Slice i32)
+          (fun serialized temp_1_ ->
+              let serialized:t_Slice u8 = serialized in
+              let _:usize = temp_1_ in
+              Seq.length serialized == 4)
+          serialized
+          (fun serialized temp_1_ ->
+              let serialized:t_Slice u8 = serialized in
+              let i, coefficients:(usize & t_Slice i32) = temp_1_ in
+              let coefficient0:u8 = cast (Seq.index coefficients 0 <: i32) <: u8 in
+              let coefficient1:u8 = cast (Seq.index coefficients 1 <: i32) <: u8 in
+              assert (v i < 4);
+              let serialized:t_Slice u8 =
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize serialized
+                  i
+                  ((coefficient1 <<! mk_i32 4 <: u8) |. coefficient0 <: u8)
+              in
+              serialized)
+      in
+      serialized
+    | Rust_primitives.Integers.MkInt 6 ->
+      let serialized:t_Slice u8 =
+        fold_enumerated_chunked_slice (mk_usize 4)
+          (simd_unit.f_values <: t_Slice i32)
+          (fun serialized temp_1_ ->
+              let serialized:t_Slice u8 = serialized in
+              let _:usize = temp_1_ in
+              Seq.length serialized == 6)
+          serialized
+          (fun serialized temp_1_ ->
+              let serialized:t_Slice u8 = serialized in
+              let i, coefficients:(usize & t_Slice i32) = temp_1_ in
+              let coefficient0:u8 = cast (Seq.index coefficients 0 <: i32) <: u8 in
+              let coefficient1:u8 = cast (Seq.index coefficients 1 <: i32) <: u8 in
+              let coefficient2:u8 = cast (Seq.index coefficients 2 <: i32) <: u8 in
+              let coefficient3:u8 = cast (Seq.index coefficients 3 <: i32) <: u8 in
+              let serialized:t_Slice u8 =
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize serialized
+                  (mk_usize 3 *! i <: usize)
+                  ((coefficient1 <<! mk_i32 6 <: u8) |. coefficient0 <: u8)
+              in
+              let serialized:t_Slice u8 =
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize serialized
+                  ((mk_usize 3 *! i <: usize) +! mk_usize 1 <: usize)
+                  ((coefficient2 <<! mk_i32 4 <: u8) |. (coefficient1 >>! mk_i32 2 <: u8) <: u8)
+              in
+              let serialized:t_Slice u8 =
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize serialized
+                  ((mk_usize 3 *! i <: usize) +! mk_usize 2 <: usize)
+                  ((coefficient3 <<! mk_i32 2 <: u8) |. (coefficient2 >>! mk_i32 4 <: u8) <: u8)
+              in
+              serialized)
+      in
+      serialized
+    | _ -> serialized
+  in
+  serialized
+#pop-options
 
 (**** `s.enumerate()` *)
 /// Fold function that is generated for `for` loops iterating on
