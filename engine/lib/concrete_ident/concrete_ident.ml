@@ -256,19 +256,20 @@ module MakeToString (R : VIEW_RENDERER) = struct
               escape_sep name
             else name
           in
-          let is_assoc (rel_path : View.RelPath.t) : bool =
+          let is_assoc_or_field (rel_path : View.RelPath.t) : bool =
             match List.last rel_path with
-            | Some (`AssociatedItem _) -> true
+            | Some (`AssociatedItem _ | `Field _) -> true
             | _ -> false
           in
           let name =
             if
               Hash_set.mem name_set name && moved_into_fresh_ns
-              && (not << is_assoc) rel_path
+              && (not << is_assoc_or_field) rel_path
               (* If this rel_path already exists in a fresh namespace,
                  then we have a duplicate and we should disambiguate.
                  Unless for associated items which correspond to trait
-                 methods which may be repeated (with their implementations). *)
+                 methods which may be repeated (with their implementations),
+                 and for fields (which are repeated by accessors). *)
             then
               let path : View.ModPath.t = (View.of_def_id i.def_id).mod_path in
               let path = List.map ~f:R.render_module path in
@@ -562,7 +563,7 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
       | `Field ({ data; disambiguator }, _)
         when Option.is_some (Int.of_string_opt data)
              && Int64.equal disambiguator Int64.zero ->
-          UnsafeString (NP.anonymous_field_transform data)
+          TrustedString (NP.anonymous_field_transform data)
       (* Named fields *)
       | `Field (n, _) -> prefix "f" (dstr n)
       (* Anything function-like *)
@@ -653,6 +654,8 @@ let map_path_strings ~(f : string -> string) (did : t) : t =
       { contents = { value = did; id = Base.Int64.zero } }
   in
   { def_id; moved = None; suffix = None }
+
+let is_constructor (did : t) : bool = Explicit_def_id.is_constructor did.def_id
 
 let matches_namespace (ns : Types.namespace) (did : t) : bool =
   let did = Explicit_def_id.to_def_id did.def_id in

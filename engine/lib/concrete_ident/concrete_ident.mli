@@ -71,6 +71,8 @@ val map_path_strings : f:(string -> string) -> t -> t
   is a hack for Import_thir so that we can generically produce identifiers for
   any integer type, please do not use it elsewhere. *)
 
+val is_constructor : t -> bool
+
 type comparator_witness
 
 val comparator : (t, comparator_witness) Base.Comparator.comparator
