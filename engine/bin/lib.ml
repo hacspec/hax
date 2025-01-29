@@ -139,6 +139,7 @@ let run (options : Types.engine_options) : Types.output =
         | ProVerif opts -> run (module Proverif_backend) opts
         | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
+        | SmtLib -> run (module Smtlib_backend) ()
         | Ssprove -> run (module Ssprove_backend) ()
         | Easycrypt -> run (module Easycrypt_backend) ())
   in

@@ -6,6 +6,7 @@
   hax_engine
   fstar_backend
   coq_backend
+  smtlib_backend
   ssprove_backend
   easycrypt_backend
   proverif_backend

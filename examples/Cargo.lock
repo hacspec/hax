@@ -736,13 +736,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "smtlib-example"
-version = "0.1.0"
-dependencies = [
- "hax-lib",
-]
-
-[[package]]
 name = "stacker"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -854,6 +847,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88ad59a7560b41a70d191093a945f0b87bc1deeda46fb237479708a1d6b6cdfc"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "validation-example"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
 ]
 
 [[package]]
