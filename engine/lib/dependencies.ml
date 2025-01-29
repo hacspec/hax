@@ -513,14 +513,21 @@ module Make (F : Features.T) = struct
                (idents_of item))
     in
     let aliases =
-      List.map renamings ~f:(fun (origin_item, (from_id, to_id)) ->
+      List.filter_map renamings ~f:(fun (origin_item, (from_id, to_id)) ->
           let attrs =
             List.filter
               ~f:(fun att -> Attrs.late_skip [ att ])
               origin_item.attrs
           in
           let v = Alias { name = from_id; item = to_id } in
-          { attrs; span = origin_item.span; ident = from_id; v })
+          match origin_item.v with
+          (* We don't want to aliases for constructors of structs with named fields because
+             they can't be imported in F*. Ideally this should be handled by the backend. *)
+          | Type { variants; is_struct = true; _ }
+            when List.for_all variants ~f:(fun variant -> variant.is_record)
+                 && Concrete_ident.is_constructor from_id ->
+              None
+          | _ -> Some { attrs; span = origin_item.span; ident = from_id; v })
     in
     let rename =
       let renamings = List.map ~f:snd renamings in
