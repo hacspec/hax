@@ -527,6 +527,7 @@ module Make (F : Features.T) = struct
             when List.for_all variants ~f:(fun variant -> variant.is_record)
                  && Concrete_ident.is_constructor from_id ->
               None
+          | Quote _ -> None
           | _ -> Some { attrs; span = origin_item.span; ident = from_id; v })
     in
     let rename =
