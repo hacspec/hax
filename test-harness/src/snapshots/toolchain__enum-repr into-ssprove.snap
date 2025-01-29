@@ -79,13 +79,13 @@ Equations EnumWithRepr_ImplicitDiscrEmptyStruct {L : {fset Location}} {I : Inter
     solve_lift (ret_both (inr (tt : 'unit) : t_EnumWithRepr)) : both L I t_EnumWithRepr.
 Fail Next Obligation.
 
-Equations discriminant_EnumWithRepr_ExplicitDiscr1 {L : {fset Location}} {I : Interface} : both L I int16 :=
-  discriminant_EnumWithRepr_ExplicitDiscr1  :=
+Equations anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 {L : {fset Location}} {I : Interface} : both L I int16 :=
+  anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0  :=
     solve_lift (ret_both (1 : int16)) : both L I int16.
 Fail Next Obligation.
 
-Equations discriminant_EnumWithRepr_ExplicitDiscr2 {L : {fset Location}} {I : Interface} : both L I int16 :=
-  discriminant_EnumWithRepr_ExplicitDiscr2  :=
+Equations anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 {L : {fset Location}} {I : Interface} : both L I int16 :=
+  anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0  :=
     solve_lift (ret_both (5 : int16)) : both L I int16.
 Fail Next Obligation.
 
@@ -93,25 +93,25 @@ Equations t_EnumWithRepr_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x
   t_EnumWithRepr_cast_to_repr x  :=
     matchb x with
     | EnumWithRepr_ExplicitDiscr1_case  =>
-      solve_lift discriminant_EnumWithRepr_ExplicitDiscr1
+      solve_lift anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0
     | EnumWithRepr_ExplicitDiscr2_case  =>
-      solve_lift discriminant_EnumWithRepr_ExplicitDiscr2
+      solve_lift anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0
     | EnumWithRepr_ImplicitDiscrEmptyTuple_case  =>
-      solve_lift (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (1 : int16)))
+      solve_lift (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (1 : int16)))
     | EnumWithRepr_ImplicitDiscrEmptyStruct_case  =>
-      solve_lift (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (2 : int16)))
+      solve_lift (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (2 : int16)))
     end : both L1 I1 int16.
 Fail Next Obligation.
 
 Equations f {L1 : {fset Location}} {I1 : Interface} (_ : both L1 I1 'unit) : both L1 I1 int32 :=
   f _  :=
-    letb v__x := cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (0 : int16))) in
+    letb e_x := cast_int (WS2 := _) (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (0 : int16))) in
     solve_lift ((cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuple)) .+ (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStruct))) : both L1 I1 int32.
 Fail Next Obligation.
 
-Equations ff__CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
-  ff__CONST  :=
-    solve_lift (cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr1 .+ (ret_both (0 : int16)))) : both L I int16.
+Equations f__v_CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
+  f__v_CONST  :=
+    solve_lift (cast_int (WS2 := _) (anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 .+ (ret_both (0 : int16)))) : both L I int16.
 Fail Next Obligation.
 
 Equations get_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int16 :=

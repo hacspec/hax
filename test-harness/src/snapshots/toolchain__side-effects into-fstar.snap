@@ -114,17 +114,17 @@ open FStar.Mul
 
 /// Helper function
 let add3 (x y z: u32) : u32 =
-  Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add x y <: u32) z
+  Core.Num.impl_u32__wrapping_add (Core.Num.impl_u32__wrapping_add x y <: u32) z
 
 /// Exercise local mutation with control flow and loops
 let local_mutation (x: u32) : u32 =
   let y:u32 = mk_u32 0 in
-  let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 1) in
+  let x:u32 = Core.Num.impl_u32__wrapping_add x (mk_u32 1) in
   if x >. mk_u32 3
   then
-    let x:u32 = Core.Num.impl__u32__wrapping_sub x (mk_u32 3) in
+    let x:u32 = Core.Num.impl_u32__wrapping_sub x (mk_u32 3) in
     let y:u32 = x /! mk_u32 2 in
-    let y:u32 = Core.Num.impl__u32__wrapping_add y (mk_u32 2) in
+    let y:u32 = Core.Num.impl_u32__wrapping_add y (mk_u32 2) in
     let y:u32 =
       Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
               u32)
@@ -138,24 +138,24 @@ let local_mutation (x: u32) : u32 =
         (fun y i ->
             let y:u32 = y in
             let i:u32 = i in
-            Core.Num.impl__u32__wrapping_add x i <: u32)
+            Core.Num.impl_u32__wrapping_add x i <: u32)
     in
-    Core.Num.impl__u32__wrapping_add x y
+    Core.Num.impl_u32__wrapping_add x y
   else
     let (x, y), hoist7:((u32 & u32) & u32) =
       match x <: u32 with
       | Rust_primitives.Integers.MkInt 12 ->
-        let y:u32 = Core.Num.impl__u32__wrapping_add x y in
+        let y:u32 = Core.Num.impl_u32__wrapping_add x y in
         (x, y <: (u32 & u32)), mk_u32 3 <: ((u32 & u32) & u32)
       | Rust_primitives.Integers.MkInt 13 ->
-        let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 1) in
-        (x, y <: (u32 & u32)), add3 x (Core.Num.impl__u32__wrapping_add (mk_u32 123) x <: u32) x
+        let x:u32 = Core.Num.impl_u32__wrapping_add x (mk_u32 1) in
+        (x, y <: (u32 & u32)), add3 x (Core.Num.impl_u32__wrapping_add (mk_u32 123) x <: u32) x
         <:
         ((u32 & u32) & u32)
       | _ -> (x, y <: (u32 & u32)), mk_u32 0 <: ((u32 & u32) & u32)
     in
     let x:u32 = hoist7 in
-    Core.Num.impl__u32__wrapping_add x y
+    Core.Num.impl_u32__wrapping_add x y
 
 /// Exercise early returns with control flow and loops
 let early_returns (x: u32) : u32 =
@@ -168,15 +168,13 @@ let early_returns (x: u32) : u32 =
       | true -> mk_u32 34
       | _ ->
         let x, hoist11:(u32 & u32) = x, mk_u32 3 <: (u32 & u32) in
-        Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add (mk_u32 123) hoist11
-            <:
-            u32)
+        Core.Num.impl_u32__wrapping_add (Core.Num.impl_u32__wrapping_add (mk_u32 123) hoist11 <: u32
+          )
           x
     else
       let x:u32 = x +! mk_u32 9 in
       let x, hoist11:(u32 & u32) = x, x +! mk_u32 1 <: (u32 & u32) in
-      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add (mk_u32 123) hoist11 <: u32
-        )
+      Core.Num.impl_u32__wrapping_add (Core.Num.impl_u32__wrapping_add (mk_u32 123) hoist11 <: u32)
         x
 
 let simplifiable_return (c1 c2 c3: bool) : i32 =
@@ -230,7 +228,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
       match x <: Core.Option.t_Option u8 with
       | Core.Option.Option_Some hoist23 ->
         (match
-            Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist23 (mk_u8 3))
+            Core.Option.Option_Some (Core.Num.impl_u8__wrapping_add hoist23 (mk_u8 3))
             <:
             Core.Option.t_Option u8
           with
@@ -245,7 +243,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                         (match y <: Core.Option.t_Option u8 with
                           | Core.Option.Option_Some hoist31 ->
                             Core.Option.Option_Some
-                            (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
+                            (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v
                                     hoist30
                                   <:
                                   u8)
@@ -268,7 +266,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                         (match y <: Core.Option.t_Option u8 with
                           | Core.Option.Option_Some hoist31 ->
                             Core.Option.Option_Some
-                            (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
+                            (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v
                                     hoist30
                                   <:
                                   u8)
@@ -287,7 +285,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                   (match y <: Core.Option.t_Option u8 with
                     | Core.Option.Option_Some hoist31 ->
                       Core.Option.Option_Some
-                      (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v hoist30
+                      (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v hoist30
                             <:
                             u8)
                           hoist31)
@@ -304,7 +302,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
           (match y <: Core.Option.t_Option u8 with
             | Core.Option.Option_Some hoist25 ->
               (match
-                  Core.Option.Option_Some (Core.Num.impl__u8__wrapping_add hoist26 hoist25)
+                  Core.Option.Option_Some (Core.Num.impl_u8__wrapping_add hoist26 hoist25)
                   <:
                   Core.Option.t_Option u8
                 with
@@ -319,7 +317,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                               (match y <: Core.Option.t_Option u8 with
                                 | Core.Option.Option_Some hoist31 ->
                                   Core.Option.Option_Some
-                                  (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
+                                  (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v
                                           hoist30
                                         <:
                                         u8)
@@ -343,7 +341,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                               (match y <: Core.Option.t_Option u8 with
                                 | Core.Option.Option_Some hoist31 ->
                                   Core.Option.Option_Some
-                                  (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
+                                  (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v
                                           hoist30
                                         <:
                                         u8)
@@ -363,7 +361,7 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                         (match y <: Core.Option.t_Option u8 with
                           | Core.Option.Option_Some hoist31 ->
                             Core.Option.Option_Some
-                            (Core.Num.impl__u8__wrapping_add (Core.Num.impl__u8__wrapping_add v
+                            (Core.Num.impl_u8__wrapping_add (Core.Num.impl_u8__wrapping_add v
                                     hoist30
                                   <:
                                   u8)
@@ -384,14 +382,14 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
   if x >. mk_u32 40
   then
     let y:u32 = mk_u32 0 in
-    let x:u32 = Core.Num.impl__u32__wrapping_add x (mk_u32 3) in
-    let y:u32 = Core.Num.impl__u32__wrapping_add x y in
-    let x:u32 = Core.Num.impl__u32__wrapping_add x y in
+    let x:u32 = Core.Num.impl_u32__wrapping_add x (mk_u32 3) in
+    let y:u32 = Core.Num.impl_u32__wrapping_add x y in
+    let x:u32 = Core.Num.impl_u32__wrapping_add x y in
     if x >. mk_u32 90
     then
       match Core.Result.Result_Err (mk_u8 12) <: Core.Result.t_Result Prims.unit u8 with
       | Core.Result.Result_Ok ok ->
-        Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
+        Core.Result.Result_Ok (Core.Num.impl_u32__wrapping_add (mk_u32 3) x)
         <:
         Core.Result.t_Result u32 u32
       | Core.Result.Result_Err err ->
@@ -399,11 +397,11 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
         <:
         Core.Result.t_Result u32 u32
     else
-      Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
+      Core.Result.Result_Ok (Core.Num.impl_u32__wrapping_add (mk_u32 3) x)
       <:
       Core.Result.t_Result u32 u32
   else
-    Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add (mk_u32 3) x)
+    Core.Result.Result_Ok (Core.Num.impl_u32__wrapping_add (mk_u32 3) x)
     <:
     Core.Result.t_Result u32 u32
 

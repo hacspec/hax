@@ -39,19 +39,23 @@ type t_EnumWithRepr =
   | EnumWithRepr_ImplicitDiscrEmptyTuple : t_EnumWithRepr
   | EnumWithRepr_ImplicitDiscrEmptyStruct : t_EnumWithRepr
 
-let discriminant_EnumWithRepr_ExplicitDiscr1: u16 = mk_u16 1
+let anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0: u16 = mk_u16 1
 
-let discriminant_EnumWithRepr_ExplicitDiscr2: u16 = mk_u16 5
+let anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0: u16 = mk_u16 5
 
 let t_EnumWithRepr_cast_to_repr (x: t_EnumWithRepr) : u16 =
   match x <: t_EnumWithRepr with
-  | EnumWithRepr_ExplicitDiscr1  -> discriminant_EnumWithRepr_ExplicitDiscr1
-  | EnumWithRepr_ExplicitDiscr2  -> discriminant_EnumWithRepr_ExplicitDiscr2
-  | EnumWithRepr_ImplicitDiscrEmptyTuple  -> discriminant_EnumWithRepr_ExplicitDiscr2 +! mk_u16 1
-  | EnumWithRepr_ImplicitDiscrEmptyStruct  -> discriminant_EnumWithRepr_ExplicitDiscr2 +! mk_u16 2
+  | EnumWithRepr_ExplicitDiscr1  -> anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0
+  | EnumWithRepr_ExplicitDiscr2  -> anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0
+  | EnumWithRepr_ImplicitDiscrEmptyTuple  ->
+    anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 +! mk_u16 1
+  | EnumWithRepr_ImplicitDiscrEmptyStruct  ->
+    anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 +! mk_u16 2
 
 let f (_: Prims.unit) : u32 =
-  let v__x:u16 = cast (discriminant_EnumWithRepr_ExplicitDiscr2 +! mk_u16 0 <: u16) <: u16 in
+  let e_x:u16 =
+    cast (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 +! mk_u16 0 <: u16) <: u16
+  in
   (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple <: t_EnumWithRepr) <: u16
       )
     <:
@@ -62,7 +66,8 @@ let f (_: Prims.unit) : u32 =
     <:
     u32)
 
-let ff__CONST: u16 = cast (discriminant_EnumWithRepr_ExplicitDiscr1 +! mk_u16 0 <: u16) <: u16
+let f__v_CONST: u16 =
+  cast (anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 +! mk_u16 0 <: u16) <: u16
 
 let get_repr (x: t_EnumWithRepr) : u16 = t_EnumWithRepr_cast_to_repr x
 
