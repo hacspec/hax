@@ -126,6 +126,7 @@ module RelPath = struct
       | `TraitAlias of 'name
       | `Foreign of 'disambiguator
       | `ForeignTy of 'name
+      | `TyAlias of 'name
       | `ExternCrate of 'name
       | `Opaque of 'disambiguator
         (** This is e.g.: {[
@@ -184,6 +185,7 @@ module RelPath = struct
       | `Enum n
       | `Struct n
       | `Union n
+      | `TyAlias n
       | `TraitAlias n
       | `Fn n
       | `Const n

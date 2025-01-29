@@ -577,6 +577,7 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
       | `Mod n
       | `Struct n
       | `Union n
+      | `TyAlias n
       | `Enum n ->
           prefix "t" (dstr n)
 

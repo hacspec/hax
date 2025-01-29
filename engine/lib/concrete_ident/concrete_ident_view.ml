@@ -75,6 +75,7 @@ let rec poly :
     | AssocFn -> `Fn (assert_value_ns did) |> mk_associated_item
     | AssocConst -> `Const (assert_value_ns did) |> mk_associated_item
     | AssocTy -> `Type (assert_type_ns did) |> mk_associated_item
+    | TyAlias -> `TyAlias (assert_type_ns did)
     | Field ->
         let constructor =
           let parent = Assert.parent did in
@@ -126,7 +127,7 @@ let rec poly :
           (match List.last_exn (Explicit_def_id.to_def_id did).path with
           | { data = GlobalAsm; disambiguator } -> into_d did disambiguator
           | _ -> broken_invariant "last path chunk to be GlobalAsm" did)
-    | TyAlias | TyParam | ConstParam | InlineConst | LifetimeParam | Closure
+    | TyParam | ConstParam | InlineConst | LifetimeParam | Closure
     | SyntheticCoroutineBody ->
         (* It should be impossible for such items to ever be referenced by anyting in hax. *)
         broken_invariant
