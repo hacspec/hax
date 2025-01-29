@@ -58,4 +58,4 @@ class t_DivAssign self rhs = {
    f_div_assign: x:self -> y:rhs -> Pure self (f_div_assign_pre x y) (fun r -> f_div_assign_post x y r);
 }
 
-
+let f_neg #t x = zero #t -! x

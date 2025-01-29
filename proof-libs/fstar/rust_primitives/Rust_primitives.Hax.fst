@@ -63,3 +63,7 @@ class iterator_return (self: Type u#0): Type u#1 = {
   parent_iterator: Core.Iter.Traits.Iterator.iterator self;
   f_fold_return: #b:Type0 -> s:self -> b -> (b -> i:parent_iterator.f_Item{parent_iterator.f_contains s i} -> Core.Ops.Control_flow.t_ControlFlow b b) -> Core.Ops.Control_flow.t_ControlFlow b b;
 }
+let rec while_loop #s (condition: s -> bool) (init: s) (f: (i:s -> o:s{o << i})): s
+  = if condition init
+    then while_loop #s  condition (f init) f
+    else init
