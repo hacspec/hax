@@ -20,31 +20,21 @@ let t_Error_cast_to_repr (x: t_Error) : isize =
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
-val impl_2': Core.Fmt.t_Debug t_Error
+val impl_1': Core.Fmt.t_Debug t_Error
 
-let impl_2 = impl_2'
+let impl_1 = impl_1'
 
-type t_State =
-  | State_Idle : t_State
-  | State_WaitToApply { f_verification_id:usize }: t_State
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
-val impl_3': Core.Fmt.t_Debug t_State
+val impl_3': Core.Cmp.t_PartialEq t_Error t_Error
 
 let impl_3 = impl_3'
 
 type t_ProtocolLibrary = {
-  f_state:t_State;
   f_value:usize;
-  f_last_changed:usize;
-  f_msg_ctr:usize
+  f_last_changed:usize
 }
-
-assume
-val send': sender: usize -> timestamp: usize -> value: usize -> bool
-
-let send = send'
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 assume
@@ -60,14 +50,7 @@ let impl: Core.Default.t_Default t_ProtocolLibrary =
     f_default
     =
     fun (_: Prims.unit) ->
-      {
-        f_state = State_Idle <: t_State;
-        f_value = mk_usize 0;
-        f_last_changed = mk_usize 0;
-        f_msg_ctr = mk_usize 0
-      }
-      <:
-      t_ProtocolLibrary
+      { f_value = mk_usize 0; f_last_changed = mk_usize 0 } <: t_ProtocolLibrary
   }
 
 type t_UnverifiedMessage = {
@@ -87,7 +70,7 @@ type t_VerifiedMessage = {
   f_sender:usize;
   f_timestamp:usize;
   f_value:usize;
-  f_verification_id:usize
+  f_state_last_changed:usize
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
@@ -96,58 +79,17 @@ val impl_7': Core.Fmt.t_Debug t_VerifiedMessage
 
 let impl_7 = impl_7'
 
-let impl__ProtocolLibrary__apply (self: t_ProtocolLibrary) (msg: t_VerifiedMessage)
-    : (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error) =
-  match self.f_state <: t_State with
-  | State_Idle  ->
-    self,
-    (Core.Result.Result_Err (Error_NotReadyToApply <: t_Error)
-      <:
-      Core.Result.t_Result Prims.unit t_Error)
-    <:
-    (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
-  | State_WaitToApply { f_verification_id = verification_id } ->
-    if verification_id <>. msg.f_verification_id
-    then
-      self,
-      (Core.Result.Result_Err (Error_UnexpectedVerifiedMsg <: t_Error)
-        <:
-        Core.Result.t_Result Prims.unit t_Error)
-      <:
-      (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
-    else
-      let _:Prims.unit = (assert (send msg.f_sender msg.f_timestamp msg.f_value)) <: Prims.unit in
-      let self:t_ProtocolLibrary = { self with f_value = msg.f_value } <: t_ProtocolLibrary in
-      let self:t_ProtocolLibrary =
-        { self with f_last_changed = msg.f_timestamp } <: t_ProtocolLibrary
-      in
-      let hax_temp_output:Core.Result.t_Result Prims.unit t_Error =
-        Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit t_Error
-      in
-      self, hax_temp_output <: (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
 
-let impl__ProtocolLibrary__abort (self: t_ProtocolLibrary)
-    : (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error) =
-  if
-    ~.(match self.f_state <: t_State with
-      | State_WaitToApply {  } -> true
-      | _ -> false)
-  then
-    self,
-    (Core.Result.Result_Err (Error_NotReadyToApply <: t_Error)
-      <:
-      Core.Result.t_Result Prims.unit t_Error)
-    <:
-    (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
-  else
-    let self:t_ProtocolLibrary =
-      { self with f_state = State_Idle <: t_State } <: t_ProtocolLibrary
-    in
-    let hax_temp_output:Core.Result.t_Result Prims.unit t_Error =
-      Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit t_Error
-    in
-    self, hax_temp_output <: (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+assume
+val impl_9': Core.Cmp.t_PartialEq t_VerifiedMessage t_VerifiedMessage
 
+let impl_9 = impl_9'
+
+assume
+val send': sender: usize -> timestamp: usize -> value: usize -> bool
+
+let send = send'
 
 assume
 val impl__UnverifiedMessage__authenticate': self: t_UnverifiedMessage
@@ -161,66 +103,60 @@ val impl__UnverifiedMessage__authenticate': self: t_UnverifiedMessage
 let impl__UnverifiedMessage__authenticate = impl__UnverifiedMessage__authenticate'
 
 let impl__ProtocolLibrary__validate (self: t_ProtocolLibrary) (msg: t_UnverifiedMessage)
-    : (t_ProtocolLibrary & Core.Result.t_Result t_VerifiedMessage t_Error) =
-  if
-    ~.(match self.f_state <: t_State with
-      | State_Idle  -> true
-      | _ -> false)
+    : Core.Result.t_Result t_VerifiedMessage t_Error =
+  if ~.(impl__UnverifiedMessage__authenticate msg <: bool)
+  then
+    Core.Result.Result_Err (Error_AuthenticationFailed <: t_Error)
+    <:
+    Core.Result.t_Result t_VerifiedMessage t_Error
+  else
+    if msg.f_timestamp <=. self.f_last_changed
+    then
+      Core.Result.Result_Err (Error_MessageTooOld <: t_Error)
+      <:
+      Core.Result.t_Result t_VerifiedMessage t_Error
+    else
+      Core.Result.Result_Ok
+      ({
+          f_sender = msg.f_sender;
+          f_value = msg.f_value;
+          f_timestamp = msg.f_timestamp;
+          f_state_last_changed = self.f_last_changed
+        }
+        <:
+        t_VerifiedMessage)
+      <:
+      Core.Result.t_Result t_VerifiedMessage t_Error
+
+let impl__ProtocolLibrary__apply (self: t_ProtocolLibrary) (msg: t_VerifiedMessage)
+    : Prims.Pure (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
+      (requires
+        Hax_lib.v_exists #(t_ProtocolLibrary & t_UnverifiedMessage)
+          (fun temp_0_ ->
+              let s, um:(t_ProtocolLibrary & t_UnverifiedMessage) = temp_0_ in
+              (Core.Result.Result_Ok msg <: Core.Result.t_Result t_VerifiedMessage t_Error) =.
+              (impl__ProtocolLibrary__validate s um
+                <:
+                Core.Result.t_Result t_VerifiedMessage t_Error)
+              <:
+              bool))
+      (fun _ -> Prims.l_True) =
+  if self.f_last_changed <>. msg.f_state_last_changed
   then
     self,
-    (Core.Result.Result_Err (Error_NotAcceptingNew <: t_Error)
+    (Core.Result.Result_Err (Error_UnexpectedVerifiedMsg <: t_Error)
       <:
-      Core.Result.t_Result t_VerifiedMessage t_Error)
+      Core.Result.t_Result Prims.unit t_Error)
     <:
-    (t_ProtocolLibrary & Core.Result.t_Result t_VerifiedMessage t_Error)
+    (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
   else
-    if ~.(impl__UnverifiedMessage__authenticate msg <: bool)
-    then
-      self,
-      (Core.Result.Result_Err (Error_AuthenticationFailed <: t_Error)
-        <:
-        Core.Result.t_Result t_VerifiedMessage t_Error)
-      <:
-      (t_ProtocolLibrary & Core.Result.t_Result t_VerifiedMessage t_Error)
-    else
-      if msg.f_timestamp <. self.f_last_changed
-      then
-        self,
-        (Core.Result.Result_Err (Error_MessageTooOld <: t_Error)
-          <:
-          Core.Result.t_Result t_VerifiedMessage t_Error)
-        <:
-        (t_ProtocolLibrary & Core.Result.t_Result t_VerifiedMessage t_Error)
-      else
-        let verification_id:usize = self.f_msg_ctr in
-        let self:t_ProtocolLibrary =
-          { self with f_msg_ctr = self.f_msg_ctr +! mk_usize 1 } <: t_ProtocolLibrary
-        in
-        let self:t_ProtocolLibrary =
-          {
-            self with
-            f_state
-            =
-            State_WaitToApply ({ f_verification_id = verification_id })
-            <:
-            t_State
-          }
-          <:
-          t_ProtocolLibrary
-        in
-        let hax_temp_output:Core.Result.t_Result t_VerifiedMessage t_Error =
-          Core.Result.Result_Ok
-          ({
-              f_sender = msg.f_sender;
-              f_value = msg.f_value;
-              f_timestamp = msg.f_timestamp;
-              f_verification_id = verification_id
-            }
-            <:
-            t_VerifiedMessage)
-          <:
-          Core.Result.t_Result t_VerifiedMessage t_Error
-        in
-        self, hax_temp_output
-        <:
-        (t_ProtocolLibrary & Core.Result.t_Result t_VerifiedMessage t_Error)
+    let _:Prims.unit = Hax_lib.v_assert (send msg.f_sender msg.f_timestamp msg.f_value <: bool) in
+    let _:Prims.unit = Hax_lib.v_assert (msg.f_timestamp >. self.f_last_changed <: bool) in
+    let self:t_ProtocolLibrary = { self with f_value = msg.f_value } <: t_ProtocolLibrary in
+    let self:t_ProtocolLibrary =
+      { self with f_last_changed = msg.f_timestamp } <: t_ProtocolLibrary
+    in
+    let hax_temp_output:Core.Result.t_Result Prims.unit t_Error =
+      Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit t_Error
+    in
+    self, hax_temp_output <: (t_ProtocolLibrary & Core.Result.t_Result Prims.unit t_Error)
