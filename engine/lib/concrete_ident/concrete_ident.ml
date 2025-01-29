@@ -521,7 +521,9 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
       let dstr s = NameAst.UnsafeString (render_disambiguated s) in
       let _render_chunk = render_chunk ~namespace in
       match chunk with
-      | `AnonConst d -> prefix_d "anon_const" d
+      | `AnonConst d ->
+          prefix ~global:true ~disable_when:[ `SameCase ] "anon_const"
+            (NameAst.UnsafeString (Int64.to_string d))
       | `Use d -> prefix_d "use" d
       | `Foreign d -> prefix_d "foreign" d
       | `GlobalAsm d -> prefix_d "global_asm" d
