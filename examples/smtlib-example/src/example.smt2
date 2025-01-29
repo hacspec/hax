@@ -1,23 +1,32 @@
 (set-logic ALL)
 
+;; Let's treat any function as panicking, or having verification assertions.
+;; - If a function returns successfully, it returns a ~cont (for continue, is there a better name?).
+;; - If it panics, it returns ~panic.
+;; - If it has a verification assertion (i.e. something like hax_lib::assert) and that fails, it
+    returns ~assert-failed.
 (declare-datatype ~Panicking
   (par (T)
     ( (~cont (~cont/get T))
       (~panic)
       (~assert-failed))))
 
+;; Methods with &mut not only return the return value, but also the updated self.
 (declare-datatype ~Mutable
   (par (S R)
     ( (~mut (~mut/self S)
             (~mut/return R )))))
 
+;; The unit type, aka the empty/zero-element tuple.
 (declare-datatype s/Unit ((sc/Unit)))
 
+;; The core::result::Result enum
 (declare-datatype e/Result
   (par (T E)
     ( (ev/Result/Ok (evd/Result/Ok T))
       (ev/Result/Err (evd/Result/Err E)))) )
 
+;; The Error enum from the example code
 (declare-datatype e/Error
   ( ( ev/Error/AuthenticationFailed )
     ( ev/Error/MessageTooOld )
@@ -25,11 +34,13 @@
     ( ev/Error/NotReadyToApply )
     ( ev/Error/UnexpectedVerifiedMsg )))
 
+;; The ProtocolLibrary struct from the example code
 (declare-datatype s/ProtocolLibrary
   ( (sc/ProtocolLibrary
       (sd/ProtocolLibrary/value Int)
       (sd/ProtocolLibrary/last_changed Int))))
 
+;; The UnverifiedMessage struct from the example code
 (declare-datatype s/UnverifiedMessage
   ( (sc/UnverifiedMessage
       (sd/UnverifiedMessage/sender Int)
@@ -37,7 +48,7 @@
       (sd/UnverifiedMessage/value Int)
       (sd/UnverifiedMessage/authenticator Int))))
 
-
+;; The VerifiedMessage struct from the example code
 (declare-datatype s/VerifiedMessage
   ( (sc/VerifiedMessage
       (sd/VerifiedMessage/sender Int)
@@ -45,23 +56,16 @@
       (sd/VerifiedMessage/value Int)
       (sd/VerifiedMessage/state_last_changed Int))))
 
+;; The opaque function send from the example code
 (declare-fun send (Int Int Int) Bool)
 
+;; The opaque function authenticate from the example code
 (declare-fun
   fm/UnverifiedMessage/authenticate
   ((s/UnverifiedMessage))
   Bool)
 
-;(define-fun
-;  fm/UnverifiedMessage/authenticate
-;  ((self s/UnverifiedMessage))
-;  Bool
-;  (= (sd/UnverifiedMessage/authenticator self)
-;     (+ (* 2 (sd/UnverifiedMessage/sender self))
-;        (* 3 (sd/UnverifiedMessage/value self))
-;        (* 5 (sd/UnverifiedMessage/timestamp self)))))
-
-
+;; The method ProtocolLibrary::validate from the example code
 (define-fun
   fm/ProtocolLibrary/validate
   ( (self s/ProtocolLibrary)
@@ -87,7 +91,7 @@
               (sd/UnverifiedMessage/value msg)
               (sd/ProtocolLibrary/last_changed self))))))))
 
-
+;; The method ProtocolLibrary::apply from the example code
 (define-fun
   fm/ProtocolLibrary/apply
   ( (self s/ProtocolLibrary)
@@ -108,7 +112,6 @@
                 (sd/VerifiedMessage/value msg)
                 (sd/VerifiedMessage/timestamp msg))))
           (~cont (~mut self~ ((as ev/Result/Ok (e/Result s/Unit e/Error)) sc/Unit))))))))
-
 
 
 ;; Precondition of UnverifiedMessage::authenticate
@@ -155,14 +158,14 @@
 
 ;;;
 
-; it's an opaque function without preconditions, so we can just require it holds
+;; it's an opaque function without preconditions, so we can just require it holds
 (assert (forall
   ((arg/msg s/UnverifiedMessage))
   (pmf/UnverifiedMessage/authenticate/ensures
     arg/msg
     (fm/UnverifiedMessage/authenticate arg/msg))))
 
-; check ProtocolLibrary/apply claim
+;; check ProtocolLibrary/apply claim
 (push)
   ; args
   (declare-const arg/self s/ProtocolLibrary)
@@ -194,7 +197,7 @@
   (get-model)
 (pop)
 
-; we checked that this holds for valid inputs, can assume it now
+;; we checked that this holds for valid inputs, can assume it now
 (assert (forall
   ( (arg/self s/ProtocolLibrary)
     (arg/msg  s/VerifiedMessage))
