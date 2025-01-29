@@ -179,9 +179,9 @@ module%inlined_contents Make (F : Features.T) = struct
           | _ -> None
         in
         let* uid = Attrs.uid item.attrs in
-        let* role, _ = find_parent_item uid in
+        let* role, parent = find_parent_item uid in
         let*? () = [%equal: Attr_payloads.AssocRole.t] ItemQuote role in
-        let replace = Attrs.late_skip item.attrs in
+        let replace = Attrs.late_skip parent.attrs in
         let* role =
           Attrs.find_unique_attr
             ~f:(function ItemQuote q -> Some q | _ -> None)
@@ -189,8 +189,8 @@ module%inlined_contents Make (F : Features.T) = struct
         in
         let origin : item_quote_origin =
           {
-            item_kind = UA.kind_of_item item;
-            item_ident = item.ident;
+            item_kind = UA.kind_of_item parent;
+            item_ident = parent.ident;
             position =
               (if replace then `Replace
                else
