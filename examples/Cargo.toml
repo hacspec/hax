@@ -6,10 +6,11 @@ members = [
     "barrett",
     "kyber_compress",
     "proverif-psk",
-    "coq-example", "smtlib-example"]
+    "coq-example",
+    "validation-example",
+]
 resolver = "2"
 
 [workspace.dependencies]
 hax-lib = { path = "../hax-lib" }
 hax-bounded-integers = { path = "../hax-bounded-integers" }
-
