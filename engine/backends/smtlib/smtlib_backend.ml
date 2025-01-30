@@ -69,7 +69,9 @@ end
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module SmtlibNamePolicy = Concrete_ident.DefaultNamePolicy
+module SmtlibNamePolicy = struct include Concrete_ident.DefaultNamePolicy 
+  let field_name_transform ~struct_name s = struct_name ^ "/" ^ s
+end
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (SmtlibNamePolicy)
 open AST
 
@@ -90,9 +92,10 @@ struct
   let sexprlist lst = parens (separate space lst)
   let p x = x#p
   let ps = List.map ~f:p
+  let tuple_constructor_name tuple = utf8format "mktup-%i" (List.length tuple)
 
   let constructor_name struct_name = concat [ string "mk/"; struct_name ]
-  let destructor_name struct_name field_name = concat [string "get/"; struct_name ; string "/" ; field_name]
+  let destructor_name field_name = concat [string "get/"; field_name]
 
   let default_string_for s = "(TODO please-implement-the-method \"" ^ s ^ "\")"
   let default_document_for = default_string_for >> string
@@ -146,7 +149,7 @@ struct
       method item'_Type_struct ~super:_ ~name ~generics:_ ~tuple_struct:_
           ~arguments =
             let fields = List.map
-              ~f:(fun (field_name, field_ty, attr) -> sexprlist [(destructor_name name#p field_name#p); field_ty#p ])
+              ~f:(fun (field_name, field_ty, attr) -> sexprlist [(destructor_name field_name#p); field_ty#p ])
               arguments in
           sexprlist [
             string "declare-datatype";
@@ -155,10 +158,13 @@ struct
           ]
 
       method item'_Use ~super:_ ~path ~is_external:_ ~rename:_ =
-        string "; skipping use of path " ^^ separate (string "::") (List.map ~f:string path) ^^ string "\n"
+        string ";; skipping use of path " ^^ separate (string "::") (List.map ~f:string path) ^^ string "\n"
 
       method item'_NotImplementedYet =
-        string "; skipping unimplemented item emitted by hax-engine\n"
+        string ";; skipping unimplemented item emitted by hax-engine\n"
+
+      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v:_ ~ii_ident ~ii_attrs:_
+          = concat [ string ";; skipping impl item with name \""; ii_ident#p; string "\"\n"]
 
       method ty_TApp_application ~typ ~generics:_ =
         typ#p
@@ -178,6 +184,7 @@ struct
       (* This will need a phase for maing deep matches shallow *)
       method expr'_Match ~super:_ ~scrutinee ~arms =
         sexprlist [
+          string "match";
           scrutinee#p;
           sexprlist (ps arms)
           ]
@@ -200,27 +207,40 @@ struct
 
       method expr'_LocalVar ~super:_ _x2 = _x2#p
 
-      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v:_ ~ii_ident ~ii_attrs:_
-          = concat [ string "(found impl item with name \""; ii_ident#p; string "\" - ignoring)"]
 
-      method expr'_App_field_projection ~super:_ ~field:_ ~e:_ =
-        default_document_for "expr'_App_field_projection"
+      method expr'_App_field_projection ~super:_ ~field ~e =
+        sexprlist [(destructor_name field#p); e#p ]
 
-      method expr'_Construct_inductive ~super:_ ~constructor:_ ~is_record:_
-          ~is_struct:_ ~fields:_ ~base:_ =
-        default_document_for "expr'_Construct_inductive"
+      method expr'_Construct_inductive ~super:_ ~constructor ~is_record:_
+          ~is_struct:_ ~fields ~base:_ =
+            sexprlist (constructor#p :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
 
-      method expr'_Construct_tuple ~super:_ ~components:_ =
-        default_document_for "expr'_Construct_tuple"
+      method expr'_Construct_tuple ~super:_ ~components =
+        sexprlist ((tuple_constructor_name components) :: (ps components))
 
+      method arm ~arm ~span:_ = arm#p
+
+      method arm' ~super:_ ~arm_pat ~body ~guard:_ =
+        sexprlist [ arm_pat#p ; body#p ]
+
+      method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record:_
+          ~is_struct:_ ~fields =
+        sexprlist (constructor#p :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
+
+      method expr'_Let ~super:_ ~monadic:_ ~lhs ~rhs ~body =
+        sexprlist [string "let"; sexprlist [ sexprlist [ lhs#p ; rhs#p ]]; body#p]
+
+      method expr'_Literal ~super:_ _x2 = _x2#p
+
+      method literal_Int ~value ~negative:_ ~kind:_ =
+        string value
+
+      method literal_Bool _x1 = string (if _x1 then "true" else "false")
+
+      method pat'_PWild = string "_"
 
       (* BEGIN GENERATED *)
       method impl_expr ~kind:_ ~goal:_ = default_document_for "impl_expr"
-
-      method arm ~arm:_ ~span:_ = default_document_for "arm"
-
-      method arm' ~super:_ ~arm_pat:_ ~body:_ ~guard:_ =
-        default_document_for "arm'"
 
       method attrs _x1 = default_document_for "attrs"
 
@@ -280,11 +300,6 @@ struct
 
       method expr'_GlobalVar_primitive ~super:_ _x2 =
         default_document_for "expr'_GlobalVar_primitive"
-
-      method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
-        default_document_for "expr'_Let"
-
-      method expr'_Literal ~super:_ _x2 = default_document_for "expr'_Literal"
 
       method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_
           ~label:_ ~witness:_ =
@@ -403,14 +418,10 @@ struct
       method lhs_LhsLocalVar ~var:_ ~typ:_ =
         default_document_for "lhs_LhsLocalVar"
 
-      method literal_Bool _x1 = default_document_for "literal_Bool"
       method literal_Char _x1 = default_document_for "literal_Char"
 
       method literal_Float ~value:_ ~negative:_ ~kind:_ =
         default_document_for "literal_Float"
-
-      method literal_Int ~value:_ ~negative:_ ~kind:_ =
-        default_document_for "literal_Int"
 
       method literal_String _x1 = default_document_for "literal_String"
 
@@ -436,9 +447,6 @@ struct
       method pat'_PConstant ~super:_ ~lit:_ =
         default_document_for "pat'_PConstant"
 
-      method pat'_PConstruct_inductive ~super:_ ~constructor:_ ~is_record:_
-          ~is_struct:_ ~fields:_ =
-        default_document_for "pat'_PConstruct_inductive"
 
       method pat'_PConstruct_tuple ~super:_ ~components:_ =
         default_document_for "pat'_PConstruct_tuple"
@@ -446,7 +454,6 @@ struct
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
         default_document_for "pat'_PDeref"
 
-      method pat'_PWild = default_document_for "pat'_PWild"
       method printer_name = default_string_for "printer_name"
 
       method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
