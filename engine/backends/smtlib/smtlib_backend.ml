@@ -69,10 +69,13 @@ end
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
+
 module SmtlibNamePolicy = struct include Concrete_ident.DefaultNamePolicy 
   let field_name_transform ~struct_name s = struct_name ^ "/" ^ s
 end
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (SmtlibNamePolicy)
+
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeRenderAPI (SmtlibNamePolicy)
 open AST
 
 let hardcoded_smtlib_headers = {|
@@ -97,7 +100,7 @@ struct
   open PPrint
 
   let slashpath lst = separate (string "/") lst
-  let slashpathview crate path definition = slashpath ((string crate) :: ((List.map ~f:string path) @ [string definition]))
+  let slashpathview path definition = slashpath ((List.map ~f:string path) @ [string definition])
   let sexprlist lst = parens (separate space lst)
   let p x = x#p
   let ps = List.map ~f:p
@@ -217,17 +220,17 @@ struct
         _x2#p
 
       method concrete_ident ~local:_ id : document =
-          (match id.definition with
-          | "not" -> string  "not"
-          | "eq" -> string  "="
-          | "lt" -> string  "<"
-          | "gt" -> string  ">"
-          | "le" -> string  "<="
-          | "ge" -> string  ">="
-          | "add" -> string  "+"
-          | "mul" -> string  "*"
-          | "div" -> string  "/"
-          | def -> slashpathview id.crate id.path def)
+          (match id.name with
+          | "f_not" -> string  "not"
+          | "f_eq" -> string  "="
+          | "f_lt" -> string  "<"
+          | "f_gt" -> string  ">"
+          | "f_le" -> string  "<="
+          | "f_ge" -> string  ">="
+          | "f_add" -> string  "+"
+          | "f_mul" -> string  "*"
+          | "f_div" -> string  "/"
+          | def -> slashpathview id.path def)
 
       method expr'_LocalVar ~super:_ _x2 = _x2#p
 
@@ -574,12 +577,13 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
   let my_printer = make m in
   U.group_items_by_namespace items
   |> Map.to_alist
+  |> List.filter_map ~f:(fun (_, items) ->
+      let* first_item = List.hd items in
+      Some ((RenderId.render first_item.ident).path, items))
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
            String.concat ~sep:"_"
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+             (List.map ~f:(map_first_letter String.uppercase) ns)
          in
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in
