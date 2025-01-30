@@ -299,8 +299,6 @@ module Cyclic_modules.Moved_trait
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {impl as impl}
-
 include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {v_Tr as v_Tr}
 
 include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f_pre as f_f_pre}
@@ -308,6 +306,8 @@ include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f_pre as f_f_pre}
 include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f_post as f_f_post}
 
 include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f as f_f}
+
+include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {impl as impl}
 '''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec
