@@ -26,8 +26,6 @@ jobs:
           path: hax
 
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-
       - name: ⤵ Install hax
         run: |
           nix profile install ./hax
