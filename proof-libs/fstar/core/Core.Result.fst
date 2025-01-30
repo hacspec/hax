@@ -24,3 +24,7 @@ let impl__and_then #t #e #u (self: t_Result t e) (op: t -> t_Result u e): t_Resu
   | Result_Ok v -> op v 
   | Result_Err e -> Result_Err e
 
+let impl__is_err #t #e (self: t_Result t e) : bool =
+  match self with 
+  | Result_Ok v -> true
+  | Result_Err e -> false
