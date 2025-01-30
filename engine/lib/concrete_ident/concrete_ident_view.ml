@@ -145,19 +145,6 @@ let view_name_did : Explicit_def_id.t -> _ RelPath.Chunk.poly =
   poly ~into_n:mk ~into_d:mk
 
 let of_def_id (did : Explicit_def_id.t) : t =
-  (* Decompose the parents of a Explicit_def_id, say `a::b::c::d::e`, into:
-     - `ns_chunks`, the module parents `[a; a::b]` and into
-     - `rest`, the remaining parents `[a::b::c; a::b::c::d; a::b::c::d::e]` the rest. *)
-  (* let ns_chunks, rest =
-       List.split_while
-         ~f:
-           ( Explicit_def_id.to_def_id >> fun def_id ->
-             match def_id.kind with Mod -> true | _ -> false )
-         (Explicit_def_id.parents did |> List.rev)
-     in *)
-  (* `rest` is a list of identifiers of items nested each in the others. *)
-  (* We want to process those items beginning with most nested one. *)
-  (* let rest = List.rev rest in *)
   (* We distinguish between:
      - a chain of identifiers that have a relation with each other (e.g. if `k::E::C` is a constructor and `k::E` a enum)
      - a chain of identifiers that have no relation (e.g. `k::f` and `k::f::g` are both functions).
