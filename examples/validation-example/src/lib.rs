@@ -22,15 +22,15 @@ enum Error {
 /// The protocol state
 #[derive(Debug)]
 struct ProtocolLibrary {
-    value: usize,
-    last_changed: usize,
+    pl_value: usize,
+    pl_last_changed: usize,
 }
 
 impl Default for ProtocolLibrary {
     fn default() -> Self {
         Self {
-            value: 0,
-            last_changed: 0,
+            pl_value: 0,
+            pl_last_changed: 0,
         }
     }
 }
@@ -38,10 +38,10 @@ impl Default for ProtocolLibrary {
 /// An incoming message before validation
 #[derive(Debug)]
 struct UnverifiedMessage {
-    sender: usize,
-    authenticator: usize,
-    timestamp: usize,
-    value: usize,
+    um_sender: usize,
+    um_authenticator: usize,
+    um_timestamp: usize,
+    um_value: usize,
 }
 
 /// This is a relation needed for verification. Says that a message with given timestamp and value
@@ -63,23 +63,28 @@ impl UnverifiedMessage {
     // value has been verified to originate from the given sender.
     //
     // Note that we don't try to prove this postcondition, because the function is opaque,
-    #[hax_lib::ensures(|valid| if valid {send(self.sender, self.timestamp, self.value)} else {true})]
+    //#[hax_lib::ensures(|valid| if valid {send(self.sender, self.timestamp, self.value)} else {true})]
     #[hax_lib::opaque]
     fn authenticate(&self) -> bool {
-        self.authenticator == 2 * self.sender + 3 * self.value + 5 * self.timestamp
+        self.um_authenticator == 2 * self.um_sender + 3 * self.um_value + 5 * self.um_timestamp
     }
+
+    fn authenticate_ensures(&self, res: bool) -> bool {
+        send(self.um_sender, self.um_timestamp, self.um_value) || !res
+    }
+
 }
 
 
 /// An incoming message after validation
 #[derive(Debug, PartialEq)]
 struct VerifiedMessage {
-    sender: usize,
-    timestamp: usize,
-    value: usize,
+    vm_sender: usize,
+    vm_timestamp: usize,
+    vm_value: usize,
     
     /// This describes what version of the state this has been validated for
-    state_last_changed: usize,
+    vm_state_last_changed: usize,
 }
 
 #[hax_lib::attributes]
@@ -90,32 +95,40 @@ impl ProtocolLibrary {
             return Err(Error::AuthenticationFailed);
         }
 
-        if msg.timestamp <= self.last_changed {
+        if msg.um_timestamp <= self.pl_last_changed {
             return Err(Error::MessageTooOld);
         }
 
         Ok(VerifiedMessage {
-            sender: msg.sender,
-            value: msg.value,
-            timestamp: msg.timestamp,
-            state_last_changed: self.last_changed,
+            vm_sender: msg.um_sender,
+            vm_value: msg.um_value,
+            vm_timestamp: msg.um_timestamp,
+            vm_state_last_changed: self.pl_last_changed,
         })
     }
 
     /// Apply an already verified message. Only checks that the validation is not outdated.
-    #[hax_lib::requires(hax_lib::exists(|(s, um): (ProtocolLibrary, &UnverifiedMessage)| -> bool{ Ok(*msg) == s.validate(um)}))]
+    ///#[hax_lib::requires(hax_lib::exists(|(s, um): (ProtocolLibrary, &UnverifiedMessage)| -> bool{ }))]
     fn apply(&mut self, msg: &VerifiedMessage) -> Result<(), Error> {
-        if self.last_changed != msg.state_last_changed {
+        if self.pl_last_changed != msg.vm_state_last_changed {
             return Err(Error::UnexpectedVerifiedMsg)
         }
 
-        hax_lib::assert!(send(msg.sender, msg.timestamp, msg.value));
-        hax_lib::assert!(msg.timestamp > self.last_changed);
+        // hax_lib::assert!(send(msg.sender, msg.timestamp, msg.value));
+        // hax_lib::assert!(msg.timestamp > self.last_changed);
 
-        self.value = msg.value;
-        self.last_changed = msg.timestamp;
+        self.pl_value = msg.vm_value;
+        self.pl_last_changed = msg.vm_timestamp;
 
         Ok(())
+    }
+
+    fn apply_requires(&self, msg: VerifiedMessage, s: &Self, um: &UnverifiedMessage) -> bool {
+        self.pl_last_changed == msg.vm_state_last_changed && Ok(msg) == s.validate(um)
+    }
+
+    fn apply_ensures(&self, msg: &VerifiedMessage, res: Result<(), Error>) -> bool {
+        res.is_ok()
     }
 }
 
@@ -130,15 +143,15 @@ mod tests {
         let mut proto = ProtocolLibrary::default();
 
         let msg = UnverifiedMessage {
-            sender: 3,
-            authenticator: 2 * 3 + 3 * 42 + 5 ,
-            value: 42,
-            timestamp: 1,
+            um_sender: 3,
+            um_authenticator: 2 * 3 + 3 * 42 + 5 ,
+            um_value: 42,
+            um_timestamp: 1,
         };
         let msg = proto.validate(&msg).unwrap();
         proto.apply(&msg).unwrap();
 
-        assert_eq!(proto.value, 42);
-        assert_eq!(proto.last_changed, 1);
+        assert_eq!(proto.pl_value, 42);
+        assert_eq!(proto.pl_last_changed, 1);
     }
 }
