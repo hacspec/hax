@@ -51,17 +51,17 @@ let math_integers (x: Hax_lib.Int.t_Int)
   let _:Hax_lib.Int.t_Int = x - x in
   let _:Hax_lib.Int.t_Int = x * x in
   let _:Hax_lib.Int.t_Int = x / x in
-  let _:i16 = Hax_lib.Int.impl__Int__to_i16 x in
-  let _:i32 = Hax_lib.Int.impl__Int__to_i32 x in
-  let _:i64 = Hax_lib.Int.impl__Int__to_i64 x in
-  let _:i128 = Hax_lib.Int.impl__Int__to_i128 x in
-  let _:isize = Hax_lib.Int.impl__Int__to_isize x in
-  let _:u16 = Hax_lib.Int.impl__Int__to_u16 x in
-  let _:u32 = Hax_lib.Int.impl__Int__to_u32 x in
-  let _:u64 = Hax_lib.Int.impl__Int__to_u64 x in
-  let _:u128 = Hax_lib.Int.impl__Int__to_u128 x in
-  let _:usize = Hax_lib.Int.impl__Int__to_usize x in
-  Hax_lib.Int.impl__Int__to_u8 (x + (x * x <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int)
+  let _:i16 = Hax_lib.Int.impl_Int__to_i16 x in
+  let _:i32 = Hax_lib.Int.impl_Int__to_i32 x in
+  let _:i64 = Hax_lib.Int.impl_Int__to_i64 x in
+  let _:i128 = Hax_lib.Int.impl_Int__to_i128 x in
+  let _:isize = Hax_lib.Int.impl_Int__to_isize x in
+  let _:u16 = Hax_lib.Int.impl_Int__to_u16 x in
+  let _:u32 = Hax_lib.Int.impl_Int__to_u32 x in
+  let _:u64 = Hax_lib.Int.impl_Int__to_u64 x in
+  let _:u128 = Hax_lib.Int.impl_Int__to_u128 x in
+  let _:usize = Hax_lib.Int.impl_Int__to_usize x in
+  Hax_lib.Int.impl_Int__to_u8 (x + (x * x <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int)
 
 let panic_with_msg (_: Prims.unit) : Prims.unit =
   Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (mk_usize 1
@@ -122,7 +122,7 @@ let patterns (_: Prims.unit) : Prims.unit =
       <:
       (string & (i32 & t_Array string (mk_usize 2)))
     with
-    | "hello", (Rust_primitives.Integers.MkInt 123, v__todo) -> () <: Prims.unit
+    | "hello", (Rust_primitives.Integers.MkInt 123, e_todo) -> () <: Prims.unit
     | _ -> () <: Prims.unit
   in
   let _:Prims.unit =

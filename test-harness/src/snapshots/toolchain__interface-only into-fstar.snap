@@ -68,9 +68,9 @@ val impl_1': Core.Convert.t_From t_Bar u8
 let impl_1 = impl_1'
 
 assume
-val from__from': u8 -> t_Bar
+val f_from__from': u8 -> t_Bar
 
-let from__from = from__from'
+let f_from__from = f_from__from'
 
 type t_Holder (v_T: Type0) = { f_value:Alloc.Vec.t_Vec v_T Alloc.Alloc.t_Global }
 
@@ -89,7 +89,7 @@ val impl_3': v_SIZE: usize -> Core.Convert.t_From (t_Param v_SIZE) Prims.unit
 let impl_3 (v_SIZE: usize) = impl_3' v_SIZE
 
 assume
-val ff_generic': v_X: usize -> #v_U: Type0 -> v__x: v_U -> t_Param v_X
+val ff_generic': v_X: usize -> #v_U: Type0 -> e_x: v_U -> t_Param v_X
 
 let ff_generic (v_X: usize) (#v_U: Type0) = ff_generic' v_X #v_U
 

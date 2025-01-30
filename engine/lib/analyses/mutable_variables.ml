@@ -18,8 +18,7 @@ module%inlined_contents Make (F : Features.T) = struct
     (* external mut_vars and new variables (e.g. needs def / local) *)
     Map.M(String).t
 
-  module Uprint =
-    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
+  let id_to_string = Concrete_ident.to_view >> [%show: Concrete_ident.View.t]
 
   module LocalIdentOrData (Ty : sig
     type ty [@@deriving compare, sexp]
@@ -130,8 +129,7 @@ module%inlined_contents Make (F : Features.T) = struct
                          (module W)
                          (List.map ~f:(fun x -> W.Identifier x) x),
                        m#snd#zero ))
-                   (Map.find data
-                      (Uprint.Concrete_ident_view.to_definition_name cid))
+                   (Map.find data (id_to_string cid))
              | _ -> super#visit_global_ident env x
 
            method! visit_concrete_ident (_env : W.t list Map.M(Local_ident).t)
@@ -142,8 +140,7 @@ module%inlined_contents Make (F : Features.T) = struct
                      (module W)
                      (List.map ~f:(fun x -> W.Identifier x) x),
                    m#snd#zero ))
-               (Map.find data
-                  (Uprint.Concrete_ident_view.to_definition_name cid))
+               (Map.find data (id_to_string cid))
         end)
           #visit_expr
           env expr
@@ -166,19 +163,14 @@ module%inlined_contents Make (F : Features.T) = struct
       List.fold_left
         ~init:(Map.empty (module String (* Concrete_ident *)))
         ~f:(fun y (x_name, x_items) ->
-          Map.set y
-            ~key:(Uprint.Concrete_ident_view.to_definition_name x_name)
+          Map.set y ~key:(id_to_string x_name)
             ~data:
               ( List.map ~f:(fst >> fst) x_items
                 @ Option.value_map ~default:[]
                     ~f:
-                      (List.filter_map
-                         ~f:
-                           (Uprint.Concrete_ident_view.to_definition_name
-                          >> Map.find y)
+                      (List.filter_map ~f:(id_to_string >> Map.find y)
                       >> List.concat_map ~f:fst)
-                    (Map.find func_dep
-                       (Uprint.Concrete_ident_view.to_definition_name x_name)),
+                    (Map.find func_dep (id_to_string x_name)),
                 x_items ))
         mut_var_list
     in

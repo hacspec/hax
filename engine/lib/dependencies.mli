@@ -9,7 +9,3 @@ module Make (F : Features.T) : sig
   val filter_by_inclusion_clauses :
     Types.inclusion_clause list -> AST.item list -> AST.item list
 end
-
-val includes_for_bundled_trait_methods : bool ref
-(** This is a hack that should be removed
-    (see https://github.com/hacspec/hax/issues/1078) *)

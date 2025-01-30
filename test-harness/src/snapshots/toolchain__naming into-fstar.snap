@@ -34,7 +34,7 @@ open FStar.Mul
 
 let debug (label value: u32) : Prims.unit =
   let _:Prims.unit =
-    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (mk_usize 3)
+    Std.Io.Stdio.e_print (Core.Fmt.impl_2__new_v1 (mk_usize 3)
           (mk_usize 2)
           (let list = ["["; "] a="; "\n"] in
             FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
@@ -80,14 +80,6 @@ let ff_expand (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = debug (mk_u32 1) a in
   debug (mk_u32 0) a
 '''
-"Naming.F.G.Impl_1.G.Hello.fst" = '''
-module Naming.F.G.Impl_1.G.Hello
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-let h (_: Prims.unit) : Prims.unit = ()
-'''
 "Naming.fst" = '''
 module Naming
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -109,27 +101,29 @@ type t_C = { f_x:usize }
 type t_X = | X : t_X
 
 let mk_c (_: Prims.unit) : t_C =
-  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = mk_usize 3 }) <: t_Foo in
+  let _:t_Foo = Foo_B ({ f_x = mk_usize 3 }) <: t_Foo in
   let _:t_X = X <: t_X in
   { f_x = mk_usize 3 } <: t_C
 
-let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
+let impl_Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
 
-let impl__B__f (self: t_B) : t_B = B <: t_B
+let impl_B__f (self: t_B) : t_B = B <: t_B
 
 type t_Foobar = { f_a:t_Foo }
 
-let ff__g (_: Prims.unit) : Prims.unit = ()
+let f__g (_: Prims.unit) : Prims.unit = ()
 
-let ff__g__impl__g (self: t_B) : usize = mk_usize 0
+let f__g__impl_B__g (self: t_B) : usize = mk_usize 0
 
-type t_f__g__impl__g__Foo =
-  | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
-  | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
+type f__g__impl_B__g__t_Foo =
+  | C_f__g__impl_B__g__Foo_A : f__g__impl_B__g__t_Foo
+  | C_f__g__impl_B__g__Foo_B { f__g__impl_B__g__f_x:usize }: f__g__impl_B__g__t_Foo
 
-let ff__g__impl_1__g (self: t_Foo) : usize = mk_usize 1
+let f__g__impl_Foo__g (self: t_Foo) : usize = mk_usize 1
 
-let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
+let f (x: t_Foobar) : usize = f__g__impl_Foo__g x.f_a
+
+let f__g__impl_Foo__g__t_hello__h (_: Prims.unit) : Prims.unit = ()
 
 let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
 
@@ -146,13 +140,13 @@ let impl_T1_for_tuple_Foo_u8: t_T1 (t_Foo & u8) = { __marker_trait = () }
 class t_T2_for_a (v_Self: Type0) = { __marker_trait_t_T2_for_a:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_T2_e_for_a_for_Arity1_of_tuple_Foo_u8: t_T2_for_a (t_Arity1 (t_Foo & u8)) =
+let impl_T2_ee_for_a_for_Arity1_of_tuple_Foo_u8: t_T2_for_a (t_Arity1 (t_Foo & u8)) =
   { __marker_trait = () }
 
-class t_T3_e_for_a (v_Self: Type0) = { __marker_trait_t_T3_e_for_a:Prims.unit }
+class t_T3_ee_for_a (v_Self: Type0) = { __marker_trait_t_T3_ee_for_a:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
+let impl_T3_ee_e_for_a_for_Foo: t_T3_ee_for_a t_Foo = { __marker_trait = () }
 
 type t_StructA = { f_a:usize }
 

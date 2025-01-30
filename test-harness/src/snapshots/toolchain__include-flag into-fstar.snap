@@ -37,7 +37,7 @@ type t_Foo = | Foo : t_Foo
 class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
+let impl: t_Trait t_Foo = { __marker_trait = () }
 
 /// Indirect dependencies
 let main_a_a (_: Prims.unit) : Prims.unit = ()

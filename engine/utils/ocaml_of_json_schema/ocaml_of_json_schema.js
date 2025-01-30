@@ -360,8 +360,12 @@ let is_type = {
 //     return output;
 // };
 
-let export_record = (fields, path) => {
-    let record_expression = fields.map(([field, type], i) => {
+let export_record = (fields, path, name) => {
+    let record_expression = fields.map(([field, type, _doc], i) => {
+        if (field == 'index' && name == 'def_id_contents') {
+            // This is a hack to always parse Rust DefId indexes to `(0, 0)`
+            return 'index = Base.Int64.(zero, zero)';
+        }
         let p = [...path, 'field_' + field];
         let sub = mk_match('x', ocaml_arms_of_type_expr(type, p), p);
         let match = `match List.assoc_opt "${field}" l with Option.Some x -> begin ${sub} end | Option.None -> raise (MissingField {field = "${field}"; fields = l})`;
@@ -402,7 +406,7 @@ let exporters = {
                 ];
                 return ({
                     record: () => {
-                        let [pat, expr] = export_record(Object.entries(payload), ['rec-variant_' + variant + '_' + variant_name]);
+                        let [pat, expr] = export_record(Object.entries(payload), ['rec-variant_' + variant + '_' + variant_name], name);
                         return wrap([[pat, variant + ' ' + expr]]);
                     },
                     expr: () => wrap(ocaml_arms_of_type_expr(payload, ['expr-variant(PA):' + name + ':' + variant + ':' + variant_name]), variant + ' '),
@@ -456,7 +460,7 @@ let exporters = {
                 ([name, prop]) => [name, is_type.expr(prop), prop.description]
             );
 
-            let [pat, expr] = export_record(fields, ['struct_' + name]);
+            let [pat, expr] = export_record(fields, ['struct_' + name], name);
 
             return {
                 type: `{ ${fields.map(([fname, type, doc]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_' + fname + '_' + name])}${mkdoc(doc)}`).join(';\n')} }`,
@@ -534,6 +538,36 @@ function run(str) {
     let sig = ``;
 
     let impl = `include struct
+open struct
+  include Base.Hash.Builtin
+  open Base
+  let bool_of_sexp = bool_of_sexp
+  let string_of_sexp = string_of_sexp
+  let option_of_sexp = option_of_sexp
+  let list_of_sexp = list_of_sexp
+  let int_of_sexp = int_of_sexp
+  let char_of_sexp = char_of_sexp
+  let unit_of_sexp = unit_of_sexp
+  let bool_of_sexp = bool_of_sexp
+
+  let sexp_of_bool = sexp_of_bool
+  let sexp_of_string = sexp_of_string
+  let sexp_of_option = sexp_of_option
+  let sexp_of_list = sexp_of_list
+  let sexp_of_int = sexp_of_int
+  let sexp_of_char = sexp_of_char
+  let sexp_of_unit = sexp_of_unit
+  let sexp_of_bool = sexp_of_bool
+
+  let compare_bool = compare_bool
+  let compare_string = compare_string
+  let compare_option = compare_option
+  let compare_list = compare_list
+  let compare_int = compare_int
+  let compare_char = compare_char
+  let compare_unit = compare_unit
+  let compare_bool = compare_bool
+end
 [@@@warning "-A"]
 `;
 
@@ -546,7 +580,7 @@ function run(str) {
             ([name, def]) => export_definition(name, def)
         ).filter(x => x instanceof Object);
 
-    let derive_items = ['show', 'eq'];
+    let derive_items = ['show', 'eq', 'hash', 'sexp', 'compare'];
 
     impl += `
 module ParseError = struct
@@ -577,6 +611,7 @@ open ParseError
     impl += `
 and node_for__ty_kind = node_for_ty_kind_generated
 and node_for__def_id_contents = node_for_def_id_contents_generated
+
 
 type map_types = ${"[`TyKind of ty_kind | `DefIdContents of def_id_contents]"}
 let cache_map: (int64, ${"[ `Value of map_types | `JSON of Yojson.Safe.t ]"}) Base.Hashtbl.t = Base.Hashtbl.create (module Base.Int64)
@@ -615,23 +650,23 @@ let table_id_node_of_yojson (type t) (name: string) (encode: t -> map_types) (de
     ).join('\nand '));
     impl += `
 and node_for__ty_kind_of_yojson (o: Yojson.Safe.t): node_for__ty_kind =
-   let (value, id) =
+   let (value, _id) =
        table_id_node_of_yojson "TyKind"
            (fun value -> \`TyKind value)
            (function | \`TyKind value -> Some value | _ -> None)
            ty_kind_of_yojson
            o
    in
-   {value; id}
+   {value; id = Base.Int64.zero}
 and node_for__def_id_contents_of_yojson (o: Yojson.Safe.t): node_for__def_id_contents =
-   let (value, id) =
+   let (value, _id) =
        table_id_node_of_yojson "DefIdContents"
            (fun value -> \`DefIdContents value)
            (function | \`DefIdContents value -> Some value | _ -> None)
            def_id_contents_of_yojson
            o
    in
-   {value; id}
+   {value; id = Base.Int64.zero}
 `;
     impl += ('');
     impl += ('let rec ' + items.map(({ name, type, parse, to_json }) =>

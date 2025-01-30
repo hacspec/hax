@@ -80,8 +80,7 @@ open Core
 open FStar.Mul
 
 let original_function_from_495_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) : Prims.unit =
-  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
-  =
+  let (e_indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Filter.t_Filter
           (Core.Ops.Range.t_Range u8) (u8 -> bool))
       #FStar.Tactics.Typeclasses.solve
@@ -133,8 +132,7 @@ let minimized_1_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
 
 let minimized_2_ (it: Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
     : Prims.unit =
-  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
-  =
+  let (e_indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Filter.t_Filter
           (Core.Ops.Range.t_Range u8) (u8 -> bool))
       #FStar.Tactics.Typeclasses.solve
@@ -155,7 +153,7 @@ class t_Foo (v_Self: Type0) (v_T: Type0) = {
   f_to_t:x0: v_Self -> Prims.Pure v_T (f_to_t_pre x0) (fun result -> f_to_t_post x0 result)
 }
 
-let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
+let e_f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
     : Prims.unit =
   let _:u8 = f_to_t #v_X #u8 #FStar.Tactics.Typeclasses.solve x in
   ()
@@ -334,7 +332,7 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
     (fun
         (#v_MethodTypeArg: Type0)
         (v_MethodConstArg: usize)
-        (v__self: Prims.unit)
+        (e_self: Prims.unit)
         (value_TypeArg: v_TypeArg)
         (value_Type: t_Type v_TypeArg v_ConstArg)
         ->
@@ -344,7 +342,7 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
     (fun
         (#v_MethodTypeArg: Type0)
         (v_MethodConstArg: usize)
-        (v__self: Prims.unit)
+        (e_self: Prims.unit)
         (value_TypeArg: v_TypeArg)
         (value_Type: t_Type v_TypeArg v_ConstArg)
         (out: Prims.unit)
@@ -355,7 +353,7 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
     fun
       (#v_MethodTypeArg: Type0)
       (v_MethodConstArg: usize)
-      (v__self: Prims.unit)
+      (e_self: Prims.unit)
       (value_TypeArg: v_TypeArg)
       (value_Type: t_Type v_TypeArg v_ConstArg)
       ->
@@ -530,7 +528,7 @@ let impl: t_PolyOp t_Plus =
 type t_Times = | Times : t_Times
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: t_PolyOp t_Times =
+let impl_PolyOp_for_Times: t_PolyOp t_Times =
   {
     f_op_pre = (fun (x: u32) (y: u32) -> true);
     f_op_post = (fun (x: u32) (y: u32) (out: u32) -> true);
@@ -559,12 +557,12 @@ class t_SuperTrait (v_Self: Type0) = {
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_SuperTrait_for_i32: t_SuperTrait i32 =
+let impl: t_SuperTrait i32 =
   {
     _super_9529721400157967266 = FStar.Tactics.Typeclasses.solve;
     f_function_of_super_trait_pre = (fun (self: i32) -> true);
     f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true);
-    f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
+    f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl_i32__abs self <: i32) <: u32
   }
 
 type t_Struct = | Struct : t_Struct
@@ -612,7 +610,7 @@ type t_Error = | Error_Fail : t_Error
 
 let t_Error_cast_to_repr (x: t_Error) : isize = match x <: t_Error with | Error_Fail  -> mk_isize 0
 
-let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Error =
+let impl_Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Error =
   fun temp_0_ ->
     let _:Prims.unit = temp_0_ in
     Error_Fail <: t_Error
@@ -622,7 +620,7 @@ let iter_option (#v_T: Type0) (x: Core.Option.t_Option v_T) : Core.Option.t_Into
     #FStar.Tactics.Typeclasses.solve
     (Core.Option.impl__as_ref #v_T x <: Core.Option.t_Option v_T)
 
-let use_impl_trait (_: Prims.unit) : Prims.unit =
+let uuse_iimpl_trait (_: Prims.unit) : Prims.unit =
   let iter:_ = iter_option #bool (Core.Option.Option_Some false <: Core.Option.t_Option bool) in
   let tmp0, out:(_ & Core.Option.t_Option bool) =
     Core.Iter.Traits.Iterator.f_next #_ #FStar.Tactics.Typeclasses.solve iter

@@ -72,7 +72,7 @@ module Make (F : Features.T) =
                                 {
                                   e =
                                     GlobalVar
-                                      (Ast.Global_ident.of_name Value
+                                      (Ast.Global_ident.of_name ~value:true
                                          Core__ops__bit__Not__not);
                                   span = cond_expr.span;
                                   typ = TArrow ([ TBool ], TBool);
@@ -94,7 +94,8 @@ module Make (F : Features.T) =
                           {
                             e =
                               GlobalVar
-                                (Ast.Global_ident.of_name Value Hax_lib__assert);
+                                (Ast.Global_ident.of_name ~value:true
+                                   Hax_lib__assert);
                             span = e.span;
                             typ =
                               TArrow

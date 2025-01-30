@@ -140,7 +140,7 @@ let double_sum2 (_: Prims.unit) : i32 =
 let double_sum_return (v: t_Slice i32) : i32 =
   let sum:i32 = mk_i32 0 in
   match
-    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
+    Rust_primitives.Hax.Folds.fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
           #FStar.Tactics.Typeclasses.solve
           v
         <:
@@ -173,7 +173,7 @@ let double_sum2_return (v: t_Slice i32) : i32 =
   let sum:i32 = mk_i32 0 in
   let sum2:i32 = mk_i32 0 in
   match
-    Rust_primitives.Hax.f_fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
+    Rust_primitives.Hax.Folds.fold_return (Core.Iter.Traits.Collect.f_into_iter #(t_Slice i32)
           #FStar.Tactics.Typeclasses.solve
           v
         <:
@@ -205,7 +205,7 @@ let double_sum2_return (v: t_Slice i32) : i32 =
 
 let bigger_power_2_ (x: i32) : i32 =
   let pow:i32 = mk_i32 1 in
-  Rust_primitives.f_while_loop_cf (fun pow ->
+  Rust_primitives.Hax.while_loop_cf (fun pow ->
         let pow:i32 = pow in
         pow <. mk_i32 1000000 <: bool)
     pow
@@ -231,7 +231,7 @@ let bigger_power_2_ (x: i32) : i32 =
 
 type t_M = { f_m:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
 
-let impl__M__decoded_message (self: t_M)
+let impl_M__decoded_message (self: t_M)
     : Core.Option.t_Option (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
   match
     Rust_primitives.Hax.Folds.fold_range_return (mk_usize 0)
@@ -788,7 +788,7 @@ open FStar.Mul
 let f (_: Prims.unit) : u8 =
   let x:u8 = mk_u8 0 in
   let x:u8 =
-    Rust_primitives.f_while_loop (fun x ->
+    Rust_primitives.Hax.while_loop (fun x ->
           let x:u8 = x in
           x <. mk_u8 10 <: bool)
       x

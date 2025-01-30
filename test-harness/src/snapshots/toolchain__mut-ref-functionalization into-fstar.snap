@@ -61,7 +61,7 @@ let foo (lhs rhs: t_S) : t_S =
   in
   lhs
 
-let impl__S__update (self: t_S) (x: u8) : t_S =
+let impl_S__update (self: t_S) (x: u8) : t_S =
   let self:t_S =
     {
       self with

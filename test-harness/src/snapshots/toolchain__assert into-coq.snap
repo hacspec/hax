@@ -45,14 +45,14 @@ Import RecordSetNotations.
 
 Definition asserts (_ : unit) : unit :=
   let _ := assert (true) in
-  let _ := assert (t_PartialEq_f_eq (1) (1)) in
+  let _ := assert (f_eq (1) (1)) in
   let _ := match (2,2) with
   | (left_val,right_val) =>
-    assert (t_PartialEq_f_eq (left_val) (right_val))
+    assert (f_eq (left_val) (right_val))
   end in
   let _ := match (1,2) with
   | (left_val,right_val) =>
-    assert (negb (t_PartialEq_f_eq (left_val) (right_val)))
+    assert (f_not (f_eq (left_val) (right_val)))
   end in
   tt.
 '''
