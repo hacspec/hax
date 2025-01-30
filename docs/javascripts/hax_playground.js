@@ -63,11 +63,12 @@ function call_playground(result_block, query, text) {
                     result_block.innerText = "";
                 else
                     result_block.innerHTML += "<br/>";
-                let result = document.createElement('div');
+                let result = document.createElement('pre');
+                result.style.whiteSpace = 'pre-wrap';
                 if (out.length == 1) {
-                    result.innerText = out[0][1];
+                    result.textContent = out[0][1];
                 } else {
-                    result.innerText = out.map(([file, s]) => '(* File: ' + file + ' *) \n' + s).join('\n\n').trim();
+                    result.textContent = out.map(([file, s]) => '(* File: ' + file + ' *) \n' + s).join('\n\n').trim();
                 }
                 result_block.appendChild(result);
                 if (json.Done.success && query.includes('+tc')) {
@@ -80,13 +81,19 @@ function call_playground(result_block, query, text) {
     );
 }
 
-function setup() {
+function setup_hax_playground() {
+    if (document.querySelector('.md-hax-playground'))
+        return;
+    console.log('setup');
     for (let e of document.querySelectorAll('pre')) {
         let code = e.querySelector("code");
+        if (!code)
+            continue;
         let lines = [
             ...code.children
         ].map(line => line.innerText.replace(/^\n+/, '').replace(/\n+$/, ''))
             .join("\n").trim().split('\n');
+        console.log({ lines });
         let contents = lines.filter(line => !line.startsWith('# ')).join('\n');
         let w = e.parentElement;
         if (!w.classList.contains("playable"))
@@ -95,26 +102,24 @@ function setup() {
         code.innerHTML = "<pre></pre>";
         let inner = code.children[0];
         inner.style.backgroundColor = "transparent";
+        inner.classList.add("md-hax-playground-pre");
 
-        let editor = ace.edit(inner);
-        editor.setValue(contents, -1);
-        editor.setValue(contents, 1);
-        editor.getSession().setMode("ace/mode/rust");
-        editor.setOptions({
-            maxLines: Infinity,
-            showGutter: false,
-            fontSize: "1em",
-            highlightActiveLine: false,
+        let editor = new codemirror.EditorView({
+            doc: contents,
+            extensions: [codemirror.basicSetup, codemirror.rust()],
+            parent: inner,
+            lineNumbers: false,
         });
 
         let result_block = document.createElement("pre");
+        result_block.classList.add("hax-playground-pre");
         result_block.style.fontFamily = '"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "Source Code Pro", "source-code-pro", monospace';
         result_block.style.fontSize = '0.85em';
         result_block.style.background = '#f3f3f3';
         w.append(result_block);
 
         let header = lines.filter(line => line.startsWith('# ')).map(line => line.slice(2)).join('\n');
-        let getCode = () => header + '\n' + editor.getValue();
+        let getCode = () => header + '\n' + editor.state.doc.toString();
 
         let button_translate = document.createElement("button");
         button_translate.innerHTML = `<i class="fa-solid fa-play"></i>`;
@@ -126,7 +131,6 @@ function setup() {
             call_playground(result_block, 'fstar', getCode());
         };
         e.prepend(button_translate);
-
 
         let button_tc = document.createElement("button");
         button_tc.innerHTML = `<i class="fa-solid fa-check"></i>`;
@@ -143,5 +147,16 @@ function setup() {
             code.style.padding = "0 0.9em";
         }
     }
+}
 
-    setup();
+window.addEventListener('load', () => {
+    setup_hax_playground();
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('.md-hax-playground'))
+            return;
+        setTimeout(setup_hax_playground, 200);
+    });
+    observer.observe(document.querySelector('body'), { childList: true, subtree: true });
+});
+
+
