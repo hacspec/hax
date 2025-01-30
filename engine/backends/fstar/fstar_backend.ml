@@ -848,14 +848,14 @@ struct
     match args with
     | [] -> typ
     | _ ->
-        let mk namespace effect = F.term_of_lid (namespace @ [ effect ]) in
+        let mk namespace eff = F.term_of_lid (namespace @ [ eff ]) in
         let prims = mk [ "Prims" ] in
-        let effect =
+        let eff =
           if Option.is_some prepost_bundle then
             if is_lemma then mk [] "Lemma" else prims "Pure"
           else prims "Tot"
         in
-        F.mk_e_app effect (if is_lemma then args else typ :: args)
+        F.mk_e_app eff (if is_lemma then args else typ :: args)
 
   (** Prints doc comments out of a list of attributes *)
   let pdoc_comments attrs =
