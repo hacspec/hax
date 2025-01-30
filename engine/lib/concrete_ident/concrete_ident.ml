@@ -184,7 +184,7 @@ let to_view (ident : t) : Concrete_ident_view.t =
   in
   { mod_path; rel_path }
 
-(** Stateful store that maps [def_id]s to implementation informations
+(** Stateful store that maps [def_id]s to implementation information
 (which trait is implemented? for which type? under which constraints?) *)
 module ImplInfoStore = struct
   include Explicit_def_id.ImplInfoStore
@@ -195,18 +195,16 @@ end
 module MakeToString (R : VIEW_RENDERER) = struct
   open Concrete_ident_render_sig
 
-  (** For each module namespace, we store three different pieces of data:
-      - a map from relative paths (i.e. the non-module part of a path) to full
-        identifiers
-      - an set of rendered names in this namespace
+  (** For each module namespace, we store two different pieces of data:
+      - a set of rendered names in this namespace
       - a memoization map from full identifiers to rendered names
 
       If an identifier was already rendered, we just use this already rendered
       name.
 
       Otherwise, when we print a name under a fresh module, we take a look at
-      the first map: if there is already an identifier in the fresh module with
-      the exact same relative path, then we have a collision, and we need to
+      the set: if there is already an identifier in the fresh module with
+      the exact same rendered name, then we have a collision, and we need to
       generate a fresh name.
 
       To generate a fresh name, we use the set of rendered names.
@@ -466,7 +464,7 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
         else rendered
     end
 
-    (** [pretty_impl_name ~namespace impl_infos] computes a pretty impl name given impl informations and a namespace.
+    (** [pretty_impl_name ~namespace impl_infos] computes a pretty impl name given impl information and a namespace.
         A pretty name can be computed when:
         - (1) the impl, (2) the type and (3) the trait implemented all live in the same namespace
         - the impl block has no generics

@@ -47,7 +47,7 @@ val eq_name : name -> t -> bool
 (** [eq_name name identifier] is true whenever [identifier] is [name].  *)
 
 val to_debug_string : t -> string
-(** Format a identifier as a (ppx) debug string. The default debug pretty prints the identifier. *)
+(** Format an identifier as a (ppx) debug string. The default debug pretty prints the identifier. *)
 
 val fresh_module : label:string -> t list -> Fresh_module.t
 (** [fresh_module ~label hints] creates a fresh module given a non-empty list of
@@ -72,6 +72,7 @@ val map_path_strings : f:(string -> string) -> t -> t
   any integer type, please do not use it elsewhere. *)
 
 val is_constructor : t -> bool
+(** Returns true if the ident represents a constructor. *)
 
 type comparator_witness
 
@@ -90,7 +91,7 @@ module ImplInfoStore : sig
   val init : (Types.def_id * Types.impl_infos) list -> unit
 
   val lookup_raw : t -> Types.impl_infos option
-  (** Lookup the (raw[1]) implementation informations given a concrete
+  (** Lookup the (raw[1]) implementation information given a concrete
   ident. Returns `Some _` if and only if the supplied identifier points
   to an `Impl`.
   

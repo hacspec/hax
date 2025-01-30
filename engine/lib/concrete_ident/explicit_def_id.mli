@@ -8,8 +8,8 @@ open! Prelude
     struct S;
     fn f() -> S { S }
     ```
-    Here, the return type of `f` (that is, `S`) and the constructor `S` in the body of `f` refers to the exact same identifier `mycrate::S`.
-    Yet, they denotes two very different objects: a type versus a constructor.
+    Here, the return type of `f` (that is, `S`) and the constructor `S` in the body of `f` refer to the exact same identifier `mycrate::S`.
+    Yet, they denote two very different objects: a type versus a constructor.
 
     [ExplicitDefId.t] clears up this ambiguity, making constructors and types two separate things.
 
@@ -32,9 +32,9 @@ val of_def_id : ?constructor:bool -> Types.def_id -> t option
   *)
 
 val of_def_id_exn : ?constructor:bool -> Types.def_id -> t
-(** Exception-throwing variant of [make].
+(** Exception-throwing variant of [of_def_id].
       This should be used when we know statically that the conditions 
-      described in the documentation of [make] are met. 
+      described in the documentation of [of_def_id] are met. 
 
       For instance, with static [Types.def_id]s or in [Import_thir].
   *)
@@ -70,7 +70,7 @@ module ImplInfoStore : sig
   val init : (Types.def_id * Types.impl_infos) list -> unit
 
   val lookup_raw : t -> Types.impl_infos option
-  (** Lookup the (raw[1]) implementation informations given a concrete
+  (** Lookup the (raw[1]) implementation information given a concrete
   ident. Returns `Some _` if and only if the supplied identifier points
   to an `Impl`.
   

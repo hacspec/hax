@@ -90,7 +90,7 @@ let rec parents (did : t) =
 let to_def_id { def_id; _ } = def_id
 let is_constructor { is_constructor; _ } = is_constructor
 
-(** Stateful store that maps [def_id]s to implementation informations
+(** Stateful store that maps [def_id]s to implementation information
 (which trait is implemented? for which type? under which constraints?) *)
 module ImplInfoStore = struct
   let state : (Types.def_id_contents, Types.impl_infos) Hashtbl.t option ref =

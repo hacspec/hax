@@ -2,19 +2,19 @@ open! Prelude
 
 (** This modules defines what is the view over a concrete identifiers.
 
-    Hax manipulates concrete identifiers (that is global identifiers refering to
+    Hax manipulates concrete identifiers (that is global identifiers referring to
     concrete Rust items -- not built-in operators) as raw Rust identifiers
     augmented with some metadata.
 
     Rust represents identifiers as a crate and a path. Each chunk of the path is
-    roughly a level of nest in Rust. The path lacks informations about
+    roughly a level of nest in Rust. The path lacks information about
     definition kinds.
 
     There is two kinds of nesting for items.
-    - Confort: e.g. the user decides to embed a struct within a function to work
+    - Comfort: e.g. the user decides to embed a struct within a function to work
       with it locally.
     - Relational: e.g. an associated method has to be under a trait, or a field
-      as to be under a constructor.
+      has to be under a constructor.
 
     This module provides a view to those paths: a path in the view is a list of
     smaller relational paths. For instance, consider the following piece of
@@ -33,7 +33,7 @@ open! Prelude
     ]}
 
     Here, the Rust raw definition identifier of [LocalStruct] is roughly
-    [a::my_crate::<Impl 0>::assoc_fn::LocalStruct::field].
+    [my_crate::a::<Impl 0>::assoc_fn::LocalStruct::field].
 
     The view for [LocalStruct] looks like:
     [{
@@ -102,7 +102,7 @@ module RelPath = struct
 
     and 'name maybe_associated = [ `Fn of 'name | `Const of 'name ]
     [@@deriving show, hash, compare, sexp, hash, eq, map]
-    (** Helper type for function and constants: those exists both as associated
+    (** Helper type for function and constants: those exist both as associated
       in an impl block or a trait, and as standalone. *)
 
     type 'name associated = [ 'name maybe_associated | `Type of 'name ]

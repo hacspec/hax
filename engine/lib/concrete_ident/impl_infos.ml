@@ -11,7 +11,7 @@ type t = {
 }
 (** metadata of an [impl] block *)
 
-(** Lookup the implementation informations given a concrete
+(** Lookup the implementation information given a concrete
 ident. Returns [Some _] if and only if the supplied identifier points
 to an [Impl].
 
