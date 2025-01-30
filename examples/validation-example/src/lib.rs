@@ -110,7 +110,7 @@ impl ProtocolLibrary {
     /// Apply an already verified message. Only checks that the validation is not outdated.
     ///#[hax_lib::requires(hax_lib::exists(|(s, um): (ProtocolLibrary, &UnverifiedMessage)| -> bool{ }))]
     fn apply(&mut self, msg: &VerifiedMessage) -> Result<(), Error> {
-        if self.pl_last_changed != msg.vm_state_last_changed {
+        if !(self.pl_last_changed == msg.vm_state_last_changed) {
             return Err(Error::UnexpectedVerifiedMsg)
         }
 
