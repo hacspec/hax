@@ -87,6 +87,17 @@ let hardcoded_smtlib_headers = {|
     ( (core/result/Result_Ok (evd/Result/Ok T))
       (core/result/Result_Err (evd/Result/Err E)))) )
 
+(declare-sort Tuple0 0)
+(declare-fun mk-tuple0 () Tuple0)
+
+(declare-datatypes ((Tuple1 1))
+ ( (par (T1)
+        ((mk-tuple1 (el1-1 T1))))))
+
+(declare-datatypes ((Tuple2 2))
+ ( (par (T1 T2)
+        ((mk-tuple2 (el2-1 T1) (el2-2 T2))))))
+
 |}
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
@@ -104,9 +115,8 @@ struct
   let sexprlist lst = parens (separate space lst)
   let p x = x#p
   let ps = List.map ~f:p
-  let tuple_constructor_name tuple = utf8format "mktup-%i" (List.length tuple)
+  let tuple_constructor_name tuple = utf8format "mk-tuple%i" (List.length tuple)
 
-  let constructor_name struct_name = concat [ string "mk/"; struct_name ]
   let destructor_name field_name = concat [string "get/"; field_name]
 
   let default_string_for s = "(TODO please-implement-the-method \"" ^ s ^ "\")"
@@ -169,16 +179,22 @@ struct
 
         sexprlist ( constructor_name :: fields )
 
-      method item'_Type_struct ~super:_ ~name ~generics:_ ~tuple_struct:_
+      method item'_Type_struct ~super ~name ~generics:_ ~tuple_struct:_
           ~arguments =
-            let fields = List.map
-              ~f:(fun (field_name, field_ty, attr) -> sexprlist [(destructor_name field_name#p); field_ty#p ])
-              arguments in
-          sexprlist [
-            string "declare-datatype";
-            name#p;
-            sexprlist [ sexprlist( (constructor_name name#p) :: fields)]
-          ]
+            match super.v with
+              | Type { variants = [{name = constructor_name;_}]; _ } ->
+                let constructor_name = Concrete_ident.DefaultViewAPI.render constructor_name in
+                let constructor_name = self#concrete_ident false constructor_name in
+                let fields = List.map
+                  ~f:(fun (field_name, field_ty, attr) -> sexprlist [(destructor_name field_name#p); field_ty#p ])
+                  arguments in
+
+                sexprlist [
+                  string "declare-datatype";
+                  name#p;
+                  sexprlist [ sexprlist(constructor_name :: fields)]
+                ]
+              | _ -> failwith "expected a type here"
 
       method item'_Use ~super:_ ~path ~is_external:_ ~rename:_ =
         string ";; skipping use of path " ^^ separate (string "::") (List.map ~f:string path) ^^ string "\n"
@@ -238,11 +254,15 @@ struct
       method expr'_App_field_projection ~super:_ ~field ~e =
         sexprlist [(destructor_name field#p); e#p ]
 
-      method expr'_Construct_inductive ~super:_ ~constructor ~is_record:_
-          ~is_struct:_ ~fields ~base:_ =
-        if (List.is_empty fields)
+      method expr'_Construct_inductive ~super ~constructor ~is_record:_
+          ~is_struct ~fields ~base:_ =
+        let constructor = if is_struct
           then constructor#p
-          else sexprlist (constructor#p :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
+          else constructor#p in
+        let constructor = sexprlist [string "as" ; constructor; self#print_ty AstPos_expr__e super.typ] in
+        if (List.is_empty fields)
+          then constructor
+          else sexprlist (constructor :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
 
       method expr'_Construct_tuple ~super:_ ~components =
         if ((List.length components) = 1)
@@ -278,6 +298,10 @@ struct
 
       method generic_value_GType _x1 =
         _x1#p
+
+      method ty_TApp_tuple ~types = if List.is_empty types
+        then string "Tuple0"
+        else sexprlist ((utf8format "Tuple%i" (List.length types) ) :: List.map ~f:(self#print_ty AstPos_expr__e) types)
 
       (*
        *
@@ -533,7 +557,6 @@ struct
       method trait_item'_TIFn _x1 = default_document_for "trait_item'_TIFn"
       method trait_item'_TIType _x1 = default_document_for "trait_item'_TIType"
 
-      method ty_TApp_tuple ~types:_ = default_document_for "ty_TApp_tuple"
       method ty_TArray ~typ:_ ~length:_ = default_document_for "ty_TArray"
       method ty_TArrow _x1 _x2 = default_document_for "ty_TArrow"
 
