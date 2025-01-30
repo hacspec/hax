@@ -259,8 +259,18 @@ include Cyclic_modules.M1.Cyclic_bundle_892895908 {b as b}
 
 include Cyclic_modules.M1.Cyclic_bundle_892895908 {c as c}
 '''
-"Cyclic_modules.Moved_trait.Cyclic_bundle_202498800.fst" = '''
-module Cyclic_modules.Moved_trait.Cyclic_bundle_202498800
+"Cyclic_modules.Moved_trait.Nested.fst" = '''
+module Cyclic_modules.Moved_trait.Nested
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {t_St as t_St}
+
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {g as g}
+'''
+"Cyclic_modules.Moved_trait.Rec_bundle_963167032.fst" = '''
+module Cyclic_modules.Moved_trait.Rec_bundle_963167032
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -283,31 +293,21 @@ let impl: v_Tr t_St =
 
 let g (x: t_St) : Prims.unit = f_f #t_St #FStar.Tactics.Typeclasses.solve x
 '''
-"Cyclic_modules.Moved_trait.Nested.fst" = '''
-module Cyclic_modules.Moved_trait.Nested
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {t_St as t_St}
-
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {g as g}
-'''
 "Cyclic_modules.Moved_trait.fst" = '''
 module Cyclic_modules.Moved_trait
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {v_Tr as v_Tr}
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {v_Tr as v_Tr}
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f_pre as f_f_pre}
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f_pre as f_f_pre}
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f_post as f_f_post}
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f_post as f_f_post}
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {f_f as f_f}
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {f_f as f_f}
 
-include Cyclic_modules.Moved_trait.Cyclic_bundle_202498800 {impl as impl}
+include Cyclic_modules.Moved_trait.Rec_bundle_963167032 {impl as impl}
 '''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec

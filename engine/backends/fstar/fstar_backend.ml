@@ -1865,9 +1865,6 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     (* else *)
     items
   in
-  (* This is a hack that should be removed
-     (see https://github.com/hacspec/hax/issues/1078) *)
-  Dependencies.includes_for_bundled_trait_methods := true;
   let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:unsize_as_identity
