@@ -256,7 +256,9 @@ module MakeToString (R : VIEW_RENDERER) = struct
           in
           let is_assoc_or_field (rel_path : View.RelPath.t) : bool =
             match List.last rel_path with
-            | Some (`AssociatedItem _ | `Field _) -> true
+            | Some (`AssociatedItem (_, (`Trait _ | `Impl (_, `Trait, _))))
+            | Some (`Field _) ->
+                true
             | _ -> false
           in
           let name =
@@ -269,10 +271,8 @@ module MakeToString (R : VIEW_RENDERER) = struct
                  methods which may be repeated (with their implementations),
                  and for fields (which are repeated by accessors). *)
             then
-              let mod_path : View.ModPath.t =
-                (View.of_def_id i.def_id).mod_path
-              in
-              let path = List.map ~f:R.render_module mod_path in
+              let path : View.ModPath.t = (View.of_def_id i.def_id).mod_path in
+              let path = List.map ~f:R.render_module path in
               (* Generates the list of all prefixes of reversed `path` *)
               List.folding_map ~init:[] (List.rev path) ~f:(fun acc chunk ->
                   let acc = chunk :: acc in
@@ -286,9 +286,7 @@ module MakeToString (R : VIEW_RENDERER) = struct
                          path (* This might shadow, we should escape *))
                  (* Find the shortest name that doesn't exist already *)
               |> List.find ~f:(Hash_set.mem name_set >> not)
-              |> Option.value
-                   ~default:
-                     (name ^ (View.ModPath.hash mod_path |> Int.to_string))
+              |> Option.value ~default:(name ^ ([%hash: t] i |> Int.to_string))
             else name
           in
           (* Update the maps and hashtables *)
