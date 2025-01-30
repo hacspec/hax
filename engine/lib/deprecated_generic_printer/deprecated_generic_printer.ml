@@ -29,11 +29,10 @@ module Make (F : Features.T) (View : Concrete_ident.RENDER_API) = struct
               AlreadyPar
           | _ -> NeedsPar
 
-        method namespace_of_concrete_ident
-            : concrete_ident -> string * string list =
+        method namespace_of_concrete_ident : concrete_ident -> string list =
           fun i ->
             let rendered = View.render i in
-            (rendered.name, rendered.path)
+            rendered.path
 
         method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
           fun id ->

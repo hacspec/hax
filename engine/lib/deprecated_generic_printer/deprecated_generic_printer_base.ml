@@ -88,7 +88,7 @@ module Make (F : Features.T) = struct
     object (print)
       val mutable current_span = Span.default
       val mutable span_data : Annotation.t list = []
-      val mutable current_namespace : (string * string list) option = None
+      val mutable current_namespace : string list option = None
       method get_span_data () = span_data
 
       method with_span ~span f =
@@ -118,7 +118,7 @@ module Make (F : Features.T) = struct
           let id_ns = print#namespace_of_concrete_ident id in
           print#concrete_ident'
             ~under_current_ns:
-              ([%equal: (string * string list) option] current_ns (Some id_ns))
+              ([%equal: string list option] current_ns (Some id_ns))
             id
       (** Print a concrete identifier.
 
@@ -281,7 +281,7 @@ module Make (F : Features.T) = struct
     method printer_name : string
     method get_span_data : unit -> Annotation.t list
 
-    method namespace_of_concrete_ident : concrete_ident -> string * string list
+    method namespace_of_concrete_ident : concrete_ident -> string list
     (** The namespace a concrete identifier was defined in. *)
 
     method par_state : ast_position -> par_state

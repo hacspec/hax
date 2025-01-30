@@ -651,9 +651,8 @@ module Make (Options : OPTS) : MAKE = struct
           fun id ->
             if under_current_ns then print#name_of_concrete_ident id
             else
-              let crate, path = print#namespace_of_concrete_ident id in
-              let full_path = crate :: path in
-              separate_map (underscore ^^ underscore) utf8string full_path
+              let path = print#namespace_of_concrete_ident id in
+              separate_map (underscore ^^ underscore) utf8string path
               ^^ underscore ^^ underscore
               ^^ print#name_of_concrete_ident id
 
