@@ -75,7 +75,16 @@ end
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (SmtlibNamePolicy)
 open AST
 
-let hardcoded_smtlib_headers = "(set-logic ALL)\n\n"
+let hardcoded_smtlib_headers = {|
+(set-logic ALL)
+
+;; The core::result::Result enum
+(declare-datatype core/result/t_Result
+  (par (T E)
+    ( (core/result/Result_Ok (evd/Result/Ok T))
+      (core/result/Result_Err (evd/Result/Err E)))) )
+
+|}
 
 module BasePrinter = Generic_printer.Make (InputLanguage)
 
@@ -133,6 +142,7 @@ struct
         [ string "define-fun"
         ; name#p
         ; sexprlist (ps params)
+          ; self#print_ty AstPos_item'_Fn_body body#v.typ 
         ; body#p ]
 
       method param ~pat ~typ ~typ_span:_ ~attrs:_ = sexprlist [pat#p ; typ#p]
@@ -176,8 +186,10 @@ struct
       method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v:_ ~ii_ident ~ii_attrs:_
           = concat [ string ";; skipping impl item with name \""; ii_ident#p; string "\"\n"]
 
-      method ty_TApp_application ~typ ~generics:_ =
-        typ#p
+      method ty_TApp_application ~typ ~generics =
+        if (List.is_empty generics)
+          then typ#p
+          else sexprlist (typ#p :: (ps generics))
 
       method ty_TInt _x1 = string "Int"
       method ty_TBool = string "Bool"
@@ -189,7 +201,9 @@ struct
       method expr ~e ~span:_ ~typ:_ = e#p
 
       method expr'_App_application ~super:_ ~f ~args ~generics:_ =
-        sexprlist (f#p :: (ps args))
+        if (List.is_empty args)
+          then f#p
+          else sexprlist (f#p :: (ps args))
 
       (* This will need a phase for maing deep matches shallow *)
       method expr'_Match ~super:_ ~scrutinee ~arms =
@@ -223,10 +237,14 @@ struct
 
       method expr'_Construct_inductive ~super:_ ~constructor ~is_record:_
           ~is_struct:_ ~fields ~base:_ =
-            sexprlist (constructor#p :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
+        if (List.is_empty fields)
+          then constructor#p
+          else sexprlist (constructor#p :: ps (List.map ~f:(fun (name, expr) -> expr ) fields))
 
       method expr'_Construct_tuple ~super:_ ~components =
-        sexprlist ((tuple_constructor_name components) :: (ps components))
+        if ((List.length components) = 1)
+          then (tuple_constructor_name components)
+          else sexprlist ((tuple_constructor_name components) :: (ps components))
 
       method arm ~arm ~span:_ = arm#p
 
@@ -249,7 +267,32 @@ struct
 
       method pat'_PWild = string "_"
 
-      (* BEGIN GENERATED *)
+      method expr'_GlobalVar_primitive ~super _x2 = (match _x2 with
+        | Deref -> string "(todo globalvar primitive deref)"
+        | Cast -> string "(todo globalvar primitive cast)"
+        | LogicalOp And -> string "and"
+        | LogicalOp Or -> string "or")
+
+      method generic_value_GType _x1 =
+        _x1#p
+
+      (*
+       *
+       *
+       *
+       *
+       *
+       * ###############
+       * BEGIN GENERATED
+       * ###############
+       *
+       *
+       *
+       *
+       *
+       *
+       *)
+
       method impl_expr ~kind:_ ~goal:_ = default_document_for "impl_expr"
 
       method attrs _x1 = default_document_for "attrs"
@@ -308,9 +351,6 @@ struct
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
         default_document_for "expr'_EffectAction"
 
-      method expr'_GlobalVar_primitive ~super:_ _x2 =
-        default_document_for "expr'_GlobalVar_primitive"
-
       method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_
           ~label:_ ~witness:_ =
         default_document_for "expr'_Loop"
@@ -355,9 +395,6 @@ struct
 
       method generic_value_GLifetime ~lt:_ ~witness:_ =
         default_document_for "generic_value_GLifetime"
-
-      method generic_value_GType _x1 =
-        default_document_for "generic_value_GType"
 
       method generics ~params:_ ~constraints:_ = default_document_for "generics"
       method guard ~guard:_ ~span:_ = default_document_for "guard"
