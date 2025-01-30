@@ -106,7 +106,7 @@ struct
     ('get_span_data, 'a) BasePrinter.Gen.object_type
 
   class printer =
-    object
+    object (self)
       inherit BasePrinter.base
 
       method expr'_If ~super:_ ~cond ~then_ ~else_ =
@@ -119,7 +119,17 @@ struct
 
       method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p
 
-      method item'_Fn ~super:_ ~name ~generics:_ ~body ~params ~safety:_ = sexprlist
+      method item'_Fn ~super ~name ~generics:_ ~body ~params ~safety:_ = if
+          Attrs.is_erased super.attrs
+      then
+        let type_doc_of_fn_param param = self#print_ty AstPos_item'_Fn_params param#v.typ in
+        sexprlist
+          [ string "declare-fun"
+          ; name#p
+          ; sexprlist (List.map ~f:type_doc_of_fn_param params)
+          ; self#print_ty AstPos_item'_Fn_body body#v.typ 
+        ]
+      else sexprlist
         [ string "define-fun"
         ; name#p
         ; sexprlist (ps params)
