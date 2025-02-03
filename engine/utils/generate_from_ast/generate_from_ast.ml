@@ -13,7 +13,9 @@ let _main =
            (* We only look at certain types in the AST.ml module *)
            String.is_prefix ~prefix:"Make." path
            || List.mem ~equal:String.equal
-                [ "mutability"; "literal"; "attrs"; "quote" ]
+                [
+                  "mutability"; "literal"; "attrs"; "quote"; "item_quote_origin";
+                ]
                 path)
     |> List.map ~f:(fun (path, td) ->
            ( String.chop_prefix ~prefix:"Make." path
