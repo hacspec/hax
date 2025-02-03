@@ -247,11 +247,7 @@ include Cyclic_modules.Bundle_enums_a {T_B__from__enums_a as T_B}
 
 include Cyclic_modules.Bundle_enums_a {T_C__from__enums_a as T_C}
 
-include Cyclic_modules.Bundle_enums_a {_0 as _0}
-
 include Cyclic_modules.Bundle_enums_a {T_D as T_D}
-
-include Cyclic_modules.Bundle_enums_a {_0 as _0}
 '''
 "Cyclic_modules.Enums_b.fst" = '''
 module Cyclic_modules.Enums_b
@@ -267,8 +263,6 @@ include Cyclic_modules.Bundle_enums_a {U_B as U_B}
 
 include Cyclic_modules.Bundle_enums_a {U_C as U_C}
 
-include Cyclic_modules.Bundle_enums_a {_0 as _0}
-
 include Cyclic_modules.Bundle_enums_a {t_T__from__enums_b as t_T}
 
 include Cyclic_modules.Bundle_enums_a {T_A as T_A}
@@ -276,8 +270,6 @@ include Cyclic_modules.Bundle_enums_a {T_A as T_A}
 include Cyclic_modules.Bundle_enums_a {T_B as T_B}
 
 include Cyclic_modules.Bundle_enums_a {T_C as T_C}
-
-include Cyclic_modules.Bundle_enums_a {_0 as _0}
 
 include Cyclic_modules.Bundle_enums_a {f as f}
 '''
@@ -373,15 +365,11 @@ include Cyclic_modules.Bundle_typ_a {t_TRec as t_TRec}
 
 include Cyclic_modules.Bundle_typ_a {TRec_T as TRec_T}
 
-include Cyclic_modules.Bundle_typ_a {_0 as _0}
-
 include Cyclic_modules.Bundle_typ_a {TRec_Empty as TRec_Empty}
 
 include Cyclic_modules.Bundle_typ_a {t_T as t_T}
 
 include Cyclic_modules.Bundle_typ_a {T_T as T_T}
-
-include Cyclic_modules.Bundle_typ_a {_0 as _0}
 '''
 "Cyclic_modules.Typ_b.fst" = '''
 module Cyclic_modules.Typ_b
@@ -393,13 +381,9 @@ include Cyclic_modules.Bundle_typ_a {t_T1Rec as t_T1Rec}
 
 include Cyclic_modules.Bundle_typ_a {T1Rec_T1 as T1Rec_T1}
 
-include Cyclic_modules.Bundle_typ_a {_0 as _0}
-
 include Cyclic_modules.Bundle_typ_a {t_T2Rec as t_T2Rec}
 
 include Cyclic_modules.Bundle_typ_a {T2Rec_T2 as T2Rec_T2}
-
-include Cyclic_modules.Bundle_typ_a {_0 as _0}
 
 include Cyclic_modules.Bundle_typ_a {t_T1_cast_to_repr as t_T1_cast_to_repr}
 
@@ -410,8 +394,6 @@ include Cyclic_modules.Bundle_typ_a {T1_T1 as T1_T1}
 include Cyclic_modules.Bundle_typ_a {t_T2 as t_T2}
 
 include Cyclic_modules.Bundle_typ_a {T2_T2 as T2_T2}
-
-include Cyclic_modules.Bundle_typ_a {_0 as _0}
 '''
 "Cyclic_modules.Variant_constructor_a.fst" = '''
 module Cyclic_modules.Variant_constructor_a
@@ -423,11 +405,7 @@ include Cyclic_modules.Bundle_variant_constructor_a {t_Context as t_Context}
 
 include Cyclic_modules.Bundle_variant_constructor_a {Context_A as Context_A}
 
-include Cyclic_modules.Bundle_variant_constructor_a {_0 as _0}
-
 include Cyclic_modules.Bundle_variant_constructor_a {Context_B as Context_B}
-
-include Cyclic_modules.Bundle_variant_constructor_a {_0 as _0}
 
 include Cyclic_modules.Bundle_variant_constructor_a {f as f}
 
