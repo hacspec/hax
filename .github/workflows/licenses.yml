@@ -12,7 +12,7 @@ jobs:
     name: nix-action
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: extractions/setup-just@v1
     - name: Set-up OCaml
       uses: ocaml/setup-ocaml@v3

@@ -12,7 +12,7 @@ jobs:
     name: nix-action
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@main
     - uses: cachix/cachix-action@v15
       with:
@@ -44,7 +44,7 @@ jobs:
         nix build .#rust-by-example-hax-extraction -L
 
     - name: Checkout specifications
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: 'hacspec/specs'
         path: specs
