@@ -73,34 +73,34 @@ pub mod int {
     }
 
     impl Add for Int {
-    	type Output = Self;
+        type Output = Self;
 
-    	fn add(self, other: Self) -> Self::Output {
-           Int(0)
+        fn add(self, other: Self) -> Self::Output {
+            Int(0)
         }
     }
 
     impl Sub for Int {
-    	type Output = Self;
+        type Output = Self;
 
-    	fn sub(self, other: Self) -> Self::Output {
-           Int(0)
+        fn sub(self, other: Self) -> Self::Output {
+            Int(0)
         }
     }
 
     impl Mul for Int {
-    	type Output = Self;
+        type Output = Self;
 
-    	fn mul(self, other: Self) -> Self::Output {
-           Int(0)
+        fn mul(self, other: Self) -> Self::Output {
+            Int(0)
         }
     }
 
     impl Div for Int {
-    	type Output = Self;
+        type Output = Self;
 
-    	fn div(self, other: Self) -> Self::Output {
-           Int(0)
+        fn div(self, other: Self) -> Self::Output {
+            Int(0)
         }
     }
 
