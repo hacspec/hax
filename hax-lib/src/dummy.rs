@@ -58,7 +58,9 @@ pub trait RefineAs<RefinedType> {
 }
 
 pub mod int {
-    #[derive(Clone, Copy)]
+    use core::ops::*;
+
+    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
     pub struct Int(pub u8);
 
     impl Int {
@@ -70,10 +72,37 @@ pub mod int {
         }
     }
 
-    impl Int {}
-    impl Int {}
-    impl Int {}
-    impl Int {}
+    impl Add for Int {
+    	type Output = Self;
+
+    	fn add(self, other: Self) -> Self::Output {
+           Int(0)
+        }
+    }
+
+    impl Sub for Int {
+    	type Output = Self;
+
+    	fn sub(self, other: Self) -> Self::Output {
+           Int(0)
+        }
+    }
+
+    impl Mul for Int {
+    	type Output = Self;
+
+    	fn mul(self, other: Self) -> Self::Output {
+           Int(0)
+        }
+    }
+
+    impl Div for Int {
+    	type Output = Self;
+
+    	fn div(self, other: Self) -> Self::Output {
+           Int(0)
+        }
+    }
 
     impl Int {
         pub fn pow2(self) -> Self {
@@ -94,6 +123,13 @@ pub mod int {
     }
 
     impl Abstraction for u8 {
+        type AbstractType = Int;
+        fn lift(self) -> Self::AbstractType {
+            Int(0)
+        }
+    }
+
+    impl Abstraction for i32 {
         type AbstractType = Int;
         fn lift(self) -> Self::AbstractType {
             Int(0)
