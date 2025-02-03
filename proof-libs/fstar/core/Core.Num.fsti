@@ -2,6 +2,8 @@ module Core.Num
 open Rust_primitives
 
 let impl_u16__MAX: u16 = mk_u16 (maxint u16_inttype)
+let impl_i32__MAX: i32 = mk_i32 (maxint i32_inttype)
+let impl_i32__MIN: i32 = mk_i32 (minint i32_inttype)
 
 let impl_u8__wrapping_add: u8 -> u8 -> u8 = add_mod
 let impl_u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
