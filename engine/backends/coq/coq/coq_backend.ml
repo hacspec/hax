@@ -521,6 +521,9 @@ struct
             ^^ string "Require Import" ^^ space ^^ string path_string ^^ dot
             ^^ break 1 ^^ string "Export" ^^ space ^^ string path_string ^^ dot
 
+      method item_quote_origin ~item_kind:_ ~item_ident:_ ~position:_ =
+        default_document_for "item_quote_origin"
+
       method lhs_LhsArbitraryExpr ~e:_ ~witness = match witness with _ -> .
 
       method lhs_LhsArrayAccessor ~e:_ ~typ:_ ~index:_ ~witness =
