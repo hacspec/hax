@@ -523,16 +523,26 @@ module Make (F : Features.T) = struct
           match origin_item.v with
           (* We don't want to aliases for constructors of structs with named fields because
              they can't be imported in F*. Ideally this should be handled by the backend. *)
-          (* We don't need aliases for fields of structs. *)
           | Type { variants; is_struct = true; _ }
             when List.for_all variants ~f:(fun variant -> variant.is_record)
-                 && Concrete_ident.is_constructor from_id
-                 ||
-                 match List.last (Concrete_ident.to_view from_id).rel_path with
+                 && Concrete_ident.is_constructor from_id ->
+              None
+          (* We don't need aliases for fields of types. *)
+          | Type _
+            when match List.last (Concrete_ident.to_view from_id).rel_path with
                  | Some (`Field _) -> true
                  | _ -> false ->
               None
-          | Quote _ -> None
+          (* We don't need aliases for methods of trait impls. *)
+          | Impl _
+            when match List.last (Concrete_ident.to_view from_id).rel_path with
+                 | Some (`AssociatedItem _) -> true
+                 | _ -> false ->
+              None
+          | Quote _
+          (* This is temporary: see https://github.com/cryspen/hax/issues/1285 *)
+          | Trait _ ->
+              None
           | _ -> Some { attrs; span = origin_item.span; ident = from_id; v })
     in
     let rename =
