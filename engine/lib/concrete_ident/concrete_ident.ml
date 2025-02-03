@@ -256,7 +256,9 @@ module MakeToString (R : VIEW_RENDERER) = struct
           in
           let is_assoc_or_field (rel_path : View.RelPath.t) : bool =
             match List.last rel_path with
-            | Some (`AssociatedItem _ | `Field _) -> true
+            | Some (`AssociatedItem (_, (`Trait _ | `Impl (_, `Trait, _))))
+            | Some (`Field _) ->
+                true
             | _ -> false
           in
           let name =
@@ -284,7 +286,7 @@ module MakeToString (R : VIEW_RENDERER) = struct
                          path (* This might shadow, we should escape *))
                  (* Find the shortest name that doesn't exist already *)
               |> List.find ~f:(Hash_set.mem name_set >> not)
-              |> Option.value_exn
+              |> Option.value ~default:(name ^ ([%hash: t] i |> Int.to_string))
             else name
           in
           (* Update the maps and hashtables *)
