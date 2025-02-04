@@ -54,6 +54,14 @@ impl Div for Int {
     }
 }
 
+impl Rem for Int {
+    type Output = Self;
+
+    fn rem(self, other: Self) -> Self::Output {
+        Self::new(self.get() % other.get())
+    }
+}
+
 impl Int {
     /// Raises `2` at the power `self`
     pub fn pow2(self) -> Self {
