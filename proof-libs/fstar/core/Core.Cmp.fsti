@@ -28,15 +28,15 @@ type t_Ordering =
 
 
 class t_PartialOrd (v_Self: Type) (v_Rhs:Type) = {
-  _super_9014672428308350468: t_PartialEq v_Self v_Rhs;
+  _super_8303539986193044559: t_PartialEq v_Self v_Rhs;
   f_partial_cmp_pre: v_Self -> v_Rhs -> Type0;
   f_partial_cmp_post: v_Self -> v_Rhs -> Core.Option.t_Option t_Ordering -> Type0;
   f_partial_cmp:v_Self -> v_Rhs -> Core.Option.t_Option t_Ordering;
 }
 
 class t_Ord (v_Self: Type) = {
-  _super_8099741844003281729: t_Eq v_Self;
-  _super_12866954522599331834: t_PartialOrd v_Self v_Self;
+  _super_8438227699474489191: t_Eq v_Self;
+  _super_17497397511932837737: t_PartialOrd v_Self v_Self;
   f_cmp_pre: v_Self -> v_Self -> Type0;
   f_cmp_post: v_Self -> v_Self -> t_Ordering -> Type0;
   f_cmp:v_Self -> v_Self -> t_Ordering;

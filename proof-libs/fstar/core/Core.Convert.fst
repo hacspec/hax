@@ -17,11 +17,19 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
   )
 }
 
-
 instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {Core.Slice.impl__len s == len}) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
   f_try_into = (fun (s: t_Slice t {Core.Slice.impl__len s == len}) -> 
     Core.Result.Result_Ok (s <: t_Array t len)
+  )
+}
+
+instance integer_try_into (t:inttype) (t':inttype) : try_into_tc (int_t t) (int_t t') = {
+  f_Error = Core.Num.Error.t_TryFromIntError;
+  f_try_into = (fun (x: int_t t) ->
+    if range (v #t x) t'
+    then Core.Result.Result_Ok (Rust_primitives.Integers.cast #t #t' x)
+    else Core.Result.Result_Err ()
   )
 }
 
