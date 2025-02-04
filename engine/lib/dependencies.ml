@@ -539,10 +539,9 @@ module Make (F : Features.T) = struct
                  | Some (`AssociatedItem _) -> true
                  | _ -> false ->
               None
-          | Quote _
+          | Quote _ -> None
           (* This is temporary: see https://github.com/cryspen/hax/issues/1285 *)
-          | Trait _ ->
-              None
+          | Trait { name; _ } when [%equal: concrete_ident] name from_id -> None
           | _ -> Some { attrs; span = origin_item.span; ident = from_id; v })
     in
     let rename =
