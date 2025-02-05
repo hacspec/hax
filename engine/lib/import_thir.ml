@@ -724,18 +724,32 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; args; _ } -> (
+      | NamedConst { def_id = id; impl; args; _ } ->
           let f = GlobalVar (def_id ~value:true id) in
-          match impl with
-          | Some impl ->
-              let trait =
-                Some
-                  ( c_impl_expr e.span impl,
-                    List.map ~f:(c_generic_value e.span) args )
-              in
-              let f = { e = f; span; typ = TArrow ([], typ) } in
-              App { f; trait; args = []; generic_args = []; bounds_impls = [] }
-          | _ -> f)
+          let args = List.map ~f:(c_generic_value e.span) args in
+          let const_args =
+            List.filter_map args ~f:(function GConst e -> Some e | _ -> None)
+          in
+          if List.is_empty const_args && Option.is_none impl then f
+          else
+            let f =
+              {
+                e = f;
+                span;
+                typ = TArrow (List.map const_args ~f:(fun e -> e.typ), typ);
+              }
+            in
+            let trait =
+              Option.map impl ~f:(c_impl_expr e.span &&& Fn.const args)
+            in
+            App
+              {
+                f;
+                trait;
+                args = const_args;
+                generic_args = [];
+                bounds_impls = [];
+              }
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
