@@ -513,6 +513,9 @@ module Make (F : Features.T) = struct
                (idents_of item))
     in
     let aliases =
+      let inspect_view_last id =
+        List.last (Concrete_ident.to_view id).rel_path
+      in
       List.filter_map renamings ~f:(fun (origin_item, (from_id, to_id)) ->
           let attrs =
             List.filter
@@ -528,16 +531,13 @@ module Make (F : Features.T) = struct
                  && Concrete_ident.is_constructor from_id ->
               None
           (* We don't need aliases for fields of types. *)
-          | Type _
-            when match List.last (Concrete_ident.to_view from_id).rel_path with
-                 | Some (`Field _) -> true
-                 | _ -> false ->
+          | Type _ when [%matches? Some (`Field _)] (inspect_view_last from_id)
+            ->
               None
           (* We don't need aliases for methods of trait impls. *)
           | Impl _
-            when match List.last (Concrete_ident.to_view from_id).rel_path with
-                 | Some (`AssociatedItem _) -> true
-                 | _ -> false ->
+            when [%matches? Some (`AssociatedItem _)]
+                   (inspect_view_last from_id) ->
               None
           | Quote _ -> None
           (* This is temporary: see https://github.com/cryspen/hax/issues/1285 *)
