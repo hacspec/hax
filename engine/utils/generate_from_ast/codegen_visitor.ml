@@ -232,7 +232,8 @@ let is_allowed_opaque name =
       "todo";
       "float_kind";
       "int_kind";
-      "item_quote_origin";
+      "item_quote_origin_position";
+      "item_kind";
     ]
   in
   List.mem ~equal:String.equal allowlist name

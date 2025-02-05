@@ -114,10 +114,13 @@ type item_kind =
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 (** Describes the (shallow) kind of an item. *)
 
+type item_quote_origin_position = [ `Before | `After | `Replace ]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
+
 type item_quote_origin = {
   item_kind : item_kind;
   item_ident : concrete_ident;
-  position : [ `Before | `After | `Replace ];
+  position : item_quote_origin_position;
 }
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 (** From where does a quote item comes from? *)
