@@ -53,7 +53,7 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
     let phi: syn::Expr = parse_macro_input!(attr);
     let payload = LitStr::new(&payload, phi.span());
     quote! {
-        #payload]
+        #payload
         #item
     }
     .into()
