@@ -3,7 +3,7 @@ mod hax_paths;
 use hax_paths::*;
 use proc_macro as pm;
 use proc_macro2::*;
-pub use proc_macro_error::*;
+use proc_macro_error::*;
 use quote::*;
 use syn::{visit_mut::VisitMut, *};
 
