@@ -5,7 +5,7 @@ use proc_macro as pm;
 use proc_macro2::*;
 use proc_macro_error::*;
 use quote::*;
-use syn::{visit_mut::VisitMut, *};
+use syn::{visit_mut::VisitMut, spanned::Spanned, *};
 
 macro_rules! identity_proc_macro_attribute {
     ($($name:ident,)*) => {
