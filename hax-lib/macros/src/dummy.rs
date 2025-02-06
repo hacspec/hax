@@ -49,9 +49,10 @@ identity_proc_macro_attribute!(
 #[proc_macro_attribute]
 pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: TokenStream = item.into();
-    let phi: syn::Expr = parse_macro_input!(attr);
-    let payload = format!(r#"Pre-Condition: {:#?}"#, phi);
-    let payload = LitStr::new(&payload, phi.span());
+    let payload = format!(r#"Post-Condition: {}"#, pm.to_string());
+//    let phi: syn::Expr = parse_macro_input!(attr);
+//    let payload = format!(r#"Pre-Condition: {:#?}"#, phi);
+    let payload = LitStr::new(&payload, attr.span());
     quote! {
         #[doc=#payload]
         #item
@@ -64,9 +65,8 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
 #[proc_macro_attribute]
 pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: TokenStream = item.into();
-    let phi: syn::Expr = parse_macro_input!(attr);
-    let payload = format!(r#"Post-Condition: {:#?}"#, phi);
-    let payload = LitStr::new(&payload, phi.span());
+    let payload = format!(r#"Post-Condition: {}"#, pm.to_string());
+    let payload = LitStr::new(&payload, attr.span());
     quote! {
         #[doc=#payload]
         #item
