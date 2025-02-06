@@ -1,15 +1,16 @@
 mod hax_paths;
 
 use hax_paths::*;
-use proc_macro::{TokenStream, TokenTree};
-use quote::quote;
+use proc_macro as pm;
+use proc_macro2::*;
+use quote::*;
 use syn::{visit_mut::VisitMut, *};
 
 macro_rules! identity_proc_macro_attribute {
     ($($name:ident,)*) => {
         $(
             #[proc_macro_attribute]
-            pub fn $name(_attr: TokenStream, item: TokenStream) -> TokenStream {
+            pub fn $name(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
                 item
             }
         )*
@@ -21,8 +22,6 @@ identity_proc_macro_attribute!(
     fstar_verification_status,
     include,
     exclude,
-    requires,
-    ensures,
     pv_handwritten,
     pv_constructor,
     protocol_messages,
@@ -44,25 +43,55 @@ identity_proc_macro_attribute!(
     proverif_after,
 );
 
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: TokenStream = item.into();
+    let lit_str = parse_macro_input!(attr as LitStr);
+    let payload = format!(r#"Pre-Condition: {}"#, lit_str.value());
+    let payload = LitStr::new(&payload, lit_str.span());
+    quote! {
+        #[doc=#payload]
+        #item
+    }
+    .into()
+}
+
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: TokenStream = item.into();
+    let lit_str = parse_macro_input!(attr as LitStr);
+    let payload = format!(r#"Post-Condition: {}"#, lit_str.value());
+    let payload = LitStr::new(&payload, lit_str.span());
+    quote! {
+        #[doc=#payload]
+        #item
+    }
+    .into()
+}
+
 #[proc_macro]
-pub fn fstar_expr(_payload: TokenStream) -> TokenStream {
+pub fn fstar_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     quote! { () }.into()
 }
 #[proc_macro]
-pub fn coq_expr(_payload: TokenStream) -> TokenStream {
+pub fn coq_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     quote! { () }.into()
 }
 #[proc_macro]
-pub fn proverif_expr(_payload: TokenStream) -> TokenStream {
+pub fn proverif_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     quote! { () }.into()
 }
 
 #[proc_macro_attribute]
-pub fn lemma(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+pub fn lemma(_attr: pm::TokenStream, _item: pm::TokenStream) -> pm::TokenStream {
     quote! {}.into()
 }
 
-fn unsafe_expr() -> TokenStream {
+fn unsafe_expr() -> pm::TokenStream {
     // `*_unsafe_expr("<code>")` are macro generating a Rust expression of any type, that will be replaced by `<code>` in the backends.
     // This should be used solely in hax-only contextes.
     // If this macro is used, that means the user broke this rule.
@@ -70,15 +99,15 @@ fn unsafe_expr() -> TokenStream {
 }
 
 #[proc_macro]
-pub fn fstar_unsafe_expr(_payload: TokenStream) -> TokenStream {
+pub fn fstar_unsafe_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     unsafe_expr()
 }
 #[proc_macro]
-pub fn coq_unsafe_expr(_payload: TokenStream) -> TokenStream {
+pub fn coq_unsafe_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     unsafe_expr()
 }
 #[proc_macro]
-pub fn proverif_unsafe_expr(_payload: TokenStream) -> TokenStream {
+pub fn proverif_unsafe_expr(_payload: pm::TokenStream) -> pm::TokenStream {
     unsafe_expr()
 }
 
@@ -99,7 +128,7 @@ fn not_refine_attribute(attr: &syn::Attribute) -> bool {
 }
 
 #[proc_macro_attribute]
-pub fn attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: Item = parse_macro_input!(item);
 
     struct AttrVisitor;
@@ -144,30 +173,30 @@ pub fn attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn int(payload: TokenStream) -> TokenStream {
+pub fn int(payload: pm::TokenStream) -> pm::TokenStream {
     let mut tokens = payload.into_iter().peekable();
-    let negative = matches!(tokens.peek(), Some(TokenTree::Punct(p)) if p.as_char() == '-');
+    let negative = matches!(tokens.peek(), Some(pm::TokenTree::Punct(p)) if p.as_char() == '-');
     if negative {
         tokens.next();
     }
-    let [lit @ TokenTree::Literal(_)] = &tokens.collect::<Vec<_>>()[..] else {
+    let [lit @ pm::TokenTree::Literal(_)] = &tokens.collect::<Vec<_>>()[..] else {
         return quote! { ::std::compile_error!("Expected exactly one numeric literal") }.into();
     };
-    let lit: proc_macro2::TokenStream = TokenStream::from(lit.clone()).into();
+    let lit: proc_macro2::TokenStream = pm::TokenStream::from(lit.clone()).into();
     quote! {::hax_lib::int::Int(#lit)}.into()
 }
 
 #[proc_macro_attribute]
-pub fn impl_fn_decoration(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+pub fn impl_fn_decoration(_attr: pm::TokenStream, _item: pm::TokenStream) -> pm::TokenStream {
     quote! { ::std::compile_error!("`impl_fn_decoration` is an internal macro and should never be used directly.") }.into()
 }
 
 #[proc_macro_attribute]
-pub fn trait_fn_decoration(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+pub fn trait_fn_decoration(_attr: pm::TokenStream, _item: pm::TokenStream) -> pm::TokenStream {
     quote! { ::std::compile_error!("`trait_fn_decoration` is an internal macro and should never be used directly.") }.into()
 }
 
 #[proc_macro]
-pub fn loop_invariant(_predicate: TokenStream) -> TokenStream {
+pub fn loop_invariant(_predicate: pm::TokenStream) -> pm::TokenStream {
     quote! {}.into()
 }
