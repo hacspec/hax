@@ -253,9 +253,6 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     quote! { #attr #NeverErased #item }.into()
 }
 
-/*
-TODO: this is disabled for now, we need `dyn` types (see issue #296)
-
 /// Provide a measure for a function: this measure will be used once
 /// extracted in a backend for checking termination. The expression
 /// that decreases can be of any type. (TODO: this is probably as it
@@ -288,7 +285,6 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
     );
     quote! {#requires #attr #item}.into()
 }
-*/
 
 /// Add a logical precondition to a function.
 // Note you can use the `forall` and `exists` operators. (TODO: commented out for now, see #297)

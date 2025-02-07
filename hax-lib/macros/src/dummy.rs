@@ -42,6 +42,7 @@ identity_proc_macro_attribute!(
     fstar_after,
     coq_after,
     proverif_after,
+    decreases
 );
 
 
