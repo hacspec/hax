@@ -277,7 +277,7 @@ pub fn make_fn_decoration(
                 sig.generics = merge_generics(generics, sig.generics);
             }
             sig.output = if let FnDecorationKind::Decreases = &kind {
-                syn::parse_quote! { -> Box<dyn Any> }
+                syn::parse_quote! { -> usize }
             } else {
                 syn::parse_quote! { -> bool }
             };
@@ -285,12 +285,7 @@ pub fn make_fn_decoration(
         };
         let uid_attr = AttrPayload::Uid(uid.clone());
         let late_skip = &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
-        let any_trait = if let FnDecorationKind::Decreases = &kind {
-            phi = parse_quote! {Box::new(#phi)};
-            quote! {#AttrHaxLang #[allow(unused)] trait Any {} impl<T> Any for T {}}
-        } else {
-            quote! {}
-        };
+        let any_trait = quote! {};
         let quantifiers = if let FnDecorationKind::Decreases = &kind {
             None
         } else {
