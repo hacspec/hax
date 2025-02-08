@@ -277,7 +277,7 @@ pub fn make_fn_decoration(
                 sig.generics = merge_generics(generics, sig.generics);
             }
             sig.output = if let FnDecorationKind::Decreases = &kind {
-                syn::parse_quote! { -> usize }
+                syn::parse_quote! { -> hax_lib::int::Int }
             } else {
                 syn::parse_quote! { -> bool }
             };
