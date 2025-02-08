@@ -19,6 +19,7 @@ macro_rules! identity_proc_macro_attribute {
 }
 
 identity_proc_macro_attribute!(
+    decreases,
     fstar_options,
     fstar_verification_status,
     include,
@@ -42,7 +43,6 @@ identity_proc_macro_attribute!(
     fstar_after,
     coq_after,
     proverif_after,
-    decreases,
 );
 
 
