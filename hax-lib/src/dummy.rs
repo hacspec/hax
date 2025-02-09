@@ -30,6 +30,18 @@ macro_rules! assume {
     };
 }
 
+pub fn forall<T>(_f: impl Fn(T) -> bool) -> bool {
+    true
+}
+
+pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
+    true
+}
+
+pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
+    !lhs || rhs()
+}
+
 #[doc(hidden)]
 pub fn inline(_: &str) {}
 
@@ -57,7 +69,7 @@ pub mod int {
     use core::ops::*;
 
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-    pub struct Int(pub u128);
+    pub struct Int(pub u8);
 
     impl Int {
         pub fn new(x: impl Into<u128>) -> Self {
@@ -69,7 +81,7 @@ pub mod int {
         type Output = Self;
 
         fn add(self, other: Self) -> Self::Output {
-            Int(self.0 + other.0)
+            Int(0)
         }
     }
 
@@ -77,7 +89,7 @@ pub mod int {
         type Output = Self;
 
         fn sub(self, other: Self) -> Self::Output {
-            Int(self.0 - other.0)
+            Int(0)
         }
     }
 
@@ -85,7 +97,7 @@ pub mod int {
         type Output = Self;
 
         fn mul(self, other: Self) -> Self::Output {
-            Int(self.0 * other.0)
+            Int(0)
         }
     }
 
@@ -93,7 +105,7 @@ pub mod int {
         type Output = Self;
 
         fn div(self, other: Self) -> Self::Output {
-            Int(self.0 / other.0)
+            Int(0)
         }
     }
 
@@ -106,10 +118,6 @@ pub mod int {
         }
     }
 
-    pub trait ToInt {
-        fn to_int(self) -> Int;
-    }
-
     pub trait Abstraction {
         type AbstractType;
         fn lift(self) -> Self::AbstractType;
@@ -119,23 +127,11 @@ pub mod int {
         fn concretize(self) -> T;
     }
 
-    macro_rules! implement_abstraction {
-        ($ty:ident) => {
-            impl Abstraction for $ty {
-                type AbstractType = Int;
-                fn lift(self) -> Self::AbstractType {
-                    Int(0)
-                }
-            }
-            impl ToInt for $ty {
-                fn to_int(self) -> Int {
-                    self.lift()
-                }
-            }
-        };
-        ($($ty:ident)*) => {
-            $(implement_abstraction!($ty);)*
-        };
+    impl Abstraction for u8 {
+        type AbstractType = Int;
+        fn lift(self) -> Self::AbstractType {
+            Int(0)
+        }
     }
     
     implement_abstraction!(u8 u16 u32 u64 u128 usize);
@@ -160,19 +156,4 @@ pub mod int {
         };
         () => {};
     }
-    
-    implement_concretize!(
-        u8    to_u8,
-        u16   to_u16,
-        u32   to_u32,
-        u64   to_u64,
-        u128  to_u128,
-        usize to_usize,
-        i8    to_i8,
-        i16   to_i16,
-        i32   to_i32,
-        i64   to_i64,
-        i128  to_i128,
-        isize to_isize,
-    );
 }

@@ -1,11 +1,4 @@
-mod abstraction;
-pub use abstraction::*;
-
-mod int;
-pub use int::*;
-
-mod prop;
-pub use prop::*;
+pub mod int;
 
 #[cfg(feature = "macros")]
 pub use crate::proc_macros::*;
@@ -100,6 +93,30 @@ macro_rules! assume {
     };
 }
 
+/// The universal quantifier. This should be used only for Hax code: in
+/// Rust, this is always true.
+///
+/// # Example:
+///
+/// The Rust expression `forall(|x: T| phi(x))` corresponds to `∀ (x: T), phi(x)`.
+pub fn forall<T>(_f: impl Fn(T) -> bool) -> bool {
+    true
+}
+
+/// The existential quantifier. This should be used only for Hax code: in
+/// Rust, this is always true.
+///
+/// # Example:
+///
+/// The Rust expression `exists(|x: T| phi(x))` corresponds to `∃ (x: T), phi(x)`.
+pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
+    true
+}
+
+/// The logical implication `a ==> b`.
+pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
+    !lhs || rhs()
+}
 
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]

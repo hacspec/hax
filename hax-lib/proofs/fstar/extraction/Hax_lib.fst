@@ -2,8 +2,6 @@ module Hax_lib
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open FStar.Tactics
 
-type t_Prop = Type0
-
 val v_assert (p: bool) : Pure unit (requires p) (ensures (fun x -> p))
 let v_assert (v__formula: bool) = ()
 
