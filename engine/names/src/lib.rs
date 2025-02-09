@@ -52,7 +52,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     }
 
     {
-        use hax_lib::int::*;
+        use hax_lib::*;
         let a: Int = 3u8.lift();
         let _ = a.clone().pow2();
         let _ = Int::_unsafe_from_str("1");
