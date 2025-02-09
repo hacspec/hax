@@ -9,12 +9,12 @@ impl ToTokens for HaxQuantifiers {
         quote! {
             #AttrHaxLang
             #status_attr
-            fn forall<T, F: Fn(T) -> bool>(f: F) -> bool {
+            fn forall<T, U:Into<hax_lib::Prop>, F: Fn(T) -> U>(f: F) -> hax_lib::Prop {
                 true
             }
             #AttrHaxLang
             #status_attr
-            fn exists<T, F: Fn(T) -> bool>(f: F) -> bool {
+            fn exists<T, U:Into<hax_lib::Prop>, F: Fn(T) -> U>(f: F) -> hax_lib::Prop {
                 true
             }
 
@@ -279,7 +279,7 @@ pub fn make_fn_decoration(
             sig.output = if let FnDecorationKind::Decreases = &kind {
                 syn::parse_quote! { -> Box<dyn Any> }
             } else {
-                syn::parse_quote! { -> bool }
+                syn::parse_quote! { -> hax_lib::Prop }
             };
             sig
         };
