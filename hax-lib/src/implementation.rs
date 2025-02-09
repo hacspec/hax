@@ -1,4 +1,8 @@
-pub mod int;
+mod int;
+pub use int::*;
+
+mod prop;
+pub use prop::*;
 
 #[cfg(feature = "macros")]
 pub use crate::proc_macros::*;
