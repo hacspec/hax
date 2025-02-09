@@ -55,11 +55,8 @@ pub mod int {
     pub struct Int(pub u128);
 
     impl Int {
-        pub fn new(x: impl Into<u8>) -> Self {
+        pub fn new(x: impl Into<u128>) -> Self {
             Int(x.into())
-        }
-        pub fn get(self) -> u8 {
-            self.0
         }
     }
 
