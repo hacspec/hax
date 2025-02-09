@@ -1,4 +1,4 @@
-use super::abstraction::*;
+use crate::abstraction::*;
 use core::ops::*;
 
 pub struct Prop(bool);
