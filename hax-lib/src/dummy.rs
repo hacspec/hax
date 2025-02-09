@@ -1,3 +1,6 @@
+mod abstraction;
+pub use abstraction::*;
+
 mod prop;
 use prop::*;
 
