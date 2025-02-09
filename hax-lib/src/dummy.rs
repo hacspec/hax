@@ -2,9 +2,9 @@ mod abstraction;
 pub use abstraction::*;
 
 mod prop;
-use prop::*;
+pub use prop::*;
 
-use int::*;
+pub use int::*;
 
 #[cfg(feature = "macros")]
 pub use crate::proc_macros::*;
