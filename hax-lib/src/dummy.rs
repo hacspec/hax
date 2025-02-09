@@ -57,7 +57,7 @@ pub mod int {
     use core::ops::*;
 
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-    pub struct Int(pub u128);
+    pub struct Int(pub u8);
 
     impl Int {
         pub fn new(x: impl Into<u8>) -> Self {
