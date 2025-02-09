@@ -1,4 +1,11 @@
-pub mod int;
+mod abstraction;
+pub use abstraction::*;
+
+mod int;
+pub use int::*;
+
+mod prop;
+pub use prop::*;
 
 #[cfg(feature = "macros")]
 pub use crate::proc_macros::*;
@@ -56,14 +63,14 @@ macro_rules! assert {
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assert!` only in
 /// appropriate situations.
-pub fn assert(_formula: bool) {}
+pub fn assert(_formula: Prop) {}
 
 #[doc(hidden)]
 #[cfg(hax)]
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assume!` only in
 /// appropriate situations.
-pub fn assume(_formula: bool) {}
+pub fn assume(_formula: Prop) {}
 
 #[cfg(hax)]
 #[macro_export]
@@ -93,30 +100,6 @@ macro_rules! assume {
     };
 }
 
-/// The universal quantifier. This should be used only for Hax code: in
-/// Rust, this is always true.
-///
-/// # Example:
-///
-/// The Rust expression `forall(|x: T| phi(x))` corresponds to `∀ (x: T), phi(x)`.
-pub fn forall<T>(_f: impl Fn(T) -> bool) -> bool {
-    true
-}
-
-/// The existential quantifier. This should be used only for Hax code: in
-/// Rust, this is always true.
-///
-/// # Example:
-///
-/// The Rust expression `exists(|x: T| phi(x))` corresponds to `∃ (x: T), phi(x)`.
-pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
-    true
-}
-
-/// The logical implication `a ==> b`.
-pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
-    !lhs || rhs()
-}
 
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]
@@ -130,7 +113,7 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 
 /// A dummy function that holds a loop invariant.
 #[doc(hidden)]
-pub fn _internal_loop_invariant<T, P: FnOnce(T) -> bool>(_: P) {}
+pub fn _internal_loop_invariant<T, P: FnOnce(T) -> Prop>(_: P) {}
 
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
@@ -150,7 +133,7 @@ pub trait Refinement {
     /// Gets a mutable reference to a refinement
     fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
-    fn invariant(value: Self::InnerType) -> bool;
+    fn invariant(value: Self::InnerType) -> Prop;
 }
 
 /// A utilitary trait that provides a `into_checked` method on traits
