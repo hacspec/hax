@@ -39,7 +39,7 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 }
 
 #[doc(hidden)]
-pub fn _internal_loop_invariant<T, P: FnOnce(T) -> bool>(_: P) {}
+pub fn _internal_loop_invariant<T, P: FnOnce(T) -> Prop>(_: P) {}
 
 pub trait Refinement {
     type InnerType;
