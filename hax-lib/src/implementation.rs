@@ -63,14 +63,14 @@ macro_rules! assert {
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assert!` only in
 /// appropriate situations.
-pub fn assert(_formula: Prop) {}
+pub fn assert<T:Into<Prop>>(_formula: T) {}
 
 #[doc(hidden)]
 #[cfg(hax)]
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assume!` only in
 /// appropriate situations.
-pub fn assume(_formula: Prop) {}
+pub fn assume<T:Into<Prop>>(_formula: T) {}
 
 #[cfg(hax)]
 #[macro_export]
@@ -113,7 +113,7 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 
 /// A dummy function that holds a loop invariant.
 #[doc(hidden)]
-pub fn _internal_loop_invariant<T, P: FnOnce(T) -> Prop>(_: P) {}
+pub fn _internal_loop_invariant<T, U:Into<Prop>, P: FnOnce(T) -> U>(_: P) {}
 
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
@@ -133,7 +133,7 @@ pub trait Refinement {
     /// Gets a mutable reference to a refinement
     fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
-    fn invariant(value: Self::InnerType) -> Prop;
+    fn invariant<T:Into<Prop>>(value: Self::InnerType) -> T;
 }
 
 /// A utilitary trait that provides a `into_checked` method on traits
