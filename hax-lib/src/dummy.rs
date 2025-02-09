@@ -148,7 +148,7 @@ pub mod int {
         ($ty:ident $method:ident) => {
             impl Concretization<$ty> for Int {
                 fn concretize(self) -> $ty {
-                    self.0 as $ty;
+                    self.0 as $ty
                 }
             }
             impl Int {
