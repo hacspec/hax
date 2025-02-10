@@ -102,6 +102,9 @@ module%inlined_contents Make (F : Features.T) = struct
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e ~acc
                 `Break
           | ( Continue { acc = Some (acc, _); _ },
+              Some ({ return_type = None; break_type = None }, _) ) ->
+              acc
+          | ( Continue { acc = Some (acc, _); _ },
               Some ({ return_type; break_type }, _) ) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc
                 `Continue
