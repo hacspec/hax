@@ -70,6 +70,44 @@ Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr) : t_u16 :=
     f_add (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0) (2)
   end.
 
+Inductive t_ImplicitReprs : Type :=
+| ImplicitReprs_A
+| ImplicitReprs_B
+| ImplicitReprs_C
+| ImplicitReprs_D
+| ImplicitReprs_E
+| ImplicitReprs_F
+| ImplicitReprs_G
+| ImplicitReprs_H
+| ImplicitReprs_I.
+Arguments t_ImplicitReprs:clear implicits.
+Arguments t_ImplicitReprs.
+
+Definition anon_const_ImplicitReprs_E__anon_const_0 : t_u64 :=
+  30.
+
+Definition t_ImplicitReprs_cast_to_repr (x : t_ImplicitReprs) : t_u64 :=
+  match x with
+  | ImplicitReprs_A =>
+    0
+  | ImplicitReprs_B =>
+    1
+  | ImplicitReprs_C =>
+    2
+  | ImplicitReprs_D =>
+    3
+  | ImplicitReprs_E =>
+    anon_const_ImplicitReprs_E__anon_const_0
+  | ImplicitReprs_F =>
+    f_add (anon_const_ImplicitReprs_E__anon_const_0) (1)
+  | ImplicitReprs_G =>
+    f_add (anon_const_ImplicitReprs_E__anon_const_0) (2)
+  | ImplicitReprs_H =>
+    f_add (anon_const_ImplicitReprs_E__anon_const_0) (3)
+  | ImplicitReprs_I =>
+    f_add (anon_const_ImplicitReprs_E__anon_const_0) (4)
+  end.
+
 Definition f (_ : unit) : t_u32 :=
   let e_x := cast (f_add (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0) (0)) in
   f_add (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple))) (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct))).
