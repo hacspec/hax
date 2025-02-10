@@ -1381,30 +1381,30 @@ let cast_of_enum typ_name generics typ thir_span
     M.expr_Literal ~typ (Int { value; negative = Int64.is_negative n; kind })
   in
   let arms =
-    List.folding_map variants ~init:None ~f:(fun acc (variant, { discr; _ }) ->
+    (* Each variant comes with a [rustc_middle::ty::VariantDiscr]. Some variant have [Explicit] discr (i.e. an expression)
+       while other have [Relative] discr (the distance to the previous last explicit discr). *)
+    List.folding_map variants ~init:None
+      ~f:(fun previous_explicit_discriminator (variant, { discr; _ }) ->
         let pat =
-          let mk_field (cid, typ, _) =
+          let mk_wild_field (cid, typ, _) =
             { field = `Concrete cid; pat = M.pat_PWild ~typ }
           in
           M.pat_PConstruct ~constructor:(`Concrete variant.name)
             ~is_struct:false ~typ ~is_record:variant.is_record
-            ~fields:(List.map ~f:mk_field variant.arguments)
+            ~fields:(List.map ~f:mk_wild_field variant.arguments)
         in
-        match (acc, discr) with
+        match (previous_explicit_discriminator, discr) with
         | None, Relative m -> (None, (pat, expr_of_int m))
         | _, Explicit did ->
-            let acc = M.expr_GlobalVar ~typ (def_id ~value:true did) in
-            (Some acc, (pat, acc))
+            let e = M.expr_GlobalVar ~typ (def_id ~value:true did) in
+            (Some e, (pat, e))
         | Some e, Relative n ->
-            let e =
-              U.call Core__ops__arith__Add__add [ e; expr_of_int n ] span typ
-            in
-            (acc, (pat, e)))
+            let n = expr_of_int n in
+            let e = U.call Core__ops__arith__Add__add [ e; n ] span typ in
+            (previous_explicit_discriminator, (pat, e)))
     |> List.map ~f:(fun (p, e) -> M.arm p e)
   in
-  let scrutinee_var =
-    Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
-  in
+  let scrutinee_var = Local_ident.{ name = "x"; id = mk_id Expr (-1) } in
   let scrutinee = M.expr_LocalVar ~typ:self scrutinee_var in
   let ident = cast_name_for_type typ_name in
   let params =
