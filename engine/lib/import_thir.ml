@@ -37,6 +37,7 @@ end
 
 module U = Ast_utils.Make (Features.Rust)
 module W = Features.On
+module Ast_builder = Ast_builder.Make (Features.Rust)
 open Ast
 
 let def_id ~value (def_id : Thir.def_id) : global_ident =
@@ -1358,95 +1359,60 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
-type discriminant_expr =
-  | Lit of Int64.t
-  | Exp of expr  (** Helper type for [cast_of_enum]. *)
-
 (** Generate a cast function from an inductive to its represantant type. *)
 let cast_of_enum typ_name generics typ thir_span
     (variants : (variant * Types.variant_for__decorated_for__expr_kind) list) :
     item =
-  let self =
-    TApp
-      {
-        ident = `Concrete typ_name;
-        args = List.map ~f:generic_param_to_value generics.params;
-      }
-  in
   let span = Span.of_thir thir_span in
-  let init = Lit (Int64.of_int 0) in
-  let to_expr (n : Int64.t) : expr =
-    match typ with
-    | TInt kind ->
-        let value = Int64.to_string n in
-        {
-          e = Literal (Int { value; negative = Int64.is_negative n; kind });
-          span;
-          typ;
-        }
-    | typ ->
-        assertion_failure [ thir_span ]
-        @@ "disc_literal_to_expr: got repr type "
-        ^ [%show: ty] typ
+  let (module M) = Ast_builder.make span in
+  let self =
+    let args = List.map ~f:generic_param_to_value generics.params in
+    TApp { ident = `Concrete typ_name; args }
+  in
+  let expr_of_int (n : Int64.t) : expr =
+    let kind =
+      match typ with
+      | TInt kind -> kind
+      | typ ->
+          assertion_failure [ thir_span ]
+            ("cast_of_enum: expected in type, got " ^ [%show: ty] typ)
+    in
+    let value = Int64.to_string n in
+    M.expr_Literal ~typ (Int { value; negative = Int64.is_negative n; kind })
   in
   let arms =
-    List.folding_map variants ~init ~f:(fun acc (variant, thir_variant) ->
+    (* Each variant comes with a [rustc_middle::ty::VariantDiscr]. Some variant have [Explicit] discr (i.e. an expression)
+       while other have [Relative] discr (the distance to the previous last explicit discr). *)
+    List.folding_map variants ~init:None
+      ~f:(fun previous_explicit_discriminator (variant, { discr; _ }) ->
         let pat =
-          PConstruct
-            {
-              is_record = variant.is_record;
-              is_struct = false;
-              fields =
-                List.map
-                  ~f:(fun (cid, typ, _) ->
-                    { field = `Concrete cid; pat = { p = PWild; typ; span } })
-                  variant.arguments;
-              constructor = `Concrete variant.name;
-            }
+          let mk_wild_field (cid, typ, _) =
+            { field = `Concrete cid; pat = M.pat_PWild ~typ }
+          in
+          M.pat_PConstruct ~constructor:(`Concrete variant.name)
+            ~is_struct:false ~typ ~is_record:variant.is_record
+            ~fields:(List.map ~f:mk_wild_field variant.arguments)
         in
-        let pat = { p = pat; typ = self; span } in
-        match (acc, thir_variant.discr) with
-        | Lit n, Relative m ->
-            let acc = Lit Int64.(n + m) in
-            (acc, (pat, acc))
+        match (previous_explicit_discriminator, discr) with
+        | None, Relative m -> (None, (pat, expr_of_int m))
         | _, Explicit did ->
-            let acc =
-              Exp { e = GlobalVar (def_id ~value:true did); span; typ }
-            in
-            (acc, (pat, acc))
-        | Exp e, Relative n ->
-            let acc =
-              Exp (U.call Core__ops__arith__Add__add [ e; to_expr n ] span typ)
-            in
-            (Exp e, (pat, acc)))
-    |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) ->
-           { arm = { arm_pat; body; guard = None }; span })
+            let e = M.expr_GlobalVar ~typ (def_id ~value:true did) in
+            (Some e, (pat, e))
+        | Some e, Relative n ->
+            let n = expr_of_int n in
+            let e = U.call Core__ops__arith__Add__add [ e; n ] span typ in
+            (previous_explicit_discriminator, (pat, e)))
+    |> List.map ~f:(fun (p, e) -> M.arm p e)
   in
-  let scrutinee_var =
-    Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
-  in
-  let scrutinee = { e = LocalVar scrutinee_var; typ = self; span } in
+  let scrutinee_var = Local_ident.{ name = "x"; id = mk_id Expr (-1) } in
+  let scrutinee = M.expr_LocalVar ~typ:self scrutinee_var in
   let ident = cast_name_for_type typ_name in
-  let v =
-    Fn
-      {
-        name = ident;
-        generics;
-        body = { e = Match { scrutinee; arms }; typ; span };
-        params =
-          [
-            {
-              pat = U.make_var_pat scrutinee_var self span;
-              typ = self;
-              typ_span = None;
-              attrs = [];
-            };
-          ];
-        safety = Safe;
-      }
+  let params =
+    let pat = U.make_var_pat scrutinee_var self span in
+    [ { pat; typ = self; typ_span = None; attrs = [] } ]
   in
-  { v; span; ident; attrs = [] }
+  let body = M.expr_Match ~typ ~scrutinee ~arms in
+  M.item_Fn ~ident ~attrs:[] ~name:ident ~generics ~params ~safety:Safe ~body
 
 let rec c_item ~ident ~type_only (item : Thir.item) : item list =
   try

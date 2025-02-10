@@ -8,6 +8,19 @@ enum EnumWithRepr {
     ImplicitDiscrEmptyStruct {},
 }
 
+#[repr(u64)]
+enum ImplicitReprs {
+    A,
+    B(),
+    C {},
+    D,
+    E = 30,
+    F,
+    G,
+    H {},
+    I(),
+}
+
 fn f() -> u32 {
     const CONST: u16 = EnumWithRepr::ExplicitDiscr1 as u16;
     let _x = EnumWithRepr::ExplicitDiscr2 as u16;
