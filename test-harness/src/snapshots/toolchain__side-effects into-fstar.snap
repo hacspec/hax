@@ -81,6 +81,52 @@ let test (x y: Core.Option.t_Option i32) : Core.Option.t_Option i32 =
   | Core.Option.Option_Some some -> some
   | Core.Option.Option_None  -> Core.Option.Option_None <: Core.Option.t_Option i32
 '''
+"Side_effects.Issue_1300_.fst" = '''
+module Side_effects.Issue_1300_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let v_fun (_: Prims.unit) : Core.Result.t_Result Prims.unit u8 =
+  match
+    Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Map.t_Map (Core.Slice.Iter.t_Iter u8)
+          (u8 -> Core.Result.t_Result (u8 & t_Array u8 (mk_usize 32)) u8))
+      #FStar.Tactics.Typeclasses.solve
+      #(Core.Result.t_Result (Alloc.Vec.t_Vec (u8 & t_Array u8 (mk_usize 32)) Alloc.Alloc.t_Global)
+          u8)
+      (Core.Iter.Traits.Iterator.f_map #(Core.Slice.Iter.t_Iter u8)
+          #FStar.Tactics.Typeclasses.solve
+          #(Core.Result.t_Result (u8 & t_Array u8 (mk_usize 32)) u8)
+          (Core.Slice.impl__iter #u8
+              (Rust_primitives.Hax.repeat (mk_u8 0) (mk_usize 5) <: t_Slice u8)
+            <:
+            Core.Slice.Iter.t_Iter u8)
+          (fun prev ->
+              let prev:u8 = prev in
+              match
+                Core.Result.Result_Ok
+                (Rust_primitives.Hax.repeat (mk_u8 0) (mk_usize 32) <: t_Array u8 (mk_usize 32))
+                <:
+                Core.Result.t_Result (t_Array u8 (mk_usize 32)) u8
+              with
+              | Core.Result.Result_Ok hoist45 ->
+                Core.Result.Result_Ok (prev, hoist45 <: (u8 & t_Array u8 (mk_usize 32)))
+                <:
+                Core.Result.t_Result (u8 & t_Array u8 (mk_usize 32)) u8
+              | Core.Result.Result_Err err ->
+                Core.Result.Result_Err err
+                <:
+                Core.Result.t_Result (u8 & t_Array u8 (mk_usize 32)) u8)
+        <:
+        Core.Iter.Adapters.Map.t_Map (Core.Slice.Iter.t_Iter u8)
+          (u8 -> Core.Result.t_Result (u8 & t_Array u8 (mk_usize 32)) u8))
+    <:
+    Core.Result.t_Result (Alloc.Vec.t_Vec (u8 & t_Array u8 (mk_usize 32)) Alloc.Alloc.t_Global) u8
+  with
+  | Core.Result.Result_Ok v_val ->
+    Core.Result.Result_Ok (() <: Prims.unit) <: Core.Result.t_Result Prims.unit u8
+  | Core.Result.Result_Err err -> Core.Result.Result_Err err <: Core.Result.t_Result Prims.unit u8
+'''
 "Side_effects.Nested_return.fst" = '''
 module Side_effects.Nested_return
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -97,8 +143,8 @@ let v_fun (rng: i8) : (i8 & Core.Result.t_Result Prims.unit Prims.unit) =
   let tmp0, out:(i8 & Core.Result.t_Result Prims.unit Prims.unit) = other_fun rng in
   let rng:i8 = tmp0 in
   match out <: Core.Result.t_Result Prims.unit Prims.unit with
-  | Core.Result.Result_Ok hoist43 ->
-    rng, (Core.Result.Result_Ok hoist43 <: Core.Result.t_Result Prims.unit Prims.unit)
+  | Core.Result.Result_Ok hoist41 ->
+    rng, (Core.Result.Result_Ok hoist41 <: Core.Result.t_Result Prims.unit Prims.unit)
     <:
     (i8 & Core.Result.t_Result Prims.unit Prims.unit)
   | Core.Result.Result_Err err ->
