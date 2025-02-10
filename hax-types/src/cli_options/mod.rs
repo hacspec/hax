@@ -182,6 +182,8 @@ pub enum Backend<E: Extension> {
     Easycrypt,
     /// Use the ProVerif backend (warning: work in progress!)
     ProVerif(ProVerifOptions),
+    /// Use the OCaml backend (warning: work in progress!)
+    Ocaml,
 }
 
 impl fmt::Display for Backend<()> {
@@ -192,6 +194,7 @@ impl fmt::Display for Backend<()> {
             Backend::Ssprove => write!(f, "ssprove"),
             Backend::Easycrypt => write!(f, "easycrypt"),
             Backend::ProVerif(..) => write!(f, "proverif"),
+            Backend::Ocaml => write!(f, "ocaml"),
         }
     }
 }

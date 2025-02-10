@@ -9,6 +9,7 @@
   ssprove_backend
   easycrypt_backend
   proverif_backend
+  ocaml_backend
   logs
   core)
  (preprocess

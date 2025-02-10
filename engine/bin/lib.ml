@@ -140,7 +140,8 @@ let run (options : Types.engine_options) : Types.output =
         | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
         | Ssprove -> run (module Ssprove_backend) ()
-        | Easycrypt -> run (module Easycrypt_backend) ())
+        | Easycrypt -> run (module Easycrypt_backend) ()
+        | Ocaml -> run (module Ocaml_backend) ())
   in
   {
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;

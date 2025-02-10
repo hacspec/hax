@@ -2,7 +2,7 @@ open! Prelude
 module T = Types
 
 module Backend = struct
-  type t = Coq | SSProve | FStar | EasyCrypt | ProVerif
+  type t = Coq | SSProve | FStar | EasyCrypt | ProVerif | Ocaml
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
