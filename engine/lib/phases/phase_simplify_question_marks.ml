@@ -175,14 +175,7 @@ module%inlined_contents Make (FA : Features.T) = struct
               arms =
                 [
                   { arm = { arm_pat = pat_break; body }; _ };
-                  {
-                    arm =
-                      {
-                        arm_pat = pat_continue;
-                        body = { e = LocalVar continue_var; _ };
-                      };
-                    _;
-                  };
+                  { arm = { arm_pat = pat_continue; body = continue_expr }; _ };
                 ];
             }
           when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
@@ -195,6 +188,13 @@ module%inlined_contents Make (FA : Features.T) = struct
             in
             let* f_break, residual_var' = extract_pat_app_bd pat_break in
             let* f_continue, continue_var' = extract_pat_app_bd pat_continue in
+            let continue_expr =
+              Option.value
+                (UA.Expect.borrow continue_expr)
+                ~default:continue_expr
+            in
+            let continue_expr = UA.unbox_underef_expr continue_expr in
+            let* continue_var = UA.Expect.local_var continue_expr in
             let*? _ = [%equal: local_ident] residual_var residual_var' in
             let*? _ = [%equal: local_ident] continue_var continue_var' in
             let*? _ =
