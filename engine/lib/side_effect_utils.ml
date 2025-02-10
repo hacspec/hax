@@ -481,7 +481,12 @@ struct
                   @@ List.map ~f:U.Reducers.variables_of_pat params
                 in
                 let body = lets_of_bindings lbs body in
-                let effects = SideEffects.without_rw_vars vars effects in
+                let effects =
+                  {
+                    (SideEffects.without_rw_vars vars effects) with
+                    return = None;
+                  }
+                in
                 (body, { lbs = []; effects })
               in
               ({ e with e = Closure { params; body; captures } }, body_effects)

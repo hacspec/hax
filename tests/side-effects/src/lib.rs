@@ -190,3 +190,15 @@ mod nested_return {
         return Ok(other_fun(rng)?);
     }
 }
+
+mod issue_1300 {
+    fn fun() -> Result<(), u8> {
+        let val = [0u8; 5]
+            .iter()
+            // Removing the inner Result/? below makes this pass
+            .map(|&prev| Ok::<(u8, [u8; 32]), u8>((prev, Ok::<[u8; 32], u8>([0u8; 32])?)))
+            // Removing the ? below makes this pass
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
+    }
+}
