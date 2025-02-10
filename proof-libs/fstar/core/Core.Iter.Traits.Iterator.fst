@@ -40,3 +40,5 @@ class iterator (self: Type u#0): Type u#1 = {
 }
 
 let t_Iterator = iterator
+
+assume val f_collect #i {|iterator i|} #t (x: i): t

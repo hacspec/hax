@@ -15,3 +15,8 @@ class t_Try self = {
 }
 
 
+[@FStar.Tactics.Typeclasses.tcinstance]
+assume val t_Try_all t: t_Try t
+
+[@FStar.Tactics.Typeclasses.tcinstance]
+assume val t_FromResidual_all t r: t_FromResidual t r

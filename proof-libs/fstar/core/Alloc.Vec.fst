@@ -40,3 +40,18 @@ instance update_at_tc_array t n: update_at_tc (t_Vec t ()) (int_t n) = {
 
 let impl_1__is_empty #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc): bool =
   Seq.length v = 0
+
+let impl_1__insert #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) (index: usize) (element: t) =
+  let index = Rust_primitives.Integers.v #USIZE index in
+  assert (index <= Seq.length v);
+  let left = Seq.slice #t v 0 index in 
+  let right = Seq.slice #t v index (Seq.length v) in 
+  Seq.append left (Seq.cons element right)
+
+assume val impl_1__drain #t (#[(Tactics.exact (`()))]alloc:unit) #range_t  (v: t_Vec t alloc) (r: range_t): 
+  t_Vec t alloc & Alloc.Vec.Drain.t_Drain t alloc
+
+assume val impl_1__truncate #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t alloc) (n: usize): t_Vec t alloc
+
+assume val impl_1__swap_remove #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t alloc) (n: usize): t_Vec t alloc & t
+

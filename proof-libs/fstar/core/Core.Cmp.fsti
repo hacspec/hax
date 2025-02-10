@@ -56,7 +56,7 @@ type t_Reverse t = | Reverse of t
 let impl__then x y = x
 
 [@FStar.Tactics.Typeclasses.tcinstance]
-val ord_u64: t_Ord u64
+val ord_int t: t_Ord (int_t t)
 
 [@FStar.Tactics.Typeclasses.tcinstance]
 val ord_reverse t {| t_Ord t |}: t_Ord (t_Reverse t)
