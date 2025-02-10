@@ -1358,10 +1358,6 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
-type discriminant_expr =
-  | Lit of Int64.t
-  | Exp of expr  (** Helper type for [cast_of_enum]. *)
-
 (** Generate a cast function from an inductive to its represantant type. *)
 let cast_of_enum typ_name generics typ thir_span
     (variants : (variant * Types.variant_for__decorated_for__expr_kind) list) :
@@ -1374,7 +1370,6 @@ let cast_of_enum typ_name generics typ thir_span
       }
   in
   let span = Span.of_thir thir_span in
-  let init = Lit (Int64.of_int 0) in
   let to_expr (n : Int64.t) : expr =
     match typ with
     | TInt kind ->
@@ -1390,7 +1385,7 @@ let cast_of_enum typ_name generics typ thir_span
         ^ [%show: ty] typ
   in
   let arms =
-    List.folding_map variants ~init ~f:(fun acc (variant, thir_variant) ->
+    List.folding_map variants ~init:None ~f:(fun acc (variant, thir_variant) ->
         let pat =
           PConstruct
             {
@@ -1406,20 +1401,14 @@ let cast_of_enum typ_name generics typ thir_span
         in
         let pat = { p = pat; typ = self; span } in
         match (acc, thir_variant.discr) with
-        | Lit n, Relative m ->
-            let acc = Lit Int64.(n + m) in
-            (acc, (pat, acc))
+        | None, Relative m -> (None, (pat, to_expr m))
         | _, Explicit did ->
-            let acc =
-              Exp { e = GlobalVar (def_id ~value:true did); span; typ }
-            in
-            (acc, (pat, acc))
-        | Exp e, Relative n ->
-            let acc =
-              Exp (U.call Core__ops__arith__Add__add [ e; to_expr n ] span typ)
-            in
-            (Exp e, (pat, acc)))
-    |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
+            let acc = { e = GlobalVar (def_id ~value:true did); span; typ } in
+            (Some acc, (pat, acc))
+        | Some e, Relative n ->
+            ( acc,
+              (pat, U.call Core__ops__arith__Add__add [ e; to_expr n ] span typ)
+            ))
     |> List.map ~f:(fun (arm_pat, body) ->
            { arm = { arm_pat; body; guard = None }; span })
   in
