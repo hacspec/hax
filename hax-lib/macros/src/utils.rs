@@ -279,7 +279,7 @@ pub fn make_fn_decoration(
             sig.output = if let FnDecorationKind::Decreases = &kind {
                 syn::parse_quote! { -> Box<dyn Any> }
             } else {
-                syn::parse_quote! { -> hax_lib::Prop }
+                syn::parse_quote! { -> impl Into<hax_lib::Prop> }
             };
             sig
         };
