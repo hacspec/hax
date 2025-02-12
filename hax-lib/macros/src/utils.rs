@@ -10,12 +10,12 @@ impl ToTokens for HaxQuantifiers {
             #AttrHaxLang
             #status_attr
             fn forall<T, U:Into<hax_lib::Prop>, F: Fn(T) -> U>(f: F) -> hax_lib::Prop {
-                true
+                true.into()
             }
             #AttrHaxLang
             #status_attr
             fn exists<T, U:Into<hax_lib::Prop>, F: Fn(T) -> U>(f: F) -> hax_lib::Prop {
-                true
+                true.into()
             }
 
             use ::hax_lib::fstar_unsafe_expr as fstar;
