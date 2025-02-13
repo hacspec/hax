@@ -817,7 +817,6 @@ fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
         })
         .collect();
     GenericPredicates {
-        parent: predicates.parent.sinto(s),
         predicates: clauses.sinto(s),
     }
 }

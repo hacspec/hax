@@ -1219,7 +1219,6 @@ impl<T> Binder<T> {
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GenericPredicates {
-    pub parent: Option<DefId>,
     #[value(self.predicates.iter().map(|x| x.sinto(s)).collect())]
     pub predicates: Vec<(Clause, Span)>,
 }
