@@ -144,7 +144,7 @@ pub enum FullDefKind<Body> {
         parent: DefId,
         #[value(get_param_env(s, s.owner_id()))]
         param_env: ParamEnv,
-        #[value(normalized_implied_predicates(s, s.owner_id()))]
+        #[value(implied_predicates(s.base().tcx, s.owner_id()).sinto(s))]
         implied_predicates: GenericPredicates,
         #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
         associated_item: AssocItem,
@@ -165,7 +165,7 @@ pub enum FullDefKind<Body> {
     Trait {
         #[value(get_param_env(s, s.owner_id()))]
         param_env: ParamEnv,
-        #[value(normalized_implied_predicates(s, s.owner_id()))]
+        #[value(implied_predicates(s.base().tcx, s.owner_id()).sinto(s))]
         implied_predicates: GenericPredicates,
         /// The special `Self: Trait` clause.
         #[value({
@@ -792,63 +792,12 @@ where
     }
 }
 
-/// This normalizes trait clauses before calling `sinto` on them. This is a bit of a hack required
-/// by charon for now. We can't normalize all clauses as this would lose region information in
-/// outlives clauses.
-/// TODO: clarify normalization in charon (https://github.com/AeneasVerif/charon/issues/300).
-#[cfg(feature = "rustc")]
-fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    predicates: ty::GenericPredicates<'tcx>,
-) -> GenericPredicates {
-    let clauses: Vec<_> = predicates
-        .predicates
-        .iter()
-        .map(|(clause, span)| {
-            let mut clause = *clause;
-            if matches!(&clause.kind().skip_binder(), ty::ClauseKind::Trait(_)) {
-                clause = s
-                    .base()
-                    .tcx
-                    .try_normalize_erasing_regions(s.param_env(), clause)
-                    .unwrap_or(clause);
-            }
-            (clause, *span)
-        })
-        .collect();
-    GenericPredicates {
-        predicates: clauses.sinto(s),
-    }
-}
-
-/// Get the `required_predicates` for the given `def_id` and process them with
-/// `normalize_trait_clauses`.
-#[cfg(feature = "rustc")]
-fn normalized_required_predicates<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    def_id: RDefId,
-) -> GenericPredicates {
-    let tcx = s.base().tcx;
-    normalize_trait_clauses(s, required_predicates(tcx, def_id))
-}
-
-/// Get the `implied_predicates` for the given `def_id` and process them with
-/// `normalize_trait_clauses`.
-#[cfg(feature = "rustc")]
-fn normalized_implied_predicates<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    def_id: RDefId,
-) -> GenericPredicates {
-    let tcx = s.base().tcx;
-    normalize_trait_clauses(s, implied_predicates(tcx, def_id))
-}
-
 #[cfg(feature = "rustc")]
 fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> ParamEnv {
     let tcx = s.base().tcx;
     let s = &with_owner_id(s.base(), (), (), def_id);
     ParamEnv {
         generics: tcx.generics_of(def_id).sinto(s),
-        predicates: normalized_required_predicates(s, def_id),
+        predicates: required_predicates(tcx, def_id).sinto(s),
     }
 }
