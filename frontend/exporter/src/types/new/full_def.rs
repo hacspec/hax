@@ -813,7 +813,7 @@ fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
                     .try_normalize_erasing_regions(s.param_env(), clause)
                     .unwrap_or(clause);
             }
-            (clause.as_predicate(), *span)
+            (clause, *span)
         })
         .collect();
     GenericPredicates {

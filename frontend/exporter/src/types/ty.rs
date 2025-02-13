@@ -1220,9 +1220,8 @@ impl<T> Binder<T> {
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GenericPredicates {
     pub parent: Option<DefId>,
-    // FIXME: Switch from `Predicate` to `Clause` (will require correct handling of binders).
-    #[value(self.predicates.iter().map(|(clause, span)| (clause.as_predicate().sinto(s), span.sinto(s))).collect())]
-    pub predicates: Vec<(Predicate, Span)>,
+    #[value(self.predicates.iter().map(|x| x.sinto(s)).collect())]
+    pub predicates: Vec<(Clause, Span)>,
 }
 
 #[cfg(feature = "rustc")]
