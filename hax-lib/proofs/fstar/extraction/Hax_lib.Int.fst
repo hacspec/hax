@@ -9,7 +9,7 @@ instance int_abs t : t_Abstraction (int_t t) {
       f_lift = fun x -> v x;
 }
 
-let f_to_int = f_lift
+unfold let f_to_int = f_lift
 
 unfold let impl__Int__to_u8 (#t:inttype) (n:range_t t) : int_t t = mk_int #t n
 unfold let impl__Int__to_u16 (#t:inttype) (n:range_t t) : int_t t = mk_int #t n
