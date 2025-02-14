@@ -7,7 +7,7 @@ open Hax_lib.Prop
 val v_assert (p: t_Prop) : Pure unit (requires p) (ensures (fun x -> p))
 let v_assert (v__formula: t_Prop) = ()
 
-val v_assume (p: t_Prop : Pure unit (requires True) (ensures (fun x -> p))
+val v_assume (p: t_Prop) : Pure unit (requires True) (ensures (fun x -> p))
 let v_assume (v__formula: t_Prop) = assume v__formula
 
 
