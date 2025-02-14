@@ -1,4 +1,12 @@
 module Hax_lib.Abstraction
 open Rust_primitives
 
-unfold let f_lift #a #b #t = v #t
+class t_Abstraction (v_Self: Type0) = {
+      f_AbstractType: Type;
+      f_lift: v_Self -> f_AbstractType;
+}
+
+instance int_abs t : t_Abstraction (int_t t) {
+      f_AbstractType = int;
+      f_lift = fun x -> v x;
+}
