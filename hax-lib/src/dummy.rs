@@ -1,7 +1,7 @@
 mod abstraction;
 pub use abstraction::*;
 
-mod prop;
+pub mod prop;
 pub use prop::*;
 
 pub use int::*;
@@ -140,10 +140,10 @@ pub mod int {
             $(implement_abstraction!($ty);)*
         };
     }
-    
+
     implement_abstraction!(u8 u16 u32 u64 u128 usize);
     implement_abstraction!(i8 i16 i32 i64 i128 isize);
-    
+
     macro_rules! implement_concretize {
         ($ty:ident $method:ident) => {
             impl Concretization<$ty> for Int {
@@ -163,7 +163,7 @@ pub mod int {
         };
         () => {};
     }
-    
+
     implement_concretize!(
         u8    to_u8,
         u16   to_u16,

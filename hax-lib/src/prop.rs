@@ -26,14 +26,14 @@ impl From<bool> for Prop {
     }
 }
 
-impl<T:Into<Prop>> BitAnd<T> for Prop {
+impl<T: Into<Prop>> BitAnd<T> for Prop {
     type Output = Prop;
     fn bitand(self, rhs: T) -> Self::Output {
         Prop(self.0 & rhs.into().0)
     }
 }
 
-impl<T:Into<Prop>> BitOr<T> for Prop {
+impl<T: Into<Prop>> BitOr<T> for Prop {
     type Output = Prop;
     fn bitor(self, rhs: T) -> Self::Output {
         Prop(self.0 | rhs.into().0)
@@ -43,7 +43,7 @@ impl<T:Into<Prop>> BitOr<T> for Prop {
 impl Not for Prop {
     type Output = Prop;
     fn not(self) -> Self::Output {
-        Prop(! self.0)
+        Prop(!self.0)
     }
 }
 

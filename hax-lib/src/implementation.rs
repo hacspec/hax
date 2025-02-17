@@ -1,10 +1,10 @@
 mod abstraction;
 pub use abstraction::*;
 
-mod int;
+pub mod int;
 pub use int::*;
 
-mod prop;
+pub mod prop;
 pub use prop::*;
 
 #[cfg(feature = "macros")]
@@ -99,7 +99,6 @@ macro_rules! assume {
         ()
     };
 }
-
 
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]
