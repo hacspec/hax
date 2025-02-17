@@ -45,7 +45,7 @@ pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenS
 /// Add an invariant to a loop which deals with an index. The
 /// invariant cannot refer to any variable introduced within the
 /// loop. An invariant is a closure that takes one argument, the
-/// index, and returns a boolean.
+/// index, and returns a proposition.
 ///
 /// Note that loop invariants are unstable (this will be handled in a
 /// better way in the future, see
@@ -175,7 +175,7 @@ pub fn modeled_by(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStre
 */
 
 /// Mark a `Proof<{STATEMENT}>`-returning function as a lemma, where
-/// `STATEMENT` is a boolean expression capturing any input
+/// `STATEMENT` is a `Prop` expression capturing any input
 /// variable.
 /// In the backends, this will generate a lemma with an empty proof.
 ///
@@ -245,7 +245,7 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
         } {
             abort!(
                 item.sig.output.span(),
-                "A lemma is expected to return a `Proof<{STATEMENT}>`, where {STATEMENT} is a boolean expression."
+                "A lemma is expected to return a `Proof<{STATEMENT}>`, where {STATEMENT} is a `Prop` expression."
             );
         }
     }
@@ -596,7 +596,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                                 const _: () = {
                                     #uid_attr
                                     #status_attr
-                                    fn refinement(#binders) -> bool { #refine }
+                                    fn refinement(#binders) -> ::hax_lib::Prop { #refine }
                                 };
                             })
                         }
@@ -865,7 +865,7 @@ make_quoting_proc_macro!(fstar coq proverif);
 /// Marks a newtype `struct RefinedT(T);` as a refinement type. The
 /// struct should have exactly one unnamed private field.
 ///
-/// This macro takes one argument: a boolean predicate that refines
+/// This macro takes one argument: a `Prop` proposition that refines
 /// values of type `SomeType`.
 ///
 /// For example, the following type defines bounded `u64` integers.
@@ -1015,7 +1015,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
                 fn get_mut(&mut self) -> &mut Self::InnerType {
                     &mut self.0
                 }
-                fn invariant(#ret_binder: Self::InnerType) -> bool {
+                fn invariant(#ret_binder: Self::InnerType) -> ::hax_lib::Prop {
                     #phi
                 }
             }

@@ -54,7 +54,7 @@ macro_rules! debug_assert {
 /// into a `assert` in the backend.
 macro_rules! assert {
     ($($arg:tt)*) => {
-        $crate::proxy_macro_if_not_hax!(::core::assert, $crate::assert, $($arg)*)
+        $crate::proxy_macro_if_not_hax!(::core::assert, $crate::assert, $(::hax_lib::Prop::from($arg))*)
     };
 }
 
@@ -63,24 +63,24 @@ macro_rules! assert {
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assert!` only in
 /// appropriate situations.
-pub fn assert<T:Into<Prop>>(_formula: T) {}
+pub fn assert(_formula: Prop) {}
 
 #[doc(hidden)]
 #[cfg(hax)]
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assume!` only in
 /// appropriate situations.
-pub fn assume<T:Into<Prop>>(_formula: T) {}
+pub fn assume(_formula: Prop) {}
 
 #[cfg(hax)]
 #[macro_export]
 macro_rules! assume {
     ($formula:expr) => {
-        $crate::assume($formula)
+        $crate::assume(Prop::from($formula))
     };
 }
 
-/// Assume a boolean formula holds. In Rust, this is expanded to the
+/// Assume a proposition holds. In Rust, this is expanded to the
 /// expression `()`. While extracted with Hax, this gets expanded to a
 /// call to an `assume` function.
 ///
@@ -113,7 +113,7 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 
 /// A dummy function that holds a loop invariant.
 #[doc(hidden)]
-pub fn _internal_loop_invariant<T, P: FnOnce(T) -> Prop>(_: P) {}
+pub fn _internal_loop_invariant<T, R: Into<Prop>, P: FnOnce(T) -> R>(_: P) {}
 
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
@@ -133,7 +133,7 @@ pub trait Refinement {
     /// Gets a mutable reference to a refinement
     fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
-    fn invariant<T:Into<Prop>>(value: Self::InnerType) -> T;
+    fn invariant<T: Into<Prop>>(value: Self::InnerType) -> T;
 }
 
 /// A utilitary trait that provides a `into_checked` method on traits

@@ -39,14 +39,14 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 }
 
 #[doc(hidden)]
-pub fn _internal_loop_invariant<T, P: FnOnce(T) -> Prop>(_: P) {}
+pub fn _internal_loop_invariant<T, R: Into<Prop>, P: FnOnce(T) -> R>(_: P) {}
 
 pub trait Refinement {
     type InnerType;
     fn new(x: Self::InnerType) -> Self;
     fn get(self) -> Self::InnerType;
     fn get_mut(&mut self) -> &mut Self::InnerType;
-    fn invariant(value: Self::InnerType) -> bool;
+    fn invariant(value: Self::InnerType) -> crate::Prop;
 }
 
 pub trait RefineAs<RefinedType> {
