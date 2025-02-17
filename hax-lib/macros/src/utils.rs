@@ -5,7 +5,6 @@ use crate::rewrite_self::*;
 pub struct HaxQuantifiers;
 impl ToTokens for HaxQuantifiers {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let status_attr = &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
         quote! {
             use ::hax_lib::fstar_unsafe_expr as fstar;
             use ::hax_lib::coq_unsafe_expr as coq;
