@@ -144,7 +144,7 @@ open FStar.Mul
 
 let v_MAX: usize = mk_usize 10
 
-type t_SafeIndex = { f_i:f_i: usize{f_i <. v_MAX} }
+type t_SafeIndex = { f_i:f_i: usize{b2t (f_i <. v_MAX <: bool)} }
 
 let impl_SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
   if i <. v_MAX
@@ -236,6 +236,19 @@ let test
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
       (x: v_T)
     : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x (mk_u8 99) <: u8) -! mk_u8 88
+'''
+"Attributes.Props.fst" = '''
+module Attributes.Props
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let f (x: Hax_lib.Prop.t_Prop) (y: bool) : Hax_lib.Prop.t_Prop =
+  let (xprop: Hax_lib.Prop.t_Prop):Hax_lib.Prop.t_Prop = b2t y in
+  let p:Hax_lib.Prop.t_Prop = b2t y /\ xprop /\ b2t y /\ b2t y in
+  ~(p \/ b2t y ==>
+    (forall (x: u8). b2t (x <=. Core.Num.impl_u8__MAX <: bool)) /\
+    (exists (x: u16). b2t (x >. mk_u16 300 <: bool)))
 '''
 "Attributes.Refined_arithmetic.fst" = '''
 module Attributes.Refined_arithmetic
@@ -495,10 +508,7 @@ let add3 (x y z: u32)
       (ensures
         fun result ->
           let result:u32 = result in
-          Hax_lib.implies true
-            (fun temp_0_ ->
-                let _:Prims.unit = temp_0_ in
-                result >. mk_u32 32 <: bool)) = (x +! y <: u32) +! z
+          b2t true ==> b2t (result >. mk_u32 32 <: bool)) = (x +! y <: u32) +! z
 
 let swap_and_mut_req_ens (x y: u32)
     : Prims.Pure (u32 & u32 & u32)
@@ -529,8 +539,8 @@ let add3_lemma (x: u32)
 
 type t_Foo = {
   f_x:u32;
-  f_y:f_y: u32{f_y >. mk_u32 3};
-  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. mk_u32 3}
+  f_y:f_y: u32{b2t (f_y >. mk_u32 3 <: bool)};
+  f_z:f_z: u32{b2t (((f_y +! f_x <: u32) +! f_z <: u32) >. mk_u32 3 <: bool)}
 }
 
 let inlined_code__v_V: u8 = mk_u8 12
