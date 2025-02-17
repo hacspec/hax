@@ -204,6 +204,11 @@ impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
 }
 
 impl Callbacks for ExtractionCallbacks {
+    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+        config.override_queries = Some(|_sess, providers| {
+            hax_frontend_exporter::override_queries_store_body(providers);
+        });
+    }
     fn after_crate_root_parsing<'tcx>(
         &mut self,
         compiler: &Compiler,

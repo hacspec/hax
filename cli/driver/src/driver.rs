@@ -10,6 +10,7 @@
 #![feature(internal_output_capture)]
 
 extern crate rustc_ast;
+extern crate rustc_borrowck;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;

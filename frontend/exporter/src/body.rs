@@ -14,6 +14,89 @@ mod module {
         hir_id::OwnerId as ROwnerId,
     };
 
+    mod store {
+        //! This module helps at store bodies to avoid stealing.
+        //! `rustc_data_structures::steal::Steal` is a box for which the content can be stolen, for performance reasons.
+        //! The query system of Rust creates and steal such boxes, resulting in hax trying to borrow the value of a Steal while some query stole it already.
+        //! This module provides an ad-hoc global cache and query overrides to deal with this issue.
+        use rustc_hir::def_id::LocalDefId;
+        use rustc_middle::mir::Body;
+        use rustc_middle::query::plumbing::IntoQueryParam;
+        use rustc_middle::thir::{ExprId, Thir};
+        use std::cell::RefCell;
+        use std::collections::HashMap;
+        use std::rc::Rc;
+
+        thread_local! {
+            static THIR_BODY: RefCell<HashMap<LocalDefId, (Rc<Thir<'static>>, ExprId)>> = RefCell::new(HashMap::new());
+            static MIR_BUILT: RefCell<HashMap<LocalDefId, Rc<Body<'static>>>> = RefCell::new(HashMap::new());
+        }
+
+        /// Register overrides for rustc queries.
+        /// This will clone and store bodies for THIR and MIR (built) in an ad-hoc global cache.
+        pub fn override_queries_store_body(providers: &mut rustc_middle::query::Providers) {
+            providers.thir_body = |tcx, def_id| {
+                let (steal, expr_id) =
+                    (rustc_interface::DEFAULT_QUERY_PROVIDERS.thir_body)(tcx, def_id)?;
+                let body = steal.borrow().clone();
+                let body: Thir<'static> = unsafe { std::mem::transmute(body) };
+                THIR_BODY.with(|map| map.borrow_mut().insert(def_id, (Rc::new(body), expr_id)));
+                Ok((steal, expr_id))
+            };
+            providers.mir_built = |tcx, def_id| {
+                let steal = (rustc_interface::DEFAULT_QUERY_PROVIDERS.mir_built)(tcx, def_id);
+                let body = steal.borrow().clone();
+                let body: Body<'static> = unsafe { std::mem::transmute(body) };
+                MIR_BUILT.with(|map| map.borrow_mut().insert(def_id, Rc::new(body)));
+                steal
+            };
+        }
+
+        /// Extension trait that provides non-stealing variants of `thir_body` and `mir_built`.
+        /// Those methods requires rustc queries to be overriden with the helper function `register` above.
+        #[extension_traits::extension(pub trait SafeTyCtxtBodies)]
+        impl<'tcx> rustc_middle::ty::TyCtxt<'tcx> {
+            fn thir_body_safe(
+                &self,
+                key: impl IntoQueryParam<rustc_span::def_id::LocalDefId>,
+            ) -> Result<(Rc<Thir<'tcx>>, ExprId), rustc_span::ErrorGuaranteed> {
+                let key = key.into_query_param();
+                if !THIR_BODY.with(|map| map.borrow().contains_key(&key)) {
+                    // Compute a body, which will insert a body in `THIR_BODIES`.
+                    let _ = self.thir_body(key);
+                }
+                THIR_BODY.with(|map| {
+                    let (body, expr) = map
+                        .borrow_mut()
+                        .get(&key)
+                        .expect("Did we forgot to call `register`?")
+                        .clone();
+                    let body: Rc<Thir<'tcx>> = unsafe { std::mem::transmute(body) };
+                    Ok((body, expr))
+                })
+            }
+            fn mir_built_safe(
+                &self,
+                key: impl IntoQueryParam<rustc_span::def_id::LocalDefId>,
+            ) -> Rc<Body<'tcx>> {
+                let key = key.into_query_param();
+                if !MIR_BUILT.with(|map| map.borrow().contains_key(&key)) {
+                    // Compute a body, which will insert a body in `MIR_BODIES`.
+                    let _ = self.mir_built(key);
+                }
+                MIR_BUILT.with(|map| {
+                    let body = map
+                        .borrow_mut()
+                        .get(&key)
+                        .expect("Did we forgot to call `register`?")
+                        .clone();
+                    unsafe { std::mem::transmute(body) }
+                })
+            }
+        }
+    }
+    pub use store::*;
+
     pub fn get_thir<'tcx, S: UnderOwnerState<'tcx>>(
         did: RLocalDefId,
         s: &S,
