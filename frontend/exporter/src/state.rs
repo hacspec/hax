@@ -149,11 +149,6 @@ mod types {
         pub predicate_searcher: Option<crate::traits::PredicateSearcher<'tcx>>,
         /// Cache of trait refs to resolved impl expressions.
         pub impl_exprs: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
-        /// Cache thir bodies.
-        pub thir: Option<(
-            Rc<rustc_middle::thir::Thir<'tcx>>,
-            rustc_middle::thir::ExprId,
-        )>,
     }
 
     #[derive(Clone)]
