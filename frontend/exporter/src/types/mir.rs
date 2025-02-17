@@ -124,6 +124,7 @@ pub mod mir_kinds {
     #[cfg(feature = "rustc")]
     mod rustc {
         use super::*;
+        use crate::prelude::SafeTyCtxtBodies;
         use rustc_middle::mir::Body;
         use rustc_middle::ty::TyCtxt;
         use rustc_span::def_id::LocalDefId;
@@ -143,12 +144,7 @@ pub mod mir_kinds {
                 id: LocalDefId,
                 f: impl FnOnce(&Body<'tcx>) -> T,
             ) -> Option<T> {
-                let steal = tcx.mir_built(id);
-                if steal.is_stolen() {
-                    None
-                } else {
-                    Some(f(&steal.borrow()))
-                }
+                Some(f(&tcx.mir_built_safe(id)))
             }
         }
 
