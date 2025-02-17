@@ -172,7 +172,7 @@ module Make (F : Features.T) =
               Rust_primitives__hax__int__le;
             rint_rint_any Core__cmp__PartialEq__ne Rust_primitives__hax__int__ne;
             rint_rint_any Core__cmp__PartialEq__eq Rust_primitives__hax__int__eq;
-            any_rint Hax_lib__abstraction__Abstraction__lift
+            any_int Hax_lib__abstraction__Abstraction__lift
               Rust_primitives__hax__int__from_machine;
             int_any Hax_lib__abstraction__Concretization__concretize
               Rust_primitives__hax__int__into_machine;
@@ -200,7 +200,7 @@ module Make (F : Features.T) =
               | TBool -> U.call name_from_bool [ e ] e.span prop_type
               | _ -> e
             in
-            mk' args any f
+            mk' args is_prop f
               (FnReplace.map_args
                  (fun _ e ->
                    let e = promote_bool e in
