@@ -40,7 +40,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
         constructors::not(x);
         constructors::eq(x, x);
         constructors::ne(x, x);
-        constructors::implies(x, || x);
+        constructors::implies(x, x);
         constructors::forall(|_: ()| x);
         constructors::exists(|_: ()| x);
 
@@ -56,7 +56,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
 
         forall(|_: ()| x);
         exists(|_: ()| x);
-        implies(x, || x);
+        implies(x, x);
     }
 
     let _ = [()].into_iter();
