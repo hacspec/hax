@@ -596,7 +596,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                                 const _: () = {
                                     #uid_attr
                                     #status_attr
-                                    fn refinement(#binders) -> ::hax_lib::Prop { #refine }
+                                    fn refinement(#binders) -> ::hax_lib::Prop { ::hax_lib::Prop::from(#refine) }
                                 };
                             })
                         }
@@ -1016,7 +1016,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
                     &mut self.0
                 }
                 fn invariant(#ret_binder: Self::InnerType) -> ::hax_lib::Prop {
-                    #phi
+                    ::hax_lib::Prop::from(#phi)
                 }
             }
 

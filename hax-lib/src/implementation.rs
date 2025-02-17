@@ -132,7 +132,7 @@ pub trait Refinement {
     /// Gets a mutable reference to a refinement
     fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
-    fn invariant<T: Into<Prop>>(value: Self::InnerType) -> T;
+    fn invariant(value: Self::InnerType) -> Prop;
 }
 
 /// A utilitary trait that provides a `into_checked` method on traits
