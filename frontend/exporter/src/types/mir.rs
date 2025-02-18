@@ -3,20 +3,10 @@
 //! or patterns; instead the control flow is entirely described by gotos and switches on integer
 //! values.
 use crate::prelude::*;
-use crate::sinto_as_usize;
 #[cfg(feature = "rustc")]
 use rustc_middle::{mir, ty};
 #[cfg(feature = "rustc")]
 use tracing::trace;
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::MirPhase, state: S as s)]
-pub enum MirPhase {
-    Built,
-    Analysis(AnalysisPhase),
-    Runtime(RuntimePhase),
-}
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
@@ -31,48 +21,10 @@ pub struct SourceInfo {
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
 pub struct LocalDecl {
     pub mutability: Mutability,
-    pub local_info: ClearCrossCrate<LocalInfo>,
     pub ty: Ty,
-    pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
     #[value(None)]
     pub name: Option<String>, // This information is contextual, thus the SInto instance initializes it to None, and then we fill it while `SInto`ing MirBody
-}
-
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum ClearCrossCrate<T> {
-    Clear,
-    Set(T),
-}
-
-#[cfg(feature = "rustc")]
-impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
-    for rustc_middle::mir::ClearCrossCrate<T>
-{
-    fn sinto(&self, s: &S) -> ClearCrossCrate<TT> {
-        match self {
-            rustc_middle::mir::ClearCrossCrate::Clear => ClearCrossCrate::Clear,
-            rustc_middle::mir::ClearCrossCrate::Set(x) => ClearCrossCrate::Set(x.sinto(s)),
-        }
-    }
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::RuntimePhase, state: S as _s)]
-pub enum RuntimePhase {
-    Initial,
-    PostCleanup,
-    Optimized,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::AnalysisPhase, state: S as _s)]
-pub enum AnalysisPhase {
-    Initial,
-    PostCleanup,
 }
 
 pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
@@ -80,12 +32,12 @@ pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
 #[cfg(feature = "rustc")]
 fn name_of_local(
     local: rustc_middle::mir::Local,
-    var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
+    var_debug_info: &Vec<mir::VarDebugInfo>,
 ) -> Option<String> {
     var_debug_info
         .iter()
         .find(|info| {
-            if let rustc_middle::mir::VarDebugInfoContents::Place(place) = info.value {
+            if let mir::VarDebugInfoContents::Place(place) = info.value {
                 place.projection.is_empty() && place.local == local
             } else {
                 false
@@ -232,13 +184,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstOperand>
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Body<'tcx>, state: S as s)]
 pub struct MirBody<KIND> {
-    #[map(x.clone().as_mut().sinto(s))]
-    pub basic_blocks: BasicBlocks,
-    pub phase: MirPhase,
-    pub pass_count: usize,
-    pub source: MirSource,
-    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    pub coroutine: Option<CoroutineInfo>,
+    pub span: Span,
     #[map({
         let mut local_decls: rustc_index::IndexVec<rustc_middle::mir::Local, LocalDecl> = x.iter().map(|local_decl| {
             local_decl.sinto(s)
@@ -250,13 +196,9 @@ pub struct MirBody<KIND> {
         local_decls.into()
     })]
     pub local_decls: IndexVec<Local, LocalDecl>,
-    pub user_type_annotations: CanonicalUserTypeAnnotations,
-    pub arg_count: usize,
-    pub spread_arg: Option<Local>,
-    pub var_debug_info: Vec<VarDebugInfo>,
-    pub span: Span,
-    pub is_polymorphic: bool,
-    pub injection_phase: Option<MirPhase>,
+    #[map(x.clone().as_mut().sinto(s))]
+    pub basic_blocks: BasicBlocks,
+    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
     #[value(std::marker::PhantomData)]
     pub _kind: std::marker::PhantomData<KIND>,
@@ -268,24 +210,7 @@ pub struct MirBody<KIND> {
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
-    pub inlined: Option<(Instance, Span)>,
     pub inlined_parent_scope: Option<SourceScope>,
-    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
-pub struct Instance {
-    pub def: InstanceKind,
-    pub args: Vec<GenericArg>,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
-pub struct SourceScopeLocalData {
-    pub lint_root: HirId,
 }
 
 #[derive_group(Serializers)]
@@ -1056,9 +981,6 @@ pub struct BasicBlockData {
     pub is_cleanup: bool,
 }
 
-pub type CanonicalUserTypeAnnotations =
-    IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation>;
-
 make_idx_wrapper!(rustc_middle::mir, BasicBlock);
 make_idx_wrapper!(rustc_middle::mir, SourceScope);
 make_idx_wrapper!(rustc_middle::mir, Local);
@@ -1119,33 +1041,6 @@ pub enum BinOp {
     Offset,
 }
 
-/// Reflects [`rustc_middle::mir::ScopeData`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::ScopeData, state: S as gstate)]
-pub enum ScopeData {
-    Node,
-    CallSite,
-    Arguments,
-    Destruction,
-    IfThen,
-    IfThenRescope,
-    Remainder(FirstStatementIndex),
-}
-
-sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
-
-/// Reflects [`rustc_middle::mir::BinOp`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::Scope, state: S as gstate)]
-pub struct Scope {
-    pub id: ItemLocalId,
-    pub data: ScopeData,
-}
-
-sinto_as_usize!(rustc_hir::hir_id, ItemLocalId);
-
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
@@ -1175,13 +1070,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 }
             }
         }
-    }
-}
-
-#[cfg(feature = "rustc")]
-impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
-    fn sinto(&self, _: &S) -> u64 {
-        self.0.get()
     }
 }
 
@@ -1224,18 +1112,11 @@ pub enum FakeBorrowKind {
 
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
 sinto_todo!(rustc_ast::ast, InlineAsmOptions);
-sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
-sinto_todo!(rustc_middle::mir, UserTypeProjections);
-sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, InlineAsmOperand<'tcx>);
 sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
-sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
-sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
-sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
-sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);
