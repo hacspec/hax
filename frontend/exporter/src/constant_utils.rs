@@ -562,27 +562,32 @@ mod rustc {
             (_, ty::Ref(_, inner_ty, _)) => {
                 ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
             }
-            (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-                ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
-                    ty::ValTree::Leaf(leaf) => leaf.to_u8(),
-                    _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
-                }).collect(), StrStyle::Cooked))
-                ,
+            (ty::ValTree::Branch(valtrees), ty::Str) => {
+                let bytes = valtrees
+                    .iter()
+                    .map(|x| match x {
+                        ty::ValTree::Leaf(leaf) => leaf.to_u8(),
+                        _ => fatal!(
+                            s[span],
+                            "Expected a flat list of leaves while translating \
+                            a str literal, got a arbitrary valtree."
+                        ),
+                    })
+                    .collect();
+                ConstantExprKind::Literal(ConstantLiteral::byte_str(bytes, StrStyle::Cooked))
+            }
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
                 let contents: rustc_middle::ty::DestructuredConst = s
-                    .base().tcx
+                    .base()
+                    .tcx
                     .destructure_const(ty::Const::new_value(s.base().tcx, valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match ty.kind() {
                     ty::Array(_, _) => ConstantExprKind::Array {
-                        fields: fields
-                            .map(|field| field.sinto(s))
-                            .collect(),
+                        fields: fields.map(|field| field.sinto(s)).collect(),
                     },
                     ty::Tuple(_) => ConstantExprKind::Tuple {
-                        fields: fields
-                            .map(|field| field.sinto(s))
-                            .collect(),
+                        fields: fields.map(|field| field.sinto(s)).collect(),
                     },
                     ty::Adt(def, _) => {
                         let variant_idx = contents
@@ -590,9 +595,10 @@ mod rustc {
                             .s_expect(s, "destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
 
-                        ConstantExprKind::Adt{
+                        ConstantExprKind::Adt {
                             info: get_variant_information(def, variant_idx, s),
-                            fields: fields.into_iter()
+                            fields: fields
+                                .into_iter()
                                 .zip(&variant_def.fields)
                                 .map(|(value, field)| ConstantFieldExpr {
                                     field: field.did.sinto(s),
@@ -611,12 +617,12 @@ mod rustc {
                 let usize_ty = rustc_middle::ty::Ty::new_usize(s.base().tcx).sinto(s);
                 let lit = ConstantLiteral::Int(ConstantInt::Uint(raw_address, uint_ty));
                 ConstantExprKind::Cast {
-                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s))
+                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s)),
                 }
             }
-            (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
-                scalar_int_to_constant_literal(s, x, ty)
-            ),
+            (ty::ValTree::Leaf(x), _) => {
+                ConstantExprKind::Literal(scalar_int_to_constant_literal(s, x, ty))
+            }
             _ => supposely_unreachable_fatal!(
                 s[span], "valtree_to_expr";
                 {valtree, ty}
