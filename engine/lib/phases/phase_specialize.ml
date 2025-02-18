@@ -174,6 +174,8 @@ module Make (F : Features.T) =
             rint_rint_any Core__cmp__PartialEq__eq Rust_primitives__hax__int__eq;
             any_int Hax_lib__abstraction__Abstraction__lift
               Rust_primitives__hax__int__from_machine;
+            any_int Hax_lib__int__ToInt__to_int
+              Rust_primitives__hax__int__from_machine;
             int_any Hax_lib__abstraction__Concretization__concretize
               Rust_primitives__hax__int__into_machine;
           ]
