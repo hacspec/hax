@@ -24,6 +24,11 @@ macro_rules! assert {
 }
 
 #[macro_export]
+macro_rules! assert_prop {
+    ($($arg:tt)*) => {{}};
+}
+
+#[macro_export]
 macro_rules! assume {
     ($formula:expr) => {
         ()
