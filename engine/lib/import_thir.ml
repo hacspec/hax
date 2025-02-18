@@ -852,9 +852,10 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ ->
+      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ | Memory _ ->
           assertion_failure [ span ]
-            "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
+            "constant_lit_to_lit: TraitConst | FnPtr | RawBorrow | Cast | \
+             Memory"
       | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) _span :
         Thir.lit_kind * bool =

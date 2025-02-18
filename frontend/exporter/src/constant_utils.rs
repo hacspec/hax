@@ -104,6 +104,10 @@ pub enum ConstantExprKind {
         /// is an implementation of `Foo`
         method_impl: Option<ImplExpr>,
     },
+    /// A blob of memory containing the byte representation of the value. This can occur when
+    /// evaluating MIR constants. Interpreting this back to a structured value is left as an
+    /// exercice to the consumer.
+    Memory(Vec<u8>),
     Todo(String),
 }
 
@@ -213,9 +217,9 @@ mod rustc {
                 Cast { source } => ExprKind::Cast {
                     source: source.into(),
                 },
-                kind @ (FnPtr { .. } | TraitConst { .. }) => {
+                kind @ (FnPtr { .. } | TraitConst { .. } | Memory { .. }) => {
                     // SH: I see the `Closure` kind, but it's not the same as function pointer?
-                    ExprKind::Todo(format!("FnPtr or TraitConst. kind={:#?}", kind))
+                    ExprKind::Todo(format!("FnPtr or TraitConst or Memory. kind={:#?}", kind))
                 }
                 Todo(msg) => ExprKind::Todo(msg),
             };
@@ -327,16 +331,24 @@ mod rustc {
                         variant_information: None,
                     },
                     GlobalAlloc::Memory(alloc) => {
-                        let values = alloc.inner().get_bytes_unchecked(
-                            rustc_middle::mir::interpret::AllocRange {
+                        let bytes = alloc
+                            .inner()
+                            .get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
                                 start: rustc_abi::Size::ZERO,
                                 size: alloc.inner().size(),
-                            },
-                        );
-                        ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                            values.to_vec(),
-                            StrStyle::Cooked,
-                        ))
+                            })
+                            .to_vec();
+                        match inner_ty.kind() {
+                            ty::Slice(slice_ty) | ty::Array(slice_ty, _)
+                                if matches!(slice_ty.kind(), ty::Uint(ty::UintTy::U8)) =>
+                            {
+                                ConstantExprKind::Literal(ConstantLiteral::ByteStr(
+                                    bytes,
+                                    StrStyle::Cooked,
+                                ))
+                            }
+                            _ => ConstantExprKind::Memory(bytes),
+                        }
                     }
                     provenance => fatal!(
                         s[span],
