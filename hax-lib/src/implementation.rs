@@ -54,7 +54,7 @@ macro_rules! debug_assert {
 /// into a `assert` in the backend.
 macro_rules! assert {
     ($($arg:tt)*) => {
-        $crate::proxy_macro_if_not_hax!(::core::assert, $crate::assert, $(::hax_lib::Prop::from($arg))*)
+        $crate::proxy_macro_if_not_hax!(::core::assert, $crate::assert, $($arg)*)
     };
 }
 
@@ -63,7 +63,28 @@ macro_rules! assert {
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assert!` only in
 /// appropriate situations.
-pub fn assert(_formula: Prop) {}
+pub fn assert(_formula: bool) {}
+
+#[macro_export]
+/// Assert a logical proposition [`Prop`]: this exists only in the backends of
+/// hax. In Rust, this macro expands to an empty block `{ }`.
+macro_rules! assert_prop {
+    ($($arg:tt)*) => {
+        {
+            #[cfg(hax)]
+            {
+                $crate::assert_prop($crate::Prop::from($($arg)*));
+            }
+        }
+    };
+}
+
+#[doc(hidden)]
+#[cfg(hax)]
+/// This function exists only when compiled with `hax`, and is not meant to be
+/// used directly. It is called by `assert_prop!` only in appropriate
+/// situations.
+pub fn assert_prop(_formula: Prop) {}
 
 #[doc(hidden)]
 #[cfg(hax)]
