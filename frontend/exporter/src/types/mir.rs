@@ -208,12 +208,24 @@ pub mod mir_kinds {
 pub use mir_kinds::IsMirKind;
 
 #[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::ConstOperand<'tcx>, state: S as s)]
-pub struct Constant {
+#[derive(Clone, Debug, JsonSchema)]
+pub struct ConstOperand {
     pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub const_: TypedConstantKind,
+    pub ty: Ty,
+    pub const_: ConstantExpr,
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstOperand>
+    for rustc_middle::mir::ConstOperand<'tcx>
+{
+    fn sinto(&self, s: &S) -> ConstOperand {
+        ConstOperand {
+            span: self.span.sinto(s),
+            ty: self.const_.ty().sinto(s),
+            const_: self.const_.sinto(s),
+        }
+    }
 }
 
 #[derive_group(Serializers)]
@@ -282,7 +294,7 @@ pub struct SourceScopeLocalData {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(Constant),
+    Constant(ConstOperand),
 }
 
 #[cfg(feature = "rustc")]
@@ -290,7 +302,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.const_.typ,
+            Operand::Constant(c) => &c.ty,
         }
     }
 }
