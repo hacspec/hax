@@ -24,8 +24,8 @@ pub enum ConstantLiteral {
     Char(char),
     Float(String, FloatTy),
     Int(ConstantInt),
-    Str(String, StrStyle),
-    ByteStr(Vec<u8>, StrStyle),
+    Str(String),
+    ByteStr(Vec<u8>),
 }
 
 /// The subset of [Expr] that corresponds to constants.
@@ -147,10 +147,10 @@ mod rustc {
         /// Rustc always represents string constants as `&[u8]`, but this
         /// is not nice to consume. This associated function interpret
         /// bytes as an unicode string, and as a byte string otherwise.
-        fn byte_str(bytes: Vec<u8>, style: StrStyle) -> Self {
+        fn byte_str(bytes: Vec<u8>) -> Self {
             match String::from_utf8(bytes.clone()) {
-                Ok(s) => Self::Str(s, style),
-                Err(_) => Self::ByteStr(bytes, style),
+                Ok(s) => Self::Str(s),
+                Err(_) => Self::ByteStr(bytes),
             }
         }
     }
@@ -176,8 +176,8 @@ mod rustc {
                             }
                         }
                         Float(f, ty) => LitKind::Float(f, LitFloatType::Suffixed(ty)),
-                        ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
-                        Str(raw, str_style) => LitKind::Str(raw, str_style),
+                        ByteStr(raw) => LitKind::ByteStr(raw, StrStyle::Cooked),
+                        Str(raw) => LitKind::Str(raw, StrStyle::Cooked),
                     };
                     let span = c.span.clone();
                     let lit = Spanned { span, node };
@@ -342,10 +342,7 @@ mod rustc {
                             ty::Slice(slice_ty) | ty::Array(slice_ty, _)
                                 if matches!(slice_ty.kind(), ty::Uint(ty::UintTy::U8)) =>
                             {
-                                ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                                    bytes,
-                                    StrStyle::Cooked,
-                                ))
+                                ConstantExprKind::Literal(ConstantLiteral::ByteStr(bytes))
                             }
                             _ => ConstantExprKind::Memory(bytes),
                         }
@@ -586,7 +583,7 @@ mod rustc {
                         ),
                     })
                     .collect();
-                ConstantExprKind::Literal(ConstantLiteral::byte_str(bytes, StrStyle::Cooked))
+                ConstantExprKind::Literal(ConstantLiteral::byte_str(bytes))
             }
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
                 let contents: rustc_middle::ty::DestructuredConst = s
@@ -715,11 +712,8 @@ mod rustc {
                 let slice: &[u8] = data
                     .inner()
                     .inspect_with_uninit_and_ptr_outside_interpreter(0..end);
-                ConstantExprKind::Literal(ConstantLiteral::byte_str(
-                    slice.to_vec(),
-                    StrStyle::Cooked,
-                ))
-                .decorate(ty.sinto(s), span.sinto(s))
+                ConstantExprKind::Literal(ConstantLiteral::byte_str(slice.to_vec()))
+                    .decorate(ty.sinto(s), span.sinto(s))
             }
             ConstValue::ZeroSized { .. } => {
                 // Should be unit

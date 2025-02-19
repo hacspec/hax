@@ -871,8 +871,8 @@ end) : EXPR = struct
           match String.chop_prefix v ~prefix:"-" with
           | Some v -> (Float (v, Suffixed ty), true)
           | None -> (Float (v, Suffixed ty), false))
-      | Str (v, style) -> (Str (v, style), false)
-      | ByteStr (v, style) -> (ByteStr (v, style), false)
+      | Str v -> (Str (v, Cooked), false)
+      | ByteStr v -> (ByteStr (v, Cooked), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
         Thir.field_expr =
       { field; value = constant_expr_to_expr value }
