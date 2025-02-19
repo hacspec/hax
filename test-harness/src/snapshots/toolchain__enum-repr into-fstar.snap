@@ -52,6 +52,31 @@ let t_EnumWithRepr_cast_to_repr (x: t_EnumWithRepr) : u16 =
   | EnumWithRepr_ImplicitDiscrEmptyStruct  ->
     anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 +! mk_u16 2
 
+type t_ImplicitReprs =
+  | ImplicitReprs_A : t_ImplicitReprs
+  | ImplicitReprs_B : t_ImplicitReprs
+  | ImplicitReprs_C : t_ImplicitReprs
+  | ImplicitReprs_D : t_ImplicitReprs
+  | ImplicitReprs_E : t_ImplicitReprs
+  | ImplicitReprs_F : t_ImplicitReprs
+  | ImplicitReprs_G : t_ImplicitReprs
+  | ImplicitReprs_H : t_ImplicitReprs
+  | ImplicitReprs_I : t_ImplicitReprs
+
+let anon_const_ImplicitReprs_E__anon_const_0: u64 = mk_u64 30
+
+let t_ImplicitReprs_cast_to_repr (x: t_ImplicitReprs) : u64 =
+  match x <: t_ImplicitReprs with
+  | ImplicitReprs_A  -> mk_u64 0
+  | ImplicitReprs_B  -> mk_u64 1
+  | ImplicitReprs_C  -> mk_u64 2
+  | ImplicitReprs_D  -> mk_u64 3
+  | ImplicitReprs_E  -> anon_const_ImplicitReprs_E__anon_const_0
+  | ImplicitReprs_F  -> anon_const_ImplicitReprs_E__anon_const_0 +! mk_u64 1
+  | ImplicitReprs_G  -> anon_const_ImplicitReprs_E__anon_const_0 +! mk_u64 2
+  | ImplicitReprs_H  -> anon_const_ImplicitReprs_E__anon_const_0 +! mk_u64 3
+  | ImplicitReprs_I  -> anon_const_ImplicitReprs_E__anon_const_0 +! mk_u64 4
+
 let f (_: Prims.unit) : u32 =
   let e_x:u16 =
     cast (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 +! mk_u16 0 <: u16) <: u16

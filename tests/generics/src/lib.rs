@@ -72,3 +72,16 @@ mod impl_generics {
         }
     }
 }
+
+/// See https://github.com/cryspen/hax/issues/1289
+mod assoc_const_param {
+    struct Test<const N: usize>();
+
+    impl<const N: usize> Test<N> {
+        const A: Self = Self();
+    }
+
+    fn test() -> Test<1> {
+        Test::<1>::A
+    }
+}

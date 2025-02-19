@@ -27,6 +27,18 @@ stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 diagnostics = []
 
 [stdout.files]
+"Generics.Assoc_const_param.fst" = '''
+module Generics.Assoc_const_param
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Test (v_N: usize) = | Test : t_Test v_N
+
+let impl__A (v_N: usize) : t_Test v_N = Test <: t_Test v_N
+
+let test (_: Prims.unit) : t_Test (mk_usize 1) = impl__A (mk_usize 1)
+'''
 "Generics.Defaults_generics.fst" = '''
 module Generics.Defaults_generics
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

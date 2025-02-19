@@ -190,3 +190,43 @@ mod nested_return {
         return Ok(other_fun(rng)?);
     }
 }
+
+mod issue_1300 {
+    fn fun() -> Result<(), u8> {
+        let val = [0u8; 5]
+            .iter()
+            // Removing the inner Result/? below makes this pass
+            .map(|&prev| Ok::<(u8, [u8; 32]), u8>((prev, Ok::<[u8; 32], u8>([0u8; 32])?)))
+            // Removing the ? below makes this pass
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
+    }
+}
+
+mod issue_1299 {
+    pub struct S {
+        pub g: Foo,
+    }
+
+    pub struct OtherS {
+        pub g: Option<Foo>,
+    }
+
+    pub struct Foo {
+        y: u8,
+    }
+
+    impl Foo {
+        pub fn from(i: &Foo) -> Self {
+            Self { y: i.y.clone() }
+        }
+    }
+    struct Error();
+    impl S {
+        pub fn from(i: &OtherS) -> Result<Self, Error> {
+            Ok(Self {
+                g: Foo::from(i.g.as_ref().ok_or(Error())?),
+            })
+        }
+    }
+}
