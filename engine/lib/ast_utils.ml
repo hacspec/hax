@@ -341,14 +341,6 @@ module Make (F : Features.T) = struct
             super#visit_expr' ascribe_app e
 
           method! visit_expr (ascribe_app : bool) e =
-            let ascribe_app =
-              ascribe_app
-              && not
-                   (match e.typ with
-                   | TApp { ident; _ } ->
-                       Global_ident.eq_name Hax_lib__prop__Prop ident
-                   | _ -> false)
-            in
             let e = super#visit_expr ascribe_app e in
             let ascribe (e : expr) =
               if [%matches? Ascription _] e.e then e

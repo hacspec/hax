@@ -44,8 +44,8 @@ Import RecordSetNotations.
 
 (* NotImplementedYet *)
 
-From Literals Require Import hax_lib.
-Export hax_lib.
+From Literals Require Import Hax_lib (t_int).
+Export Hax_lib (t_int).
 
 Definition math_integers (x : t_Int) `{andb (f_gt (x) (impl_Int__e_unsafe_from_str ("0"%string))) (f_lt (x) (impl_Int__e_unsafe_from_str ("16"%string))) = true} : t_u8 :=
   let _ : t_Int := f_lift (3) in

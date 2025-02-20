@@ -6,7 +6,7 @@ const u32_max: u32 = 90000;
 /// A doc comment on `add3`
 #[doc = "another doc comment on add3"]
 #[hax::requires(x > 10 && y > 10 && z > 10 && x + y + z < u32_max)]
-#[hax::ensures(|result| hax_lib::implies(true, result > 32))]
+#[hax::ensures(|result| hax_lib::implies(true, || result > 32))]
 fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
@@ -181,7 +181,7 @@ fn some_function() -> String {
 }
 
 mod pre_post_on_traits_and_impls {
-    use hax_lib::*;
+    use hax_lib::int::*;
 
     #[hax_lib::attributes]
     trait Operation {
@@ -348,7 +348,7 @@ mod verifcation_status {
 }
 
 mod requires_mut {
-    use hax_lib::*;
+    use hax_lib::int::*;
 
     #[hax_lib::attributes]
     trait Foo {
@@ -395,15 +395,5 @@ mod issue_1266 {
     trait T {
         #[hax_lib::ensures(|_|true)]
         fn v(x: &mut Self);
-    }
-}
-
-mod props {
-    use hax_lib::*;
-
-    fn f(x: Prop, y: bool) -> Prop {
-        let xprop: Prop = y.into();
-        let p = y.lift() & xprop & y & y.to_prop();
-        !(p | y).implies(forall(|x: u8| x <= u8::MAX) & exists(|x: u16| x > 300))
     }
 }

@@ -819,7 +819,7 @@ let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : (u64 & Prims.u
     (fun count i ->
         let count:u64 = count in
         let i:usize = i in
-        i <= Core.Slice.impl__len #v_T slice)
+        i <= Core.Slice.impl__len #v_T slice <: usize)
     count
     (fun count i ->
         let count:u64 = count in

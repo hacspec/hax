@@ -81,7 +81,7 @@ module FStarNamePolicy = struct
 
   let anonymous_field_transform index = "_" ^ index
 
-  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"b2t";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and";"string"]
+  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and";"string"]
 end
 
 module RenderId = Concrete_ident.MakeRenderAPI (FStarNamePolicy)
@@ -89,7 +89,6 @@ module U = Ast_utils.Make (InputLanguage)
 module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
-module Destruct = Ast_destruct.Make (InputLanguage)
 
 module Context = struct
   type t = {
@@ -318,12 +317,6 @@ struct
       (c Rust_primitives__hax__int__lt, (2, "<"));
       (c Rust_primitives__hax__int__ne, (2, "<>"));
       (c Rust_primitives__hax__int__eq, (2, "="));
-      (c Hax_lib__prop__constructors__and, (2, "/\\"));
-      (c Hax_lib__prop__constructors__or, (2, "\\/"));
-      (c Hax_lib__prop__constructors__not, (1, "~"));
-      (c Hax_lib__prop__constructors__eq, (2, "=="));
-      (c Hax_lib__prop__constructors__ne, (2, "=!="));
-      (c Hax_lib__prop__constructors__implies, (2, "==>"));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -518,52 +511,6 @@ struct
         F.AST.unit_const F.dummyRange
     | GlobalVar global_ident ->
         F.term @@ F.AST.Var (pglobal_ident e.span @@ global_ident)
-    | App { f = { e = GlobalVar f; _ }; args = [ x ] }
-      when Global_ident.eq_name Hax_lib__prop__constructors__from_bool f ->
-        let x = pexpr x in
-        F.mk_e_app (F.term_of_lid [ "b2t" ]) [ x ]
-    | App
-        {
-          f = { e = GlobalVar f; _ };
-          args = [ { e = Closure { params = [ x ]; body = phi; _ }; _ } ];
-        }
-      when Global_ident.eq_name Hax_lib__prop__constructors__forall f ->
-        let phi = pexpr phi in
-        let binders =
-          let b = Destruct.pat_PBinding x |> Option.value_exn in
-          [
-            F.AST.
-              {
-                b = F.AST.Annotated (plocal_ident b.var, pty x.span b.typ);
-                brange = F.dummyRange;
-                blevel = Un;
-                aqual = None;
-                battributes = [];
-              };
-          ]
-        in
-        F.term @@ F.AST.QForall (binders, ([], []), phi)
-    | App
-        {
-          f = { e = GlobalVar f; _ };
-          args = [ { e = Closure { params = [ x ]; body = phi; _ }; _ } ];
-        }
-      when Global_ident.eq_name Hax_lib__prop__constructors__exists f ->
-        let phi = pexpr phi in
-        let binders =
-          let b = Destruct.pat_PBinding x |> Option.value_exn in
-          [
-            F.AST.
-              {
-                b = F.AST.Annotated (plocal_ident b.var, pty x.span b.typ);
-                brange = F.dummyRange;
-                blevel = Un;
-                aqual = None;
-                battributes = [];
-              };
-          ]
-        in
-        F.term @@ F.AST.QExists (binders, ([], []), phi)
     | App
         {
           f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
@@ -578,7 +525,7 @@ struct
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
           Error.assertion_failure e.span
-            ("pexpr: bad arity for operator application (" ^ op ^ ")");
+            "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
     | App
         {

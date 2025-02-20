@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use hax_lib::*;
+use hax_lib::int::*;
 
 #[hax_lib::requires(x > int!(0) && x < int!(16))]
 fn math_integers(x: Int) -> u8 {
