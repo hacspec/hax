@@ -11,7 +11,7 @@ pub use hax_lib_macros::{
 };
 
 macro_rules! export_quoting_proc_macros {
-    ($backend:ident($expr_name:ident, $expr_unsafe_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident $(, {$($extra:tt)+})?)) => {
+    ($backend:ident($expr_name:ident, $expr_unsafe_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $replace_body_name:ident, $cfg_name:ident $(, {$($extra:tt)+})?)) => {
         pub use hax_lib_macros::$expr_name as $backend;
         #[doc(hidden)]
         pub use hax_lib_macros::$expr_unsafe_name;
@@ -21,6 +21,7 @@ macro_rules! export_quoting_proc_macros {
             pub use hax_lib_macros::$after_name as after;
             pub use hax_lib_macros::$before_name as before;
             pub use hax_lib_macros::$replace_name as replace;
+            pub use hax_lib_macros::$replace_body_name as replace_body;
             $($($extra)*)?
         }
     };
@@ -32,11 +33,11 @@ macro_rules! export_quoting_proc_macros {
 }
 
 export_quoting_proc_macros!(
-    fstar(fstar_expr, fstar_unsafe_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar, {
+    fstar(fstar_expr, fstar_unsafe_expr, fstar_before, fstar_after, fstar_replace, fstar_replace_body, hax_backend_fstar, {
         pub use hax_lib_macros::fstar_options as options;
         pub use hax_lib_macros::fstar_verification_status as verification_status;
     })
 
-    coq(coq_expr, coq_unsafe_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
+    coq(coq_expr, coq_unsafe_expr, coq_before, coq_after, coq_replace, coq_replace_body, hax_backend_coq)
 
-    proverif(proverif_expr, proverif_unsafe_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
+    proverif(proverif_expr, proverif_unsafe_expr, proverif_before, proverif_after, proverif_replace, proverif_replace_body, hax_backend_proverif));
