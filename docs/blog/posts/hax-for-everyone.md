@@ -6,10 +6,10 @@ date: 2025-02-20
 ---
 
 # Trying to make hax usable in more contexts
-The hax toolchain has been successfully used to formally verify our cryptographic implementations for [ML-KEM](https://cryspen.com/post/ml-kem-verification/),[Bertie](https://cryspen.com/post/hax-pv/) and more. All these projects are internal to Cryspen which means the Rust implementation is developed with formal verification (using hax) in mind, and use a limited number of Rust features.
-However, hax is under constant development and the improvements we bring are targeted at making it more usable. With these improvements we want to bring hax to a new kind of projects that are external to Cryspen and don’t have restrictions on the Rust patterns they use. We want hax to be usable in this context with minimal modifications to the code (ideally no modification at all). An example of such a project is the verification of [sandwich](https://github.com/sandbox-quantum/sandwich), a high-level cryptographic library that we are working on together with [SandboxAQ](https://cryspen.com/post/hax-sandbox/). This project revealed the weaknesses of hax in this context which brought us to implement some improvements that will be presented in this blog post.
+The hax toolchain has been successfully used to formally verify our cryptographic implementations for [ML-KEM](https://cryspen.com/post/ml-kem-verification/),[Bertie](https://cryspen.com/post/hax-pv/) and more. All these projects are developed with formal verification (using hax) in mind, and use a limited number of Rust features.
+However, hax is under constant development and the improvements we bring are targeted at making it more usable. With these improvements we want to bring hax to a new kind of projects that don’t have restrictions on the Rust patterns they use. We want hax to be usable in this context with minimal modifications to the code (ideally no modification at all). An example of such a project is the verification of [sandwich](https://github.com/sandbox-quantum/sandwich), a high-level cryptographic library that we are working on together with [SandboxAQ](https://cryspen.com/post/hax-sandbox/). This project revealed the weaknesses of hax in this context which brought us to implement some improvements that will be presented in this blog post.
 ## Challenges
-The projects developed by Cryspen applying hax from the beginning can limit themselves to the subset of Rust supported by hax. Applying hax to a pre-existing project means some large parts are probably not supported. The challenge is then to identify which features to prioritize for support in hax (and adding support is yet another challenge), and which features have no short-term plan for support (mainly mutable references and raw pointers). For the latter we need to abstract out the code (if it is not relevant for proofs) or rewrite it (when possible, and ideally we should avoid this).
+The projects that use hax from the beginning can limit themselves to the subset of Rust supported by hax. Applying hax to a pre-existing project means some large parts are probably not supported. The challenge is then to identify which features to prioritize for support in hax (and adding support is yet another challenge), and which features have no short-term plan for support (mainly mutable references and raw pointers). For the latter we need to abstract out the code (if it is not relevant for proofs) or rewrite it (when possible, and ideally we should avoid this).
 Having external users encourages us even more to make hax an easily-usable and well-documented tool.
 ## Frontend improvements
 The hax frontend is mostly relying on rustc and cargo to extract intermediary representations of a Rust crate. It is supposed to produce a result for any Rust crate (restrictions on the available Rust features come later in the toolchain). However the information given by rustc is sometimes partial or lacks some parts that are needed for our translations. A crucial example of this is trait resolution as we need to know the trait derivation that is used by each call of a trait method. This is a part of the hax frontend that has proven tricky and still had many bugs a few months ago. At that time, launching it on a somehow complicated crate had big chances of resulting in a crash. As part of our effort to improve the usability of hax, many of these bugs have now been fixed which is a great step forward, especially as even for some projects that look simple, we need to extract part of the dependencies which are usually more problematic.
@@ -31,7 +31,8 @@ pub fn user_f() -> Result<(), Error> {
 	private::f()
 }
 ```
-[Open this code snippet in the playground](https://hax-playground.cryspen.com/#fstar/b7fe08cccd/gist=fcb9cb9854c69ee6e2788648a380ff79)
+[Open this code snippet in the hax playground](https://hax-playground.cryspen.com/#fstar/b7fe08cccd/gist=fcb9cb9854c69ee6e2788648a380ff79)
+
 In this example there is a dependency between the top level module and the `private` module. Our solution to break these cycles is simply to put the content of the cyclic modules in a single module (that we call bundle), and then re-exposing the items in their original modules.
 This solution is not perfect because it changes the architecture of the generated code compared to the original code, and it could be improved by minimizing the content of the bundles (choosing a set of definitions to break the cycle instead of the full content of the modules). But so far it has proven very useful as it removes a big limitation on the Rust we support.
 ## Opaque items
@@ -50,10 +51,10 @@ fn f() -> i32{
 	3
 }
 ```
-[Open this code snippet in the playground](https://hax-playground.cryspen.com/#fstar/b7fe08cccd/gist=078ca6da8dad17541533bb5a0724784b)
+[Open this code snippet in the hax playground](https://hax-playground.cryspen.com/#fstar/b7fe08cccd/gist=078ca6da8dad17541533bb5a0724784b)
 
 The F* code extracted from this example is the following:
-```
+```ocaml
 let f (_: Prims.unit) : i32 =
  if true
  then if true then mk_i32 1 else mk_i32 3
