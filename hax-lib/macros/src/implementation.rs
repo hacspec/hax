@@ -820,7 +820,19 @@ macro_rules! make_quoting_proc_macro {
             /// Types can be refered to with the syntax `$:{TYPE}`.
             #[proc_macro]
             pub fn [<$backend _expr>](payload: pm::TokenStream) -> pm::TokenStream {
-                let ts: TokenStream = quote::expression(true, payload).into();
+                let ts: TokenStream = quote::expression(quote::InlineExprType::Unit, payload).into();
+                quote!{
+                    #[cfg([< hax_backend_ $backend >])]
+                    {
+                        #ts
+                    }
+                }.into()
+            }
+
+            #[doc = concat!("The `Prop` version of `", stringify!($backend), "_expr`.")]
+            #[proc_macro]
+            pub fn [<$backend _prop_expr>](payload: pm::TokenStream) -> pm::TokenStream {
+                let ts: TokenStream = quote::expression(quote::InlineExprType::Prop, payload).into();
                 quote!{
                     #[cfg([< hax_backend_ $backend >])]
                     {
@@ -833,7 +845,7 @@ macro_rules! make_quoting_proc_macro {
             #[proc_macro]
             #[doc(hidden)]
             pub fn [<$backend _unsafe_expr>](payload: pm::TokenStream) -> pm::TokenStream {
-                let ts: TokenStream = quote::expression(false, payload).into();
+                let ts: TokenStream = quote::expression(quote::InlineExprType::Anything, payload).into();
                 quote!{
                     #[cfg([< hax_backend_ $backend >])]
                     {
