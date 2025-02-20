@@ -875,14 +875,14 @@ macro_rules! make_quoting_proc_macro {
                 let mut hax_item = item.clone();
                 *hax_item.block.as_mut() = parse_quote!{
                     {
-                        ::hax_lib::[< $backend _unsafe_expr >](#payload)
+                        ::hax_lib::$backend::unsafe_expr!(#payload)
                     }
                 };
                 quote!{
-                    #[cfg(hax)]
+                    #[cfg([< hax_backend_ $backend >])]
                     #hax_item
 
-                    #[cfg(not(hax))]
+                    #[cfg(not([< hax_backend_ $backend >]))]
                     #item
                 }.into()
             }
