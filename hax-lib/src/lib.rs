@@ -5,10 +5,12 @@
 //! # Example:
 //!
 //! ```rust
+//! use hax_lib::*;
 //! fn sum(x: Vec<u32>, y: Vec<u32>) -> Vec<u32> {
 //!   hax_lib::assume!(x.len() == y.len());
-//!   hax_lib::assert!(hax_lib::forall(|i: usize| hax_lib::implies(i < x.len(), || x[i] < 4242)));
-//!   hax_lib::debug_assert!(hax_lib::exists(|i: usize| hax_lib::implies(i < x.len(), || x[i] > 123)));
+//!   hax_lib::assert!(x.len() >= 0);
+//!   hax_lib::assert_prop!(forall(|i: usize| implies(i < x.len(), x[i] < 4242)));
+//!   hax_lib::debug_assert!(exists(|i: usize| implies(i < x.len(), x[i] > 123)));
 //!   x.into_iter().zip(y.into_iter()).map(|(x, y)| x + y).collect()
 //! }
 //! ```

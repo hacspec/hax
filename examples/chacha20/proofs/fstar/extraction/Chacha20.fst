@@ -1,5 +1,5 @@
 module Chacha20
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 40"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
@@ -18,7 +18,7 @@ let chacha20_line
   let state:t_Array u32 (mk_usize 16) =
     Rust_primitives.Hax.update_at state
       a
-      (Core.Num.impl__u32__wrapping_add (state.[ a ] <: u32) (state.[ b ] <: u32) <: u32)
+      (Core.Num.impl_u32__wrapping_add (state.[ a ] <: u32) (state.[ b ] <: u32) <: u32)
   in
   let state:t_Array u32 (mk_usize 16) =
     Rust_primitives.Hax.update_at state d ((state.[ d ] <: u32) ^. (state.[ a ] <: u32) <: u32)
@@ -26,7 +26,7 @@ let chacha20_line
   let state:t_Array u32 (mk_usize 16) =
     Rust_primitives.Hax.update_at state
       d
-      (Core.Num.impl__u32__rotate_left (state.[ d ] <: u32) s <: u32)
+      (Core.Num.impl_u32__rotate_left (state.[ d ] <: u32) s <: u32)
   in
   state
 
@@ -121,9 +121,9 @@ let chacha20_rounds (state: t_Array u32 (mk_usize 16)) : t_Array u32 (mk_usize 1
           let _:i32 = temp_1_ in
           true)
       st
-      (fun st v__i ->
+      (fun st e_i ->
           let st:t_Array u32 (mk_usize 16) = st in
-          let v__i:i32 = v__i in
+          let e_i:i32 = e_i in
           chacha20_double_round st <: t_Array u32 (mk_usize 16))
   in
   st
@@ -133,10 +133,38 @@ let chacha20_core (ctr: u32) (st0: t_Array u32 (mk_usize 16)) : t_Array u32 (mk_
   let state:t_Array u32 (mk_usize 16) =
     Rust_primitives.Hax.Monomorphized_update_at.update_at_usize state
       (mk_usize 12)
-      (Core.Num.impl__u32__wrapping_add (state.[ mk_usize 12 ] <: u32) ctr <: u32)
+      (Core.Num.impl_u32__wrapping_add (state.[ mk_usize 12 ] <: u32) ctr <: u32)
   in
   let k:t_Array u32 (mk_usize 16) = chacha20_rounds state in
   Chacha20.Hacspec_helper.add_state state k
+
+let chacha20_init (key: t_Array u8 (mk_usize 32)) (iv: t_Array u8 (mk_usize 12)) (ctr: u32)
+    : t_Array u32 (mk_usize 16) =
+  let (key_u32: t_Array u32 (mk_usize 8)):t_Array u32 (mk_usize 8) =
+    Chacha20.Hacspec_helper.to_le_u32s_8_ (key <: t_Slice u8)
+  in
+  let (iv_u32: t_Array u32 (mk_usize 3)):t_Array u32 (mk_usize 3) =
+    Chacha20.Hacspec_helper.to_le_u32s_3_ (iv <: t_Slice u8)
+  in
+  let list =
+    [
+      mk_u32 1634760805; mk_u32 857760878; mk_u32 2036477234; mk_u32 1797285236;
+      key_u32.[ mk_usize 0 ]; key_u32.[ mk_usize 1 ]; key_u32.[ mk_usize 2 ]; key_u32.[ mk_usize 3 ];
+      key_u32.[ mk_usize 4 ]; key_u32.[ mk_usize 5 ]; key_u32.[ mk_usize 6 ]; key_u32.[ mk_usize 7 ];
+      ctr; iv_u32.[ mk_usize 0 ]; iv_u32.[ mk_usize 1 ]; iv_u32.[ mk_usize 2 ]
+    ]
+  in
+  FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 16);
+  Rust_primitives.Hax.array_of_list 16 list
+
+let chacha20_key_block (state: t_Array u32 (mk_usize 16)) : t_Array u8 (mk_usize 64) =
+  let state:t_Array u32 (mk_usize 16) = chacha20_core (mk_u32 0) state in
+  Chacha20.Hacspec_helper.u32s_to_le_bytes state
+
+let chacha20_key_block0 (key: t_Array u8 (mk_usize 32)) (iv: t_Array u8 (mk_usize 12))
+    : t_Array u8 (mk_usize 64) =
+  let state:t_Array u32 (mk_usize 16) = chacha20_init key iv (mk_u32 0) in
+  chacha20_key_block state
 
 let chacha20_encrypt_block
       (st0: t_Array u32 (mk_usize 16))
@@ -168,34 +196,6 @@ let chacha20_encrypt_last (st0: t_Array u32 (mk_usize 16)) (ctr: u32) (plain: t_
         Core.Ops.Range.t_Range usize ]
       <:
       t_Slice u8)
-
-let chacha20_init (key: t_Array u8 (mk_usize 32)) (iv: t_Array u8 (mk_usize 12)) (ctr: u32)
-    : t_Array u32 (mk_usize 16) =
-  let (key_u32: t_Array u32 (mk_usize 8)):t_Array u32 (mk_usize 8) =
-    Chacha20.Hacspec_helper.to_le_u32s_8_ (key <: t_Slice u8)
-  in
-  let (iv_u32: t_Array u32 (mk_usize 3)):t_Array u32 (mk_usize 3) =
-    Chacha20.Hacspec_helper.to_le_u32s_3_ (iv <: t_Slice u8)
-  in
-  let list =
-    [
-      mk_u32 1634760805; mk_u32 857760878; mk_u32 2036477234; mk_u32 1797285236;
-      key_u32.[ mk_usize 0 ]; key_u32.[ mk_usize 1 ]; key_u32.[ mk_usize 2 ]; key_u32.[ mk_usize 3 ];
-      key_u32.[ mk_usize 4 ]; key_u32.[ mk_usize 5 ]; key_u32.[ mk_usize 6 ]; key_u32.[ mk_usize 7 ];
-      ctr; iv_u32.[ mk_usize 0 ]; iv_u32.[ mk_usize 1 ]; iv_u32.[ mk_usize 2 ]
-    ]
-  in
-  FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 16);
-  Rust_primitives.Hax.array_of_list 16 list
-
-let chacha20_key_block (state: t_Array u32 (mk_usize 16)) : t_Array u8 (mk_usize 64) =
-  let state:t_Array u32 (mk_usize 16) = chacha20_core (mk_u32 0) state in
-  Chacha20.Hacspec_helper.u32s_to_le_bytes state
-
-let chacha20_key_block0 (key: t_Array u8 (mk_usize 32)) (iv: t_Array u8 (mk_usize 12))
-    : t_Array u8 (mk_usize 64) =
-  let state:t_Array u32 (mk_usize 16) = chacha20_init key iv (mk_u32 0) in
-  chacha20_key_block state
 
 let chacha20_update (st0: t_Array u32 (mk_usize 16)) (m: t_Slice u8)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
@@ -237,10 +237,11 @@ let chacha20_update (st0: t_Array u32 (mk_usize 16)) (m: t_Slice u8)
                 t_Array u8 (mk_usize 64))
           in
           let _:Prims.unit =
-            Hax_lib.v_assume ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
-                (i *! mk_usize 64 <: usize)
-                <:
-                bool)
+            Hax_lib.v_assume (b2t
+                ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
+                  (i *! mk_usize 64 <: usize)
+                  <:
+                  bool))
           in
           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
             Alloc.Vec.impl_2__extend_from_slice #u8
@@ -251,10 +252,11 @@ let chacha20_update (st0: t_Array u32 (mk_usize 16)) (m: t_Slice u8)
           blocks_out)
   in
   let _:Prims.unit =
-    Hax_lib.v_assume ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
-        (num_blocks *! mk_usize 64 <: usize)
-        <:
-        bool)
+    Hax_lib.v_assume (b2t
+        ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
+          (num_blocks *! mk_usize 64 <: usize)
+          <:
+          bool))
   in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     if remainder_len <>. mk_usize 0

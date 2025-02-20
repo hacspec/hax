@@ -248,7 +248,7 @@ checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
 
 [[package]]
 name = "hax-bounded-integers"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "duplicate",
  "hax-lib",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "hax-lib-macros",
  "num-bigint",
@@ -266,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-macros"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "hax-lib-macros-types",
  "paste",
@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-macros-types"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
