@@ -852,9 +852,10 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ ->
+      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ | Memory _ ->
           assertion_failure [ span ]
-            "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
+            "constant_lit_to_lit: TraitConst | FnPtr | RawBorrow | Cast | \
+             Memory"
       | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) _span :
         Thir.lit_kind * bool =
@@ -870,8 +871,8 @@ end) : EXPR = struct
           match String.chop_prefix v ~prefix:"-" with
           | Some v -> (Float (v, Suffixed ty), true)
           | None -> (Float (v, Suffixed ty), false))
-      | Str (v, style) -> (Str (v, style), false)
-      | ByteStr (v, style) -> (ByteStr (v, style), false)
+      | Str v -> (Str (v, Cooked), false)
+      | ByteStr v -> (ByteStr (v, Cooked), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
         Thir.field_expr =
       { field; value = constant_expr_to_expr value }
