@@ -853,6 +853,27 @@ macro_rules! make_quoting_proc_macro {
                 let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
                 [< $backend _before >](payload, quote!{#attr #item}.into())
             }
+
+            #[doc = concat!("Replaces the body of a Rust function with some verbatim ", stringify!($backend)," code.")]
+            #[proc_macro_error]
+            #[proc_macro_attribute]
+            pub fn [< $backend _replace_body >](payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+                let payload: TokenStream = payload.into();
+                let item: ItemFn = parse_macro_input!(item);
+                let mut hax_item = item.clone();
+                *hax_item.block.as_mut() = parse_quote!{
+                    {
+                        ::hax_lib::[< $backend _unsafe_expr >](#payload)
+                    }
+                };
+                quote!{
+                    #[cfg(hax)]
+                    #hax_item
+
+                    #[cfg(not(hax))]
+                    #item
+                }.into()
+            }
         }
     };
     ($($backend:ident)*) => {
