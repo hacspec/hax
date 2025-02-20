@@ -845,7 +845,7 @@ macro_rules! make_quoting_proc_macro {
             make_quoting_item_proc_macro!($backend, [< $backend _before >], ItemQuotePosition::Before, [< hax_backend_ $backend >]);
             make_quoting_item_proc_macro!($backend, [< $backend _after >], ItemQuotePosition::After, [< hax_backend_ $backend >]);
 
-            #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
+            #[doc = concat!("Replaces a Rust item with some verbatim ", stringify!($backend)," code.")]
             #[proc_macro_error]
             #[proc_macro_attribute]
             pub fn [< $backend _replace >](payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
