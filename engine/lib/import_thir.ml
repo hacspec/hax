@@ -847,8 +847,7 @@ end) : EXPR = struct
           Array { fields = List.map ~f:constant_expr_to_expr fields }
       | Tuple { fields } ->
           Tuple { fields = List.map ~f:constant_expr_to_expr fields }
-      | GlobalName { id; variant_information; _ } ->
-          GlobalName { id; constructor = variant_information }
+      | GlobalName { id; _ } -> GlobalName { id; constructor = None }
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
