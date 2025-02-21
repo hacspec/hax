@@ -8,10 +8,14 @@ class t_RngCore (t_Self: Type0) = {
 }
 
 class t_CryptoRng (t_Self: Type0) = {
+  [@@@FStar.Tactics.Typeclasses.tcinstance]
+  _super_core: t_RngCore t_Self;
   marker_trait: unit
 }
 
 class t_CryptoRngCore (t_Self: Type0) = {
+  [@@@FStar.Tactics.Typeclasses.tcinstance]
+  _super_crypto: t_CryptoRng t_Self;
   f_rngcore: t_Self -> t_Self
 }
 
