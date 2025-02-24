@@ -97,6 +97,13 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for thir::LocalVarId {
     }
 }
 
+#[cfg(feature = "rustc")]
+impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
+    fn sinto(&self, _: &S) -> u64 {
+        self.0.get()
+    }
+}
+
 /// Reflects [`thir::BlockSafety`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
@@ -107,6 +114,33 @@ pub enum BlockSafety {
     #[custom_arm(FROM_TYPE::ExplicitUnsafe{..} => BlockSafety::ExplicitUnsafe,)]
     ExplicitUnsafe,
 }
+
+/// Reflects [`rustc_middle::middle::region::ScopeData`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::ScopeData, state: S as gstate)]
+pub enum ScopeData {
+    Node,
+    CallSite,
+    Arguments,
+    Destruction,
+    IfThen,
+    IfThenRescope,
+    Remainder(FirstStatementIndex),
+}
+
+sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
+
+/// Reflects [`rustc_middle::middle::region::Scope`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::Scope, state: S as gstate)]
+pub struct Scope {
+    pub id: ItemLocalId,
+    pub data: ScopeData,
+}
+
+sinto_as_usize!(rustc_hir::hir_id, ItemLocalId);
 
 /// Reflects [`thir::Block`]
 #[derive_group(Serializers)]

@@ -212,7 +212,7 @@ pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::Toke
     let function = if force_unit {
         quote! {inline}
     } else {
-        quote! {inline_unsafe}
+        quote! {inline_unsafe::<::hax_lib::Prop>}
     };
 
     quote! {
