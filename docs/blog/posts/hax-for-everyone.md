@@ -2,7 +2,7 @@
 authors:
   - maxime
 title: "Hax for everyone"
-date: 2025-02-20
+date: 2025-02-25
 ---
 
 # Trying to make hax usable in more contexts
