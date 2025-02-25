@@ -36,4 +36,10 @@ checkout_commit
 ./x.py build
 cd library/core/
 
-RUSTUP_TOOLCHAIN="nightly-2024-10-23" RUSTFLAGS='--cfg bootstrap' cargo hax -C -Z build-std=core --target "$HOST" \; "$@"
+export HAX_RUSTFMT=no
+export HAX_CORE_EXTRACTION_MODE=on
+export HAX_VANILLA_RUSTC=never
+export RUSTUP_TOOLCHAIN="nightly-2024-10-23"
+export RUSTFLAGS='--cfg bootstrap'
+
+cargo hax -C -Z build-std=core --target "$HOST" \; "$@"
