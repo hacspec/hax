@@ -90,7 +90,7 @@ let rec poly :
     | Union -> `Union (assert_type_ns did)
     | Enum -> `Enum (assert_type_ns did)
     | Struct -> `Struct (assert_type_ns did)
-    | AnonConst ->
+    | AnonConst | InlineConst ->
         `AnonConst
           (match List.last_exn (Explicit_def_id.to_def_id did).path with
           | { data = AnonConst; disambiguator } -> into_d did disambiguator
@@ -127,11 +127,10 @@ let rec poly :
           (match List.last_exn (Explicit_def_id.to_def_id did).path with
           | { data = GlobalAsm; disambiguator } -> into_d did disambiguator
           | _ -> broken_invariant "last path chunk to be GlobalAsm" did)
-    | TyParam | ConstParam | InlineConst | LifetimeParam | Closure
-    | SyntheticCoroutineBody ->
+    | TyParam | ConstParam | LifetimeParam | Closure | SyntheticCoroutineBody ->
         (* It should be impossible for such items to ever be referenced by anyting in hax. *)
         broken_invariant
-          "non (TyParam | ConstParam | InlineConst | LifetimeParam | Closure | \
+          "non (TyParam | ConstParam | LifetimeParam | Closure | \
            SyntheticCoroutineBody) identifier"
           did
   in

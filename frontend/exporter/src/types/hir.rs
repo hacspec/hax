@@ -363,15 +363,30 @@ pub enum ImplItemKind<Body: IsBody> {
     Fn(FnDef<Body>),
     #[custom_arm(hir::ImplItemKind::Type(t) => {
         let parent_bounds = {
-            let (tcx, owner_id) = (s.base().tcx, s.owner_id());
-            let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
-            let impl_did = assoc_item.impl_container(tcx).unwrap();
-            tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
-                .skip_binder() // Skips an `EarlyBinder`, likely for GATs
-                .iter()
-                .copied()
-                .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
-                .collect::<Vec<_>>()
+            vec![]
+        //     let (tcx, owner_id) = (s.base().tcx, s.owner_id());
+        //     let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
+        //     let impl_did = assoc_item.impl_container(tcx).unwrap();
+            
+            
+        //     if let ty::ImplSubject::Trait(trait_ref) = tcx.impl_subject(impl_did).instantiate_identity() {
+        //         let item_args =
+        //         ty::GenericArgs::identity_for_item(tcx, assoc_item.def_id);
+        //         // Subtlety: we have to add the GAT arguments (if any) to the trait ref arguments.
+        //         let args: u8 = item_args.rebase_onto(tcx, impl_did, trait_ref.args);
+
+        //         let predicates = implied_predicates(s.base().tcx, def_id);
+        //     }
+        // // let state_with_id =
+        // //     with_owner_id(s.base(), (), (), impl_assoc.def_id);
+        // // solve_item_implied_traits(&state_with_id, decl_def_id, args)
+
+        //     tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
+        //         .skip_binder() // Skips an `EarlyBinder`, likely for GATs
+        //         .iter()
+        //         .copied()
+        //         .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
+        //         .collect::<Vec<_>>()
         };
         ImplItemKind::Type {
             ty: t.sinto(s),
@@ -420,8 +435,10 @@ pub struct Impl<Body: IsBody> {
         let (tcx, owner_id) = (s.base().tcx, s.owner_id());
         let trait_did = tcx.trait_id_of_impl(owner_id);
         if let Some(trait_did) = trait_did {
-            tcx.explicit_super_predicates_of(trait_did)
-                .iter_identity_copied()
+            implied_predicates(tcx, trait_did)
+                .predicates
+                .into_iter()
+                .cloned()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
