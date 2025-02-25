@@ -1457,16 +1457,20 @@ and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   (* This is true if the item should be erased because we are in type-only mode
      (Only certain kinds of items are erased in this case). *)
   let erased_by_hax =
+    let hax_core_extraction =
+      Sys.getenv "HAX_CORE_EXTRACTION_MODE"
+      |> [%equal: string option] (Some "on")
+    in
     should_skip item.attributes
     || type_only
        &&
        match item.kind with
        | Fn _ | Static _ -> true
-       | Impl { of_trait = Some _; items; _ }
-         when List.exists items ~f:(fun item ->
+       | Impl { of_trait = Some _; items; _ } ->
+           hax_core_extraction
+           || List.exists items ~f:(fun item ->
                   match item.kind with Type _ -> true | _ -> false)
-              |> not ->
-           true
+              |> not
        | _ -> false
   in
   (* If the item is erased by hax we need to add the Erased attribute.
