@@ -15,7 +15,7 @@ members = [
      "engine/names/extract",
      "hax-types",
 ]
-exclude = ["tests"]
+exclude = ["tests", "rustc"]
 default-members = [
      "frontend/exporter",
      "frontend/exporter/options",
