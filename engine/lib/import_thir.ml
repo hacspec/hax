@@ -1276,12 +1276,23 @@ end) : EXPR = struct
   let c_trait_item' (super : Thir.trait_item) (item : Thir.trait_item_kind) :
       trait_item' =
     let span = super.span in
+    let hax_core_extraction =
+      Sys.getenv "HAX_CORE_EXTRACTION_MODE"
+      |> [%equal: string option] (Some "on")
+    in
     match item with
-    | Const (_, Some default) ->
+    | Const (_, Some default) when not hax_core_extraction ->
         TIDefault
           { params = []; body = c_expr default; witness = W.trait_item_default }
-    | Const (ty, None) -> TIFn (c_ty span ty)
-    | RequiredFn (sg, _) ->
+    | Const (ty, _) -> TIFn (c_ty span ty)
+    | ProvidedFn (_, { params; body; _ }) when not hax_core_extraction ->
+        TIDefault
+          {
+            params = c_fn_params span params;
+            body = c_expr body;
+            witness = W.trait_item_default;
+          }
+    | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
           match output with
@@ -1293,13 +1304,6 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TIFn (TArrow (inputs, output))
-    | ProvidedFn (_, { params; body; _ }) ->
-        TIDefault
-          {
-            params = c_fn_params span params;
-            body = c_expr body;
-            witness = W.trait_item_default;
-          }
     | Type (bounds, None) ->
         let bounds =
           List.filter_map ~f:(c_clause span) bounds
