@@ -18,6 +18,9 @@ jobs:
       uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: 5
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
     - name: Install cargo-deny
       run: cargo install cargo-deny
     - name: Install cargo-deny

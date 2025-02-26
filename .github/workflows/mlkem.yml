@@ -31,7 +31,7 @@ jobs:
           nix profile install ./hax
 
       - name: ⤵ Install FStar
-        run: nix profile install github:FStarLang/FStar/v2024.12.03
+        run: nix profile install github:FStarLang/FStar/v2025.02.17
 
       - name: ⤵ Clone HACL-star repository
         uses: actions/checkout@v4
