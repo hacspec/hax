@@ -55,3 +55,6 @@ assume val impl_1__truncate #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t
 
 assume val impl_1__swap_remove #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t alloc) (n: usize): t_Vec t alloc & t
 
+assume val impl_2__resize #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t alloc) (new_size: usize) (value: t): t_Vec t alloc
+
+assume val impl_1__remove #t (#[(Tactics.exact (`()))]alloc:unit)  (v: t_Vec t alloc) (index: usize): t_Vec t alloc & t

@@ -1,6 +1,6 @@
 module Core.Option
 
-type t_Option t = | Option_Some of t | Option_None
+include Core.Result_Option_bundle {t_Option, impl__ok_or, impl__ok_or_else}
 
 let impl__and_then #t_Self #t (self: t_Option t_Self) (f: t_Self -> t_Option t): t_Option t = 
   match self with
@@ -38,13 +38,3 @@ let impl__unwrap_or
   match self with
   | Option_Some inner -> inner
   | Core.Option.Option_None  -> def
-
-let impl__ok_or_else #t_Self #e (self: t_Option t_Self) (err: unit -> e): Core.Result.t_Result t_Self e =
-  match self with 
-  | Option_Some inner -> Core.Result.Result_Ok inner
-  | Option_None -> Core.Result.Result_Err (err ())
-
-let impl__ok_or #t_Self #e (self: t_Option t_Self) (err: e): Core.Result.t_Result t_Self e =
-  match self with 
-  | Option_Some inner -> Core.Result.Result_Ok inner
-  | Option_None -> Core.Result.Result_Err err
