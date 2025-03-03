@@ -61,6 +61,10 @@ pub trait RefineAs<RefinedType> {
 pub mod int {
     use core::ops::*;
 
+    macro_rules! int {
+        ($lit:expr) => { Int($lit) }
+    }
+
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
     pub struct Int(pub u8);
 
