@@ -73,7 +73,13 @@ in stdenv.mkDerivation {
   installPhase = ''
     mkdir -p $out/bin
     makeWrapper ${hax}/bin/cargo-hax $out/bin/cargo-hax \
-      --prefix PATH : ${lib.makeBinPath binaries}
+      --prefix PATH : ${lib.makeBinPath binaries} \
+      ${
+        if stdenv.hostPlatform.isDarwin then
+          "--suffix DYLD_LIBRARY_PATH : ${lib.makeLibraryPath [ libz rustc ]}"
+        else
+          ""
+      }
   '';
   meta.mainProgram = "cargo-hax";
   passthru = {
