@@ -116,6 +116,9 @@ module Make (F : Features.T) =
           let is_int : (ty, unit) predicate =
             tapp0 >>& eq_global_ident Hax_lib__int__Int >>& erase
 
+          let is_machine_int : (ty, unit) predicate =
+           fun t -> match t with TInt _ -> Some () | _ -> None
+
           let is_prop : (ty, unit) predicate =
             tapp0 >>& eq_global_ident Hax_lib__prop__Prop >>& erase
 
@@ -133,6 +136,11 @@ module Make (F : Features.T) =
             mk [ etyp >> (tref >>& is_int); etyp >> (tref >>& is_int) ] any
 
           let any_rint = mk [ any ] (tref >>& is_int)
+
+          let mint_mint_any =
+            mk [ etyp >> is_machine_int; etyp >> is_machine_int ] any
+
+          let mint_any = mk [ etyp >> is_machine_int ] any
           let bool_prop = mk [ etyp >> is_bool ] is_prop
           let prop_bool = mk [ etyp >> is_prop ] is_bool
 
@@ -152,6 +160,40 @@ module Make (F : Features.T) =
 
         let int_replacements =
           [
+            mint_mint_any Core__ops__arith__Add__add
+              Rust_primitives__hax__machine_int__add;
+            mint_mint_any Core__ops__arith__Sub__sub
+              Rust_primitives__hax__machine_int__sub;
+            mint_mint_any Core__ops__arith__Mul__mul
+              Rust_primitives__hax__machine_int__mul;
+            mint_mint_any Core__ops__arith__Div__div
+              Rust_primitives__hax__machine_int__div;
+            mint_mint_any Core__ops__arith__Rem__rem
+              Rust_primitives__hax__machine_int__rem;
+            mint_mint_any Core__ops__bit__Shl__shl
+              Rust_primitives__hax__machine_int__shl;
+            mint_mint_any Core__ops__bit__Shr__shr
+              Rust_primitives__hax__machine_int__shr;
+            mint_mint_any Core__ops__bit__BitXor__bitxor
+              Rust_primitives__hax__machine_int__bitxor;
+            mint_mint_any Core__ops__bit__BitAnd__bitand
+              Rust_primitives__hax__machine_int__bitand;
+            mint_mint_any Core__ops__bit__BitOr__bitor
+              Rust_primitives__hax__machine_int__bitor;
+            mint_any Core__ops__bit__Not__not
+              Rust_primitives__hax__machine_int__not;
+            mint_mint_any Core__cmp__PartialOrd__gt
+              Rust_primitives__hax__machine_int__gt;
+            mint_mint_any Core__cmp__PartialOrd__ge
+              Rust_primitives__hax__machine_int__ge;
+            mint_mint_any Core__cmp__PartialOrd__lt
+              Rust_primitives__hax__machine_int__lt;
+            mint_mint_any Core__cmp__PartialOrd__le
+              Rust_primitives__hax__machine_int__le;
+            mint_mint_any Core__cmp__PartialEq__ne
+              Rust_primitives__hax__machine_int__ne;
+            mint_mint_any Core__cmp__PartialEq__eq
+              Rust_primitives__hax__machine_int__eq;
             int_int_any Core__ops__arith__Add__add
               Rust_primitives__hax__int__add;
             int_int_any Core__ops__arith__Sub__sub

@@ -175,6 +175,26 @@ let impl
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: t_T2 i1.f_Assoc)
     : t_T2 v_U = { __marker_trait = () }
 '''
+"Traits.Implement_arithmetic_trait.fst" = '''
+module Traits.Implement_arithmetic_trait
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Wrapped = | Wrapped : i32 -> t_Wrapped
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: Core.Ops.Arith.t_Add t_Wrapped t_Wrapped =
+  {
+    f_Output = t_Wrapped;
+    f_add_pre = (fun (self: t_Wrapped) (rhs: t_Wrapped) -> true);
+    f_add_post = (fun (self: t_Wrapped) (rhs: t_Wrapped) (out: t_Wrapped) -> true);
+    f_add = fun (self: t_Wrapped) (rhs: t_Wrapped) -> Wrapped (self._0 +! rhs._0) <: t_Wrapped
+  }
+
+let test (x y: t_Wrapped) : t_Wrapped =
+  Core.Ops.Arith.f_add #t_Wrapped #t_Wrapped #FStar.Tactics.Typeclasses.solve x y
+'''
 "Traits.Implicit_dependencies_issue_667_.Define_type.fst" = '''
 module Traits.Implicit_dependencies_issue_667_.Define_type
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

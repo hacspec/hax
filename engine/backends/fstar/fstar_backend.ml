@@ -288,23 +288,26 @@ struct
     [
       (c Rust_primitives__hax__array_of_list, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
-      (c Core__ops__bit__BitXor__bitxor, (2, "^."));
-      (c Core__ops__bit__BitAnd__bitand, (2, "&."));
-      (c Core__ops__bit__BitOr__bitor, (2, "|."));
       (c Core__ops__bit__Not__not, (1, "~."));
-      (c Core__ops__arith__Add__add, (2, "+!"));
-      (c Core__ops__arith__Sub__sub, (2, "-!"));
-      (c Core__ops__arith__Mul__mul, (2, "*!"));
-      (c Core__ops__arith__Div__div, (2, "/!"));
-      (c Core__ops__arith__Rem__rem, (2, "%!"));
-      (c Core__ops__bit__Shl__shl, (2, "<<!"));
-      (c Core__ops__bit__Shr__shr, (2, ">>!"));
+      (c Rust_primitives__hax__machine_int__not, (1, "~."));
+      (c Rust_primitives__hax__machine_int__add, (2, "+!"));
+      (c Rust_primitives__hax__machine_int__sub, (2, "-!"));
+      (c Rust_primitives__hax__machine_int__div, (2, "/!"));
+      (c Rust_primitives__hax__machine_int__mul, (2, "*!"));
+      (c Rust_primitives__hax__machine_int__rem, (2, "%!"));
+      (c Rust_primitives__hax__machine_int__shl, (2, "<<!"));
+      (c Rust_primitives__hax__machine_int__shr, (2, ">>!"));
+      (c Rust_primitives__hax__machine_int__bitxor, (2, "^."));
+      (c Rust_primitives__hax__machine_int__bitor, (2, "|."));
+      (c Rust_primitives__hax__machine_int__bitand, (2, "&."));
       (c Core__cmp__PartialEq__eq, (2, "=."));
-      (c Core__cmp__PartialOrd__lt, (2, "<."));
-      (c Core__cmp__PartialOrd__le, (2, "<=."));
+      (c Rust_primitives__hax__machine_int__eq, (2, "=."));
       (c Core__cmp__PartialEq__ne, (2, "<>."));
-      (c Core__cmp__PartialOrd__ge, (2, ">=."));
-      (c Core__cmp__PartialOrd__gt, (2, ">."));
+      (c Rust_primitives__hax__machine_int__ne, (2, "<>."));
+      (c Rust_primitives__hax__machine_int__le, (2, "<=."));
+      (c Rust_primitives__hax__machine_int__lt, (2, "<."));
+      (c Rust_primitives__hax__machine_int__gt, (2, ">."));
+      (c Rust_primitives__hax__machine_int__ge, (2, ">=."));
       (`Primitive (LogicalOp And), (2, "&&"));
       (`Primitive (LogicalOp Or), (2, "||"));
       (c Rust_primitives__hax__int__add, (2, "+"));
@@ -1865,6 +1868,9 @@ module TransformToInputLanguage =
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
+  (* Specialize needs to be duplicated because some previous phases 
+  (like DropReferences) can create new opportunities of specialization. *)
+  |> Phases.Specialize 
   |> Phases.Bundle_cycles
   |> Phases.Sort_items
   |> SubtypeToInputLanguage
