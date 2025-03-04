@@ -117,6 +117,9 @@ for binary in opam node rustup jq; do
 done
 ensure_node_is_recent_enough
 
+# Make sure the correct rust toolchain is installed
+rustup show active-toolchain || rustup toolchain install 
+
 if [ "$CLEANUP_WORKSPACE" = "on" ]; then
     cleanup_workspace
 fi
