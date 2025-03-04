@@ -67,6 +67,10 @@ instance into_from_from a b {| t_From a b |}: t_Into b a = {
   f_into_post = (fun _ _ -> true);
   f_into = (fun x -> f_from x)
 }
+instance try_into_from_try_from a b {| i1: t_TryFrom a b |}: try_into_tc b a = {
+  f_Error = i1.f_Error;
+  f_try_into = (fun x -> f_try_from x)
+}
 
 instance from_id a: t_From a a = {
   f_from_pre = (fun _ -> true);
