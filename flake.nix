@@ -204,9 +204,10 @@
             pkgs.rustup
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          DYLD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.libz rustc ];
         in {
           examples = pkgs.mkShell {
-            inherit inputsFrom LIBCLANG_PATH;
+            inherit inputsFrom LIBCLANG_PATH DYLD_LIBRARY_PATH;
             HACL_HOME = "${hacl-star}";
             shellHook = ''
               HAX_ROOT=$(git rev-parse --show-toplevel)
@@ -216,7 +217,7 @@
             packages = packages ++ [ fstar pkgs.proverif ];
           };
           default = pkgs.mkShell {
-            inherit packages inputsFrom LIBCLANG_PATH;
+            inherit packages inputsFrom LIBCLANG_PATH DYLD_LIBRARY_PATH;
             shellHook = ''
               echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')" 1>&2'';
           };
