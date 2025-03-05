@@ -345,15 +345,18 @@ module Make (F : Features.T) = struct
 
       method virtual item'_Type_struct
           : super:item ->
-            name:concrete_ident lazy_doc ->
+            type_name:concrete_ident lazy_doc ->
+            constructor_name:concrete_ident lazy_doc ->
             generics:generics lazy_doc ->
             tuple_struct:bool ->
             arguments:
               (concrete_ident lazy_doc * ty lazy_doc * attr list lazy_doc) list ->
             document
-      (** [item'_Type_struct ~super ~name ~generics ~tuple_struct ~arguments] prints the struct definition [struct name<generics> arguments]. `tuple_struct` says whether we are dealing with a tuple struct
+      (** [item'_Type_struct ~super ~type_name ~constructor_name ~generics ~tuple_struct ~arguments] prints the struct definition [struct name<generics> arguments]. `tuple_struct` says whether we are dealing with a tuple struct
             (e.g. [struct Foo(T1, T2)]) or a named struct
-            (e.g. [struct Foo {field: T1, other: T2}])? *)
+            (e.g. [struct Foo {field: T1, other: T2}])?
+            
+            `type_name` is the identifier of the type itself, while `constructor_name` is the identifier of the constructor of the struct. Depending on the naming policy, those can be rendered as the same name or not. *)
 
       method virtual item'_Type_enum
           : super:item ->
@@ -578,8 +581,12 @@ module Make (F : Features.T) = struct
                         attrs ))
                   variant#v.arguments
               in
-              self#item'_Type_struct ~super ~name ~generics
-                ~tuple_struct:(not variant#v.is_record)
+              let constructor_name =
+                self#_do_not_override_lazy_of_concrete_ident
+                  AstPos_variant__name variant#v.name
+              in
+              self#item'_Type_struct ~super ~type_name:name ~constructor_name
+                ~generics ~tuple_struct:(not variant#v.is_record)
                 ~arguments:variant_arguments
           | _ -> self#unreachable ()
         else self#item'_Type_enum ~super ~name ~generics ~variants
