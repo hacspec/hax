@@ -144,7 +144,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-hax"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "annotate-snippets",
  "cargo_metadata",
@@ -445,7 +445,7 @@ checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 
 [[package]]
 name = "hax-adt-into"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "hax-bounded-integers"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "duplicate",
  "hax-lib",
@@ -465,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "hax-driver"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "colored",
@@ -483,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "hax-engine-names"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hax-lib",
  "hax-lib-protocol",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "hax-engine-names-extract"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hax-adt-into",
  "hax-engine-names",
@@ -502,7 +502,7 @@ dependencies = [
 
 [[package]]
 name = "hax-frontend-exporter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "extension-traits",
  "hax-adt-into",
@@ -518,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "hax-frontend-exporter-options"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hax-adt-into",
  "schemars",
@@ -528,7 +528,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hax-lib-macros",
  "num-bigint",
@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hax-lib",
  "hax-lib-macros-types",
@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-macros-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -562,14 +562,14 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libcrux",
 ]
 
 [[package]]
 name = "hax-lib-protocol-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "hax-test-harness"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assert_cmd",
  "cargo_metadata",
@@ -595,7 +595,7 @@ dependencies = [
 
 [[package]]
 name = "hax-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "annotate-snippets",
  "clap",
