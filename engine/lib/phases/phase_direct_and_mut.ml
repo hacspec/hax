@@ -68,7 +68,8 @@ struct
           if hax_core_extraction then
             TApp
               {
-                ident = Global_ident.of_name Type Rust_primitives__hax__MutRef;
+                ident =
+                  Global_ident.of_name ~value:false Rust_primitives__hax__MutRef;
                 args = [ GType (dty span typ) ];
               }
           else Error.raise { kind = UnallowedMutRef; span }

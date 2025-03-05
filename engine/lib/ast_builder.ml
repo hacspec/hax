@@ -27,7 +27,9 @@ module Make (F : Features.T) = struct
     let ty_cf ~(continue_type : ty) ~(break_type : ty) : ty =
       TApp
         {
-          ident = Global_ident.of_name Type Core__ops__control_flow__ControlFlow;
+          ident =
+            Global_ident.of_name ~value:false
+              Core__ops__control_flow__ControlFlow;
           args = [ GType break_type; GType continue_type ];
         }
 
@@ -72,14 +74,13 @@ module Make (F : Features.T) = struct
               PConstruct
                 {
                   constructor =
-                    Global_ident.of_name
-                      (Constructor { is_struct = false })
+                    Global_ident.of_name ~value:true
                       Core__ops__control_flow__ControlFlow__Break;
                   fields =
                     [
                       {
                         field =
-                          Global_ident.of_name Field
+                          Global_ident.of_name ~value:true
                             Core__ops__control_flow__ControlFlow__Break__0;
                         pat;
                       };
@@ -96,14 +97,13 @@ module Make (F : Features.T) = struct
               PConstruct
                 {
                   constructor =
-                    Global_ident.of_name
-                      (Constructor { is_struct = false })
+                    Global_ident.of_name ~value:true
                       Core__ops__control_flow__ControlFlow__Continue;
                   fields =
                     [
                       {
                         field =
-                          Global_ident.of_name Field
+                          Global_ident.of_name ~value:true
                             Core__ops__control_flow__ControlFlow__Continue__0;
                         pat;
                       };
@@ -133,8 +133,7 @@ module Make (F : Features.T) = struct
     let call_Constructor (constructor_name : Concrete_ident.name)
         (is_struct : bool) (args : expr list) span ret_typ =
       call_Constructor'
-        (`Concrete
-          (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
+        (`Concrete (Concrete_ident.of_name ~value:true constructor_name))
         is_struct args span ret_typ
 
     let expr'_Constructor_CF ~(span : span) ~(break_type : ty)
@@ -210,7 +209,8 @@ module Make (F : Features.T) = struct
   end
 
   module type S = module type of Make0 (struct
-    let span = failwith "dummy"
+    (* This [failwith] is OK: this module is never actually used for computation. It is useful only for typing. *)
+    let span = failwith "type only module: this will never be computed"
   end)
 
   module Make (Span : sig

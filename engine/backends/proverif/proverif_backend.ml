@@ -98,7 +98,7 @@ module ProVerifNamePolicy = struct
 
   [@@@ocamlformat "disable"]
 
-  let index_field_transform index = Fn.id index
+  let anonymous_field_transform index = Fn.id index
 
   let reserved_words = Hash_set.of_list (module String) [
   "among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
@@ -111,7 +111,8 @@ module ProVerifNamePolicy = struct
   let struct_constructor_name_transform constructor_name =  constructor_name ^ "_c"
 end
 
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeRenderAPI (ProVerifNamePolicy)
 open AST
 
 module type OPTS = sig
@@ -135,7 +136,7 @@ end
 module Make (Options : OPTS) : MAKE = struct
   module Print = struct
     module GenericPrint =
-      Deprecated_generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
+      Deprecated_generic_printer.Make (InputLanguage) (RenderId)
 
     open Deprecated_generic_printer_base.Make (InputLanguage)
     open PPrint
@@ -630,8 +631,7 @@ module Make (Options : OPTS) : MAKE = struct
               if
                 Attrs.find_unique_attr item.attrs
                   ~f:
-                    ([%eq: Types.ha_payload] OpaqueType
-                    >> Fn.flip Option.some_if ())
+                    ([%eq: Types.ha_payload] Erased >> Fn.flip Option.some_if ())
                 |> Option.is_some
               then default_lines
               else default_lines ^^ destructor_lines
@@ -651,9 +651,8 @@ module Make (Options : OPTS) : MAKE = struct
           fun id ->
             if under_current_ns then print#name_of_concrete_ident id
             else
-              let crate, path = print#namespace_of_concrete_ident id in
-              let full_path = crate :: path in
-              separate_map (underscore ^^ underscore) utf8string full_path
+              let path = print#namespace_of_concrete_ident id in
+              separate_map (underscore ^^ underscore) utf8string path
               ^^ underscore ^^ underscore
               ^^ print#name_of_concrete_ident id
 
@@ -901,6 +900,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn
   |> Phases.Bundle_cycles
+  |> Phases.Sort_items
   |> SubtypeToInputLanguage
   |> Identity
   ]

@@ -295,3 +295,14 @@ mod default_traits_parameters {
     }
     trait Bar<T = <Self as Foo>::U> {}
 }
+
+// issue 1218
+mod impl_expr_in_goal {
+    trait T1 {
+        type Assoc;
+    }
+
+    trait T2 {}
+
+    impl<U: T1> T2 for U where U::Assoc: T2 {}
+}

@@ -24,8 +24,8 @@ pub enum ConstantLiteral {
     Char(char),
     Float(String, FloatTy),
     Int(ConstantInt),
-    Str(String, StrStyle),
-    ByteStr(Vec<u8>, StrStyle),
+    Str(String),
+    ByteStr(Vec<u8>),
 }
 
 /// The subset of [Expr] that corresponds to constants.
@@ -60,7 +60,6 @@ pub enum ConstantExprKind {
         id: GlobalIdent,
         generics: Vec<GenericArg>,
         trait_refs: Vec<ImplExpr>,
-        variant_information: Option<VariantInformations>,
     },
     /// A trait constant
     ///
@@ -104,6 +103,10 @@ pub enum ConstantExprKind {
         /// is an implementation of `Foo`
         method_impl: Option<ImplExpr>,
     },
+    /// A blob of memory containing the byte representation of the value. This can occur when
+    /// evaluating MIR constants. Interpreting this back to a structured value is left as an
+    /// exercice to the consumer.
+    Memory(Vec<u8>),
     Todo(String),
 }
 
@@ -143,10 +146,10 @@ mod rustc {
         /// Rustc always represents string constants as `&[u8]`, but this
         /// is not nice to consume. This associated function interpret
         /// bytes as an unicode string, and as a byte string otherwise.
-        fn byte_str(bytes: Vec<u8>, style: StrStyle) -> Self {
+        fn byte_str(bytes: Vec<u8>) -> Self {
             match String::from_utf8(bytes.clone()) {
-                Ok(s) => Self::Str(s, style),
-                Err(_) => Self::ByteStr(bytes, style),
+                Ok(s) => Self::Str(s),
+                Err(_) => Self::ByteStr(bytes),
             }
         }
     }
@@ -172,8 +175,8 @@ mod rustc {
                             }
                         }
                         Float(f, ty) => LitKind::Float(f, LitFloatType::Suffixed(ty)),
-                        ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
-                        Str(raw, str_style) => LitKind::Str(raw, str_style),
+                        ByteStr(raw) => LitKind::ByteStr(raw, StrStyle::Cooked),
+                        Str(raw) => LitKind::Str(raw, StrStyle::Cooked),
                     };
                     let span = c.span.clone();
                     let lit = Spanned { span, node };
@@ -190,10 +193,9 @@ mod rustc {
                     id,
                     generics: _,
                     trait_refs: _,
-                    variant_information,
                 } => ExprKind::GlobalName {
                     id,
-                    constructor: variant_information,
+                    constructor: None,
                 },
                 Borrow(e) => ExprKind::Borrow {
                     borrow_kind: BorrowKind::Shared,
@@ -213,9 +215,9 @@ mod rustc {
                 Cast { source } => ExprKind::Cast {
                     source: source.into(),
                 },
-                kind @ (FnPtr { .. } | TraitConst { .. }) => {
+                kind @ (FnPtr { .. } | TraitConst { .. } | Memory { .. }) => {
                     // SH: I see the `Closure` kind, but it's not the same as function pointer?
-                    ExprKind::Todo(format!("FnPtr or TraitConst. kind={:#?}", kind))
+                    ExprKind::Todo(format!("FnPtr or TraitConst or Memory. kind={:#?}", kind))
                 }
                 Todo(msg) => ExprKind::Todo(msg),
             };
@@ -324,19 +326,23 @@ mod rustc {
                         id: did.sinto(s),
                         generics: Vec::new(),
                         trait_refs: Vec::new(),
-                        variant_information: None,
                     },
                     GlobalAlloc::Memory(alloc) => {
-                        let values = alloc.inner().get_bytes_unchecked(
-                            rustc_middle::mir::interpret::AllocRange {
+                        let bytes = alloc
+                            .inner()
+                            .get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
                                 start: rustc_abi::Size::ZERO,
                                 size: alloc.inner().size(),
-                            },
-                        );
-                        ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                            values.to_vec(),
-                            StrStyle::Cooked,
-                        ))
+                            })
+                            .to_vec();
+                        match inner_ty.kind() {
+                            ty::Slice(slice_ty) | ty::Array(slice_ty, _)
+                                if matches!(slice_ty.kind(), ty::Uint(ty::UintTy::U8)) =>
+                            {
+                                ConstantExprKind::Literal(ConstantLiteral::ByteStr(bytes))
+                            }
+                            _ => ConstantExprKind::Memory(bytes),
+                        }
                     }
                     provenance => fatal!(
                         s[span],
@@ -483,7 +489,6 @@ mod rustc {
                             id,
                             generics,
                             trait_refs,
-                            variant_information: None,
                         }
                     }
                 } else {
@@ -494,7 +499,6 @@ mod rustc {
                         id,
                         generics: vec![],
                         trait_refs: vec![],
-                        variant_information: None,
                     }
                 };
                 let cv = kind.decorate(ty.sinto(s), span.sinto(s));
@@ -562,27 +566,32 @@ mod rustc {
             (_, ty::Ref(_, inner_ty, _)) => {
                 ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
             }
-            (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-                ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
-                    ty::ValTree::Leaf(leaf) => leaf.to_u8(),
-                    _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
-                }).collect(), StrStyle::Cooked))
-                ,
+            (ty::ValTree::Branch(valtrees), ty::Str) => {
+                let bytes = valtrees
+                    .iter()
+                    .map(|x| match x {
+                        ty::ValTree::Leaf(leaf) => leaf.to_u8(),
+                        _ => fatal!(
+                            s[span],
+                            "Expected a flat list of leaves while translating \
+                            a str literal, got a arbitrary valtree."
+                        ),
+                    })
+                    .collect();
+                ConstantExprKind::Literal(ConstantLiteral::byte_str(bytes))
+            }
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
                 let contents: rustc_middle::ty::DestructuredConst = s
-                    .base().tcx
+                    .base()
+                    .tcx
                     .destructure_const(ty::Const::new_value(s.base().tcx, valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match ty.kind() {
                     ty::Array(_, _) => ConstantExprKind::Array {
-                        fields: fields
-                            .map(|field| field.sinto(s))
-                            .collect(),
+                        fields: fields.map(|field| field.sinto(s)).collect(),
                     },
                     ty::Tuple(_) => ConstantExprKind::Tuple {
-                        fields: fields
-                            .map(|field| field.sinto(s))
-                            .collect(),
+                        fields: fields.map(|field| field.sinto(s)).collect(),
                     },
                     ty::Adt(def, _) => {
                         let variant_idx = contents
@@ -590,9 +599,10 @@ mod rustc {
                             .s_expect(s, "destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
 
-                        ConstantExprKind::Adt{
+                        ConstantExprKind::Adt {
                             info: get_variant_information(def, variant_idx, s),
-                            fields: fields.into_iter()
+                            fields: fields
+                                .into_iter()
                                 .zip(&variant_def.fields)
                                 .map(|(value, field)| ConstantFieldExpr {
                                     field: field.did.sinto(s),
@@ -611,12 +621,12 @@ mod rustc {
                 let usize_ty = rustc_middle::ty::Ty::new_usize(s.base().tcx).sinto(s);
                 let lit = ConstantLiteral::Int(ConstantInt::Uint(raw_address, uint_ty));
                 ConstantExprKind::Cast {
-                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s))
+                    source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s)),
                 }
             }
-            (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
-                scalar_int_to_constant_literal(s, x, ty)
-            ),
+            (ty::ValTree::Leaf(x), _) => {
+                ConstantExprKind::Literal(scalar_int_to_constant_literal(s, x, ty))
+            }
             _ => supposely_unreachable_fatal!(
                 s[span], "valtree_to_expr";
                 {valtree, ty}
@@ -632,49 +642,49 @@ mod rustc {
         span: rustc_span::Span,
     ) -> ConstantExpr {
         let tcx = s.base().tcx;
-
-        let dc = tcx
-            .try_destructure_mir_constant_for_user_output(val, ty)
-            .s_unwrap(s);
-
-        // Iterate over the fields, which should be values
-        // Below: we are mutually recursive with [const_value_to_constant_expr],
-        // which takes a [Const] as input, but it should be
-        // ok because we call it on a strictly smaller value.
-        let fields = dc
-            .fields
-            .iter()
-            .copied()
-            .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span));
-
-        // The type should be tuple
-        let hax_ty: Ty = ty.sinto(s);
         match ty.kind() {
-            ty::TyKind::Tuple(_) => {
-                assert!(dc.variant.is_none());
-                let fields = fields.collect();
-                ConstantExprKind::Tuple { fields }
+            ty::TyKind::Tuple(_) | ty::TyKind::Adt(..) => {
+                let dc = tcx
+                    .try_destructure_mir_constant_for_user_output(val, ty)
+                    .s_unwrap(s);
+
+                // Iterate over the fields, which should be values
+                // Below: we are mutually recursive with [const_value_to_constant_expr],
+                // which takes a [Const] as input, but it should be
+                // ok because we call it on a strictly smaller value.
+                let fields = dc
+                    .fields
+                    .iter()
+                    .copied()
+                    .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span));
+
+                let kind = match ty.kind() {
+                    ty::TyKind::Tuple(_) => {
+                        assert!(dc.variant.is_none());
+                        let fields = fields.collect();
+                        ConstantExprKind::Tuple { fields }
+                    }
+                    ty::TyKind::Adt(adt_def, ..) => {
+                        let variant = dc.variant.unwrap_or(rustc_target::abi::FIRST_VARIANT);
+                        let variants_info = get_variant_information(adt_def, variant, s);
+                        let fields = fields
+                            .zip(&adt_def.variant(variant).fields)
+                            .map(|(value, field)| ConstantFieldExpr {
+                                field: field.did.sinto(s),
+                                value,
+                            })
+                            .collect();
+                        ConstantExprKind::Adt {
+                            info: variants_info,
+                            fields,
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                kind.decorate(ty.sinto(s), span.sinto(s))
             }
-            ty::TyKind::Adt(adt_def, ..) => {
-                let variant = dc.variant.unwrap_or(rustc_target::abi::FIRST_VARIANT);
-                let variants_info = get_variant_information(adt_def, variant, s);
-                let fields = fields
-                    .zip(&adt_def.variant(variant).fields)
-                    .map(|(value, field)| ConstantFieldExpr {
-                        field: field.did.sinto(s),
-                        value,
-                    })
-                    .collect();
-                ConstantExprKind::Adt {
-                    info: variants_info,
-                    fields,
-                }
-            }
-            _ => {
-                fatal!(s[span], "Expected the type to be tuple or adt: {:?}", val)
-            }
+            _ => fatal!(s[span], "Expected the type to be tuple or adt: {:?}", val),
         }
-        .decorate(hax_ty, span.sinto(s))
     }
 
     pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
@@ -697,11 +707,8 @@ mod rustc {
                 let slice: &[u8] = data
                     .inner()
                     .inspect_with_uninit_and_ptr_outside_interpreter(0..end);
-                ConstantExprKind::Literal(ConstantLiteral::byte_str(
-                    slice.to_vec(),
-                    StrStyle::Cooked,
-                ))
-                .decorate(ty.sinto(s), span.sinto(s))
+                ConstantExprKind::Literal(ConstantLiteral::byte_str(slice.to_vec()))
+                    .decorate(ty.sinto(s), span.sinto(s))
             }
             ConstValue::ZeroSized { .. } => {
                 // Should be unit

@@ -32,79 +32,90 @@ module Guards
 open Core
 open FStar.Mul
 
-let equivalent (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
-  match x with
-  | Core.Option.Option_None  -> 0l
-  | _ ->
-    match
-      match x with
-      | Core.Option.Option_Some v ->
-        (match v with
-          | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
-          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
-    with
-    | Core.Option.Option_Some y -> y
-    | Core.Option.Option_None  ->
-      match x with
-      | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
-      | _ -> 1l
-
-let if_guard (x: Core.Option.t_Option i32) : i32 =
-  match
-    match x with
-    | Core.Option.Option_Some v ->
-      (match v >. 0l with
-        | true -> Core.Option.Option_Some v <: Core.Option.t_Option i32
-        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
-  with
-  | Core.Option.Option_Some x -> x
-  | Core.Option.Option_None  -> 0l
-
 let if_let_guard (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
-  match x with
-  | Core.Option.Option_None  -> 0l
+  match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+  | Core.Option.Option_None  -> mk_i32 0
   | _ ->
     match
-      match x with
-      | Core.Option.Option_Some v ->
-        (match v with
-          | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
-          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+      (match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+        | Core.Option.Option_Some v ->
+          (match v <: Core.Result.t_Result i32 i32 with
+            | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
+            | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      <:
+      Core.Option.t_Option i32
     with
     | Core.Option.Option_Some x -> x
     | Core.Option.Option_None  ->
-      match x with
+      match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
       | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
-      | _ -> 1l
+      | _ -> mk_i32 1
 
-let multiple_guards (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
-  match x with
-  | Core.Option.Option_None  -> 0l
+let equivalent (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
+  match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+  | Core.Option.Option_None  -> mk_i32 0
   | _ ->
     match
-      match x with
-      | Core.Option.Option_Some (Core.Result.Result_Ok v) ->
-        (match Core.Option.Option_Some (v +! 1l) <: Core.Option.t_Option i32 with
-          | Core.Option.Option_Some 1l -> Core.Option.Option_Some 0l <: Core.Option.t_Option i32
-          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+      (match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+        | Core.Option.Option_Some v ->
+          (match v <: Core.Result.t_Result i32 i32 with
+            | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
+            | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      <:
+      Core.Option.t_Option i32
+    with
+    | Core.Option.Option_Some y -> y
+    | Core.Option.Option_None  ->
+      match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+      | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
+      | _ -> mk_i32 1
+
+let multiple_guards (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
+  match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+  | Core.Option.Option_None  -> mk_i32 0
+  | _ ->
+    match
+      (match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+        | Core.Option.Option_Some (Core.Result.Result_Ok v) ->
+          (match Core.Option.Option_Some (v +! mk_i32 1) <: Core.Option.t_Option i32 with
+            | Core.Option.Option_Some (Rust_primitives.Integers.MkInt 1) ->
+              Core.Option.Option_Some (mk_i32 0) <: Core.Option.t_Option i32
+            | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      <:
+      Core.Option.t_Option i32
     with
     | Core.Option.Option_Some x -> x
     | Core.Option.Option_None  ->
       match
-        match x with
-        | Core.Option.Option_Some v ->
-          (match v with
-            | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
-            | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+        (match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
+          | Core.Option.Option_Some v ->
+            (match v <: Core.Result.t_Result i32 i32 with
+              | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
+              | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+        <:
+        Core.Option.t_Option i32
       with
       | Core.Option.Option_Some x -> x
       | Core.Option.Option_None  ->
-        match x with
+        match x <: Core.Option.t_Option (Core.Result.t_Result i32 i32) with
         | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
-        | _ -> 1l
+        | _ -> mk_i32 1
+
+let if_guard (x: Core.Option.t_Option i32) : i32 =
+  match
+    (match x <: Core.Option.t_Option i32 with
+      | Core.Option.Option_Some v ->
+        (match v >. mk_i32 0 <: bool with
+          | true -> Core.Option.Option_Some v <: Core.Option.t_Option i32
+          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    <:
+    Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> mk_i32 0
 '''

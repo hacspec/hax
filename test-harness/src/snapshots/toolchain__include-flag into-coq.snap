@@ -42,6 +42,8 @@ From Core Require Import Core.
 
 
 
+(* NotImplementedYet *)
+
 Record t_Foo : Type :=
   {
   }.
@@ -54,19 +56,29 @@ Class t_Trait (v_Self : Type) : Type :=
   }.
 Arguments t_Trait (_).
 
-Instance t_Trait_254780795 : t_Trait ((t_Foo)) :=
+Instance t_Trait_629521404 : t_Trait ((t_Foo)) :=
   {
   }.
 
-(* NotImplementedYet *)
-
-Definition main_a_a '(_ : unit) : unit :=
+Definition main_a_a (_ : unit) : unit :=
   tt.
 
-Definition main_a_b '(_ : unit) : unit :=
+Definition main_b_a (_ : unit) : unit :=
   tt.
 
-Definition main_a_c '(_ : unit) : unit :=
+Definition main_c_a (_ : unit) : unit :=
+  tt.
+
+Definition main_a_b (_ : unit) : unit :=
+  tt.
+
+Definition main_b_b (_ : unit) : unit :=
+  tt.
+
+Definition main_c_b (_ : unit) : unit :=
+  tt.
+
+Definition main_a_c (_ : unit) : unit :=
   tt.
 
 Definition main_a `{v_T : Type} `{t_Sized (v_T)} `{t_Trait (v_T)} (x : v_T) : unit :=
@@ -75,13 +87,7 @@ Definition main_a `{v_T : Type} `{t_Sized (v_T)} `{t_Trait (v_T)} (x : v_T) : un
   let _ := main_a_c (tt) in
   tt.
 
-Definition main_b_a '(_ : unit) : unit :=
-  tt.
-
-Definition main_b_b '(_ : unit) : unit :=
-  tt.
-
-Definition main_b_c '(_ : unit) : unit :=
+Definition main_b_c (_ : unit) : unit :=
   tt.
 
 Definition main_b '(_ : unit) : unit :=
@@ -90,13 +96,7 @@ Definition main_b '(_ : unit) : unit :=
   let _ := main_b_c (tt) in
   tt.
 
-Definition main_c_a '(_ : unit) : unit :=
-  tt.
-
-Definition main_c_b '(_ : unit) : unit :=
-  tt.
-
-Definition main_c_c '(_ : unit) : unit :=
+Definition main_c_c (_ : unit) : unit :=
   tt.
 
 Definition main_c '(_ : unit) : unit :=

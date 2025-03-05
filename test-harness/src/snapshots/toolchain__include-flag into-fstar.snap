@@ -37,12 +37,20 @@ type t_Foo = | Foo : t_Foo
 class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
+let impl: t_Trait t_Foo = { __marker_trait = () }
 
 /// Indirect dependencies
 let main_a_a (_: Prims.unit) : Prims.unit = ()
 
+let main_b_a (_: Prims.unit) : Prims.unit = ()
+
+let main_c_a (_: Prims.unit) : Prims.unit = ()
+
 let main_a_b (_: Prims.unit) : Prims.unit = ()
+
+let main_b_b (_: Prims.unit) : Prims.unit = ()
+
+let main_c_b (_: Prims.unit) : Prims.unit = ()
 
 let main_a_c (_: Prims.unit) : Prims.unit = ()
 
@@ -54,10 +62,6 @@ let main_a (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Trait 
   let _:Prims.unit = main_a_c () in
   ()
 
-let main_b_a (_: Prims.unit) : Prims.unit = ()
-
-let main_b_b (_: Prims.unit) : Prims.unit = ()
-
 let main_b_c (_: Prims.unit) : Prims.unit = ()
 
 let main_b (_: Prims.unit) : Prims.unit =
@@ -65,10 +69,6 @@ let main_b (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = main_b_b () in
   let _:Prims.unit = main_b_c () in
   ()
-
-let main_c_a (_: Prims.unit) : Prims.unit = ()
-
-let main_c_b (_: Prims.unit) : Prims.unit = ()
 
 let main_c_c (_: Prims.unit) : Prims.unit = ()
 

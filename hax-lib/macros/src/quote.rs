@@ -141,14 +141,14 @@ pub(super) fn item(
     };
     let kind_attr = AttrPayload::ItemQuote(kind);
     let status_attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
-    use AttrPayload::NeverDropBody;
+    use AttrPayload::NeverErased;
     quote! {
         #assoc_attr
         #item
         #attribute_to_inject
         #status_attr
         const _: () = {
-            #NeverDropBody
+            #NeverErased
             #uid_attr
             #kind_attr
             fn quote_contents() {
@@ -212,7 +212,7 @@ pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::Toke
     let function = if force_unit {
         quote! {inline}
     } else {
-        quote! {inline_unsafe}
+        quote! {inline_unsafe::<::hax_lib::Prop>}
     };
 
     quote! {

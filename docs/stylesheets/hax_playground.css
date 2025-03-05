@@ -1,0 +1,20 @@
+.md-hax-playground::after {
+    display: none;
+}
+
+textarea.code.inline+div.CodeMirror div.CodeMirror-lines {
+    padding: 0px !important;
+    /* added !important as padding is an inline stlye */
+}
+
+.cm-editor {
+    outline: none !important;
+}
+
+.md-hax-playground~.md-code__content {
+    padding: 14px 7px 14px 7px !important;
+}
+
+pre.md-hax-playground-pre {
+    margin: 0 !important;
+}

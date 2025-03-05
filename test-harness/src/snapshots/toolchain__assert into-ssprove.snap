@@ -65,7 +65,7 @@ Equations asserts {L1 : {fset Location}} {I1 : Interface} (_ : both L1 I1 'unit)
     end in
     letb _ := matchb prod_b (ret_both (1 : int32),ret_both (2 : int32)) with
     | '(left_val,right_val) =>
-      solve_lift (assert (not (left_val =.? right_val)))
+      solve_lift (assert (f_not (left_val =.? right_val)))
     end in
     solve_lift (ret_both (tt : 'unit)) : both L1 I1 'unit.
 Fail Next Obligation.

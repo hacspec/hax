@@ -12,12 +12,15 @@ jobs:
     name: nix-action
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: extractions/setup-just@v1
     - name: Set-up OCaml
       uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: 5
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
     - name: Install cargo-deny
       run: cargo install cargo-deny
     - name: Install cargo-deny

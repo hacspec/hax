@@ -1,23 +1,11 @@
 use crate::prelude::*;
 use crate::rewrite_self::*;
 
-/// `HaxQuantifiers` expands to the definition of the `forall` and `exists` functions
+/// `HaxQuantifiers` makes polymorphic expression inlining functions available
 pub struct HaxQuantifiers;
 impl ToTokens for HaxQuantifiers {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let status_attr = &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
         quote! {
-            #AttrHaxLang
-            #status_attr
-            fn forall<T, F: Fn(T) -> bool>(f: F) -> bool {
-                true
-            }
-            #AttrHaxLang
-            #status_attr
-            fn exists<T, F: Fn(T) -> bool>(f: F) -> bool {
-                true
-            }
-
             use ::hax_lib::fstar_unsafe_expr as fstar;
             use ::hax_lib::coq_unsafe_expr as coq;
             use ::hax_lib::proverif_unsafe_expr as proverif;
@@ -218,8 +206,6 @@ pub fn make_fn_decoration(
     mut generics: Option<Generics>,
     self_type: Option<Type>,
 ) -> (TokenStream, AttrPayload) {
-    let uid = ItemUid::fresh();
-    let mut_ref_inputs = unmut_references_in_inputs(&mut signature);
     let self_ident: Ident = syn::parse_quote! {self_};
     let error = {
         let mut rewriter = RewriteSelf::new(self_ident, self_type);
@@ -230,6 +216,8 @@ pub fn make_fn_decoration(
         }
         rewriter.get_error()
     };
+    let uid = ItemUid::fresh();
+    let mut_ref_inputs = unmut_references_in_inputs(&mut signature);
     let decoration = {
         let decoration_sig = {
             let mut sig = signature.clone();
@@ -279,7 +267,7 @@ pub fn make_fn_decoration(
             sig.output = if let FnDecorationKind::Decreases = &kind {
                 syn::parse_quote! { -> Box<dyn Any> }
             } else {
-                syn::parse_quote! { -> bool }
+                syn::parse_quote! { -> impl Into<::hax_lib::Prop> }
             };
             sig
         };
@@ -301,7 +289,7 @@ pub fn make_fn_decoration(
         } else {
             quote! {}
         };
-        use AttrPayload::NeverDropBody;
+        use AttrPayload::NeverErased;
         quote! {
             #[cfg(#DebugOrHaxCfgExpr)]
             #late_skip
@@ -312,7 +300,7 @@ pub fn make_fn_decoration(
                 #uid_attr
                 #late_skip
                 #[allow(unused)]
-                #NeverDropBody
+                #NeverErased
                 #decoration_sig {
                     #phi
                 }

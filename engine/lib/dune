@@ -1,6 +1,19 @@
 (library
  (public_name hax-engine)
  (name hax_engine)
+ ;  (modules
+ ;   types
+ ;   concrete_ident
+ ;   concrete_ident_view
+ ;   concrete_ident_defid
+ ;   prelude
+ ;   concrete_ident_view_types
+ ;   concrete_ident_generated
+ ;   concrete_ident_render_sig
+ ;   local_ident
+ ;   thir_simple_types
+ ;   concrete_ident_fresh_ns
+ ;   utils)
  (libraries
   yojson
   non_empty_list
@@ -32,6 +45,7 @@
    ppx_generate_features
    ppx_functor_application
    ppx_enumerate
+   ppx_deriving.map
    ppx_matches)))
 
 (include_subdirs unqualified)

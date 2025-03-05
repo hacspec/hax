@@ -35,6 +35,11 @@ struct
       method borrow_kind_Mut _x1 = default_document_for "borrow_kind_Mut"
       method borrow_kind_Shared = default_document_for "borrow_kind_Shared"
       method borrow_kind_Unique = default_document_for "borrow_kind_Unique"
+      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
+
+      method cf_kind_BreakOrReturn =
+        default_document_for "cf_kind_BreakOrReturn"
+
       method common_array _x1 = default_document_for "common_array"
 
       method dyn_trait_goal ~trait:_ ~non_self_args:_ =
@@ -124,10 +129,6 @@ struct
       method expr'_Return ~super:_ ~e:_ ~witness:_ =
         default_document_for "expr'_Return"
 
-      method cf_kind_BreakOrReturn =
-        default_document_for "cf_kind_BreakOrReturn"
-
-      method cf_kind_BreakOnly = default_document_for "cf_kind_BreakOnly"
       method field_pat ~field:_ ~pat:_ = default_document_for "field_pat"
 
       method generic_constraint_GCLifetime _x1 _x2 =
@@ -243,6 +244,9 @@ struct
 
       method item'_Use ~super:_ ~path:_ ~is_external:_ ~rename:_ =
         default_document_for "item'_Use"
+
+      method item_quote_origin ~item_kind:_ ~item_ident:_ ~position:_ =
+        default_document_for "item_quote_origin"
 
       method lhs_LhsArbitraryExpr ~e:_ ~witness:_ =
         default_document_for "lhs_LhsArbitraryExpr"

@@ -17,3 +17,32 @@ enum Foo {
     A,
     B,
 }
+
+mod mut_rec {
+    fn f() {
+        g()
+    }
+
+    fn f_2() {
+        f()
+    }
+
+    fn g() {
+        f()
+    }
+}
+
+mod independent_cycles {
+    fn a() {
+        c()
+    }
+    fn b() {
+        d()
+    }
+    fn c() {
+        a()
+    }
+    fn d() {
+        b()
+    }
+}

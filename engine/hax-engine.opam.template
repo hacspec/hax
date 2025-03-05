@@ -1,3 +1,6 @@
 depexts: [
   ["nodejs"] {}
 ]
+pin-depends: [
+  ["ocamlgraph.dev" "git+https://github.com/maximebuyse/ocamlgraph.git#fix-stable-topological-sort"]
+]

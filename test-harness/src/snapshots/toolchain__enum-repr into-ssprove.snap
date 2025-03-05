@@ -54,15 +54,7 @@ Import choice.Choice.Exports.
 
 Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
-Equations discriminant_EnumWithRepr_ExplicitDiscr1 {L : {fset Location}} {I : Interface} : both L I int16 :=
-  discriminant_EnumWithRepr_ExplicitDiscr1  :=
-    solve_lift (ret_both (1 : int16)) : both L I int16.
-Fail Next Obligation.
-
-Equations discriminant_EnumWithRepr_ExplicitDiscr2 {L : {fset Location}} {I : Interface} : both L I int16 :=
-  discriminant_EnumWithRepr_ExplicitDiscr2  :=
-    solve_lift (ret_both (5 : int16)) : both L I int16.
-Fail Next Obligation.
+(*Not implemented yet? todo(item)*)
 
 Definition t_EnumWithRepr : choice_type :=
   ('unit ∐ 'unit ∐ 'unit ∐ 'unit).
@@ -87,40 +79,125 @@ Equations EnumWithRepr_ImplicitDiscrEmptyStruct {L : {fset Location}} {I : Inter
     solve_lift (ret_both (inr (tt : 'unit) : t_EnumWithRepr)) : both L I t_EnumWithRepr.
 Fail Next Obligation.
 
+Equations anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 {L : {fset Location}} {I : Interface} : both L I int16 :=
+  anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0  :=
+    solve_lift (ret_both (1 : int16)) : both L I int16.
+Fail Next Obligation.
+
+Equations anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 {L : {fset Location}} {I : Interface} : both L I int16 :=
+  anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0  :=
+    solve_lift (ret_both (5 : int16)) : both L I int16.
+Fail Next Obligation.
+
 Equations t_EnumWithRepr_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int16 :=
   t_EnumWithRepr_cast_to_repr x  :=
     matchb x with
     | EnumWithRepr_ExplicitDiscr1_case  =>
-      solve_lift discriminant_EnumWithRepr_ExplicitDiscr1
+      solve_lift anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0
     | EnumWithRepr_ExplicitDiscr2_case  =>
-      solve_lift discriminant_EnumWithRepr_ExplicitDiscr2
+      solve_lift anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0
     | EnumWithRepr_ImplicitDiscrEmptyTuple_case  =>
-      solve_lift (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (1 : int16)))
+      solve_lift (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (1 : int16)))
     | EnumWithRepr_ImplicitDiscrEmptyStruct_case  =>
-      solve_lift (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (2 : int16)))
+      solve_lift (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (2 : int16)))
     end : both L1 I1 int16.
 Fail Next Obligation.
 
-(*Not implemented yet? todo(item)*)
+Definition t_ImplicitReprs : choice_type :=
+  ('unit ∐ 'unit ∐ 'unit ∐ 'unit ∐ 'unit ∐ 'unit ∐ 'unit ∐ 'unit ∐ 'unit).
+Notation "'ImplicitReprs_A_case'" := (inl (inl (inl (inl (inl (inl (inl (inl tt)))))))) (at level 100).
+Equations ImplicitReprs_A {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_A  :=
+    solve_lift (ret_both (inl (inl (inl (inl (inl (inl (inl (inl (tt : 'unit)))))))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_B_case'" := (inl (inl (inl (inl (inl (inl (inl (inr tt)))))))) (at level 100).
+Equations ImplicitReprs_B {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_B  :=
+    solve_lift (ret_both (inl (inl (inl (inl (inl (inl (inl (inr (tt : 'unit)))))))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_C_case'" := (inl (inl (inl (inl (inl (inl (inr tt))))))) (at level 100).
+Equations ImplicitReprs_C {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_C  :=
+    solve_lift (ret_both (inl (inl (inl (inl (inl (inl (inr (tt : 'unit))))))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_D_case'" := (inl (inl (inl (inl (inl (inr tt)))))) (at level 100).
+Equations ImplicitReprs_D {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_D  :=
+    solve_lift (ret_both (inl (inl (inl (inl (inl (inr (tt : 'unit)))))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_E_case'" := (inl (inl (inl (inl (inr tt))))) (at level 100).
+Equations ImplicitReprs_E {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_E  :=
+    solve_lift (ret_both (inl (inl (inl (inl (inr (tt : 'unit))))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_F_case'" := (inl (inl (inl (inr tt)))) (at level 100).
+Equations ImplicitReprs_F {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_F  :=
+    solve_lift (ret_both (inl (inl (inl (inr (tt : 'unit)))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_G_case'" := (inl (inl (inr tt))) (at level 100).
+Equations ImplicitReprs_G {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_G  :=
+    solve_lift (ret_both (inl (inl (inr (tt : 'unit))) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_H_case'" := (inl (inr tt)) (at level 100).
+Equations ImplicitReprs_H {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_H  :=
+    solve_lift (ret_both (inl (inr (tt : 'unit)) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+Notation "'ImplicitReprs_I_case'" := (inr tt) (at level 100).
+Equations ImplicitReprs_I {L : {fset Location}} {I : Interface} : both L I t_ImplicitReprs :=
+  ImplicitReprs_I  :=
+    solve_lift (ret_both (inr (tt : 'unit) : t_ImplicitReprs)) : both L I t_ImplicitReprs.
+Fail Next Obligation.
+
+Equations anon_const_ImplicitReprs_E__anon_const_0 {L : {fset Location}} {I : Interface} : both L I int64 :=
+  anon_const_ImplicitReprs_E__anon_const_0  :=
+    solve_lift (ret_both (30 : int64)) : both L I int64.
+Fail Next Obligation.
+
+Equations t_ImplicitReprs_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_ImplicitReprs) : both L1 I1 int64 :=
+  t_ImplicitReprs_cast_to_repr x  :=
+    matchb x with
+    | ImplicitReprs_A_case  =>
+      solve_lift (ret_both (0 : int64))
+    | ImplicitReprs_B_case  =>
+      solve_lift (ret_both (1 : int64))
+    | ImplicitReprs_C_case  =>
+      solve_lift (ret_both (2 : int64))
+    | ImplicitReprs_D_case  =>
+      solve_lift (ret_both (3 : int64))
+    | ImplicitReprs_E_case  =>
+      solve_lift anon_const_ImplicitReprs_E__anon_const_0
+    | ImplicitReprs_F_case  =>
+      solve_lift (anon_const_ImplicitReprs_E__anon_const_0 .+ (ret_both (1 : int64)))
+    | ImplicitReprs_G_case  =>
+      solve_lift (anon_const_ImplicitReprs_E__anon_const_0 .+ (ret_both (2 : int64)))
+    | ImplicitReprs_H_case  =>
+      solve_lift (anon_const_ImplicitReprs_E__anon_const_0 .+ (ret_both (3 : int64)))
+    | ImplicitReprs_I_case  =>
+      solve_lift (anon_const_ImplicitReprs_E__anon_const_0 .+ (ret_both (4 : int64)))
+    end : both L1 I1 int64.
+Fail Next Obligation.
 
 Equations f {L1 : {fset Location}} {I1 : Interface} (_ : both L1 I1 'unit) : both L1 I1 int32 :=
   f _  :=
-    letb v__x := cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (0 : int16))) in
+    letb e_x := cast_int (WS2 := _) (anon_const_EnumWithRepr_ExplicitDiscr2__anon_const_0 .+ (ret_both (0 : int16))) in
     solve_lift ((cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuple)) .+ (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStruct))) : both L1 I1 int32.
 Fail Next Obligation.
 
-Equations ff__CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
-  ff__CONST  :=
-    solve_lift (cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr1 .+ (ret_both (0 : int16)))) : both L I int16.
-Fail Next Obligation.
-
-Equations get_casted_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int64 :=
-  get_casted_repr x  :=
-    solve_lift (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr x)) : both L1 I1 int64.
+Equations f__v_CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
+  f__v_CONST  :=
+    solve_lift (cast_int (WS2 := _) (anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 .+ (ret_both (0 : int16)))) : both L I int16.
 Fail Next Obligation.
 
 Equations get_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int16 :=
   get_repr x  :=
     solve_lift (t_EnumWithRepr_cast_to_repr x) : both L1 I1 int16.
+Fail Next Obligation.
+
+Equations get_casted_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int64 :=
+  get_casted_repr x  :=
+    solve_lift (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr x)) : both L1 I1 int64.
 Fail Next Obligation.
 '''

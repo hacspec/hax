@@ -33,5 +33,5 @@ module Recursion
 open Core
 open FStar.Mul
 
-let rec f (n: u8) : u8 = if n =. 0uy then 0uy else n +! (f (n -! 1uy <: u8) <: u8)
+let rec f (n: u8) : u8 = if n =. mk_u8 0 then mk_u8 0 else n +! (f (n -! mk_u8 1 <: u8) <: u8)
 '''

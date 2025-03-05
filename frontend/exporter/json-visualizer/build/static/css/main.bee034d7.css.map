@@ -1,1 +1,0 @@
-{"version":3,"file":"static/css/main.bee034d7.css","mappings":"AAAA,kBACI,wBAAiB,CAAjB,gBACJ","sources":["index.css"],"sourcesContent":[".user-selection * {\n    user-select: text;\n}\n"],"names":[],"sourceRoot":""}

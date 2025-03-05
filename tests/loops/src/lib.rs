@@ -243,4 +243,41 @@ mod control_flow {
         sum *= 2;
         sum
     }
+    fn continue_only(x: &[i32]) {
+        let mut product = 1;
+        for i in x {
+            if *i == 0 {
+                continue;
+            }
+            product *= i
+        }
+    }
+    fn continue_and_break(x: &[i32]) {
+        let mut product = 1;
+        for i in x {
+            if *i == 0 {
+                continue;
+            }
+            if *i < 0 {
+                break;
+            }
+            product *= i
+        }
+    }
+}
+
+mod and_mut_side_effect_loop {
+    // https://github.com/hacspec/hax/issues/720
+    fn looping(array: &mut [u8; 5]) {
+        for i in 0..array.len() {
+            array[i] = i as u8;
+        }
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    fn looping_2(array: &mut [u8; 5]) {
+        for i in 0..array.len() {
+            array[i] = i as u8;
+        }
+    }
 }

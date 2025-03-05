@@ -25,6 +25,10 @@ let apply f x = f x
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 
+let expect_singleton : 'a. 'a list -> 'a option = function
+  | [ x ] -> Some x
+  | _ -> None
+
 (** [let*? () = guard in body] acts as a guard: if [guard] holds, then
 [body] is executed, otherwise [None] is returned. *)
 let ( let*? ) (type a) (x : bool) (f : unit -> a option) =
@@ -50,6 +54,15 @@ let split_list ~equal ~needle (subject : 'a list) : 'a list list =
     | l, r -> l :: h r
   in
   h subject
+
+(** Map over a list with a option-returning function. Returns `Some` iff every calls to `f` returned `Some`. *)
+let rec maybe_map ~(f : 'a -> 'b option) (l : 'a list) : 'b list option =
+  match l with
+  | hd :: tl ->
+      let* hd = f hd in
+      let* tl = maybe_map ~f tl in
+      Some (hd :: tl)
+  | [] -> Some []
 
 let first_letter s = String.prefix s 1
 let is_uppercase s = String.equal s (String.uppercase s)
@@ -115,4 +128,22 @@ module List = struct
   let zip_opt : 'a 'b. 'a list -> 'b list -> ('a * 'b) list option =
    fun x y ->
     match zip x y with Ok result -> Some result | Unequal_lengths -> None
+
+  let longest_prefix (type t) ~(eq : t -> t -> bool) (l : t list list) : t list
+      =
+    match l with
+    | [] -> []
+    | hd :: tl ->
+        let tl = ref tl in
+        let f x =
+          let exception Stop in
+          try
+            tl :=
+              List.map !tl ~f:(function
+                | y :: tl when eq x y -> tl
+                | _ -> raise Stop);
+            true
+          with Stop -> false
+        in
+        List.take_while ~f hd
 end

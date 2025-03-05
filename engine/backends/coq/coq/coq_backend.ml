@@ -101,7 +101,9 @@ end
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
+module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
+module U = Ast_utils.Make (InputLanguage)
+module RenderId = Concrete_ident.MakeRenderAPI (CoqNamePolicy)
 open AST
 
 let hardcoded_coq_headers =
@@ -555,23 +557,19 @@ struct
       method item'_Impl ~super ~generics ~self_ty ~of_trait ~items
           ~parent_bounds:_ ~safety:_ =
         let name, args = of_trait#v in
-        CoqNotation.instance
-          (name#p ^^ string "_" ^^ string (Int.to_string ([%hash: item] super)))
-          generics#p []
-          (name#p ^^ concat_map_with ~pre:space (fun x -> parens x#p) args)
-          (braces
-             (nest 2
-                (concat_map_with
-                   ~pre:
-                     (break 1
-                     ^^ string
-                          (String.drop_prefix
-                             (U.Concrete_ident_view.to_definition_name name#v)
-                             2)
-                     ^^ !^"_")
-                   (fun x -> x#p)
-                   items)
-             ^^ break 1))
+        if Attrs.is_erased super.attrs then empty
+        else
+          CoqNotation.instance
+            (name#p ^^ string "_"
+            ^^ string (Int.to_string ([%hash: item] super)))
+            generics#p []
+            (name#p ^^ concat_map (fun x -> space ^^ parens x#p) args)
+            (braces
+               (nest 2
+                  (concat_map
+                     (fun x -> break 1 ^^ name#p ^^ !^"_" ^^ x#p)
+                     items)
+               ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
 
@@ -737,7 +735,7 @@ struct
           let crate =
             String.capitalize
               (Option.value ~default:"(TODO CRATE)"
-                 (Option.map ~f:fst current_namespace))
+                 (Option.bind ~f:List.hd current_namespace))
           in
           let concat_capitalize l =
             String.concat ~sep:"_" (List.map ~f:String.capitalize l)
@@ -754,7 +752,7 @@ struct
                   (crate
                    :: List.drop_last_exn
                         (Option.value ~default:[]
-                           (Option.map ~f:snd current_namespace))
+                           (Option.bind ~f:List.tl current_namespace))
                   @ xs)
             | [ a ] -> a
             | xs -> concat_capitalize_include xs
@@ -764,6 +762,9 @@ struct
             string "From" ^^ space ^^ string crate ^^ space
             ^^ string "Require Import" ^^ space ^^ string path_string ^^ dot
             ^^ break 1 ^^ string "Export" ^^ space ^^ string path_string ^^ dot
+
+      method item_quote_origin ~item_kind:_ ~item_ident:_ ~position:_ =
+        default_document_for "item_quote_origin"
 
       method lhs_LhsArbitraryExpr ~e:_ ~witness = match witness with _ -> .
 
@@ -985,7 +986,7 @@ struct
 
       method concrete_ident ~local:_ id : document =
         string
-          (match id.definition with
+          (match id.name with
           | "not" -> "negb"
           | "eq" -> "PartialEq_f_eq"
           | "lt" -> "PartialOrd_f_lt"
@@ -1023,12 +1024,13 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
   let my_printer = make m in
   (U.group_items_by_namespace items
   |> Map.to_alist
+  |> List.filter_map ~f:(fun (_, items) ->
+         let* first_item = List.hd items in
+         Some ((RenderId.render first_item.ident).path, items))
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
            String.concat ~sep:"_"
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+             (List.map ~f:(map_first_letter String.uppercase) ns)
          in
          let sourcemap, contents =
            let annotated = my_printer#entrypoint_modul items in
@@ -1089,6 +1091,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.Dyn
   |> Phases.Reject.Trait_item_default
   |> Phases.Bundle_cycles
+  |> Phases.Sort_items
   |> SubtypeToInputLanguage
   |> Identity
   ]

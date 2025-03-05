@@ -109,8 +109,8 @@ module Make (F : Features.T) = struct
 
     let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
 
-    let local_var (e : expr) : expr option =
-      match e.e with LocalVar _ -> Some e | _ -> None
+    let local_var (e : expr) : local_ident option =
+      match e.e with LocalVar v -> Some v | _ -> None
 
     let arrow (typ : ty) : (ty list * ty) option =
       match typ with
@@ -226,9 +226,12 @@ module Make (F : Features.T) = struct
             ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
           | GCType { goal; name } when enabled ->
-              let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:name ~data in
-              GCType { goal; name = data }
+              let new_name =
+                Hashtbl.find_or_add s name ~default:(fun () ->
+                    "i" ^ Int.to_string (Hashtbl.length s))
+              in
+              let goal = super#visit_trait_goal (enabled, s) goal in
+              GCType { goal; name = new_name }
           | _ -> super#visit_generic_constraint (enabled, s) gc
 
         method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
@@ -338,6 +341,14 @@ module Make (F : Features.T) = struct
             super#visit_expr' ascribe_app e
 
           method! visit_expr (ascribe_app : bool) e =
+            let ascribe_app =
+              ascribe_app
+              && not
+                   (match e.typ with
+                   | TApp { ident; _ } ->
+                       Global_ident.eq_name Hax_lib__prop__Prop ident
+                   | _ -> false)
+            in
             let e = super#visit_expr ascribe_app e in
             let ascribe (e : expr) =
               if [%matches? Ascription _] e.e then e
@@ -365,6 +376,10 @@ module Make (F : Features.T) = struct
                           bounds_impls;
                         };
                   }
+            (* Match scrutinees need to be ascribed as well
+               (see https://github.com/hacspec/hax/issues/1207).*)
+            | Match { scrutinee; arms } ->
+                { e with e = Match { scrutinee = ascribe scrutinee; arms } }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
                 if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e
@@ -653,6 +668,13 @@ module Make (F : Features.T) = struct
               self#zero
           | _ -> super#visit_expr' () e
       end
+
+    let collect_attrs =
+      object (_self)
+        inherit [_] Visitors.reduce
+        inherit [_] expr_list_monoid
+        method! visit_attrs () attrs = attrs
+      end
   end
 
   (** Produces a local identifier which is locally fresh **with respect
@@ -690,7 +712,8 @@ module Make (F : Features.T) = struct
 
   let never_typ : ty =
     let ident =
-      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__Never)
+      `Concrete
+        (Concrete_ident.of_name ~value:false Rust_primitives__hax__Never)
     in
     TApp { ident; args = [] }
 
@@ -886,8 +909,7 @@ module Make (F : Features.T) = struct
   let call_Constructor (constructor_name : Concrete_ident.name)
       (is_struct : bool) (args : expr list) span ret_typ =
     call_Constructor'
-      (`Concrete
-        (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
+      (`Concrete (Concrete_ident.of_name ~value:true constructor_name))
       is_struct args span ret_typ
 
   let call' ?impl f ?(generic_args = []) ?(impl_generic_args = [])
@@ -908,11 +930,10 @@ module Make (F : Features.T) = struct
       span;
     }
 
-  let call ?(kind : Concrete_ident.Kind.t = Value) ?(generic_args = [])
-      ?(impl_generic_args = []) ?impl (f_name : Concrete_ident.name)
-      (args : expr list) span ret_typ =
+  let call ?(generic_args = []) ?(impl_generic_args = []) ?impl
+      (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
     call' ?impl ~generic_args ~impl_generic_args
-      (`Concrete (Concrete_ident.of_name kind f_name))
+      (`Concrete (Concrete_ident.of_name ~value:true f_name))
       args span ret_typ
 
   let make_closure (params : pat list) (body : expr) (span : span) : expr =
@@ -937,7 +958,8 @@ module Make (F : Features.T) = struct
 
   let hax_failure_typ =
     let ident =
-      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__failure)
+      `Concrete
+        (Concrete_ident.of_name ~value:false Rust_primitives__hax__failure)
     in
     TApp { ident; args = [] }
 
@@ -950,8 +972,11 @@ module Make (F : Features.T) = struct
   module Debug : sig
     val expr : ?label:string -> AST.expr -> unit
     (** Prints an expression pretty-printed as Rust, with its full
-        AST encoded as JSON, available as a file, so that one can
-        `jless` or `jq` into it. *)
+    AST encoded as JSON, available as a file, so that one can
+    `jless` or `jq` into it. *)
+
+    val item' : ?label:string -> AST.item -> string
+    val item : ?label:string -> AST.item -> unit
   end = struct
     let expr ?(label = "") (e : AST.expr) : unit =
       let path = tempfile_path ~suffix:".json" in
@@ -962,6 +987,18 @@ module Make (F : Features.T) = struct
       ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
       ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
       |> Stdio.prerr_endline
+
+    let item' ?(label = "") (e : AST.item) : string =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.item] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.item e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pitem_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+
+    let item ?(label = "") (e : AST.item) =
+      item' ~label e |> Stdio.prerr_endline
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
@@ -1241,37 +1278,14 @@ module Make (F : Features.T) = struct
       Option.value ~default:p (expect_deref_mut p)
   end
 
-  module StringList = struct
-    module U = struct
-      module T = struct
-        type t = string * string list
-        [@@deriving show, yojson, compare, sexp, eq, hash]
-      end
-
-      include T
-      module C = Base.Comparator.Make (T)
-      include C
-    end
-
-    include U
-    module Map = Map.M (U)
-  end
-end
-
-module MakeWithNamePolicy (F : Features.T) (NP : Concrete_ident.NAME_POLICY) =
-struct
-  include Make (F)
-  open AST
-  module Concrete_ident_view = Concrete_ident.MakeViewAPI (NP)
-
-  let group_items_by_namespace (items : item list) : item list StringList.Map.t
-      =
-    let h = Hashtbl.create (module StringList) in
+  let group_items_by_namespace (items : item list) :
+      item list Concrete_ident.View.ModPath.Map.t =
+    let h = Hashtbl.create (module Concrete_ident.View.ModPath) in
     List.iter items ~f:(fun item ->
-        let ns = Concrete_ident_view.to_namespace item.ident in
+        let ns = (Concrete_ident.to_view item.ident).mod_path in
         let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
         items := !items @ [ item ]);
     Map.of_iteri_exn
-      (module StringList)
+      (module Concrete_ident.View.ModPath)
       ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
 end

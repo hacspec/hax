@@ -42,9 +42,9 @@ struct
                {
                  details =
                    "Expected two exact same types, got x="
-                   ^ [%show: ty] x
+                   ^ (x |> U.LiftToFullAst.ty |> Print_rust.pty_str)
                    ^ " and y="
-                   ^ [%show: ty] y;
+                   ^ (y |> U.LiftToFullAst.ty |> Print_rust.pty_str);
                })
         else x
       in
@@ -481,7 +481,12 @@ struct
                   @@ List.map ~f:U.Reducers.variables_of_pat params
                 in
                 let body = lets_of_bindings lbs body in
-                let effects = SideEffects.without_rw_vars vars effects in
+                let effects =
+                  {
+                    (SideEffects.without_rw_vars vars effects) with
+                    return = None;
+                  }
+                in
                 (body, { lbs = []; effects })
               in
               ({ e with e = Closure { params; body; captures } }, body_effects)

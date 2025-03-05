@@ -55,7 +55,7 @@ Definition let_else (opt : t_Option ((t_u32))) : bool :=
 Definition let_else_different_type (opt : t_Option ((t_u32))) : bool :=
   run (let hoist1 := match opt with
   | Option_Some (x) =>
-    ControlFlow_Continue (Option_Some (Add_f_add (x) ((1 : t_u32))))
+    ControlFlow_Continue (Option_Some (f_add (x) (1)))
   | _ =>
     ControlFlow_Break ((false : bool))
   end in

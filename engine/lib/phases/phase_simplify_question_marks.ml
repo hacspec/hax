@@ -71,7 +71,7 @@ module%inlined_contents Make (FA : Features.T) = struct
 
       (** Construct [Result<S,E>] *)
       let make_result_type (success : ty) (error : ty) : ty =
-        let ident = Global_ident.of_name Type Core__result__Result in
+        let ident = Global_ident.of_name ~value:false Core__result__Result in
         TApp { ident; args = [ GType success; GType error ] }
 
       (** Retype a [Err::<_, E>(x)] literal, as [Err::<success, E>(x)] *)
@@ -89,8 +89,8 @@ module%inlined_contents Make (FA : Features.T) = struct
         let from_typ = TArrow ([ error_src ], error_dest) in
         let impl_generic_args = [ GType error_dest; GType error_src ] in
         Some
-          (UA.call ~impl_generic_args ~kind:(AssociatedItem Value) ~impl
-             Core__convert__From__from [ e ] e.span from_typ)
+          (UA.call ~impl_generic_args ~impl Core__convert__From__from [ e ]
+             e.span from_typ)
 
       (** [map_err e error_dest impl] creates the expression
       [e.map_err(from)] with the proper types and impl
@@ -99,10 +99,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         let* success, error_src = expect_result_type e.typ in
         let* impl = expect_residual_impl_result impl in
         let from_typ = TArrow ([ error_src ], error_dest) in
-        let from =
-          UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-            [] e.span from_typ
-        in
+        let from = UA.call ~impl Core__convert__From__from [] e.span from_typ in
         let call =
           UA.call Core__result__Impl__map_err [ e; from ] e.span
             (make_result_type success error_dest)
@@ -112,13 +109,11 @@ module%inlined_contents Make (FA : Features.T) = struct
       let mk_pconstruct ~is_struct ~is_record ~span ~typ
           (constructor : Concrete_ident_generated.t)
           (fields : (Concrete_ident_generated.t * pat) list) =
-        let constructor =
-          Global_ident.of_name (Constructor { is_struct }) constructor
-        in
+        let constructor = Global_ident.of_name ~value:true constructor in
         let fields =
           List.map
             ~f:(fun (field, pat) ->
-              let field = Global_ident.of_name Field field in
+              let field = Global_ident.of_name ~value:true field in
               { field; pat })
             fields
         in
@@ -180,14 +175,7 @@ module%inlined_contents Make (FA : Features.T) = struct
               arms =
                 [
                   { arm = { arm_pat = pat_break; body }; _ };
-                  {
-                    arm =
-                      {
-                        arm_pat = pat_continue;
-                        body = { e = LocalVar continue_var; _ };
-                      };
-                    _;
-                  };
+                  { arm = { arm_pat = pat_continue; body = continue_expr }; _ };
                 ];
             }
           when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
@@ -200,6 +188,13 @@ module%inlined_contents Make (FA : Features.T) = struct
             in
             let* f_break, residual_var' = extract_pat_app_bd pat_break in
             let* f_continue, continue_var' = extract_pat_app_bd pat_continue in
+            let continue_expr =
+              Option.value
+                (UA.Expect.borrow continue_expr)
+                ~default:continue_expr
+            in
+            let continue_expr = UA.unbox_underef_expr continue_expr in
+            let* continue_var = UA.Expect.local_var continue_expr in
             let*? _ = [%equal: local_ident] residual_var residual_var' in
             let*? _ = [%equal: local_ident] continue_var continue_var' in
             let*? _ =

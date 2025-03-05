@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'  }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: docker build -f .docker/Dockerfile . -t hax
   setup_sh:
     if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'   }}
@@ -22,10 +22,10 @@ jobs:
           - ubuntu-latest
           - ubuntu-20.04
           - macos-latest
-          - macos-12
+          - macos-13
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - if: runner.os == 'macOS'
       run: brew install opam nodejs rustup-init jq
     - if: runner.os == 'Linux'

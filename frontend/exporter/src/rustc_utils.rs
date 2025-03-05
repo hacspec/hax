@@ -118,11 +118,11 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
     }
 }
 
-pub trait ParamEnv<'tcx> {
+pub trait HasParamEnv<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
+impl<'tcx, S: UnderOwnerState<'tcx>> HasParamEnv<'tcx> for S {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.base().tcx.param_env(self.owner_id())
     }

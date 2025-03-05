@@ -26,28 +26,54 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Reordering.Independent_cycles.fst" = '''
+module Reordering.Independent_cycles
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let rec c (_: Prims.unit) : Prims.unit = a ()
+
+and a (_: Prims.unit) : Prims.unit = c ()
+
+let rec d (_: Prims.unit) : Prims.unit = b ()
+
+and b (_: Prims.unit) : Prims.unit = d ()
+'''
+"Reordering.Mut_rec.fst" = '''
+module Reordering.Mut_rec
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let rec g (_: Prims.unit) : Prims.unit = f ()
+
+and f (_: Prims.unit) : Prims.unit = g ()
+
+let ff_2_ (_: Prims.unit) : Prims.unit = f ()
+'''
 "Reordering.fst" = '''
 module Reordering
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
+let no_dependency_1_ (_: Prims.unit) : Prims.unit = ()
+
+let no_dependency_2_ (_: Prims.unit) : Prims.unit = ()
+
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
 
-type t_Bar = | Bar : t_Foo -> t_Bar
-
-let t_Foo_cast_to_repr (x: t_Foo) : isize =
-  match x with
-  | Foo_A  -> isz 0
-  | Foo_B  -> isz 1
-
 let f (_: u32) : t_Foo = Foo_A <: t_Foo
 
-let g (_: Prims.unit) : t_Bar = Bar (f 32ul) <: t_Bar
+type t_Bar = | Bar : t_Foo -> t_Bar
 
-let no_dependency_1_ (_: Prims.unit) : Prims.unit = ()
+let g (_: Prims.unit) : t_Bar = Bar (f (mk_u32 32)) <: t_Bar
 
-let no_dependency_2_ (_: Prims.unit) : Prims.unit = ()
+let t_Foo_cast_to_repr (x: t_Foo) : isize =
+  match x <: t_Foo with
+  | Foo_A  -> mk_isize 0
+  | Foo_B  -> mk_isize 1
 '''

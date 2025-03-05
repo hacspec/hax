@@ -1,7 +1,7 @@
 open! Prelude
 open! Ast
 
-module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
+module Make (F : Features.T) (View : Concrete_ident.RENDER_API) = struct
   open Deprecated_generic_printer_base
   open Deprecated_generic_printer_base.Make (F)
 
@@ -29,21 +29,21 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
               AlreadyPar
           | _ -> NeedsPar
 
-        method namespace_of_concrete_ident
-            : concrete_ident -> string * string list =
-          fun i -> View.to_namespace i
+        method namespace_of_concrete_ident : concrete_ident -> string list =
+          fun i ->
+            let rendered = View.render i in
+            rendered.path
 
         method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
           fun id ->
-            let id = View.to_view id in
+            let id = View.render id in
             let chunks =
-              if under_current_ns then [ id.definition ]
-              else id.crate :: (id.path @ [ id.definition ])
+              if under_current_ns then [ id.name ] else id.path @ [ id.name ]
             in
             separate_map (colon ^^ colon) utf8string chunks
 
         method name_of_concrete_ident : concrete_ident fn =
-          View.to_definition_name >> utf8string
+          fun id -> (View.render id).name |> utf8string
 
         method mutability : 'a. 'a mutability fn = fun _ -> empty
 
@@ -234,10 +234,10 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
         method quote { contents; _ } =
           List.map
             ~f:(function
-              | `Verbatim code -> string code
-              | `Expr e -> print#expr_at Expr_Quote e
-              | `Pat p -> print#pat_at Expr_Quote p
-              | `Typ p -> print#ty_at Expr_Quote p)
+              | Verbatim code -> string code
+              | Expr e -> print#expr_at Expr_Quote e
+              | Pattern p -> print#pat_at Expr_Quote p
+              | Typ p -> print#ty_at Expr_Quote p)
             contents
           |> concat
 

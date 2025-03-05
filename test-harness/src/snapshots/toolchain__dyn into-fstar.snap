@@ -55,8 +55,8 @@ let print
             Alloc.Alloc.t_Global)
     : Prims.unit =
   let _:Prims.unit =
-    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (sz 2)
-          (sz 1)
+    Std.Io.Stdio.e_print (Core.Fmt.impl_2__new_v1 (mk_usize 2)
+          (mk_usize 1)
           (let list = [""; "\n"] in
             FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
             Rust_primitives.Hax.array_of_list 2 list)

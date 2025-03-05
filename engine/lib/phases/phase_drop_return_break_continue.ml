@@ -102,6 +102,9 @@ module%inlined_contents Make (F : Features.T) = struct
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~e ~acc
                 `Break
           | ( Continue { acc = Some (acc, _); _ },
+              Some ({ return_type = None; break_type = None }, _) ) ->
+              acc
+          | ( Continue { acc = Some (acc, _); _ },
               Some ({ return_type; break_type }, _) ) ->
               UA.M.expr_Constructor_CF ~return_type ~span ~break_type ~acc
                 `Continue
@@ -152,7 +155,7 @@ module%inlined_contents Make (F : Features.T) = struct
             match body.typ with
             | TApp { ident; args = [ GType _; GType continue_type ] }
               when Ast.Global_ident.equal ident
-                     (Ast.Global_ident.of_name Type
+                     (Ast.Global_ident.of_name ~value:false
                         Core__ops__control_flow__ControlFlow) ->
                 continue_type
             | _ -> body.typ

@@ -24,7 +24,7 @@ let unimplemented ~issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id = Some (MyInt64.of_int_exn issue_id);
+        issue_id = Some (MyInt64.of_int issue_id);
         details = String.(if details = "" then None else Some details);
       }
   in
@@ -37,10 +37,11 @@ end
 
 module U = Ast_utils.Make (Features.Rust)
 module W = Features.On
+module Ast_builder = Ast_builder.Make (Features.Rust)
 open Ast
 
-let def_id kind (def_id : Thir.def_id) : global_ident =
-  `Concrete (Concrete_ident.of_def_id kind def_id)
+let def_id ~value (def_id : Thir.def_id) : global_ident =
+  `Concrete (Concrete_ident.of_def_id ~value def_id)
 
 let local_ident kind (ident : Thir.local_ident) : local_ident =
   {
@@ -220,8 +221,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
   | _ -> None
 
 (** Name for the cast function from an ADT to its discriminant *)
-let cast_name_for_type typ_name =
-  Concrete_ident.Create.map_last ~f:(fun s -> s ^ "_cast_to_repr") typ_name
+let cast_name_for_type = Concrete_ident.with_suffix `Cast
 
 module type EXPR = sig
   val c_expr : Thir.decorated_for__expr_kind -> expr
@@ -343,15 +343,15 @@ end) : EXPR = struct
         in
         match f (lhs.typ, rhs.typ) with
         | Some with_ ->
-            Concrete_ident.of_name Value name
-            |> Concrete_ident.map_path_strings ~f:(function
+            Concrete_ident.of_name ~value:true name
+            |> (Concrete_ident.map_path_strings [@alert "-unsafe"]) ~f:(function
                  | "u128" -> with_
                  | s -> s)
         | None ->
             assertion_failure (Span.to_thir span)
               ("Binary operation: expected " ^ expected ^ " type, got "
               ^ [%show: ty] lhs.typ)
-      else Concrete_ident.of_name Value @@ overloaded_names_of_binop op
+      else Concrete_ident.of_name ~value:true @@ overloaded_names_of_binop op
     in
     U.call' (`Concrete name) [ lhs; rhs ] span typ
 
@@ -372,7 +372,9 @@ end) : EXPR = struct
   and c_expr_drop_body (e : Thir.decorated_for__expr_kind) : expr =
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
-    let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
+    let v =
+      Global_ident.of_name ~value:true Rust_primitives__hax__dropped_body
+    in
     { span; typ; e = GlobalVar v }
 
   and c_block ~expr ~span ~stmts ~ty ~(safety_mode : Types.block_safety) : expr
@@ -472,7 +474,7 @@ end) : EXPR = struct
           MacroInvokation
             {
               args = argument;
-              macro = def_id Macro macro_ident;
+              macro = def_id ~value:false macro_ident;
               witness = W.macro;
             }
       | If
@@ -519,7 +521,7 @@ end) : EXPR = struct
             let f = c_expr fun' in
             match (trait, fun'.contents) with
             | Some _, GlobalName { id; _ } ->
-                { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
+                { f with e = GlobalVar (def_id ~value:true id) }
             | _ -> f
           in
           let args = if List.is_empty args then [ unit_expr span ] else args in
@@ -610,7 +612,8 @@ end) : EXPR = struct
           let lhs = c_expr lhs in
           let projector =
             GlobalVar
-              (`Projector (`Concrete (Concrete_ident.of_def_id Field field)))
+              (`Projector
+                (`Concrete (Concrete_ident.of_def_id ~value:true field)))
           in
           let span = Span.of_thir e.span in
           App
@@ -638,15 +641,7 @@ end) : EXPR = struct
               trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
-      | GlobalName { id; constructor } ->
-          let kind =
-            match constructor with
-            | Some { kind = Struct _; _ } ->
-                Concrete_ident.Kind.Constructor { is_struct = true }
-            | Some _ -> Concrete_ident.Kind.Constructor { is_struct = false }
-            | None -> Concrete_ident.Kind.Value
-          in
-          GlobalVar (def_id kind id)
+      | GlobalName { id; constructor = _ } -> GlobalVar (def_id ~value:true id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
@@ -676,7 +671,12 @@ end) : EXPR = struct
           LocalVar
             {
               name = id.name;
-              id = Local_ident.mk_id Cnst (MyInt64.to_int_exn id.index);
+              id =
+                Local_ident.mk_id Cnst
+                  (MyInt64.to_int id.index
+                  |> Option.value_or_thunk ~default:(fun _ ->
+                         assertion_failure [ e.span ]
+                           "Expected const id to fit in an OCaml native int"));
             }
       | Repeat { value; count } ->
           let value = c_expr value in
@@ -697,7 +697,7 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ e.span ]
                   "Construct union types: not supported"
           in
-          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let constructor = def_id ~value:true info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -706,7 +706,7 @@ end) : EXPR = struct
           let fields =
             List.map
               ~f:(fun f ->
-                let field = def_id Field f.field in
+                let field = def_id ~value:true f.field in
                 let value = c_expr f.value in
                 (field, value))
               fields
@@ -725,17 +725,32 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; _ } -> (
-          let kind : Concrete_ident.Kind.t =
-            match impl with Some _ -> AssociatedItem Value | _ -> Value
+      | NamedConst { def_id = id; impl; args; _ } ->
+          let f = GlobalVar (def_id ~value:true id) in
+          let args = List.map ~f:(c_generic_value e.span) args in
+          let const_args =
+            List.filter_map args ~f:(function GConst e -> Some e | _ -> None)
           in
-          let f = GlobalVar (def_id kind id) in
-          match impl with
-          | Some impl ->
-              let trait = Some (c_impl_expr e.span impl, []) in
-              let f = { e = f; span; typ = TArrow ([], typ) } in
-              App { f; trait; args = []; generic_args = []; bounds_impls = [] }
-          | _ -> f)
+          if List.is_empty const_args && Option.is_none impl then f
+          else
+            let f =
+              {
+                e = f;
+                span;
+                typ = TArrow (List.map const_args ~f:(fun e -> e.typ), typ);
+              }
+            in
+            let trait =
+              Option.map impl ~f:(c_impl_expr e.span &&& Fn.const args)
+            in
+            App
+              {
+                f;
+                trait;
+                args = const_args;
+                generic_args = [];
+                bounds_impls = [];
+              }
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
@@ -753,9 +768,9 @@ end) : EXPR = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ Global_ident.of_name Value Core__ops__index__Index__index)
+            @@ Global_ident.of_name ~value:true Core__ops__index__Index__index)
             [ lhs; index ]
-      | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
+      | StaticRef { def_id = id; _ } -> GlobalVar (def_id ~value:true id)
       | PlaceTypeAscription _ ->
           assertion_failure [ e.span ]
             "Got a unexpected node `PlaceTypeAscription`. Please report, we \
@@ -832,14 +847,14 @@ end) : EXPR = struct
           Array { fields = List.map ~f:constant_expr_to_expr fields }
       | Tuple { fields } ->
           Tuple { fields = List.map ~f:constant_expr_to_expr fields }
-      | GlobalName { id; variant_information; _ } ->
-          GlobalName { id; constructor = variant_information }
+      | GlobalName { id; _ } -> GlobalName { id; constructor = None }
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ ->
+      | Cast _ | RawBorrow _ | TraitConst _ | FnPtr _ | Memory _ ->
           assertion_failure [ span ]
-            "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
+            "constant_lit_to_lit: TraitConst | FnPtr | RawBorrow | Cast | \
+             Memory"
       | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) _span :
         Thir.lit_kind * bool =
@@ -855,8 +870,8 @@ end) : EXPR = struct
           match String.chop_prefix v ~prefix:"-" with
           | Some v -> (Float (v, Suffixed ty), true)
           | None -> (Float (v, Suffixed ty), false))
-      | Str (v, style) -> (Str (v, style), false)
-      | ByteStr (v, style) -> (ByteStr (v, style), false)
+      | Str v -> (Str (v, Cooked), false)
+      | ByteStr v -> (ByteStr (v, Cooked), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
         Thir.field_expr =
       { field; value = constant_expr_to_expr value }
@@ -891,7 +906,7 @@ end) : EXPR = struct
                 unimplemented ~issue_id:998 [ pat.span ]
                   "Pattern match on union types: not supported"
           in
-          let constructor = def_id (Constructor { is_struct }) info.variant in
+          let constructor = def_id ~value:true info.variant in
           let fields = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
@@ -928,7 +943,10 @@ end) : EXPR = struct
     { p = v; span; typ }
 
   and c_field_pat _info (field_pat : Thir.field_pat) : field_pat =
-    { field = def_id Field field_pat.field; pat = c_pat field_pat.pattern }
+    {
+      field = def_id ~value:true field_pat.field;
+      pat = c_pat field_pat.pattern;
+    }
 
   and extended_literal_of_expr (e : expr) : extended_literal =
     let not_a_literal () =
@@ -999,15 +1017,15 @@ end) : EXPR = struct
     | Float k ->
         TFloat
           (match k with F16 -> F16 | F32 -> F32 | F64 -> F64 | F128 -> F128)
-    | Arrow value ->
-        let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
+    | Arrow signature | Closure (_, { untupled_sig = signature; _ }) ->
+        let ({ inputs; output; _ } : Thir.ty_fn_sig) = signature.value in
         let inputs =
           if List.is_empty inputs then [ U.unit_typ ]
           else List.map ~f:(c_ty span) inputs
         in
         TArrow (inputs, c_ty span output)
     | Adt { def_id = id; generic_args; _ } ->
-        let ident = def_id Type id in
+        let ident = def_id ~value:false id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
     | Foreign _ -> unimplemented ~issue_id:928 [ span ] "Foreign"
@@ -1028,17 +1046,26 @@ end) : EXPR = struct
         TApp { ident = `TupleType (List.length types); args = types }
     | Alias { kind = Projection { assoc_item = _; impl_expr }; def_id; _ } ->
         let impl = c_impl_expr span impl_expr in
-        let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
+        let item = Concrete_ident.of_def_id ~value:false def_id in
         TAssociatedType { impl; item }
     | Alias { kind = Opaque _; def_id; _ } ->
-        TOpaque (Concrete_ident.of_def_id Type def_id)
+        TOpaque (Concrete_ident.of_def_id ~value:false def_id)
     | Alias { kind = Inherent; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
     | Alias { kind = Weak; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Weak"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
-        TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
+        TParam
+          {
+            name;
+            id =
+              Local_ident.mk_id Typ
+                (MyInt64.to_int index
+                |> Option.value_or_thunk ~default:(fun _ ->
+                       assertion_failure [ span ]
+                         "Expected param id to fit in an OCaml native int"));
+          }
     | Error ->
         assertion_failure [ span ]
           "got type `Error`: Rust compilation probably failed."
@@ -1050,7 +1077,7 @@ end) : EXPR = struct
               | Trait { args; def_id } ->
                   let goal : dyn_trait_goal =
                     {
-                      trait = Concrete_ident.of_def_id Trait def_id;
+                      trait = Concrete_ident.of_def_id ~value:false def_id;
                       non_self_args = List.map ~f:(c_generic_value span) args;
                     }
                   in
@@ -1081,14 +1108,15 @@ end) : EXPR = struct
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
     let goal = c_trait_ref span ie.trait.value in
     let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
-    match ie.args with
-    | [] -> impl
-    | args ->
-        let args = List.map ~f:(c_impl_expr span) args in
+    match ie.impl with
+    | Concrete { impl_exprs = []; _ } -> impl
+    | Concrete { impl_exprs; _ } ->
+        let args = List.map ~f:(c_impl_expr span) impl_exprs in
         { kind = ImplApp { impl; args }; goal }
+    | _ -> impl
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
-    let trait = Concrete_ident.of_def_id Trait tr.def_id in
+    let trait = Concrete_ident.of_def_id ~value:false tr.def_id in
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
 
@@ -1103,10 +1131,7 @@ end) : EXPR = struct
           let ident =
             { goal = c_trait_ref span trait_ref; name = predicate_id }
           in
-          let kind : Concrete_ident.Kind.t =
-            match item.kind with Const | Fn -> Value | Type -> Type
-          in
-          let item = Concrete_ident.of_def_id kind item.def_id in
+          let item = Concrete_ident.of_def_id ~value:false item.def_id in
           let trait_ref = c_trait_ref span trait_ref in
           Projection
             { impl = { kind = item_kind; goal = trait_ref }; ident; item }
@@ -1119,8 +1144,8 @@ end) : EXPR = struct
           Parent { impl = { kind = item_kind; goal = trait_ref }; ident }
     in
     match ie with
-    | Concrete { id; generics } ->
-        let trait = Concrete_ident.of_def_id Impl id in
+    | Concrete { id; generics; _ } ->
+        let trait = Concrete_ident.of_def_id ~value:false id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
     | LocalBound { predicate_id; path; _ } ->
@@ -1128,7 +1153,7 @@ end) : EXPR = struct
         List.fold ~init ~f:browse_path path
     | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
-    | Builtin { trait } -> Builtin (c_trait_ref span trait.value)
+    | Builtin { trait; _ } -> Builtin (c_trait_ref span trait.value)
     | Error str -> failwith @@ "impl_expr_atom: Error " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
@@ -1172,7 +1197,11 @@ end) : EXPR = struct
     {
       typ_span = Option.map ~f:Span.of_thir param.ty_span;
       typ = c_ty (Option.value ~default:span param.ty_span) param.ty;
-      pat = c_pat (Option.value_exn param.pat);
+      pat =
+        c_pat
+          (Option.value_or_thunk param.pat ~default:(fun _ ->
+               assertion_failure [ span ]
+                 "c_param: expected param.pat to be non-empty"));
       attrs = c_attrs param.attributes;
     }
 
@@ -1212,12 +1241,12 @@ end) : EXPR = struct
     match kind with
     | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
-        let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
+        let trait = Concrete_ident.of_def_id ~value:false trait_ref.def_id in
         Some (GCType { goal = { trait; args }; name = id })
     | Projection { impl_expr; assoc_item; ty } ->
         let impl = c_impl_expr span impl_expr in
         let assoc_item =
-          Concrete_ident.of_def_id (AssociatedItem Type) assoc_item.def_id
+          Concrete_ident.of_def_id ~value:false assoc_item.def_id
         in
         let typ = c_ty span ty in
         Some (GCProjection { impl; assoc_item; typ })
@@ -1313,7 +1342,7 @@ let c_trait_item (item : Thir.trait_item) : trait_item =
   let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
-  let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
+  let ti_ident = Concrete_ident.of_def_id ~value:false item.owner_id in
   {
     ti_span = Span.of_thir item.span;
     ti_generics = { params; constraints };
@@ -1330,17 +1359,9 @@ let is_automatically_derived (attrs : Thir.attribute list) =
       | _ -> false)
     attrs
 
-let is_hax_skip (attrs : Thir.attribute list) =
-  List.exists
-    ~f:(function
-      | { kind = Normal { item = { path; _ }; _ }; _ } ->
-          String.equal path "_hax::skip"
-      | _ -> false)
-    attrs
-
 let should_skip (attrs : Thir.item_attributes) =
   let attrs = attrs.attributes @ attrs.parent_attributes in
-  is_hax_skip attrs || is_automatically_derived attrs
+  is_automatically_derived attrs
 
 (** Converts a generic parameter to a generic value. This assumes the
 parameter is bound. *)
@@ -1352,444 +1373,457 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
-type discriminant_expr =
-  | Lit of Int64.t
-  | Exp of expr  (** Helper type for [cast_of_enum]. *)
-
 (** Generate a cast function from an inductive to its represantant type. *)
 let cast_of_enum typ_name generics typ thir_span
     (variants : (variant * Types.variant_for__decorated_for__expr_kind) list) :
     item =
-  let self =
-    TApp
-      {
-        ident = `Concrete typ_name;
-        args = List.map ~f:generic_param_to_value generics.params;
-      }
-  in
   let span = Span.of_thir thir_span in
-  let init = Lit (Int64.of_int 0) in
-  let to_expr (n : Int64.t) : expr =
-    match typ with
-    | TInt kind ->
-        let value = Int64.to_string n in
-        {
-          e = Literal (Int { value; negative = Int64.is_negative n; kind });
-          span;
-          typ;
-        }
-    | typ ->
-        assertion_failure [ thir_span ]
-        @@ "disc_literal_to_expr: got repr type "
-        ^ [%show: ty] typ
+  let (module M) = Ast_builder.make span in
+  let self =
+    let args = List.map ~f:generic_param_to_value generics.params in
+    TApp { ident = `Concrete typ_name; args }
+  in
+  let expr_of_int (n : Int64.t) : expr =
+    let kind =
+      match typ with
+      | TInt kind -> kind
+      | typ ->
+          assertion_failure [ thir_span ]
+            ("cast_of_enum: expected in type, got " ^ [%show: ty] typ)
+    in
+    let value = Int64.to_string n in
+    M.expr_Literal ~typ (Int { value; negative = Int64.is_negative n; kind })
   in
   let arms =
-    List.folding_map variants ~init ~f:(fun acc (variant, thir_variant) ->
+    (* Each variant comes with a [rustc_middle::ty::VariantDiscr]. Some variant have [Explicit] discr (i.e. an expression)
+       while other have [Relative] discr (the distance to the previous last explicit discr). *)
+    List.folding_map variants ~init:None
+      ~f:(fun previous_explicit_discriminator (variant, { discr; _ }) ->
         let pat =
-          PConstruct
-            {
-              is_record = variant.is_record;
-              is_struct = false;
-              fields =
-                List.map
-                  ~f:(fun (cid, typ, _) ->
-                    { field = `Concrete cid; pat = { p = PWild; typ; span } })
-                  variant.arguments;
-              constructor = `Concrete variant.name;
-            }
+          let mk_wild_field (cid, typ, _) =
+            { field = `Concrete cid; pat = M.pat_PWild ~typ }
+          in
+          M.pat_PConstruct ~constructor:(`Concrete variant.name)
+            ~is_struct:false ~typ ~is_record:variant.is_record
+            ~fields:(List.map ~f:mk_wild_field variant.arguments)
         in
-        let pat = { p = pat; typ = self; span } in
-        match (acc, thir_variant.discr) with
-        | Lit n, Relative m ->
-            let acc = Lit Int64.(n + m) in
-            (acc, (pat, acc))
+        match (previous_explicit_discriminator, discr) with
+        | None, Relative m -> (None, (pat, expr_of_int m))
         | _, Explicit did ->
-            let acc = Exp { e = GlobalVar (def_id Value did); span; typ } in
-            (acc, (pat, acc))
-        | Exp e, Relative n ->
-            let acc =
-              Exp (U.call Core__ops__arith__Add__add [ e; to_expr n ] span typ)
-            in
-            (Exp e, (pat, acc)))
-    |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) ->
-           { arm = { arm_pat; body; guard = None }; span })
+            let e = M.expr_GlobalVar ~typ (def_id ~value:true did) in
+            (Some e, (pat, e))
+        | Some e, Relative n ->
+            let n = expr_of_int n in
+            let e = U.call Core__ops__arith__Add__add [ e; n ] span typ in
+            (previous_explicit_discriminator, (pat, e)))
+    |> List.map ~f:(fun (p, e) -> M.arm p e)
   in
-  let scrutinee_var =
-    Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
-  in
-  let scrutinee = { e = LocalVar scrutinee_var; typ = self; span } in
+  let scrutinee_var = Local_ident.{ name = "x"; id = mk_id Expr (-1) } in
+  let scrutinee = M.expr_LocalVar ~typ:self scrutinee_var in
   let ident = cast_name_for_type typ_name in
-  let v =
-    Fn
-      {
-        name = ident;
-        generics;
-        body = { e = Match { scrutinee; arms }; typ; span };
-        params =
-          [
-            {
-              pat = U.make_var_pat scrutinee_var self span;
-              typ = self;
-              typ_span = None;
-              attrs = [];
-            };
-          ];
-        safety = Safe;
-      }
+  let params =
+    let pat = U.make_var_pat scrutinee_var self span in
+    [ { pat; typ = self; typ_span = None; attrs = [] } ]
   in
-  { v; span; ident; attrs = [] }
+  let body = M.expr_Match ~typ ~scrutinee ~arms in
+  M.item_Fn ~ident ~attrs:[] ~name:ident ~generics ~params ~safety:Safe ~body
 
-let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
+let rec c_item ~ident ~type_only (item : Thir.item) : item list =
   try
     Span.with_owner_hint item.owner_id (fun _ ->
-        c_item_unwrapped ~ident ~drop_body item)
+        c_item_unwrapped ~ident ~type_only item)
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
     let span = Span.of_thir item.span in
     [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
+and c_item_unwrapped ~ident ~type_only (item : Thir.item) : item list =
   let open (val make ~krate:item.owner_id.contents.value.krate : EXPR) in
-  if should_skip item.attributes then []
-  else
-    let span = Span.of_thir item.span in
-    let attrs = c_item_attrs item.attributes in
-    let mk_one v = { span; v; ident; attrs } in
-    let mk v = [ mk_one v ] in
-    let drop_body =
-      drop_body
-      && Attr_payloads.payloads attrs
-         |> List.exists
-              ~f:(fst >> [%matches? (NeverDropBody : Types.ha_payload)])
-         |> not
-    in
-    let c_body = if drop_body then c_expr_drop_body else c_expr in
-    (* TODO: things might be unnamed (e.g. constants) *)
-    match (item.kind : Thir.item_kind) with
-    | Const (_, generics, body) ->
-        mk
-        @@ Fn
-             {
-               name =
-                 Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
-               generics = c_generics generics;
-               body = c_expr body;
-               params = [];
-               safety = Safe;
-             }
-    | TyAlias (ty, generics) ->
-        mk
-        @@ TyAlias
-             {
-               name =
-                 Concrete_ident.of_def_id Type (Option.value_exn item.def_id);
-               generics = c_generics generics;
-               ty = c_ty item.span ty;
-             }
-    | Fn (generics, { body; params; header = { safety; _ }; _ }) ->
-        mk
-        @@ Fn
-             {
-               name =
-                 Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
-               generics = c_generics generics;
-               body = c_body body;
-               params = c_fn_params item.span params;
-               safety = csafety safety;
-             }
-    | Enum (variants, generics, repr) ->
-        let def_id = Option.value_exn item.def_id in
-        let generics = c_generics generics in
-        let is_struct = false in
-        let kind = Concrete_ident.Kind.Constructor { is_struct } in
-        let discs =
-          (* Each variant might introduce a anonymous constant defining its discriminant integer  *)
-          List.filter_map ~f:(fun v -> v.disr_expr) variants
-          |> List.map ~f:(fun Types.{ def_id; body; _ } ->
-                 let name = Concrete_ident.of_def_id kind def_id in
-                 let generics = { params = []; constraints = [] } in
-                 let body = c_expr body in
-                 {
-                   v = Fn { name; generics; body; params = []; safety = Safe };
-                   span;
-                   ident = name;
-                   attrs = [];
-                 })
-        in
-        let is_primitive =
-          List.for_all
-            ~f:(fun { data; _ } ->
-              match data with
-              | Unit _ | Tuple ([], _, _) | Struct { fields = []; _ } -> true
-              | _ -> false)
-            variants
-        in
-        let variants =
-          List.map
-            ~f:(fun
-                ({ data; def_id = variant_id; attributes; _ } as original) ->
-              let is_record =
-                [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
-                  data
-              in
-              let name = Concrete_ident.of_def_id kind variant_id in
-              let arguments =
-                match data with
-                | Tuple (fields, _, _) | Struct { fields; _ } ->
-                    List.map
-                      ~f:(fun { def_id = id; ty; span; attributes; _ } ->
-                        ( Concrete_ident.of_def_id Field id,
-                          c_ty span ty,
-                          c_attrs attributes ))
-                      fields
-                | Unit _ -> []
-              in
-              let attrs = c_attrs attributes in
-              ({ name; arguments; is_record; attrs }, original))
-            variants
-        in
-        let name = Concrete_ident.of_def_id Type def_id in
-        let cast_fun =
-          cast_of_enum name generics (c_ty item.span repr.typ) item.span
-            variants
-        in
-        let variants, _ = List.unzip variants in
-        let result =
-          mk_one (Type { name; generics; variants; is_struct }) :: discs
-        in
-        if is_primitive then cast_fun :: result else result
-    | Struct (v, generics) ->
-        let generics = c_generics generics in
-        let def_id = Option.value_exn item.def_id in
-        let is_struct = true in
-        (* repeating the attributes of the item in the variant: TODO is that ok? *)
-        let v =
-          let kind = Concrete_ident.Kind.Constructor { is_struct } in
-          let name = Concrete_ident.of_def_id kind def_id in
-          let name = Concrete_ident.Create.move_under name ~new_parent:name in
-          let mk fields is_record =
-            let arguments =
-              List.map
-                ~f:(fun Thir.{ def_id = id; ty; span; attributes; _ } ->
-                  ( Concrete_ident.of_def_id Field id,
-                    c_ty span ty,
-                    c_attrs attributes ))
-                fields
-            in
-            { name; arguments; is_record; attrs }
-          in
-          match v with
-          | Tuple (fields, _, _) -> mk fields false
-          | Struct { fields = _ :: _ as fields; _ } -> mk fields true
-          | _ -> { name; arguments = []; is_record = false; attrs }
-        in
-        let variants = [ v ] in
-        let name = Concrete_ident.of_def_id Type def_id in
-        mk @@ Type { name; generics; variants; is_struct }
-    | MacroInvokation { macro_ident; argument; span } ->
-        mk
-        @@ IMacroInvokation
-             {
-               macro = Concrete_ident.of_def_id Macro macro_ident;
-               argument;
-               span = Span.of_thir span;
-               witness = W.macro;
-             }
-    | Trait (No, safety, generics, _bounds, items) ->
-        let items =
-          List.filter
-            ~f:(fun { attributes; _ } -> not (should_skip attributes))
-            items
-        in
-        let name =
-          Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
-        in
-        let { params; constraints } = c_generics generics in
-        let self =
-          let id = Local_ident.mk_id Typ 0 (* todo *) in
-          let ident = Local_ident.{ name = "Self"; id } in
-          { ident; span; attrs = []; kind = GPType }
-        in
-        let params = self :: params in
-        let generics = { params; constraints } in
-        let items = List.map ~f:c_trait_item items in
-        let safety = csafety safety in
-        mk @@ Trait { name; generics; items; safety }
-    | Trait (Yes, _, _, _, _) ->
-        unimplemented ~issue_id:930 [ item.span ] "Auto trait"
-    | Impl { of_trait = None; generics; items; _ } ->
-        let items =
-          List.filter
-            ~f:(fun { attributes; _ } -> not (should_skip attributes))
-            items
-        in
+  let span = Span.of_thir item.span in
+  let attrs = c_item_attrs item.attributes in
+  (* this is true if the user explicilty requested to erase using the `opaque` macro *)
+  let erased_by_user attrs =
+    Attr_payloads.payloads attrs
+    |> List.exists ~f:(fst >> [%matches? (Erased : Types.ha_payload)])
+  in
+  let item_erased_by_user = erased_by_user attrs in
+  let type_only =
+    type_only
+    && Attr_payloads.payloads attrs
+       |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
+       |> not
+  in
+  (* This is true if the item should be erased because we are in type-only mode
+     (Only certain kinds of items are erased in this case). *)
+  let erased_by_hax =
+    should_skip item.attributes
+    || type_only
+       &&
+       match item.kind with
+       | Fn _ | Static _ -> true
+       | Impl { of_trait = Some _; items; _ }
+         when List.exists items ~f:(fun item ->
+                  match item.kind with Type _ -> true | _ -> false)
+              |> not ->
+           true
+       | _ -> false
+  in
+  (* If the item is erased by hax we need to add the Erased attribute.
+     It is already present if the item is erased by user. *)
+  let attrs_with_erased erased_by_hax erased_by_user attrs =
+    if erased_by_hax && not erased_by_user then
+      Attr_payloads.to_attr Erased span :: attrs
+    else attrs
+  in
+  let attrs = attrs_with_erased erased_by_hax item_erased_by_user attrs in
+  let erased = item_erased_by_user || erased_by_hax in
+
+  let mk_one v = { span; v; ident; attrs } in
+  let mk v = [ mk_one v ] in
+  let drop_body =
+    erased
+    && Attr_payloads.payloads attrs
+       |> List.exists ~f:(fst >> [%matches? (NeverErased : Types.ha_payload)])
+       |> not
+  in
+  let c_body = if drop_body then c_expr_drop_body else c_expr in
+  let assert_item_def_id () =
+    Option.value_or_thunk item.def_id ~default:(fun _ ->
+        assertion_failure [ item.span ] "Expected this item to have a `def_id`")
+  in
+  (* TODO: things might be unnamed (e.g. constants) *)
+  match (item.kind : Thir.item_kind) with
+  | Const (_, generics, body) ->
+      mk
+      @@ Fn
+           {
+             name = Concrete_ident.of_def_id ~value:true (assert_item_def_id ());
+             generics = c_generics generics;
+             body = c_body body;
+             params = [];
+             safety = Safe;
+           }
+  | TyAlias (ty, generics) ->
+      mk
+      @@ TyAlias
+           {
+             name =
+               Concrete_ident.of_def_id ~value:false (assert_item_def_id ());
+             generics = c_generics generics;
+             ty = c_ty item.span ty;
+           }
+  | Fn (generics, { body; params; header = { safety; _ }; _ }) ->
+      mk
+      @@ Fn
+           {
+             name = Concrete_ident.of_def_id ~value:true (assert_item_def_id ());
+             generics = c_generics generics;
+             body = c_body body;
+             params = c_fn_params item.span params;
+             safety = csafety safety;
+           }
+  | (Enum (_, generics, _) | Struct (_, generics)) when erased ->
+      let generics = c_generics generics in
+      let is_struct = match item.kind with Struct _ -> true | _ -> false in
+      let def_id = assert_item_def_id () in
+      let name = Concrete_ident.of_def_id ~value:false def_id in
+      mk @@ Type { name; generics; variants = []; is_struct }
+  | Enum (variants, generics, repr) ->
+      let def_id = assert_item_def_id () in
+      let generics = c_generics generics in
+      let is_struct = false in
+      let discs =
+        (* Each variant might introduce a anonymous constant defining its discriminant integer  *)
+        List.filter_map ~f:(fun v -> v.disr_expr) variants
+        |> List.map ~f:(fun Types.{ def_id; body; _ } ->
+               let name = Concrete_ident.of_def_id ~value:true def_id in
+               let generics = { params = []; constraints = [] } in
+               let body = c_expr body in
+               {
+                 v = Fn { name; generics; body; params = []; safety = Safe };
+                 span;
+                 ident = name;
+                 attrs = [];
+               })
+      in
+      let is_primitive =
+        List.for_all
+          ~f:(fun { data; _ } ->
+            match data with
+            | Unit _ | Tuple ([], _, _) | Struct { fields = []; _ } -> true
+            | _ -> false)
+          variants
+      in
+      let variants =
         List.map
-          ~f:(fun (item : Thir.impl_item) ->
-            let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
-
-            let v =
-              match (item.kind : Thir.impl_item_kind) with
-              | Fn { body; params; header = { safety; _ }; _ } ->
-                  let params =
-                    if List.is_empty params then [ U.make_unit_param span ]
-                    else List.map ~f:(c_param item.span) params
-                  in
-                  Fn
-                    {
-                      name = item_def_id;
-                      generics =
-                        U.concat_generics (c_generics generics)
-                          (c_generics item.generics);
-                      body = c_body body;
-                      params;
-                      safety = csafety safety;
-                    }
-              | Const (_ty, e) ->
-                  Fn
-                    {
-                      name = item_def_id;
-                      generics = c_generics generics;
-                      (* does that make sense? can we have `const<T>`? *)
-                      body = c_body e;
-                      params = [];
-                      safety = Safe;
-                    }
-              | Type _ty ->
-                  assertion_failure [ item.span ]
-                    "Inherent implementations are not supposed to have \
-                     associated types \
-                     (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
+          ~f:(fun ({ data; def_id = variant_id; attributes; _ } as original) ->
+            let is_record =
+              [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
+                data
             in
-            let ident = Concrete_ident.of_def_id Value item.owner_id in
-            let attrs = c_item_attrs item.attributes in
-            { span = Span.of_thir item.span; v; ident; attrs })
-          items
-    | Impl
-        {
-          of_trait = Some of_trait;
-          generics;
-          self_ty;
-          items;
-          safety;
-          parent_bounds;
-          _;
-        } ->
-        let items =
-          List.filter
-            ~f:(fun { attributes; _ } -> not (should_skip attributes))
-            items
-        in
-        let has_type =
-          List.exists items ~f:(fun item ->
-              match item.kind with Type _ -> true | _ -> false)
-        in
-        let c_e = if has_type then c_expr else c_body in
-        mk
-        @@ Impl
-             {
-               generics = c_generics generics;
-               self_ty = c_ty item.span self_ty;
-               of_trait =
-                 ( Concrete_ident.of_def_id Trait of_trait.def_id,
-                   List.map ~f:(c_generic_value item.span) of_trait.generic_args
-                 );
-               items =
-                 List.map
-                   ~f:(fun (item : Thir.impl_item) ->
-                     (* TODO: introduce a Kind.TraitImplItem or
-                        something. Otherwise we have to assume every
-                        backend will see traits and impls as
-                        records. See https://github.com/hacspec/hax/issues/271. *)
-                     let ii_ident =
-                       Concrete_ident.of_def_id Field item.owner_id
-                     in
-                     {
-                       ii_span = Span.of_thir item.span;
-                       ii_generics = c_generics item.generics;
-                       ii_v =
-                         (match (item.kind : Thir.impl_item_kind) with
-                         | Fn { body; params; _ } ->
-                             let params =
-                               if List.is_empty params then
-                                 [ U.make_unit_param span ]
-                               else List.map ~f:(c_param item.span) params
-                             in
-                             IIFn { body = c_e body; params }
-                         | Const (_ty, e) -> IIFn { body = c_e e; params = [] }
-                         | Type { ty; parent_bounds } ->
-                             IIType
-                               {
-                                 typ = c_ty item.span ty;
-                                 parent_bounds =
-                                   List.filter_map
-                                     ~f:(fun (clause, impl_expr, span) ->
-                                       let* bound = c_clause span clause in
-                                       match bound with
-                                       | GCType trait_goal ->
-                                           Some
-                                             ( c_impl_expr span impl_expr,
-                                               trait_goal )
-                                       | _ -> None)
-                                     parent_bounds;
-                               });
-                       ii_ident;
-                       ii_attrs = c_item_attrs item.attributes;
-                     })
-                   items;
-               parent_bounds =
-                 List.filter_map
-                   ~f:(fun (clause, impl_expr, span) ->
-                     let* bound = c_clause span clause in
-                     match bound with
-                     | GCType trait_goal ->
-                         Some (c_impl_expr span impl_expr, trait_goal)
-                     | _ -> None)
-                   parent_bounds;
-               safety = csafety safety;
-             }
-    | Use ({ span = _; res; segments; rename }, _) ->
-        let v =
-          Use
-            {
-              path = List.map ~f:(fun x -> fst x.ident) segments;
-              is_external =
-                List.exists ~f:(function Err -> true | _ -> false) res;
-              (* TODO: this should represent local/external? *)
-              rename;
-            }
-        in
-        (* ident is supposed to always be an actual item, thus here we need to cheat a bit *)
-        (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
-        let def_id = item.owner_id in
-        let def_id : Types.def_id =
-          let value =
-            {
-              def_id.contents.value with
-              path =
-                def_id.contents.value.path
-                @ [
-                    Types.
-                      {
-                        data = ValueNs "DUMMY";
-                        disambiguator = MyInt64.of_int 0;
-                      };
-                  ];
-            }
+            let name = Concrete_ident.of_def_id ~value:true variant_id in
+            let arguments =
+              match data with
+              | Tuple (fields, _, _) | Struct { fields; _ } ->
+                  List.map
+                    ~f:(fun { def_id = id; ty; span; attributes; _ } ->
+                      ( Concrete_ident.of_def_id ~value:true id,
+                        c_ty span ty,
+                        c_attrs attributes ))
+                    fields
+              | Unit _ -> []
+            in
+            let attrs = c_attrs attributes in
+            ({ name; arguments; is_record; attrs }, original))
+          variants
+      in
+      let name = Concrete_ident.of_def_id ~value:true def_id in
+      let cast_fun =
+        cast_of_enum name generics (c_ty item.span repr.typ) item.span variants
+      in
+      let variants, _ = List.unzip variants in
+      let result =
+        mk_one (Type { name; generics; variants; is_struct }) :: discs
+      in
+      if is_primitive then cast_fun :: result else result
+  | Struct (v, generics) ->
+      let generics = c_generics generics in
+      let def_id = assert_item_def_id () in
+      let is_struct = true in
+      (* repeating the attributes of the item in the variant: TODO is that ok? *)
+      let v =
+        let name = Concrete_ident.of_def_id ~value:true def_id in
+        (* let name = Concrete_ident.Create.move_under name ~new_parent:name in *)
+        let mk fields is_record =
+          let arguments =
+            List.map
+              ~f:(fun Thir.{ def_id = id; ty; span; attributes; _ } ->
+                ( Concrete_ident.of_def_id ~value:true id,
+                  c_ty span ty,
+                  c_attrs attributes ))
+              fields
           in
-          { contents = { def_id.contents with value } }
+          { name; arguments; is_record; attrs }
         in
-        [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
-    | Union _ ->
-        unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
-    | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-    | TraitAlias _ ->
-        mk NotImplementedYet
+        match v with
+        | Tuple (fields, _, _) -> mk fields false
+        | Struct { fields = _ :: _ as fields; _ } -> mk fields true
+        | _ -> { name; arguments = []; is_record = false; attrs }
+      in
+      let variants = [ v ] in
+      let name = Concrete_ident.of_def_id ~value:false def_id in
+      mk @@ Type { name; generics; variants; is_struct }
+  | MacroInvokation { macro_ident; argument; span } ->
+      mk
+      @@ IMacroInvokation
+           {
+             macro = Concrete_ident.of_def_id ~value:false macro_ident;
+             argument;
+             span = Span.of_thir span;
+             witness = W.macro;
+           }
+  | Trait (No, safety, generics, _bounds, items) ->
+      let items =
+        List.filter
+          ~f:(fun { attributes; _ } -> not (should_skip attributes))
+          items
+      in
+      let name =
+        Concrete_ident.of_def_id ~value:false (assert_item_def_id ())
+      in
+      let { params; constraints } = c_generics generics in
+      let self =
+        let id = Local_ident.mk_id Typ 0 (* todo *) in
+        let ident = Local_ident.{ name = "Self"; id } in
+        { ident; span; attrs = []; kind = GPType }
+      in
+      let params = self :: params in
+      let generics = { params; constraints } in
+      let items = List.map ~f:c_trait_item items in
+      let safety = csafety safety in
+      mk @@ Trait { name; generics; items; safety }
+  | Trait (Yes, _, _, _, _) ->
+      unimplemented ~issue_id:930 [ item.span ] "Auto trait"
+  | Impl { of_trait = None; generics; items; _ } ->
+      let items =
+        List.filter
+          ~f:(fun { attributes; _ } -> not (should_skip attributes))
+          items
+      in
+      List.map
+        ~f:(fun (item : Thir.impl_item) ->
+          let item_def_id =
+            Concrete_ident.of_def_id ~value:false item.owner_id
+          in
+          let attrs = c_item_attrs item.attributes in
+          let sub_item_erased_by_user = erased_by_user attrs in
+          let erased_by_type_only =
+            type_only && match item.kind with Fn _ -> true | _ -> false
+          in
+          let sub_item_erased =
+            sub_item_erased_by_user || erased_by_type_only
+          in
+          let attrs =
+            attrs_with_erased erased_by_type_only sub_item_erased_by_user attrs
+          in
+          let c_body = if sub_item_erased then c_expr_drop_body else c_body in
 
-let import_item ~drop_body (item : Thir.item) :
+          let v =
+            match (item.kind : Thir.impl_item_kind) with
+            | Fn { body; params; header = { safety; _ }; _ } ->
+                let params =
+                  if List.is_empty params then [ U.make_unit_param span ]
+                  else List.map ~f:(c_param item.span) params
+                in
+                Fn
+                  {
+                    name = item_def_id;
+                    generics =
+                      U.concat_generics (c_generics generics)
+                        (c_generics item.generics);
+                    body = c_body body;
+                    params;
+                    safety = csafety safety;
+                  }
+            | Const (_ty, e) ->
+                Fn
+                  {
+                    name = item_def_id;
+                    generics = c_generics generics;
+                    (* does that make sense? can we have `const<T>`? *)
+                    body = c_body e;
+                    params = [];
+                    safety = Safe;
+                  }
+            | Type _ty ->
+                assertion_failure [ item.span ]
+                  "Inherent implementations are not supposed to have \
+                   associated types \
+                   (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
+          in
+          let ident = Concrete_ident.of_def_id ~value:false item.owner_id in
+          { span = Span.of_thir item.span; v; ident; attrs })
+        items
+  | Impl
+      {
+        of_trait = Some of_trait;
+        generics;
+        self_ty;
+        items;
+        safety;
+        parent_bounds;
+        _;
+      } ->
+      let items =
+        List.filter
+          ~f:(fun { attributes; _ } -> not (should_skip attributes))
+          items
+      in
+      let items =
+        if erased then []
+        else
+          List.map
+            ~f:(fun (item : Thir.impl_item) ->
+              (* TODO: introduce a Kind.TraitImplItem or
+                 something. Otherwise we have to assume every
+                 backend will see traits and impls as
+                 records. See https://github.com/hacspec/hax/issues/271. *)
+              let ii_ident =
+                Concrete_ident.of_def_id ~value:false item.owner_id
+              in
+              {
+                ii_span = Span.of_thir item.span;
+                ii_generics = c_generics item.generics;
+                ii_v =
+                  (match (item.kind : Thir.impl_item_kind) with
+                  | Fn { body; params; _ } ->
+                      let params =
+                        if List.is_empty params then [ U.make_unit_param span ]
+                        else List.map ~f:(c_param item.span) params
+                      in
+                      IIFn { body = c_expr body; params }
+                  | Const (_ty, e) -> IIFn { body = c_expr e; params = [] }
+                  | Type { ty; parent_bounds } ->
+                      IIType
+                        {
+                          typ = c_ty item.span ty;
+                          parent_bounds =
+                            List.filter_map
+                              ~f:(fun (clause, impl_expr, span) ->
+                                let* bound = c_clause span clause in
+                                match bound with
+                                | GCType trait_goal ->
+                                    Some (c_impl_expr span impl_expr, trait_goal)
+                                | _ -> None)
+                              parent_bounds;
+                        });
+                ii_ident;
+                ii_attrs = c_item_attrs item.attributes;
+              })
+            items
+      in
+      mk
+      @@ Impl
+           {
+             generics = c_generics generics;
+             self_ty = c_ty item.span self_ty;
+             of_trait =
+               ( Concrete_ident.of_def_id ~value:false of_trait.def_id,
+                 List.map ~f:(c_generic_value item.span) of_trait.generic_args
+               );
+             items;
+             parent_bounds =
+               List.filter_map
+                 ~f:(fun (clause, impl_expr, span) ->
+                   let* bound = c_clause span clause in
+                   match bound with
+                   | GCType trait_goal ->
+                       Some (c_impl_expr span impl_expr, trait_goal)
+                   | _ -> None)
+                 parent_bounds;
+             safety = csafety safety;
+           }
+  | Use ({ span = _; res; segments; rename }, _) ->
+      let v =
+        Use
+          {
+            path = List.map ~f:(fun x -> fst x.ident) segments;
+            is_external =
+              List.exists ~f:(function Err -> true | _ -> false) res;
+            (* TODO: this should represent local/external? *)
+            rename;
+          }
+      in
+      (* ident is supposed to always be an actual item, thus here we need to cheat a bit *)
+      (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
+      let def_id = item.owner_id in
+      (* let def_id : Types.def_id =
+           let value =
+             {
+               def_id.contents.value with
+               path =
+                 def_id.contents.value.path
+                 @ [
+                     Types.
+                       { data = ValueNs "DUMMY"; disambiguator = MyInt64.of_int 0 };
+                   ];
+             }
+           in
+           { contents = { def_id.contents with value } }
+         in *)
+      [
+        { span; v; ident = Concrete_ident.of_def_id ~value:false def_id; attrs };
+      ]
+  | Union _ ->
+      unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
+  | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
+  | TraitAlias _ ->
+      mk NotImplementedYet
+
+let import_item ~type_only (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
-  let ident = Concrete_ident.of_def_id Value item.owner_id in
+  let ident = Concrete_ident.of_def_id ~value:false item.owner_id in
   let r, reports =
     let f =
       U.Mappers.rename_generic_constraints#visit_item
@@ -1797,6 +1831,6 @@ let import_item ~drop_body (item : Thir.item) :
       >> U.Reducers.disambiguate_local_idents
     in
     Diagnostics.Core.capture (fun _ ->
-        c_item item ~ident ~drop_body |> List.map ~f)
+        c_item item ~ident ~type_only |> List.map ~f)
   in
   (ident, (r, reports))

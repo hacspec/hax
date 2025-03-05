@@ -3,18 +3,10 @@
 //! or patterns; instead the control flow is entirely described by gotos and switches on integer
 //! values.
 use crate::prelude::*;
-use crate::sinto_as_usize;
+#[cfg(feature = "rustc")]
+use rustc_middle::{mir, ty};
 #[cfg(feature = "rustc")]
 use tracing::trace;
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::MirPhase, state: S as s)]
-pub enum MirPhase {
-    Built,
-    Analysis(AnalysisPhase),
-    Runtime(RuntimePhase),
-}
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
@@ -29,48 +21,10 @@ pub struct SourceInfo {
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
 pub struct LocalDecl {
     pub mutability: Mutability,
-    pub local_info: ClearCrossCrate<LocalInfo>,
     pub ty: Ty,
-    pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
     #[value(None)]
     pub name: Option<String>, // This information is contextual, thus the SInto instance initializes it to None, and then we fill it while `SInto`ing MirBody
-}
-
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum ClearCrossCrate<T> {
-    Clear,
-    Set(T),
-}
-
-#[cfg(feature = "rustc")]
-impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
-    for rustc_middle::mir::ClearCrossCrate<T>
-{
-    fn sinto(&self, s: &S) -> ClearCrossCrate<TT> {
-        match self {
-            rustc_middle::mir::ClearCrossCrate::Clear => ClearCrossCrate::Clear,
-            rustc_middle::mir::ClearCrossCrate::Set(x) => ClearCrossCrate::Set(x.sinto(s)),
-        }
-    }
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::RuntimePhase, state: S as _s)]
-pub enum RuntimePhase {
-    Initial,
-    PostCleanup,
-    Optimized,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::AnalysisPhase, state: S as _s)]
-pub enum AnalysisPhase {
-    Initial,
-    PostCleanup,
 }
 
 pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
@@ -78,12 +32,12 @@ pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
 #[cfg(feature = "rustc")]
 fn name_of_local(
     local: rustc_middle::mir::Local,
-    var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
+    var_debug_info: &Vec<mir::VarDebugInfo>,
 ) -> Option<String> {
     var_debug_info
         .iter()
         .find(|info| {
-            if let rustc_middle::mir::VarDebugInfoContents::Place(place) = info.value {
+            if let mir::VarDebugInfoContents::Place(place) = info.value {
                 place.projection.is_empty() && place.local == local
             } else {
                 false
@@ -206,25 +160,31 @@ pub mod mir_kinds {
 pub use mir_kinds::IsMirKind;
 
 #[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::ConstOperand<'tcx>, state: S as s)]
-pub struct Constant {
+#[derive(Clone, Debug, JsonSchema)]
+pub struct ConstOperand {
     pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub const_: TypedConstantKind,
+    pub ty: Ty,
+    pub const_: ConstantExpr,
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstOperand>
+    for rustc_middle::mir::ConstOperand<'tcx>
+{
+    fn sinto(&self, s: &S) -> ConstOperand {
+        ConstOperand {
+            span: self.span.sinto(s),
+            ty: self.const_.ty().sinto(s),
+            const_: self.const_.sinto(s),
+        }
+    }
 }
 
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Body<'tcx>, state: S as s)]
 pub struct MirBody<KIND> {
-    #[map(x.clone().as_mut().sinto(s))]
-    pub basic_blocks: BasicBlocks,
-    pub phase: MirPhase,
-    pub pass_count: usize,
-    pub source: MirSource,
-    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    pub coroutine: Option<CoroutineInfo>,
+    pub span: Span,
     #[map({
         let mut local_decls: rustc_index::IndexVec<rustc_middle::mir::Local, LocalDecl> = x.iter().map(|local_decl| {
             local_decl.sinto(s)
@@ -236,13 +196,9 @@ pub struct MirBody<KIND> {
         local_decls.into()
     })]
     pub local_decls: IndexVec<Local, LocalDecl>,
-    pub user_type_annotations: CanonicalUserTypeAnnotations,
-    pub arg_count: usize,
-    pub spread_arg: Option<Local>,
-    pub var_debug_info: Vec<VarDebugInfo>,
-    pub span: Span,
-    pub is_polymorphic: bool,
-    pub injection_phase: Option<MirPhase>,
+    #[map(x.clone().as_mut().sinto(s))]
+    pub basic_blocks: BasicBlocks,
+    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
     #[value(std::marker::PhantomData)]
     pub _kind: std::marker::PhantomData<KIND>,
@@ -254,24 +210,7 @@ pub struct MirBody<KIND> {
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
-    pub inlined: Option<(Instance, Span)>,
     pub inlined_parent_scope: Option<SourceScope>,
-    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
-pub struct Instance {
-    pub def: InstanceKind,
-    pub args: Vec<GenericArg>,
-}
-
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
-pub struct SourceScopeLocalData {
-    pub lint_root: HirId,
 }
 
 #[derive_group(Serializers)]
@@ -280,7 +219,7 @@ pub struct SourceScopeLocalData {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(Constant),
+    Constant(ConstOperand),
 }
 
 #[cfg(feature = "rustc")]
@@ -288,7 +227,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.const_.typ,
+            Operand::Constant(c) => &c.ty,
         }
     }
 }
@@ -396,9 +335,11 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 // Solve the trait constraints of the impl block.
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
-                let container_trait_refs =
+                // Prepend the container trait refs.
+                let mut combined_trait_refs =
                     solve_item_required_traits(s, container_def_id, container_generics);
-                trait_refs.extend(container_trait_refs);
+                combined_trait_refs.extend(std::mem::take(&mut trait_refs));
+                trait_refs = combined_trait_refs;
                 (generics.sinto(s), None)
             }
         }
@@ -410,75 +351,91 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     (def_id.sinto(s), generics, trait_refs, source)
 }
 
-/// Get a `FunOperand` from an `Operand` used in a function call.
-/// Return the [DefId] of the function referenced by an operand, with the
-/// parameters substitution.
-/// The [Operand] comes from a [TerminatorKind::Call].
-#[cfg(feature = "rustc")]
-fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
-    s: &S,
-    op: &rustc_middle::mir::Operand<'tcx>,
-) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
-    // Match on the func operand: it should be a constant as we don't support
-    // closures for now.
-    use rustc_middle::mir::Operand;
-    use rustc_middle::ty::TyKind;
-    let ty = op.ty(&s.mir().local_decls, s.base().tcx);
-    trace!("type: {:?}", ty);
-    // If the type of the value is one of the singleton types that corresponds to each function,
-    // that's enough information.
-    if let TyKind::FnDef(def_id, generics) = ty.kind() {
-        let (fun_id, generics, trait_refs, trait_info) =
-            get_function_from_def_id_and_generics(s, *def_id, *generics);
-        return (FunOperand::Id(fun_id), generics, trait_refs, trait_info);
-    }
-    match op {
-        Operand::Constant(_) => {
-            unimplemented!("{:?}", op);
-        }
-        Operand::Move(place) => {
-            // Function pointer. A fn pointer cannot have bound variables or trait references, so
-            // we don't need to extract generics, trait refs, etc.
-            let place = place.sinto(s);
-            (FunOperand::Move(place), Vec::new(), Vec::new(), None)
-        }
-        Operand::Copy(_place) => {
-            unimplemented!("{:?}", op);
-        }
-    }
-}
-
 #[cfg(feature = "rustc")]
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
 ) -> TerminatorKind {
-    if let rustc_middle::mir::TerminatorKind::Call {
+    let tcx = s.base().tcx;
+    let mir::TerminatorKind::Call {
         func,
         args,
         destination,
         target,
         unwind,
-        call_source,
         fn_span,
+        ..
     } = terminator
-    {
-        let (fun, generics, trait_refs, trait_info) = get_function_from_operand(s, func);
+    else {
+        unreachable!()
+    };
 
-        TerminatorKind::Call {
-            fun,
+    let ty = func.ty(&s.mir().local_decls, tcx);
+    let hax_ty: crate::Ty = ty.sinto(s);
+    let sig = match hax_ty.kind() {
+        TyKind::Arrow(sig) => sig,
+        TyKind::Closure(_, args) => &args.untupled_sig,
+        _ => supposely_unreachable_fatal!(
+            s,
+            "TerminatorKind_Call_expected_fn_type";
+            { ty }
+        ),
+    };
+    let fun_op = if let ty::TyKind::FnDef(def_id, generics) = ty.kind() {
+        // The type of the value is one of the singleton types that corresponds to each function,
+        // which is enough information.
+        let (def_id, generics, trait_refs, trait_info) =
+            get_function_from_def_id_and_generics(s, *def_id, *generics);
+        FunOperand::Static {
+            def_id,
             generics,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            call_source: call_source.sinto(s),
-            fn_span: fn_span.sinto(s),
             trait_refs,
             trait_info,
         }
     } else {
-        unreachable!()
+        use mir::Operand;
+        match func {
+            Operand::Constant(_) => {
+                unimplemented!("{:?}", func);
+            }
+            Operand::Move(place) => {
+                // Function pointer or closure.
+                let place = place.sinto(s);
+                FunOperand::DynamicMove(place)
+            }
+            Operand::Copy(_place) => {
+                unimplemented!("{:?}", func);
+            }
+        }
+    };
+
+    let late_bound_generics = sig
+        .bound_vars
+        .iter()
+        .map(|var| match var {
+            BoundVariableKind::Region(r) => r,
+            BoundVariableKind::Ty(..) | BoundVariableKind::Const => {
+                supposely_unreachable_fatal!(
+                    s,
+                    "non_lifetime_late_bound";
+                    { var }
+                )
+            }
+        })
+        .map(|_| {
+            GenericArg::Lifetime(Region {
+                kind: RegionKind::ReErased,
+            })
+        })
+        .collect();
+    TerminatorKind::Call {
+        fun: fun_op,
+        late_bound_generics,
+        args: args.sinto(s),
+        destination: destination.sinto(s),
+        target: target.sinto(s),
+        unwind: unwind.sinto(s),
+        fn_span: fn_span.sinto(s),
     }
 }
 
@@ -562,13 +519,25 @@ pub enum SwitchTargets {
     SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
+/// A value of type `fn<...> A -> B` that can be called.
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum FunOperand {
-    /// Call to a top-level function designated by its id
-    Id(DefId),
-    /// Use of a closure
-    Move(Place),
+    /// Call to a statically-known function.
+    Static {
+        def_id: DefId,
+        /// If `Some`, this is a method call on the given trait reference. Otherwise this is a call
+        /// to a known function.
+        trait_info: Option<ImplExpr>,
+        /// If this is a trait method call, this only includes the method generics; the trait
+        /// generics are included in the `ImplExpr` in `trait_info`.
+        generics: Vec<GenericArg>,
+        /// Trait predicates required by the function generics. Like for `generics`, this only
+        /// includes the predicates required by the method, if applicable.
+        trait_refs: Vec<ImplExpr>,
+    },
+    /// Use of a closure or a function pointer value. Counts as a move from the given place.
+    DynamicMove(Place),
 }
 
 #[derive_group(Serializers)]
@@ -607,18 +576,16 @@ pub enum TerminatorKind {
     )]
     Call {
         fun: FunOperand,
-        /// We truncate the substitution so as to only include the arguments
-        /// relevant to the method (and not the trait) if it is a trait method
-        /// call. See [ParamsInfo] for the full details.
-        generics: Vec<GenericArg>,
+        /// A `FunOperand` is a value of type `fn<...> A -> B`. The generics in `<...>` are called
+        /// "late-bound" and are instantiated anew at each call site. This list provides the
+        /// generics used at this call-site. They are all lifetimes and at the time of writing are
+        /// all erased lifetimes.
+        late_bound_generics: Vec<GenericArg>,
         args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
-        call_source: CallSource,
         fn_span: Span,
-        trait_refs: Vec<ImplExpr>,
-        trait_info: Option<ImplExpr>,
     },
     TailCall {
         func: Operand,
@@ -934,26 +901,12 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, generics) => {
-        let def_id : DefId = rust_id.sinto(s);
-        // The generics is meant to be converted to a function signature. Note
-        // that Rustc does its job: the PolyFnSig binds the captured local
-        // type, regions, etc. variables, which means we can treat the local
-        // closure like any top-level function.
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(def_id, generics) => {
         let closure = generics.as_closure();
-        let sig = closure.sig().sinto(s);
-
-        // Solve the predicates from the parent (i.e., the item which defines the closure).
-        let tcx = s.base().tcx;
-        let parent_generics = closure.parent_args();
-        let parent_generics_ref = tcx.mk_args(parent_generics);
-        // TODO: does this handle nested closures?
-        let parent = tcx.generics_of(rust_id).parent.unwrap();
-        let trait_refs = solve_item_required_traits(s, parent, parent_generics_ref);
-
-        AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
+        let args = ClosureArgs::sfrom(s, *def_id, closure);
+        AggregateKind::Closure(def_id.sinto(s), args)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
+    Closure(DefId, ClosureArgs),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
     RawPtr(Ty, Mutability),
@@ -1028,9 +981,6 @@ pub struct BasicBlockData {
     pub is_cleanup: bool,
 }
 
-pub type CanonicalUserTypeAnnotations =
-    IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation>;
-
 make_idx_wrapper!(rustc_middle::mir, BasicBlock);
 make_idx_wrapper!(rustc_middle::mir, SourceScope);
 make_idx_wrapper!(rustc_middle::mir, Local);
@@ -1091,33 +1041,6 @@ pub enum BinOp {
     Offset,
 }
 
-/// Reflects [`rustc_middle::mir::ScopeData`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::ScopeData, state: S as gstate)]
-pub enum ScopeData {
-    Node,
-    CallSite,
-    Arguments,
-    Destruction,
-    IfThen,
-    IfThenRescope,
-    Remainder(FirstStatementIndex),
-}
-
-sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
-
-/// Reflects [`rustc_middle::mir::BinOp`]
-#[derive_group(Serializers)]
-#[derive(AdtInto, Clone, Debug, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::middle::region::Scope, state: S as gstate)]
-pub struct Scope {
-    pub id: ItemLocalId,
-    pub data: ScopeData,
-}
-
-sinto_as_usize!(rustc_hir::hir_id, ItemLocalId);
-
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
@@ -1147,13 +1070,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 }
             }
         }
-    }
-}
-
-#[cfg(feature = "rustc")]
-impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
-    fn sinto(&self, _: &S) -> u64 {
-        self.0.get()
     }
 }
 
@@ -1196,19 +1112,11 @@ pub enum FakeBorrowKind {
 
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
 sinto_todo!(rustc_ast::ast, InlineAsmOptions);
-sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
-sinto_todo!(rustc_middle::mir, UserTypeProjections);
-sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, InlineAsmOperand<'tcx>);
 sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
-sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
-sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
-sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
-sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
-sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);

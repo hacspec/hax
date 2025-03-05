@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block site_meta %}
+<script type="module" src="https://esm.sh/run"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+    import * as codemirror from "https://esm.sh/codemirror";
+    import { rust } from "https://esm.sh/@codemirror/lang-rust";
+    globalThis.codemirror = { rust, ...codemirror }
+</script>
+{{ super() }}
+{% endblock %}
