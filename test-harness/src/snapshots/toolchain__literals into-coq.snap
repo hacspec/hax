@@ -39,6 +39,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
+From Core Require Import Core.
 
 
 
@@ -76,13 +77,12 @@ Definition panic_with_msg (_ : unit) : unit :=
 
 Record t_Foo : Type :=
   {
-    f_field : t_u8;
+    Foo_f_field : t_u8;
   }.
-Arguments t_Foo:clear implicits.
-Arguments t_Foo.
 Arguments Build_t_Foo.
+Arguments Foo_f_field.
 #[export] Instance settable_t_Foo : Settable _ :=
-  settable! (@Build_t_Foo) <f_field>.
+  settable! (Build_t_Foo) <Foo_f_field>.
 
 
 
@@ -91,7 +91,7 @@ Arguments Build_t_Foo.
 
 
 Definition v_CONSTANT : t_Foo :=
-  Build_t_Foo (3).
+  Build_t_Foo ((3 : t_u8)).
 
 Definition numeric (_ : unit) : unit :=
   let _ : t_usize := 123 in
@@ -101,8 +101,8 @@ Definition numeric (_ : unit) : unit :=
   let _ : t_u128 := 22222222222222222222 in
   tt.
 
-Definition patterns (_ : unit) : unit :=
-  let _ := match 1 with
+Definition patterns '(_ : unit) : unit :=
+  let _ := match (1 : t_u8) with
   | 2 =>
     tt
   | _ =>
@@ -114,8 +114,8 @@ Definition patterns (_ : unit) : unit :=
   | _ =>
     tt
   end in
-  let _ := match Build_t_Foo (4) with
-  | Foo (3) =>
+  let _ := match Build_t_Foo ((4 : t_u8)) with
+  | Build_t_Foo (3) =>
     tt
   | _ =>
     tt
@@ -133,7 +133,7 @@ Definition casts (x8 : t_u8) (x16 : t_u16) (x32 : t_u32) (x64 : t_u64) (xs : t_u
   let _ : t_i8 := f_add (f_add (f_add (f_add (cast (x8)) (cast (x16))) (cast (x32))) (cast (x64))) (cast (xs)) in
   tt.
 
-Definition empty_array (_ : unit) : unit :=
+Definition empty_array '(_ : unit) : unit :=
   let _ : t_Slice t_u8 := unsize ([]) in
   tt.
 
@@ -145,3 +145,9 @@ Definition fn_pointer_cast (_ : unit) : unit :=
 Definition null : ascii :=
   "\000"%char.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Literals.v'''

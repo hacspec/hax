@@ -38,6 +38,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
+From Core Require Import Core.
 
 
 
@@ -50,9 +51,15 @@ Definition asserts (_ : unit) : unit :=
   | (left_val,right_val) =>
     assert (f_eq (left_val) (right_val))
   end in
-  let _ := match (1,2) with
+  let _ := match ((1 : t_i32),(2 : t_i32)) with
   | (left_val,right_val) =>
     assert (f_not (f_eq (left_val) (right_val)))
   end in
   tt.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Assert.v'''

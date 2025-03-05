@@ -39,6 +39,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
+From Core Require Import Core.
 
 
 
@@ -49,8 +50,10 @@ Inductive t_EnumWithRepr : Type :=
 | EnumWithRepr_ExplicitDiscr2
 | EnumWithRepr_ImplicitDiscrEmptyTuple
 | EnumWithRepr_ImplicitDiscrEmptyStruct.
-Arguments t_EnumWithRepr:clear implicits.
-Arguments t_EnumWithRepr.
+Arguments EnumWithRepr_ExplicitDiscr1.
+Arguments EnumWithRepr_ExplicitDiscr2.
+Arguments EnumWithRepr_ImplicitDiscrEmptyTuple.
+Arguments EnumWithRepr_ImplicitDiscrEmptyStruct.
 
 Definition anon_const_EnumWithRepr_ExplicitDiscr1__anon_const_0 : t_u16 :=
   1.
@@ -121,3 +124,9 @@ Definition get_repr (x : t_EnumWithRepr) : t_u16 :=
 Definition get_casted_repr (x : t_EnumWithRepr) : t_u64 :=
   cast (t_EnumWithRepr_cast_to_repr (x)).
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Enum_repr.v'''

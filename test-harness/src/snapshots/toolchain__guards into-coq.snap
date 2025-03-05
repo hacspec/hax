@@ -38,6 +38,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
+From Core Require Import Core.
 
 
 
@@ -46,7 +47,7 @@ Import RecordSetNotations.
 Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | Option_None =>
-    0
+    (0 : t_i32)
   | _ =>
     match match x with
     | Option_Some (v) =>
@@ -66,7 +67,7 @@ Definition if_let_guard (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 
       | Option_Some (Result_Err (y)) =>
         y
       | _ =>
-        1
+        (1 : t_i32)
       end
     end
   end.
@@ -102,13 +103,13 @@ Definition equivalent (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
 Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i32 :=
   match x with
   | Option_None =>
-    0
+    (0 : t_i32)
   | _ =>
     match match x with
     | Option_Some (Result_Ok (v)) =>
       match Option_Some (f_add (v) (1)) with
       | Option_Some (1) =>
-        Option_Some (0)
+        Option_Some ((0 : t_i32))
       | _ =>
         Option_None
       end
@@ -136,7 +137,7 @@ Definition multiple_guards (x : t_Option ((t_Result ((t_i32)) ((t_i32))))) : t_i
         | Option_Some (Result_Err (y)) =>
           y
         | _ =>
-          1
+          (1 : t_i32)
         end
       end
     end
@@ -160,3 +161,9 @@ Definition if_guard (x : t_Option ((t_i32))) : t_i32 :=
     0
   end.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Guards.v'''

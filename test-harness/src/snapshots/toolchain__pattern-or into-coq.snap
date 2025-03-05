@@ -39,6 +39,7 @@ Require Import String.
 Require Import Coq.Floats.Floats.
 From RecordUpdate Require Import RecordSet.
 Import RecordSetNotations.
+From Core Require Import Core.
 
 
 
@@ -47,15 +48,15 @@ Import RecordSetNotations.
 Inductive t_E : Type :=
 | E_A
 | E_B.
-Arguments t_E:clear implicits.
-Arguments t_E.
+Arguments E_A.
+Arguments E_B.
 
 Definition t_E_cast_to_repr (x : t_E) : t_isize :=
   match x with
   | E_A =>
-    0
+    (0 : t_isize)
   | E_B =>
-    1
+    (1 : t_isize)
   end.
 
 Definition bar (x : t_E) : unit :=
@@ -81,7 +82,7 @@ Definition deep (x : (t_i32*t_Option ((t_i32)))) : t_i32 :=
   | (1
   | 2,Option_Some (3
   | 4)) =>
-    0
+    (0 : t_i32)
   | (x,_) =>
     x
   end.
@@ -109,3 +110,9 @@ Definition deep_capture (x : t_Result (((t_i32*t_i32))) (((t_i32*t_i32)))) : t_i
     x
   end.
 '''
+_CoqProject = '''
+-R ./ TODO
+-arg -w
+-arg all
+
+Pattern_or.v'''
