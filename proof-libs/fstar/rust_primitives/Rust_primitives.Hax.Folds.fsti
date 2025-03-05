@@ -49,6 +49,15 @@ val fold_enumerated_slice
                  -> acc':acc_t    {v (fst i) < v (length s) /\ inv acc' (fst i)}))
   : result: acc_t {inv result (length s)}
 
+val fold_enumerated_slice_return
+  (#t: Type0) (#acc_t: Type0) (#ret: Type0)
+  (s: t_Slice t)
+  (inv: acc_t -> (i:usize{v i <= v (length s)}) -> Type0)
+  (init: acc_t {inv init (sz 0)})
+  (f: (acc:acc_t -> i:(usize & t) {v (fst i) < v (length s) /\ snd i == Seq.index s (v (fst i)) (*/\ inv acc  (fst i)*)}
+                 -> Core.Ops.Control_flow.t_ControlFlow (Core.Ops.Control_flow.t_ControlFlow ret (unit & acc_t)) (acc':acc_t)    (*{v (fst i) < v (length s) /\ inv acc' (fst i)}*)))
+  : result: Core.Ops.Control_flow.t_ControlFlow ret acc_t(* {inv result (length s)} *)
+
 (**** `(start..end_).step_by(step)` *)
 unfold let fold_range_step_by_wf_index (#u: inttype)
   (start: int_t u) (end_: int_t u)
@@ -149,3 +158,9 @@ let rec fold_range_return
        | Core.Ops.Control_flow.ControlFlow_Continue acc ->
          fold_range_return (start +! mk_int 1) end_ inv acc f
   else Core.Ops.Control_flow.ControlFlow_Continue acc
+
+val fold_return #it #acc #ret #item (i: it) (init: acc) 
+  (f: acc -> item -> 
+    Core.Ops.Control_flow.t_ControlFlow  
+    (Core.Ops.Control_flow.t_ControlFlow ret (unit & acc)) acc): 
+  Core.Ops.Control_flow.t_ControlFlow ret acc

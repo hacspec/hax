@@ -38,3 +38,8 @@ let impl__unwrap_or
   match self with
   | Option_Some inner -> inner
   | Core.Option.Option_None  -> def
+
+let impl__expect #t (self: t_Option t) (msg: string) =
+  match self with 
+  | Option_Some inner -> inner 
+  | Option_None -> (match () with)

@@ -18,6 +18,16 @@ unfold type t_step_by self
   = self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self
 unfold type t_all self item
   = self -> (item -> bool) -> self * bool
+unfold type t_rev self
+  = self -> Core.Iter.Adapters.Rev.t_Rev self
+unfold type t_map self item
+  = #res: Type0 -> self -> (item -> res) -> Core.Iter.Adapters.Map.t_Map self (item -> res)
+unfold type t_flat_map self item
+  = #res: Type0 -> self -> (item -> res) -> Core.Iter.Adapters.Flatten.t_FlatMap self res (item -> res)
+unfold type t_zip self
+  = #other:Type0 -> self -> other -> Core.Iter.Adapters.Zip.t_Zip self other
+unfold type t_take self
+  = self -> usize -> Core.Iter.Adapters.Take.t_Take self
 
 (* Inference behaves strangly with type synonyms... :( *)
 // class iterator (self: Type) = {
@@ -37,8 +47,26 @@ class iterator (self: Type u#0): Type u#1 = {
   f_enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate self;
   f_step_by:   self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self;
   f_all:       self -> (f_Item -> bool) -> self * bool;
+  f_rev:       self -> Core.Iter.Adapters.Rev.t_Rev self;
+  f_map:       #res: Type0 -> self -> (f_Item -> res) -> Core.Iter.Adapters.Map.t_Map self (f_Item -> res);
+  f_flat_map:  #res: Type0 -> self -> (f_Item -> res) -> Core.Iter.Adapters.Flatten.t_FlatMap self res (f_Item -> res);
+  f_zip:       #other:Type0 -> self -> other -> Core.Iter.Adapters.Zip.t_Zip self other;
+  f_take:      self -> usize -> Core.Iter.Adapters.Take.t_Take self
 }
 
 let t_Iterator = iterator
 
 assume val f_collect #i {|iterator i|} #t (x: i): t
+
+
+[@FStar.Tactics.Typeclasses.tcinstance]
+assume val take_iter (t: Type0) : Core.Iter.Traits.Iterator.iterator 
+  (Core.Iter.Adapters.Take.t_Take t)
+
+[@FStar.Tactics.Typeclasses.tcinstance]
+assume val repeat_with_iter (t: Type0) : Core.Iter.Traits.Iterator.iterator 
+  (Core.Iter.Sources.Repeat_with.t_RepeatWith t)
+
+[@FStar.Tactics.Typeclasses.tcinstance]
+assume val flat_map_iter (t: Type0) (u: Type0) (v: Type0) : Core.Iter.Traits.Iterator.iterator 
+  (Core.Iter.Adapters.Flatten.t_FlatMap t u v)

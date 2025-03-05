@@ -19,6 +19,11 @@ let rec fold_range' #a #t
 val iterator_range_enumerate t: t_enumerate (t_Range (Rust_primitives.int_t t))
 val iterator_range_step_by t: t_step_by (t_Range (Rust_primitives.int_t t))
 val iterator_range_all t: t_all (t_Range (Rust_primitives.int_t t)) (Rust_primitives.int_t t)
+val iterator_range_rev t: t_rev (t_Range (Rust_primitives.int_t t))
+val iterator_range_zip t: t_zip (t_Range (Rust_primitives.int_t t))
+val iterator_range_take t: t_take (t_Range (Rust_primitives.int_t t))
+val iterator_range_map t: t_map (t_Range (Rust_primitives.int_t t)) (Rust_primitives.int_t t)
+val iterator_range_flat_map t: t_flat_map (t_Range (Rust_primitives.int_t t)) (Rust_primitives.int_t t)
 
 instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) = 
   { f_Item = Rust_primitives.int_t t;
@@ -32,6 +37,11 @@ instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) =
     f_enumerate = iterator_range_enumerate t;
     f_step_by = iterator_range_step_by t;
     f_all = iterator_range_all t;
+    f_rev = iterator_range_rev t;
+    f_zip = iterator_range_zip t;
+    f_take = iterator_range_take t;
+    f_map = iterator_range_map t;
+    f_flat_map = iterator_range_flat_map t;
   }
 
 open Core.Ops.Index
