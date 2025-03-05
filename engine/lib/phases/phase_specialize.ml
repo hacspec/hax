@@ -117,13 +117,16 @@ module Make (F : Features.T) =
             tapp0 >>& eq_global_ident Hax_lib__int__Int >>& erase
 
           let is_machine_int : (ty, unit) predicate =
-           fun t -> match t with TInt _ -> Some () | _ -> None
+           fun t ->
+            match t with
+            | TInt _ | TRef { typ = TInt _; _ } -> Some ()
+            | _ -> None
 
           let is_prop : (ty, unit) predicate =
             tapp0 >>& eq_global_ident Hax_lib__prop__Prop >>& erase
 
           let is_bool : (ty, unit) predicate = function
-            | TBool -> Some ()
+            | TBool | TRef { typ = TBool; _ } -> Some ()
             | _ -> None
 
           let any _ = Some ()

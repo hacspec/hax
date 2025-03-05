@@ -1868,9 +1868,6 @@ module TransformToInputLanguage =
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
   |> Phases.Reject.Trait_item_default
-  (* Specialize needs to be duplicated because some previous phases 
-  (like DropReferences) can create new opportunities of specialization. *)
-  |> Phases.Specialize 
   |> Phases.Bundle_cycles
   |> Phases.Sort_items
   |> SubtypeToInputLanguage
