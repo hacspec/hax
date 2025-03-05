@@ -443,8 +443,8 @@ struct
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\""
         ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
 
-      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_
-          ~arguments =
+      method item'_Type_struct ~super:_ ~type_name:name ~constructor_name:_
+          ~generics ~tuple_struct:_ ~arguments =
         CoqNotation.record name#p generics#p [] (string "Type")
           (braces
              (nest 2
