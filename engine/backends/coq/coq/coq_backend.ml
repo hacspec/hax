@@ -64,9 +64,8 @@ struct
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
-(* module CoqNamePolicy = Concrete_ident.DefaultNamePolicy *)
 module CoqNamePolicy = struct
-  (* include Concrete_ident.DefaultNamePolicy *)
+  include Concrete_ident.DefaultNamePolicy
 
   (** List of all words that have a special meaning in the target
       language, and that should thus be escaped. *)
@@ -90,18 +89,17 @@ module CoqNamePolicy = struct
   (* TODO: Make complete *)
 
   (** Transformation applied to indexes fields name (i.e. [x.1]) *)
-  let index_field_transform x = x
+  let anonymous_field_transform x = x
 
-  let field_name_transform ~struct_name x = struct_name ^ "_" ^ x
-  let enum_constructor_name_transform ~enum_name x = x
-  let struct_constructor_name_transform x : string = "Build_t_" ^ x
-  let constructor_prefix = ""
+  let named_field_prefix = Some `TypeName
+  let struct_constructor_prefix = Some "Build_t_"
+  let enum_constructor_prefix = None
+  let union_constructor_prefix = None
 end
 
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
 module U = Ast_utils.Make (InputLanguage)
 module RenderId = Concrete_ident.MakeRenderAPI (CoqNamePolicy)
 open AST
@@ -233,9 +231,6 @@ struct
   class printer =
     object (self)
       inherit BasePrinter.base
-
-      val concrete_ident_view : (module Concrete_ident.VIEW_API) =
-        (module U.Concrete_ident_view)
 
       method private primitive_to_string (id : primitive_ident) : document =
         match id with
@@ -593,8 +588,8 @@ struct
       method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
         CoqNotation.notation_name name#p ty#p
 
-      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct ~arguments
-          =
+      method item'_Type_struct ~super:_ ~type_name:_ ~constructor_name ~generics
+          ~tuple_struct ~arguments =
         let arguments_explicity_with_ty =
           List.map ~f:(fun _ -> true) generics#v.params
           @ List.map ~f:(fun _ -> false) generics#v.constraints
@@ -603,7 +598,9 @@ struct
           List.map ~f:(fun _ -> false) generics#v.params
           @ List.map ~f:(fun _ -> false) generics#v.constraints
         in
-        CoqNotation.record name#p
+        let base_name = (RenderId.render constructor_name#v).name ^ "_record" in
+        let name_doc = constructor_name#p ^^ string "_record" in
+        CoqNotation.record name_doc
           (concat_map_with ~pre:space
              (fun x -> parens (self#entrypoint_generic_param x))
              generics#v.params
@@ -620,7 +617,7 @@ struct
                    arguments)
              ^^ break 1))
         ^^ break 1
-        ^^ CoqNotation.arguments (!^"Build_" ^^ name#p)
+        ^^ CoqNotation.arguments (!^"Build_" ^^ name_doc)
              arguments_explicity_without_ty (* arguments_explicity_with_ty *)
         ^^ concat_map_with ~pre:(break 1)
              (fun (ident, typ, attr) ->
@@ -630,12 +627,12 @@ struct
         ^^ (if List.is_empty arguments then empty
             else
               CoqNotation.instance
-                (string "settable" ^^ string "_" ^^ name#p)
+                (string "settable" ^^ string "_" ^^ name_doc)
                 generics#p []
                 (!^"Settable" ^^ space ^^ !^"_")
                 (string "settable!" ^^ space
                 ^^ parens
-                     (!^"Build_" ^^ name#p
+                     (!^"Build_" ^^ name_doc
                      ^^ concat_map_with ~pre:space
                           (fun (x : generic_param) ->
                             match x with
@@ -656,11 +653,8 @@ struct
         if tuple_struct then
           break 1
           ^^ CoqNotation.notation_name
-               (string
-                  (String.drop_prefix
-                     (U.Concrete_ident_view.to_definition_name name#v)
-                     2))
-               (!^"Build_" ^^ name#p)
+               (string (String.drop_prefix base_name 2))
+               (string "Build_" ^^ name_doc)
         else empty
 
       (* map_def_path_item_string (fun x -> x) x#v.name *)
@@ -674,13 +668,10 @@ struct
         concat_map_with ~post:(break 1)
           (fun x ->
             self#item'_Type_struct ~super
-              ~name:
+              ~constructor_name:
                 (self#_do_not_override_lazy_of_concrete_ident
-                   AstPos_variant__arguments
-                   (Concrete_ident.Create.map_last
-                      ~f:(fun x -> x ^ "_record")
-                      x#v.name))
-              ~generics ~tuple_struct:false
+                   AstPos_variant__name x#v.name)
+              ~type_name:name ~generics ~tuple_struct:false
               ~arguments:
                 (List.map
                    ~f:(fun (ident, typ, attrs) ->
@@ -981,7 +972,7 @@ struct
                arguments
           ^^ space ^^ string "->" ^^ space ^^ string "_"
 
-      method quote (quote : quote) : document = empty
+      (* method quote (quote : quote) : document = empty *)
       method module_path_separator = "."
 
       method concrete_ident ~local:_ id : document =
@@ -1022,11 +1013,14 @@ let make (module M : Attrs.WITH_ITEMS) =
 
 let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
   let my_printer = make m in
-  (U.group_items_by_namespace items
-  |> Map.to_alist
-  |> List.filter_map ~f:(fun (_, items) ->
-         let* first_item = List.hd items in
-         Some ((RenderId.render first_item.ident).path, items))
+  let groupped_items =
+    U.group_items_by_namespace items
+    |> Map.to_alist
+    |> List.filter_map ~f:(fun (_, items) ->
+           let* first_item = List.hd items in
+           Some ((RenderId.render first_item.ident).path, items))
+  in
+  (groupped_items
   |> List.map ~f:(fun (ns, items) ->
          let mod_name =
            String.concat ~sep:"_"
@@ -1050,14 +1044,13 @@ let translate m _ ~bundles:_ (items : AST.item list) : Types.file list =
             "-R ./ " ^ "TODO" ^ "\n-arg -w\n-arg all\n\n"
             ^ String.concat ~sep:"\n"
                 (List.rev
-                   (U.group_items_by_namespace items
-                   |> Map.to_alist
+                   (groupped_items
                    |> List.map ~f:(fun (ns, items) ->
                           let mod_name =
                             String.concat ~sep:"_"
                               (List.map
                                  ~f:(map_first_letter String.uppercase)
-                                 (fst ns :: snd ns))
+                                 ns)
                           in
                           mod_name ^ ".v")));
           sourcemap = None;
