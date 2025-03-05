@@ -247,6 +247,28 @@ mod hax {
         fn into_machine() {}
     }
 
+    mod machine_int {
+        fn add() {}
+        fn sub() {}
+        fn div() {}
+        fn mul() {}
+        fn rem() {}
+
+        fn not() {}
+        fn bitxor() {}
+        fn bitor() {}
+        fn bitand() {}
+        fn shl() {}
+        fn shr() {}
+
+        fn eq() {}
+        fn ne() {}
+        fn le() {}
+        fn lt() {}
+        fn ge() {}
+        fn gt() {}
+    }
+
     mod control_flow_monad {
         trait ControlFlowMonad {
             fn lift() {}

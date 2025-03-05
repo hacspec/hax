@@ -306,3 +306,19 @@ mod impl_expr_in_goal {
 
     impl<U: T1> T2 for U where U::Assoc: T2 {}
 }
+
+// issue 1290
+mod implement_arithmetic_trait {
+    struct Wrapped(i32);
+
+    impl std::ops::Add for Wrapped {
+        type Output = Wrapped;
+        fn add(self, rhs: Self) -> Self::Output {
+            Wrapped(self.0 + rhs.0)
+        }
+    }
+
+    fn test(x: Wrapped, y: Wrapped) -> Wrapped {
+        x + y
+    }
+}
