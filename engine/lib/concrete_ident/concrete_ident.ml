@@ -356,12 +356,18 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
             "use";
             "opaque";
             "t";
-            "C";
             "v";
             "f";
             "i";
             "discriminant";
           ]
+          @ (List.filter_map ~f:Fn.id
+               [
+                 NP.struct_constructor_prefix;
+                 NP.enum_constructor_prefix;
+                 NP.union_constructor_prefix;
+               ]
+            |> List.dedup_and_sort ~compare:String.compare)
 
         let mem = List.mem ~equal:[%eq: string] allowed
 
@@ -547,27 +553,48 @@ module MakeRenderAPI (NP : NAME_POLICY) : RENDER_API = struct
           ((`Type n | `Const n | `Fn n), (`Trait _ | `Impl (_, `Trait, _))) ->
           prefix "f" (dstr n)
       (* The constructor of a struct *)
-      | `Constructor (cons, parent) ->
+      | `Constructor (cons, parent) -> (
           let cons = render_disambiguated cons in
-          let include_type, type_name =
+          let include_type, prefix_s, type_name =
             match parent with
-            | `Struct n -> (NP.prefix_struct_constructors_with_type, n)
-            | `Enum n -> (NP.prefix_enum_constructors_with_type, n)
-            | `Union n -> (NP.prefix_union_constructors_with_type, n)
+            | `Struct n ->
+                ( NP.prefix_struct_constructors_with_type,
+                  NP.struct_constructor_prefix,
+                  n )
+            | `Enum n ->
+                ( NP.prefix_enum_constructors_with_type,
+                  NP.enum_constructor_prefix,
+                  n )
+            | `Union n ->
+                ( NP.prefix_union_constructors_with_type,
+                  NP.union_constructor_prefix,
+                  n )
           in
           let cons =
             if include_type then render_disambiguated type_name ^ "_" ^ cons
             else cons
           in
-          prefix ~global:true ~disable_when:[ `SameCase ] "C"
-            (UnsafeString cons)
+          match prefix_s with
+          | Some prefix_s ->
+              prefix ~global:true ~disable_when:[ `SameCase ] prefix_s
+                (UnsafeString cons)
+          | _ -> UnsafeString cons)
       (* Anonymous fields *)
       | `Field ({ data; disambiguator }, _)
         when Option.is_some (Int.of_string_opt data)
              && Int64.equal disambiguator Int64.zero ->
           TrustedString (NP.anonymous_field_transform data)
       (* Named fields *)
-      | `Field (n, _) -> prefix "f" (dstr n)
+      | `Field (n, `Constructor (cons, (`Struct typ | `Union typ | `Enum typ)))
+        ->
+          let n = render_disambiguated n in
+          let n =
+            match NP.named_field_prefix with
+            | Some `ConstructorName -> render_disambiguated cons ^ "_" ^ n
+            | Some `TypeName -> render_disambiguated typ ^ "_" ^ n
+            | _ -> n
+          in
+          prefix "f" (UnsafeString n)
       (* Anything function-like *)
       | `Macro n | `Static n | `Fn n | `Const n ->
           prefix "v" ~disable_when:[ `SameCase ] (dstr n)
@@ -628,9 +655,14 @@ let eq_name name id =
 module DefaultNamePolicy : NAME_POLICY = struct
   let reserved_words = Hash_set.create (module String)
   let anonymous_field_transform = Fn.id
+  let prefix__constructors_with_type = false
   let prefix_struct_constructors_with_type = false
   let prefix_enum_constructors_with_type = true
   let prefix_union_constructors_with_type = false
+  let struct_constructor_prefix = Some "C"
+  let enum_constructor_prefix = Some "C"
+  let union_constructor_prefix = Some "C"
+  let named_field_prefix = None
 end
 
 module DefaultViewAPI = MakeRenderAPI (DefaultNamePolicy)
