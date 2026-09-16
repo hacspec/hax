@@ -75,7 +75,7 @@ cargo run -p test-driver -- tests fls refresh --rev <release>
 cargo run -p test-driver -- tests fls refresh --rev <release> --check
 ```
 
-The revision is a release tag of `rust-lang/fls`, one per Rust version, which the list records as `fls-version` beside the commit it names; a commit hash works too and records no version. The suite tracks the newest release rather than `main`, so that the identifiers move in reviewed steps.
+The revision is a release tag of `rust-lang/fls`, one per Rust version, which the list records as `fls-version` beside the commit it names; a commit hash or a branch works too and records no version. The suite tracks the newest release rather than `main`, so that the identifiers move in reviewed steps, except where a chapter was reworked after that release: there the list is vendored from the commit that reworked it and names no version, and the next release subsumes it.
 
 After a refresh, run `fls coverage`: paragraphs the new revision added show up as uncovered, and claims or exclusions of removed paragraphs fail.
 
@@ -91,7 +91,7 @@ The whole Lean suite runs weekly and on `workflow_dispatch`; the scheduled run s
 
 When the Lean job fails because the observed stages differ from `tests/fls-results/lean.toml`, the job summary shows the diff and the artifact `fls-results-lean` holds the observed file: download it, copy it over the committed file, and commit, or apply the diff by hand. A change of the tool versions needs a full run, which the selection triggers on its own once the results file header changed.
 
-`fls_drift.yml` runs `fls refresh --check` against the newest release tag of `rust-lang/fls` every week and keeps the issue labeled `fls-drift` open while the vendored identifier list differs; it never writes to the repository.
+`fls_drift.yml` runs `fls refresh --check` against the newest release tag of `rust-lang/fls` every month and keeps the issue labeled `fls-drift` open while the vendored identifier list differs; it never writes to the repository. It compares only when the vendored revision is an ancestor of that tag, so a list vendored from a later commit reports no drift until the next release.
 
 ## Updating the results
 
