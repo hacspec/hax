@@ -6,7 +6,9 @@
 pub enum Status {
     Active,
     #[non_exhaustive]
-    Failed { code: u32 },
+    Failed {
+        code: u32,
+    },
 }
 
 #[non_exhaustive]
