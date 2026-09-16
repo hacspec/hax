@@ -64,3 +64,7 @@ let_else_loop.rs
 
 # associated-items/associated-items/associated_types, patterns/slice-patterns/slice_pattern
 generic-unused-impl.rs
+
+# generics/generic-parameters/type_and_const_parameters, generics/where-clauses/where_clause
+unused.rs
+branch/generics.rs
