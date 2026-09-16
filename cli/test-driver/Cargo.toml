@@ -32,6 +32,10 @@ pest = "2.8.2"
 pest_derive = "2.8.2"
 num_cpus = "1.17.0"
 walkdir = "2.5.0"
+regex = "1.11.2"
+similar = "2.7.0"
+syn = { version = "2", features = ["full"] }
+toml = { version = "0.8", features = ["preserve_order"] }
 
 [package.metadata.release]
 release = false

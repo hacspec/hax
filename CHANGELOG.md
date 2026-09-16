@@ -19,6 +19,9 @@ Lean backend and library:
 F* backend and library:
  - Add models of `RangeInclusive` and `RangeToInclusive`
 
+Miscellaneous:
+ - Add a test suite for the Rust language constructs, organized by the chapters of the FLS
+
 ### Fixed
 
 Changes to the hax-lib crate:

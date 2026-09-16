@@ -33,6 +33,7 @@ use crate::{
 mod cli;
 mod commands;
 mod directives;
+mod fls;
 mod helpers;
 mod log;
 mod promote_directives;
@@ -312,6 +313,12 @@ const DISABLED_BACKENDS: &[BackendName] = &[
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let result = run().await;
+    flush().await;
+    result
+}
+
+async fn run() -> Result<()> {
     let mut options = cli::Cli::parse();
     options.canonicalize()?;
 
@@ -321,14 +328,6 @@ async fn main() -> Result<()> {
             options.tests_crate_dir().display()
         )
     })?;
-
-    let backends: Vec<_> = if let Some(backend) = options.backend() {
-        vec![backend]
-    } else {
-        BackendName::iter()
-            .filter(|backend| !DISABLED_BACKENDS.contains(backend))
-            .collect()
-    };
 
     let cache_dir = options.cache_dir();
     tokio::fs::create_dir_all(&cache_dir)
@@ -340,9 +339,22 @@ async fn main() -> Result<()> {
             )
         })?;
 
+    // The FLS suite reads its tests from the files and never runs the frontend.
+    if options.suite() == cli::Suite::Fls {
+        return fls::run(options).await;
+    }
+
     let tests = JobKind::ResolveTests
         .run(|_| compute_test_modules())
         .await?;
+
+    let backends: Vec<_> = if let Some(backend) = options.backend() {
+        vec![backend]
+    } else {
+        BackendName::iter()
+            .filter(|backend| !DISABLED_BACKENDS.contains(backend))
+            .collect()
+    };
 
     let result = backends
         .iter()

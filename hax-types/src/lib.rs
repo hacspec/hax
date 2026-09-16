@@ -21,5 +21,8 @@ pub mod driver_api;
 /// `hax-engine`.
 pub mod engine_api;
 
+/// Naming conventions of the Lean backend.
+pub mod lean;
+
 /// Compile-time version of hax
 pub const HAX_VERSION: &str = env!("HAX_VERSION");
