@@ -38,5 +38,9 @@ pub fn block_value(x: u32) -> u32 {
 
 #[hax_test::equiv]
 pub fn break_results() -> bool {
-    find(&[3, 5, 7], 5) == Some(1) && find(&[3], 9) == None && until_ten(4) == 12 && block_value(9) == 1 && block_value(1) == 0
+    find(&[3, 5, 7], 5) == Some(1)
+        && find(&[3], 9) == None
+        && until_ten(4) == 12
+        && block_value(9) == 1
+        && block_value(1) == 0
 }

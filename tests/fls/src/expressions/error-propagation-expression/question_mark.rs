@@ -3,7 +3,11 @@
 //! @lean(tier): supported
 
 pub fn parse_digit(c: u8) -> Result<u32, u8> {
-    if c >= b'0' && c <= b'9' { Ok((c - b'0') as u32) } else { Err(c) }
+    if c >= b'0' && c <= b'9' {
+        Ok((c - b'0') as u32)
+    } else {
+        Err(c)
+    }
 }
 
 pub fn two_digits(a: u8, b: u8) -> Result<u32, u8> {
@@ -19,5 +23,8 @@ pub fn first_plus_one(xs: &[u32]) -> Option<u32> {
 
 #[hax_test::equiv]
 pub fn propagated_and_unwrapped() -> bool {
-    two_digits(b'4', b'2') == Ok(42) && two_digits(b'4', b'x') == Err(b'x') && first_plus_one(&[1]) == Some(2) && first_plus_one(&[]) == None
+    two_digits(b'4', b'2') == Ok(42)
+        && two_digits(b'4', b'x') == Err(b'x')
+        && first_plus_one(&[1]) == Some(2)
+        && first_plus_one(&[]) == None
 }

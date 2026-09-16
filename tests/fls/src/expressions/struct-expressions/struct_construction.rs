@@ -16,7 +16,11 @@ pub enum Shape {
 }
 
 pub fn build(width: u32) -> Config {
-    let base = Config { width: 0, height: 2, depth: 3 };
+    let base = Config {
+        width: 0,
+        height: 2,
+        depth: 3,
+    };
     Config { width, ..base }
 }
 
@@ -32,5 +36,11 @@ pub fn constructed_values() -> bool {
     let c = build(7);
     let p = Pair { 1: 9, 0: 8 };
     let unit = Shape::Unit {};
-    c.width == 7 && c.height == 2 && c.depth == 3 && p.0 == 8 && p.1 == 9 && area(Shape::Rect { w: 2, h: 3 }) == 6 && area(unit) == 1
+    c.width == 7
+        && c.height == 2
+        && c.depth == 3
+        && p.0 == 8
+        && p.1 == 9
+        && area(Shape::Rect { w: 2, h: 3 }) == 6
+        && area(unit) == 1
 }

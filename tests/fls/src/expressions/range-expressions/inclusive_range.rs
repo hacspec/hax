@@ -1,7 +1,7 @@
 //! @fls: fls_bi82rusji8g0, fls_1gc436ee1nzm, fls_5xw4opkbxhsc, fls_8sfjw83irpre, fls_lh9my7g8oflq, fls_livflk52xaj9, fls_vj213j9bj61y
 //! @title: Inclusive range expressions constructing RangeInclusive and RangeToInclusive
 //! @lean(tier): supported
-//! @lean(reason): The Lean core model has neither `RangeInclusive::new` nor its `Iterator` instance (`Unknown constant CoreModels.core.ops.range.RangeInclusive.new`); Annex A.10 of the input-language reference.
+//! @lean(reason): The Lean core model has neither `RangeInclusive::new` nor its `Iterator` instance (`Unknown constant CoreModels.core.ops.range.RangeInclusive.new`); the model-trust section of the input-language reference.
 
 use core::ops::{RangeInclusive, RangeToInclusive};
 

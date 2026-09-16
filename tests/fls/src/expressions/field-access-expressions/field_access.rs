@@ -20,7 +20,10 @@ pub fn write(w: &mut Wrapper) {
 
 #[hax_test::equiv]
 pub fn selected_fields() -> bool {
-    let mut alice = Wrapper(Person { age: 30, id: (7, 1) });
+    let mut alice = Wrapper(Person {
+        age: 30,
+        id: (7, 1),
+    });
     write(&mut alice);
     read(&alice) == 80 && alice.0.id.1 == 42
 }

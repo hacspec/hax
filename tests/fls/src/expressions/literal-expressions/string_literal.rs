@@ -1,7 +1,7 @@
 //! @fls: fls_rbwwczom3agt, fls_w30su9x4q13r, fls_wdpbg5xzgmwu
 //! @title: String literal expressions
 //! @lean(tier): supported
-//! @lean(reason): aeneas fails on a function returning a string literal (`There should be no bottoms in the value`).
+//! @lean(reason): aeneas fails on a function returning a string literal (`There should be no bottoms in the value`); the types section of the input-language reference.
 
 pub fn text() -> &'static str {
     "text"

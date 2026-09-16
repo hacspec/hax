@@ -5,7 +5,11 @@
 pub fn combine(a: u32, b: u32, flag: Option<bool>) -> u32 {
     let with_block = { a + b };
     let without_block = a * b;
-    let chosen = if with_block > without_block { with_block } else { without_block };
+    let chosen = if with_block > without_block {
+        with_block
+    } else {
+        without_block
+    };
     if let Some(true) = flag { chosen } else { 0 }
 }
 

@@ -1,4 +1,4 @@
-//! @fls: fls_asibqpe3z95h, fls_cayhj5hcuhcg, fls_b9g0r9vc4rou, fls_blyr18iao20n, fls_qd6ggdgq2hob, fls_k7lmxvpkxtub, fls_ryzhdpxgm7ii
+//! @fls: fls_asibqpe3z95h, fls_cayhj5hcuhcg, fls_b9g0r9vc4rou, fls_blyr18iao20n, fls_ryzhdpxgm7ii
 //! @title: Arithmetic operators on a struct through the core::ops traits
 //! @lean(tier): supported
 
@@ -13,21 +13,30 @@ pub struct V2 {
 impl Add for V2 {
     type Output = V2;
     fn add(self, o: V2) -> V2 {
-        V2 { x: self.x + o.x, y: self.y + o.y }
+        V2 {
+            x: self.x + o.x,
+            y: self.y + o.y,
+        }
     }
 }
 
 impl Sub for V2 {
     type Output = V2;
     fn sub(self, o: V2) -> V2 {
-        V2 { x: self.x - o.x, y: self.y - o.y }
+        V2 {
+            x: self.x - o.x,
+            y: self.y - o.y,
+        }
     }
 }
 
 impl Mul<i32> for V2 {
     type Output = V2;
     fn mul(self, k: i32) -> V2 {
-        V2 { x: self.x * k, y: self.y * k }
+        V2 {
+            x: self.x * k,
+            y: self.y * k,
+        }
     }
 }
 

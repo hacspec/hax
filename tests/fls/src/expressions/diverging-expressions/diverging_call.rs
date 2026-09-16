@@ -1,7 +1,7 @@
 //! @fls: fls_4wDpAHhnWZAB, fls_cmBVodJMjZi7
 //! @title: A call of a function returning the never type as a diverging expression
 //! @lean(tier): supported
-//! @lean(reason): aeneas fails to evaluate the call of a function returning `!` in a match arm (`evaluate_function_symbolic failed ... Unexpected result: Cps.Unit`).
+//! @lean(reason): aeneas fails to evaluate the call of a function returning `!` in a match arm (`evaluate_function_symbolic failed ... Unexpected result: Cps.Unit`); the types section of the input-language reference.
 
 pub fn halt() -> ! {
     panic!("halt")

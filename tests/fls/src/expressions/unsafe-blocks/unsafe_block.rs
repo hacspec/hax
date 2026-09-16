@@ -7,7 +7,11 @@ pub unsafe fn unchecked_get(xs: &[u32], i: usize) -> u32 {
 }
 
 pub fn first(xs: &[u32]) -> u32 {
-    if xs.is_empty() { 0 } else { unsafe { unchecked_get(xs, 0) } }
+    if xs.is_empty() {
+        0
+    } else {
+        unsafe { unchecked_get(xs, 0) }
+    }
 }
 
 #[hax_test::equiv]

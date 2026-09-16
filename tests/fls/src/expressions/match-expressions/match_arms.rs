@@ -28,5 +28,12 @@ pub fn first_match(x: u32) -> u32 {
 
 #[hax_test::equiv]
 pub fn selected_arms() -> bool {
-    weight(Token::Digit(0)) == 0 && weight(Token::Digit(7)) == 7 && weight(Token::Letter('a')) == 100 && weight(Token::Space) == 100 && weight(Token::Other) == 1000 && first_match(4) == 1 && first_match(8) == 2 && first_match(12) == 3
+    weight(Token::Digit(0)) == 0
+        && weight(Token::Digit(7)) == 7
+        && weight(Token::Letter('a')) == 100
+        && weight(Token::Space) == 100
+        && weight(Token::Other) == 1000
+        && first_match(4) == 1
+        && first_match(8) == 2
+        && first_match(12) == 3
 }

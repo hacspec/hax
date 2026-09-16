@@ -1,7 +1,7 @@
 //! @fls: fls_B2eKGWaJhFKD, fls_pfa81kv2mru8
 //! @title: Sign negation of a floating point value
 //! @lean(tier): supported
-//! @lean(reason): aeneas rejects the float literals (`Improperly typed constant value`); Annex A.3 of the input-language reference.
+//! @lean(reason): aeneas rejects the float literals (`Improperly typed constant value`); the arithmetic section of the input-language reference.
 
 pub fn negate(x: f32) -> f32 {
     -x

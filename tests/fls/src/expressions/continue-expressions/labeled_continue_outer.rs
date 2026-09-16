@@ -1,7 +1,7 @@
 //! @fls: fls_767gv7zhqamh, fls_ckm6i9c3s6j8, fls_gm74eo754rq9
 //! @title: A labeled continue restarting an outer loop
 //! @lean(tier): supported
-//! @lean(reason): aeneas rejects a `continue` to an outer loop (`Continue to outer loops are not supported yet`); Annex A.1 of the input-language reference.
+//! @lean(reason): aeneas rejects a `continue` to an outer loop (`Continue to outer loops are not supported yet`); the loops section of the input-language reference.
 
 pub fn count_pairs_without_equal(n: u32) -> u32 {
     let mut count = 0;

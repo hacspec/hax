@@ -1,7 +1,7 @@
 //! @fls: fls_9ghp5yet75y6, fls_hhidi5ukxo, fls_ncd0wkgtldem, fls_oisws5qykedi, fls_pvnofoomgwl5, fls_tzclkasinpoq
 //! @title: An async block capturing a variable
 //! @lean(tier): unsupported
-//! @lean(reason): Section 2.9 of the input-language reference: async compiles to a poll-driven state machine whose suspension points need an execution model.
+//! @lean(reason): The value-model boundary of the input-language reference: async compiles to a poll-driven state machine whose suspension points need an execution model.
 
 use core::future::Future;
 

@@ -14,5 +14,9 @@ pub fn classify(x: Option<u32>) -> u32 {
 
 #[hax_test::equiv]
 pub fn guarded_arms() -> bool {
-    classify(Some(0)) == 0 && classify(Some(4)) == 2 && classify(Some(9)) == 3 && classify(Some(7)) == 1 && classify(None) == 9
+    classify(Some(0)) == 0
+        && classify(Some(4)) == 2
+        && classify(Some(9)) == 3
+        && classify(Some(7)) == 1
+        && classify(None) == 9
 }
