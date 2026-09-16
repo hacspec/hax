@@ -16,7 +16,10 @@ FLS_RENDERING = "https://rust-lang.github.io/fls"
 # The coverage page, relative to the backend pages (`manual/<backend>/support.md`).
 COVERAGE = "../fls-coverage.md"
 FLS_SOURCES = "https://github.com/rust-lang/fls"
-TESTS_URL = "https://github.com/cryspen/hax/blob/main/tests/fls/src"
+# The revision the test links point at. The deployed site renders the report
+# from a release, and its build replaces this with that release's commit.
+TESTS_REF = "main"
+TESTS_URL = f"https://github.com/cryspen/hax/blob/{TESTS_REF}/tests/fls/src"
 
 # The classification names the driver writes, in report order. Names outside
 # this list are appended in alphabetical order.
