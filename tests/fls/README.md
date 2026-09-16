@@ -4,7 +4,7 @@ One test file per language construct, each run through every backend as a whole 
 
 ## Checklist for a new test
 
-1. **Location.** `src/<chapter>/<section>/<name>.rs`, where `<chapter>` is the slug of the FLS source file (`expressions`) and `<section>` the slug of the section title (`call-expressions`). The slugs are listed in `tests/fls-ids.txt` once it exists.
+1. **Location.** `src/<chapter>/<section>/<name>.rs`, where `<chapter>` is the slug of the FLS source file (`expressions`) and `<section>` the slug of the innermost section heading above the paragraph (`call-expressions`). Both are columns of `tests/fls-ids.txt` (`tests/hax-ids.txt` for the `hax` chapter): the `chapter` column is the chapter directory and the `section` column the section directory. A paragraph directly under the chapter heading has the chapter slug as its section, so its test lives at `src/<chapter>/<chapter>/<name>.rs`. Every identifier a test claims must belong to its chapter directory, and at least one to its section directory.
 2. **Header.** The first lines of the file are `//!` directives; only `//!` lines are read, not `#![doc = "..."]` or `/*! */` comments. The header ends at the first line that is neither empty nor a `//!` line.
    - `@fls: <id>, <id>, ...` lists the paragraph identifiers the test covers. Required.
    - `@title: <text>` is the row label of the report. Required.
@@ -18,6 +18,7 @@ One test file per language construct, each run through every backend as a whole 
 5. **Constructs without an observable value** declare `@no-equiv: <reason>` instead of a guard function: lifetimes, `#[repr]`, `PhantomData`, marker traits, and the other rows the input-language reference lists as erased by the value model. A test whose tier is `unsupported` for every backend needs neither.
 6. **No crate-level attributes** such as `#![no_std]`, since the file is also compiled as a module of the `fls-tests` crate.
 7. **No auxiliary files.** A test is a single file; a `mod name;` declaration is rejected.
+8. **Coverage.** Every identifier of `tests/fls-ids.txt` and `tests/hax-ids.txt` is either claimed by a test or listed in `tests/fls-excluded.toml`, unless its chapter is in `pending-chapters` or it carries the `informational` flag. The exclusion file has one table per chapter and category (`[expressions.legality]`) with a shared `reason`, an `ids` array, and an optional `overrides` table for identifiers whose reason differs; the categories are `lexical`, `legality`, `out-of-scope`, `unsafe`, `ffi`, `inline-assembly`, `concurrency`, and `macro-expanded`. An identifier that is both claimed and excluded is an error, since the exclusion is stale. A chapter is triaged in one pull request: it removes the chapter from `pending-chapters`, adds its tests, and adds its exclusion tables, which a pending chapter may not have.
 
 ## Running the suite
 
@@ -28,6 +29,25 @@ cargo run -p test-driver -- tests --suite fls -b lean
 ```
 
 The observed stage of every test is compared with `tests/fls-results/<backend>.toml`; any difference fails the run and prints the diff. `--matching <substring>` restricts the run to some tests, `--no-verify` stops after extraction and skips the comparison.
+
+## Coverage and identifier lists
+
+`fls coverage` reads the test headers, the identifier lists, the exclusion file, and the results files, and fails on any violation, including a results entry whose test is gone, has no tier for the backend, or has another tier; it runs no backend and needs neither `cargo-hax` nor a toolchain:
+
+```
+cargo run -p test-driver -- tests fls coverage
+```
+
+`fls refresh` regenerates `tests/fls-ids.txt` from the FLS sources at a revision of `rust-lang/fls`; `--check` prints the rows added and removed against the committed file instead, and exits with code 3 when there are any:
+
+```
+cargo run -p test-driver -- tests fls refresh --rev <release>
+cargo run -p test-driver -- tests fls refresh --rev <release> --check
+```
+
+The revision is a release tag of `rust-lang/fls`, one per Rust version, which the list records as `fls-version` beside the commit it names; a commit hash works too and records no version. The suite tracks the newest release rather than `main`, so that the identifiers move in reviewed steps.
+
+After a refresh, run `fls coverage`: paragraphs the new revision added show up as uncovered, and claims or exclusions of removed paragraphs fail.
 
 ## Updating the results
 

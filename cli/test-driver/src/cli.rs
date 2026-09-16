@@ -42,6 +42,9 @@ pub enum FlsCommand {
         #[clap(long)]
         check: bool,
     },
+    /// Check that every identifier is claimed by a test or excluded, and that
+    /// every claim is valid.
+    Coverage,
 }
 
 #[derive(Debug, Clone, Parser)]
