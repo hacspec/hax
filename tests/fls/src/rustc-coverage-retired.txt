@@ -61,3 +61,6 @@ yield.rs
 # statements/let-statements/let_else
 branch/let-else.rs
 let_else_loop.rs
+
+# associated-items/associated-items/associated_types, patterns/slice-patterns/slice_pattern
+generic-unused-impl.rs
