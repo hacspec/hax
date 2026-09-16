@@ -5,7 +5,7 @@
 use std::{
     collections::{BTreeMap, HashSet},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context as _, Result, bail};
@@ -190,6 +190,29 @@ fn fls_revision(ctx: &FlsContext) -> String {
                 .map(|r| r.trim().to_string())
         })
         .unwrap_or_default()
+}
+
+/// Replaces the `fls-revision` line of a results file in place.
+pub fn set_fls_revision(path: &Path, revision: &str) -> Result<()> {
+    let text =
+        fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
+    let mut found = false;
+    let lines: Vec<String> = text
+        .lines()
+        .map(|line| {
+            if line.starts_with("fls-revision = ") {
+                found = true;
+                format!("fls-revision = {}", toml_string(revision))
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+    if !found {
+        bail!("{}: no `fls-revision` line", path.display());
+    }
+    fs::write(path, lines.join("\n") + "\n")?;
+    Ok(())
 }
 
 /// A TOML basic string.

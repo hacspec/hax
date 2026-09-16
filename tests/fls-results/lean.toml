@@ -1,5 +1,5 @@
 backend = "lean"
-fls-revision = ""
+fls-revision = "0626fa45a0d296e59e62b183465bc7f114d1031e"
 
 [tools]
 hax = "0.4.2"

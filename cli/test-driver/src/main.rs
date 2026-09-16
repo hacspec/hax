@@ -313,9 +313,44 @@ const DISABLED_BACKENDS: &[BackendName] = &[
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let result = run().await;
+    // Child processes may run in their own process groups, which the
+    // terminal's SIGINT does not reach; dropping the run on a signal kills
+    // them.
+    let result = tokio::select! {
+        result = run() => result,
+        signal = interrupted() => Err(anyhow::anyhow!("interrupted by {signal}")),
+    };
     flush().await;
+    // Drift gets its own exit code, so that a caller can tell it from a
+    // failure; clap uses 2 for usage errors.
+    if let Err(e) = &result
+        && e.is::<fls::refresh::Drift>()
+    {
+        eprintln!("Error: {e:?}");
+        std::process::exit(3);
+    }
     result
+}
+
+/// Waits for SIGINT or, on Unix, SIGTERM and returns its name.
+async fn interrupted() -> &'static str {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        let Ok(mut terminate) = signal(SignalKind::terminate()) else {
+            let _ = tokio::signal::ctrl_c().await;
+            return "SIGINT";
+        };
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => "SIGINT",
+            _ = terminate.recv() => "SIGTERM",
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+        "SIGINT"
+    }
 }
 
 async fn run() -> Result<()> {
@@ -338,6 +373,10 @@ async fn run() -> Result<()> {
                 cache_dir.display()
             )
         })?;
+
+    if let Some(cli::Command::Fls(command)) = options.command() {
+        return fls::subcommand(&options, command.clone()).await;
+    }
 
     // The FLS suite reads its tests from the files and never runs the frontend.
     if options.suite() == cli::Suite::Fls {
