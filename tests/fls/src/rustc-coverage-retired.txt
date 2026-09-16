@@ -82,3 +82,6 @@ attr/off-on-sandwich.rs
 attr/trait-impl-inherit.rs
 bench.rs
 test_harness.rs
+
+# entities-and-resolution/scopes/nested_scopes
+inner_items.rs
