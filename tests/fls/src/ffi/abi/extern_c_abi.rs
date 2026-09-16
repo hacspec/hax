@@ -12,6 +12,7 @@ pub extern "C" fn c_abi(x: u32) -> u32 {
 
 // rustfmt would spell out the ABI.
 #[rustfmt::skip]
+#[allow(missing_abi)]
 pub extern fn implicit_c_abi(x: u32) -> u32 {
     x + 3
 }

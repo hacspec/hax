@@ -3,7 +3,7 @@
 //! @lean(tier): supported
 
 pub unsafe fn unchecked_get(xs: &[u32], i: usize) -> u32 {
-    *xs.get_unchecked(i)
+    unsafe { *xs.get_unchecked(i) }
 }
 
 pub fn first(xs: &[u32]) -> u32 {

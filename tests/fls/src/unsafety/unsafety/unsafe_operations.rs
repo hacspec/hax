@@ -4,7 +4,7 @@
 //! @lean(reason): The value-model boundary of the input-language reference: unsafe code steps outside the guarantees that make the functional translation sound.
 
 pub unsafe fn read_raw(p: *const u32) -> u32 {
-    *p
+    unsafe { *p }
 }
 
 pub fn read(x: &u32) -> u32 {
