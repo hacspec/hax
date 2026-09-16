@@ -78,9 +78,10 @@ pub struct Cli {
     /// Run tests only for the specified backend.
     #[clap(long, short)]
     backend: Option<BackendName>,
-    /// Only run tests whose name contains the given string.
+    /// Only run tests whose name contains the given string. May be given
+    /// several times; a test runs when it matches any of them.
     #[clap(long, short)]
-    matching: Option<String>,
+    matching: Vec<String>,
     /// Skip verification (F* / Lean type-checking) and only run extraction.
     #[clap(long)]
     no_verify: bool,
@@ -91,7 +92,7 @@ impl Cli {
         if self.command.is_some() {
             let suite_flags = [
                 ("--backend", self.backend.is_some()),
-                ("--matching", self.matching.is_some()),
+                ("--matching", !self.matching.is_empty()),
                 ("--update-results", self.update_results),
                 ("--no-verify", self.no_verify),
                 ("--promote-directives", self.promote_directives),
@@ -156,8 +157,10 @@ impl Cli {
         self.backend
     }
 
-    pub fn matching(&self) -> Option<&str> {
-        self.matching.as_deref()
+    /// Whether `--matching` selects the test with this name: no value given,
+    /// or any value a substring of the name.
+    pub fn selects(&self, name: &str) -> bool {
+        self.matching.is_empty() || self.matching.iter().any(|m| name.contains(m.as_str()))
     }
 
     pub fn no_verify(&self) -> bool {

@@ -150,8 +150,8 @@ struct Heading {
     slug: String,
 }
 
-/// The paragraphs of one chapter file, in document order.
-pub fn parse_chapter(chapter: &str, text: &str) -> Result<Vec<Paragraph>> {
+/// The title and the paragraphs of one chapter file, in document order.
+pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph>)> {
     let anchor = Regex::new(r"^\.\. _fls_[A-Za-z0-9]+:$").unwrap();
     let paragraph = Regex::new(r":dp:`(fls_[A-Za-z0-9]+)`").unwrap();
 
@@ -260,10 +260,10 @@ pub fn parse_chapter(chapter: &str, text: &str) -> Result<Vec<Paragraph>> {
             });
         }
     }
-    if stack.is_empty() {
+    let Some(title) = stack.first().map(|h| h.title.clone()) else {
         bail!("{chapter}.rst: no heading");
-    }
-    Ok(paragraphs)
+    };
+    Ok((title, paragraphs))
 }
 
 /// The identifier list of the sources in `dir`.
@@ -273,6 +273,7 @@ pub fn read_sources(dir: &Path, rev: &str, version: Option<String>) -> Result<Id
         .with_context(|| format!("cannot read {}", src.join("index.rst").display()))?;
     let chapters = chapters_of_index(&index)?;
     let mut paragraphs: Vec<Paragraph> = vec![];
+    let mut chapter_titles = BTreeMap::new();
     let mut seen: HashMap<String, String> = HashMap::new();
     for chapter in &chapters {
         let path = src.join(format!("{chapter}.rst"));
@@ -282,17 +283,20 @@ pub fn read_sources(dir: &Path, rev: &str, version: Option<String>) -> Result<Id
                 path.display()
             )
         })?;
-        for p in parse_chapter(chapter, &text)? {
+        let (title, chapter_paragraphs) = parse_chapter(chapter, &text)?;
+        for p in chapter_paragraphs {
             if let Some(other) = seen.insert(p.id.clone(), chapter.clone()) {
                 bail!("`{}` appears in both {other}.rst and {chapter}.rst", p.id);
             }
             paragraphs.push(p);
         }
+        chapter_titles.insert(chapter.clone(), title);
     }
     Ok(IdList {
         revision: rev.to_string(),
         version,
         chapters,
+        chapter_titles,
         paragraphs,
     })
 }
@@ -476,7 +480,8 @@ Not informational any more.
 
     #[test]
     fn synthetic_chapter() {
-        let paragraphs = parse_chapter("values", CHAPTER).unwrap();
+        let (title, paragraphs) = parse_chapter("values", CHAPTER).unwrap();
+        assert_eq!(title, "Values And Things");
         let rows: Vec<(&str, &str, &str, bool)> = paragraphs
             .iter()
             .map(|p| {
@@ -554,7 +559,7 @@ Orphan
     #[test]
     fn informational_page_flags_the_chapter() {
         let text = ".. informational-page::\n\n.. _fls_c:\n\nChapter\n=======\n\n:dp:`fls_a`\n\n.. _fls_s:\n\nS\n---\n\n:dp:`fls_b`\n";
-        let paragraphs = parse_chapter("c", text).unwrap();
+        let (_, paragraphs) = parse_chapter("c", text).unwrap();
         assert!(paragraphs.iter().all(|p| p.informational));
     }
 

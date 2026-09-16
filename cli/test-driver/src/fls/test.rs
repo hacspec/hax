@@ -147,6 +147,9 @@ fn read_test(fls_dir: &Path, source: &Path) -> Result<FlsTest> {
     if test.title.is_empty() {
         bail!("{display}: missing `@title`");
     }
+    if test.tiers.is_empty() {
+        bail!("{display}: a test needs a `@<backend>(tier)` line for at least one backend");
+    }
 
     test.equiv = equiv_functions(&text).map_err(|e| e.context(format!("in {display}")))?;
     if test.no_equiv.is_some() && !test.equiv.is_empty() {
@@ -396,7 +399,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fls-discover-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let head = "//! @fls: fls_a\n//! @title: T\n";
-        let cases: [(&str, &str, bool); 4] = [
+        let cases: [(&str, &str, bool); 5] = [
+            ("a/b/no_tier.rs", "pub fn f() -> bool { true }\n", false),
             (
                 "a/b/plain.rs",
                 "//! @lean(tier): supported\npub fn f() -> bool { true }\n",

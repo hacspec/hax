@@ -8,7 +8,7 @@ One test file per language construct, each run through every backend as a whole 
 2. **Header.** The first lines of the file are `//!` directives; only `//!` lines are read, not `#![doc = "..."]` or `/*! */` comments. The header ends at the first line that is neither empty nor a `//!` line.
    - `@fls: <id>, <id>, ...` lists the paragraph identifiers the test covers. Required.
    - `@title: <text>` is the row label of the report. Required.
-   - `@<backend>(tier): supported | unsupported`, one line per backend the test is run on. A backend without a tier line does not run the test.
+   - `@<backend>(tier): supported | unsupported`, one line per backend the test is run on, at least one. A backend without a tier line does not run the test.
    - `@<backend>(reason): <text>` optionally explains a tier that is not `supported`, typically a link to an issue or to an Annex A entry of the input-language reference.
    - `@no-equiv: <reason>` declares that the test has no `equiv` function on purpose; see step 5.
    - `@cli`, `@off`, and `@fail` are not accepted.
@@ -28,7 +28,11 @@ From the repository root, with `cargo-hax` and the backend toolchain on `PATH`:
 cargo run -p test-driver -- tests --suite fls -b lean
 ```
 
-The observed stage of every test is compared with `tests/fls-results/<backend>.toml`; any difference fails the run and prints the diff. `--matching <substring>` restricts the run to some tests, `--no-verify` stops after extraction and skips the comparison.
+The observed stage of every test is compared with `tests/fls-results/<backend>.toml`; any difference fails the run and prints the diff. `--matching <substring>` restricts the run to the tests whose path contains the substring and may be given several times, in which case a test runs when it matches any of them; `--no-verify` stops after extraction and skips the comparison.
+
+The `cargo-hax` on `PATH` must be built from this checkout. The driver rejects a release of another version, but it accepts any build from a git checkout, since the commit such a build reports can be older than the build, and records the package version for it.
+
+The Lean backend also needs `rustup` on `PATH`, since charon installs its Rust toolchain through it. Before the tests, the driver extracts a trivial crate and fails the run if that crate does not reach `extracted`, so a tool chain that cannot run, such as charon without `rustup`, is not recorded as a rejection of every test.
 
 ## Coverage and identifier lists
 

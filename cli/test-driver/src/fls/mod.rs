@@ -60,7 +60,7 @@ pub async fn run(options: Cli) -> Result<()> {
             .collect();
         let selected: Vec<FlsTest> = with_tier
             .iter()
-            .filter(|test| ctx.options.matching().is_none_or(|m| test.path.contains(m)))
+            .filter(|test| ctx.options.selects(&test.path))
             .cloned()
             .cloned()
             .collect();
