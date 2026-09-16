@@ -17,6 +17,10 @@ on:
       - "rust-toolchain.toml"
       - "**.nix"
       - "flake.lock"
+      - "tests/fls/src/**"
+      - "tests/fls-results/**"
+      - "tests/fls-excluded.toml"
+      - "tests/*-ids.txt"
       - ".github/workflows/docs_build.yml"
   workflow_dispatch:
 
