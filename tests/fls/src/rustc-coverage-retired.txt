@@ -112,3 +112,26 @@ closure_macro.rs
 no_spans.rs
 no_spans_if_not.rs
 unicode.rs
+
+# empty programs and a file whose constructs (uninhabited enums, async) are covered or unsupported
+trivial.rs
+ignore_map.rs
+ignore_run.rs
+issue-93054.rs
+# helpers of files that were never part of the suite (see docs/frontend/evaluation.md)
+auxiliary/discard_all_helper.rs
+auxiliary/executor.rs
+auxiliary/inline_always_with_dead_code.rs
+auxiliary/inline_mixed_helper.rs
+auxiliary/macro_name_span_helper.rs
+auxiliary/used_crate.rs
+auxiliary/used_inline_crate.rs
+
+# entities-and-resolution/scopes/nested_scopes, program-structure-and-compilation/modules/nested_modules
+holes.rs
+# generics/generic-parameters/type_and_const_parameters, generics/where-clauses/where_clause, functions/functions/function_definition
+inline.rs
+# functions/functions/function_definition
+long_and_wide.rs
+# generics/generic-arguments/generic_arguments
+sort_groups.rs
