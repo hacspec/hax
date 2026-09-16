@@ -357,7 +357,7 @@ impl ReportRenderer for CiRenderer {
                         for message in &messages {
                             CiRenderer::print_message(message);
                         }
-                        if messages.is_empty() {
+                        if messages.is_empty() || !is_test_job(&report.job) {
                             if let Some(stderr) = &stderr {
                                 CiRenderer::print_labeled_block("stderr", stderr);
                             }
@@ -406,6 +406,7 @@ struct TuiRenderer {
     progress: ProgressBar,
     total_tests: u64,
     completed_tests: u64,
+    passed_tests: u64,
     jobs: HashMap<JobKind, TuiJobState>,
     failures: Vec<FailureDetails>,
     overall_start: Option<SystemTime>,
@@ -431,6 +432,7 @@ impl TuiRenderer {
             progress,
             total_tests: 0,
             completed_tests: 0,
+            passed_tests: 0,
             jobs: HashMap::new(),
             failures: Vec::new(),
             overall_start: None,
@@ -449,7 +451,7 @@ impl TuiRenderer {
             .iter()
             .filter(|failure| failure.is_test)
             .count() as u64;
-        let passed = self.completed_tests.saturating_sub(failed);
+        let passed = self.passed_tests;
         self.progress
             .set_message(format!("passed {passed}, failed {failed}"));
     }
@@ -473,27 +475,33 @@ impl TuiRenderer {
         for message in messages {
             let mut lines = message.lines();
             match lines.next() {
-                Some(first) => progress.println(format!("    → {first}")),
-                None => progress.println("    →"),
+                Some(first) => out(progress, format!("    → {first}")),
+                None => out(progress, "    →"),
             }
             for line in lines {
-                progress.println(format!("      {line}"));
+                out(progress, format!("      {line}"));
             }
         }
     }
 
     fn print_labeled_block(progress: &ProgressBar, label: &str, content: &str) {
-        progress.println(format!("    {label}:"));
+        out(progress, format!("    {label}:"));
         let mut lines = content.lines();
         if let Some(first) = lines.next() {
-            progress.println(format!("      → {first}"));
+            out(progress, format!("      → {first}"));
         } else {
-            progress.println("      →");
+            out(progress, "      →");
         }
         for line in lines {
-            progress.println(format!("        {line}"));
+            out(progress, format!("        {line}"));
         }
     }
+}
+
+/// Prints a line on stdout above the progress bar. `ProgressBar::println`
+/// draws on stderr and prints nothing when stderr is not a terminal.
+fn out(progress: &ProgressBar, line: impl Display) {
+    progress.suspend(|| println!("{line}"));
 }
 
 struct TuiJobState {
@@ -603,18 +611,20 @@ impl ReportRenderer for TuiRenderer {
                 match &**result {
                     // Test jobs pass silently; the messages of other jobs,
                     // such as a summary, are their output.
-                    Ok(_) if is_test => {}
+                    Ok(_) if is_test => self.passed_tests += 1,
                     Ok(_) => Self::print_messages(&self.progress, &messages),
                     Err(err) => {
                         let mut line = format!("Error in {}", format_job_title(&report.job));
                         if let Some(duration) = duration {
                             line.push_str(&format!(" ({})", format_duration(duration)));
                         }
-                        self.progress.println(String::new());
-                        self.progress
-                            .println(line.black().on_red().bold().to_string());
+                        out(&self.progress, String::new());
+                        out(&self.progress, line.black().on_red().bold().to_string());
                         Self::print_messages(&self.progress, &messages);
-                        if messages.is_empty() {
+                        // The captured output of a test job only repeats what
+                        // its messages say; a failed phase, such as the
+                        // canary, has no other trace of the tool's error.
+                        if messages.is_empty() || !is_test {
                             if let Some(stderr) = &stderr {
                                 Self::print_labeled_block(&self.progress, "stderr", stderr);
                             }
@@ -622,8 +632,7 @@ impl ReportRenderer for TuiRenderer {
                                 Self::print_labeled_block(&self.progress, "stdout", stdout);
                             }
                         }
-                        self.progress
-                            .println(format!("  error: {err}").red().to_string());
+                        out(&self.progress, format!("  error: {err}").red().to_string());
                         self.failures.push(FailureDetails {
                             job: report.job.clone(),
                             error: err.to_string(),
@@ -651,7 +660,7 @@ impl ReportRenderer for TuiRenderer {
             if let Some(duration) = duration {
                 line.push_str(&format!(" ({})", format_duration(duration)));
             }
-            self.progress.println(line);
+            out(&self.progress, line);
             let TuiJobState {
                 messages,
                 is_test,
@@ -659,21 +668,8 @@ impl ReportRenderer for TuiRenderer {
                 stderr,
                 ..
             } = state;
-            let mut had_messages = false;
-            for message in &messages {
-                let mut lines = message.lines();
-                if let Some(first) = lines.next() {
-                    self.progress.println(format!("    → {first}"));
-                    had_messages = true;
-                } else {
-                    self.progress.println("    →");
-                    had_messages = true;
-                }
-                for line in lines {
-                    self.progress.println(format!("      {line}"));
-                }
-            }
-            if !had_messages {
+            Self::print_messages(&self.progress, &messages);
+            if messages.is_empty() {
                 if let Some(stderr) = &stderr {
                     Self::print_labeled_block(&self.progress, "stderr", stderr);
                 }
@@ -704,7 +700,7 @@ impl ReportRenderer for TuiRenderer {
                 .iter()
                 .filter(|failure| failure.is_test)
                 .count() as u64;
-            let passed = self.completed_tests.saturating_sub(failed);
+            let passed = self.passed_tests;
             println!(
                 "Summary: {passed}/{total} tests passed, {failed} failed.",
                 total = self.total_tests

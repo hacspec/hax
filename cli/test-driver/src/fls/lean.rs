@@ -10,7 +10,6 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, bail};
-use futures::future::BoxFuture;
 use hax_types::{
     cli_options::BackendName,
     diagnostics::message::{HaxMessage, ResolvedValue},
@@ -45,8 +44,6 @@ pub struct Lean {
     /// path-resolved aeneas has no version, and the workspace keeps that pin.
     aeneas_rev: Mutex<Option<String>>,
 }
-
-const AENEAS_REPO: &str = "https://github.com/cryspen/aeneas";
 
 /// The stage decided by the `lake build` of the extractions.
 fn elaborates() -> Stage {
@@ -92,94 +89,18 @@ impl Lean {
     /// The revision of the aeneas Lean library pinned by the lakefile of
     /// `proof-libs/lean`.
     fn proof_lib_aeneas_rev(&self) -> Result<String> {
-        let lakefile = fs::read_to_string(self.proof_lib.join("lakefile.toml"))?;
-        regex::Regex::new(r#"(?s)name = "aeneas".*?rev = "([0-9a-f]+)""#)
-            .unwrap()
-            .captures(&lakefile)
-            .map(|c| c[1].to_string())
+        let lakefile: toml::Table =
+            toml::from_str(&fs::read_to_string(self.proof_lib.join("lakefile.toml"))?)
+                .context("cannot parse the lakefile of `proof-libs/lean`")?;
+        lakefile
+            .get("require")
+            .and_then(toml::Value::as_array)
+            .into_iter()
+            .flatten()
+            .find(|r| r.get("name").and_then(toml::Value::as_str) == Some("aeneas"))
+            .and_then(|r| r.get("rev")?.as_str())
+            .map(str::to_string)
             .context("no aeneas revision pinned in the lakefile of `proof-libs/lean`")
-    }
-
-    async fn extract(&self, ctx: &FlsContext, test: &FlsTest, job: JobKind) -> Result<Stage> {
-        let dir = ctx.generate_package(test)?;
-        // A previous extraction leaves hand-editable files (the `Assumptions`
-        // module) that `cargo hax` does not overwrite; a stale one would
-        // change the stage of a renamed item.
-        let _ = fs::remove_dir_all(self.lean_dir(ctx, test));
-
-        let mut command = tokio::process::Command::new("cargo");
-        command
-            .args(["hax", "--message-format", "json", "into", "lean"])
-            .current_dir(&dir)
-            .env("CARGO_TARGET_DIR", &self.target_dir);
-        let output = HaxEngineOutput::from_output(&command.output().await?)?;
-        output.report_stderr_and_stdout(job.clone());
-
-        // A `GenericError` names the tool that failed only through the `Step`
-        // active when it arrives; aeneas reports partial files even when it
-        // fails, so the error decides before any `ProducedFile`.
-        let mut last_step: Option<String> = None;
-        let mut error: Option<(String, Option<String>)> = None;
-        let mut lib = None;
-        for message in &output.messages {
-            if let OutMsg::Hax(message) = message {
-                match message {
-                    HaxMessage::Step { target, .. } => last_step = Some(target.clone()),
-                    HaxMessage::GenericError { message } => {
-                        error.get_or_insert_with(|| (message.clone(), last_step.clone()));
-                    }
-                    HaxMessage::ProducedFile { path, .. } => {
-                        // `<lean_dir>/<Lib>/Extraction/<Module>.lean`
-                        let dir = path.parent();
-                        if dir
-                            .and_then(Path::file_name)
-                            .is_some_and(|n| n == "Extraction")
-                        {
-                            lib = dir
-                                .and_then(Path::parent)
-                                .and_then(Path::file_name)
-                                .map(|n| n.to_string_lossy().into_owned());
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        let stage = if error.is_some() || output.error_code != 0 {
-            let (message, step) = error.unwrap_or_else(|| {
-                let message = format!(
-                    "`cargo hax into lean` exited with code {}",
-                    output.error_code
-                );
-                (message, last_step)
-            });
-            // Only a failure of charon or aeneas rejects the test; any other
-            // failure, such as a tool download, fails the run.
-            let stage = match step.as_deref() {
-                Some("charon") => LEAN.stage("charon-rejected"),
-                Some(step) if step.starts_with("aeneas on ") => LEAN.stage("aeneas-rejected"),
-                _ => bail!(
-                    "`cargo hax into lean` failed on `{}` outside of charon and aeneas: {message}",
-                    test.path
-                ),
-            };
-            job.report_message(message);
-            stage
-        } else {
-            LEAN.stage("extracted")
-        };
-        job.report_message(format!("stage: {}", stage.as_str()));
-        if stage == LEAN.stage("extracted") {
-            match lib {
-                Some(lib) => {
-                    self.libs.lock().unwrap().insert(test.path.clone(), lib);
-                }
-                None => job.report_message(
-                    "no Lean file reported under `<Lib>/Extraction/`; the test fails `elaborates`",
-                ),
-            }
-        }
-        Ok(stage)
     }
 
     /// Writes the lakefile of the workspace: one library per extracted test
@@ -274,9 +195,7 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
         let mut requires = String::new();
         // Before `hax`, as in a generated package.
         if let Some(rev) = &*self.aeneas_rev.lock().unwrap() {
-            requires += &format!(
-                "\n[[require]]\nname = \"aeneas\"\ngit = \"{AENEAS_REPO}\"\nrev = \"{rev}\"\nsubDir = \"backends/lean\"\n"
-            );
+            requires += &format!("\n{}", hax_types::lean::aeneas_require(rev));
         }
         requires += &format!(
             "\n[[require]]\nname = \"hax\"\npath = \"{}\"\n",
@@ -293,7 +212,9 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
     }
 
     async fn run_lake(&self, args: &[&str], job: &JobKind) -> Result<(i32, String)> {
-        let out = self.lake().args(args).output().await?;
+        let mut command = self.lake();
+        command.args(args);
+        let out = output_killed_on_drop(&mut command).await?;
         let text = format!(
             "{}{}",
             String::from_utf8_lossy(&out.stdout),
@@ -323,19 +244,19 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
         }
         if fs::read_to_string(&stamp_path).ok().as_ref() != Some(&stamp) {
             let _ = fs::remove_file(&stamp_path);
-            let (code, text) = self.run_lake(&["update"], job).await?;
+            let (code, _) = self.run_lake(&["update"], job).await?;
             if code != 0 {
-                bail!("`lake update` failed:\n{text}")
+                bail!("`lake update` failed; its output is in the log")
             }
-            let (code, text) = self.run_lake(&["exe", "cache", "get"], job).await?;
+            let (code, _) = self.run_lake(&["exe", "cache", "get"], job).await?;
             if code != 0 {
-                bail!("`lake exe cache get` failed:\n{text}")
+                bail!("`lake exe cache get` failed; its output is in the log")
             }
             fs::write(&stamp_path, stamp)?;
         }
-        let (code, text) = self.run_lake(&["build", "Hax", "CoreModels"], job).await?;
+        let (code, _) = self.run_lake(&["build", "Hax", "CoreModels"], job).await?;
         if code != 0 {
-            bail!("`lake build Hax CoreModels` failed:\n{text}")
+            bail!("`lake build Hax CoreModels` failed; its output is in the log")
         }
         Ok(())
     }
@@ -385,10 +306,12 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
             }
         }
         if code != 0 && failed.is_empty() {
-            bail!("`lake build` failed outside of any test library:\n{text}")
+            bail!("`lake build` failed outside of any test library; its output is in the log")
         }
         if code == 0 && !failed.is_empty() {
-            bail!("`lake build` succeeded but errors were attributed to {failed:?}:\n{text}")
+            bail!(
+                "`lake build` succeeded but errors were attributed to {failed:?}; its output is in the log"
+            )
         }
         job.report_message(format!(
             "{} libraries, {} failed{}",
@@ -406,6 +329,180 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
         ));
         Ok(failed)
     }
+}
+
+/// Runs `command` to completion, without stdin. A failure aborts the other
+/// runs, and the tools they started must not keep writing into the cache
+/// after the driver exits: when the future is dropped, the whole process
+/// group of the child is killed, not only the child.
+async fn output_killed_on_drop(
+    command: &mut tokio::process::Command,
+) -> Result<std::process::Output> {
+    #[cfg(unix)]
+    command.process_group(0);
+    let child = command
+        .kill_on_drop(true)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+    #[cfg(unix)]
+    let mut group = GroupKill(child.id());
+    let output = child.wait_with_output().await?;
+    // The leader is reaped, so the group id may be reused: the group is not
+    // killed after a completed run, even if a member is still running.
+    #[cfg(unix)]
+    {
+        group.0 = None;
+    }
+    Ok(output)
+}
+
+/// Kills the process group led by the given process when dropped.
+#[cfg(unix)]
+struct GroupKill(Option<u32>);
+
+#[cfg(unix)]
+impl Drop for GroupKill {
+    fn drop(&mut self) {
+        if let Some(pid) = self.0 {
+            // SAFETY: `killpg` only sends a signal.
+            unsafe {
+                libc::killpg(pid as libc::pid_t, libc::SIGKILL);
+            }
+        }
+    }
+}
+
+/// Runs `cargo hax <args>` and fails with its stderr and messages when it
+/// exits with an error.
+async fn cargo_hax(cwd: &Path, args: &[&str]) -> Result<HaxEngineOutput> {
+    let mut command = tokio::process::Command::new("cargo");
+    command.arg("hax").args(args).current_dir(cwd);
+    let out = output_killed_on_drop(&mut command)
+        .await
+        .context("cannot run `cargo hax`")?;
+    let output = HaxEngineOutput::from_output(&out)?;
+    if output.error_code != 0 {
+        let messages: Vec<String> = output.messages.iter().filter_map(OutMsg::render).collect();
+        bail!(
+            "`cargo hax {}` exited with code {}:\n{}{}",
+            args.join(" "),
+            output.error_code,
+            output.stderr,
+            messages.join("\n")
+        );
+    }
+    Ok(output)
+}
+
+impl PipelineSteps for Lean {
+    fn backend(&self) -> BackendName {
+        BackendName::Lean
+    }
+
+    fn phase_name(&self, phase: PipelinePhase) -> String {
+        match phase {
+            PipelinePhase::Canary => "canary".into(),
+            PipelinePhase::Extract => "cargo hax into lean".into(),
+            PipelinePhase::Prepare => "workspace dependencies".into(),
+            PipelinePhase::Batch(stage) if stage == checked() => "lake build: guards".into(),
+            PipelinePhase::Batch(_) => "lake build: extractions".into(),
+        }
+    }
+
+    async fn extract(&self, ctx: &FlsContext, test: &FlsTest, job: JobKind) -> Result<Stage> {
+        let dir = ctx.generate_package(test)?;
+        // A previous extraction leaves hand-editable files (the `Assumptions`
+        // module) that `cargo hax` does not overwrite; a stale one would
+        // change the stage of a renamed item.
+        let _ = fs::remove_dir_all(self.lean_dir(ctx, test));
+
+        let mut command = tokio::process::Command::new("cargo");
+        command
+            .args(["hax", "--message-format", "json", "into", "lean"])
+            .current_dir(&dir)
+            .env("CARGO_TARGET_DIR", &self.target_dir);
+        let output = HaxEngineOutput::from_output(&output_killed_on_drop(&mut command).await?)?;
+        output.report_stderr_and_stdout(job.clone());
+
+        // A `GenericError` names the tool that failed only through the `Step`
+        // active when it arrives; aeneas reports partial files even when it
+        // fails, so the error decides before any `ProducedFile`.
+        let mut last_step: Option<String> = None;
+        let mut error: Option<(String, Option<String>)> = None;
+        let mut lib = None;
+        for message in &output.messages {
+            if let OutMsg::Hax(message) = message {
+                match message {
+                    HaxMessage::Step { target, .. } => last_step = Some(target.clone()),
+                    HaxMessage::GenericError { message } => {
+                        error.get_or_insert_with(|| (message.clone(), last_step.clone()));
+                    }
+                    HaxMessage::ProducedFile { path, .. } => {
+                        // `<lean_dir>/<Lib>/Extraction/<Module>.lean`
+                        let dir = path.parent();
+                        if dir
+                            .and_then(Path::file_name)
+                            .is_some_and(|n| n == "Extraction")
+                        {
+                            lib = dir
+                                .and_then(Path::parent)
+                                .and_then(Path::file_name)
+                                .map(|n| n.to_string_lossy().into_owned());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let stage = if error.is_some() || output.error_code != 0 {
+            let (message, step) = error.unwrap_or_else(|| {
+                let message = format!(
+                    "`cargo hax into lean` exited with code {}",
+                    output.error_code
+                );
+                (message, last_step)
+            });
+            // A failure during the charon or aeneas step rejects the test,
+            // including a failure to spawn the tool or to write the package
+            // after a failed aeneas run; any other failure, such as a tool
+            // download, fails the run.
+            let stage = match step.as_deref() {
+                Some("charon") => LEAN.stage("charon-rejected"),
+                Some(step) if step.starts_with("aeneas on ") => LEAN.stage("aeneas-rejected"),
+                _ => bail!(
+                    "`cargo hax into lean` failed on `{}` outside of charon and aeneas: {message}",
+                    test.path
+                ),
+            };
+            job.report_message(message);
+            stage
+        } else {
+            LEAN.stage("extracted")
+        };
+        job.report_message(format!("stage: {}", stage.as_str()));
+        if stage == LEAN.stage("extracted") {
+            match lib {
+                Some(lib) => {
+                    self.libs.lock().unwrap().insert(test.path.clone(), lib);
+                }
+                None => job.report_message(
+                    "no Lean file reported under `<Lib>/Extraction/`; the test fails `elaborates`",
+                ),
+            }
+        }
+        Ok(stage)
+    }
+
+    async fn prepare(&self, ctx: &FlsContext, tests: &[&FlsTest], job: JobKind) -> Result<()> {
+        self.assemble_workspace(ctx, tests, &job)?;
+        self.prepare_workspace(&job).await
+    }
+
+    fn batch_stages(&self) -> Vec<Stage> {
+        vec![elaborates(), checked()]
+    }
 
     /// Runs the `lake build` of one batch stage and maps the failed libraries
     /// back to test paths. A test without the library of the stage fails it.
@@ -414,7 +511,7 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
         ctx: &FlsContext,
         stage: Stage,
         tests: &[&FlsTest],
-        job: &JobKind,
+        job: JobKind,
     ) -> Result<HashSet<String>> {
         let unguarded = self.unguarded.lock().unwrap().clone();
         let mut failed = HashSet::new();
@@ -444,7 +541,7 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
             .iter()
             .map(|(_, lib, dir)| (lib.clone(), dir.clone()))
             .collect();
-        let failed_libs = self.lake_build(&targets, job).await?;
+        let failed_libs = self.lake_build(&targets, &job).await?;
         failed.extend(
             libs.into_iter()
                 .filter(|(_, lib, _)| failed_libs.contains(lib))
@@ -455,15 +552,14 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
 
     async fn tool_versions(&self, ctx: &FlsContext) -> Result<ToolVersions> {
         let cwd = ctx.options.tests_crate_dir();
-        let version = tokio::process::Command::new("cargo")
-            .args(["hax", "--version"])
-            .current_dir(&cwd)
-            .output()
-            .await?;
-        let version = String::from_utf8_lossy(&version.stdout);
+        let version = cargo_hax(&cwd, &["--version"]).await?;
         let hax = version
-            .lines()
-            .find_map(|l| l.trim().strip_prefix("version="))
+            .messages
+            .iter()
+            .find_map(|m| match m {
+                OutMsg::Unknown(line) => line.trim().strip_prefix("version="),
+                _ => None,
+            })
             .context("cannot parse `cargo hax --version`")?
             .to_string();
         // A build from a checkout reports its commit, which would change the
@@ -480,19 +576,14 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
             )
         };
 
-        let show = tokio::process::Command::new("cargo")
-            .args(["hax", "--message-format", "json", "tools", "show"])
-            .current_dir(&cwd)
-            .output()
-            .await?;
-        let stdout = String::from_utf8_lossy(&show.stdout);
-        let (tools, versions) = stdout
-            .lines()
-            .filter_map(|l| serde_json::from_str::<HaxMessage>(l).ok())
+        let show = cargo_hax(&cwd, &["--message-format", "json", "tools", "show"]).await?;
+        let (tools, versions) = show
+            .messages
+            .into_iter()
             .find_map(|m| match m {
-                HaxMessage::ToolsShow {
+                OutMsg::Hax(HaxMessage::ToolsShow {
                     tools, versions, ..
-                } => Some((tools, versions)),
+                }) => Some((tools, versions)),
                 _ => None,
             })
             .context("`cargo hax tools show` produced no `ToolsShow` message")?;
@@ -520,57 +611,40 @@ leanOptions = [{ name = "maxErrors", value = "10000" }]
     }
 }
 
-impl PipelineSteps for Lean {
-    fn backend(&self) -> BackendName {
-        BackendName::Lean
-    }
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::{io::Read, time::Duration};
 
-    fn phase_name(&self, phase: PipelinePhase) -> String {
-        match phase {
-            PipelinePhase::Canary => "canary".into(),
-            PipelinePhase::Extract => "cargo hax into lean".into(),
-            PipelinePhase::Prepare => "workspace dependencies".into(),
-            PipelinePhase::Batch(stage) if stage == checked() => "lake build: guards".into(),
-            PipelinePhase::Batch(_) => "lake build: extractions".into(),
-        }
-    }
+    /// The grandchild holds the write end of a FIFO, so the reader sees EOF
+    /// once it is dead, whether or not anything reaps it.
+    #[tokio::test]
+    async fn dropping_the_output_kills_the_grandchildren() {
+        let dir = std::env::temp_dir().join(format!("fls-group-kill-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let fifo = dir.join("fifo");
+        let status = std::process::Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap();
+        assert!(status.success());
 
-    fn extract<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
-        test: &'a FlsTest,
-        job: JobKind,
-    ) -> BoxFuture<'a, Result<Stage>> {
-        Box::pin(self.extract(ctx, test, job))
-    }
-
-    fn prepare<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
-        tests: &'a [&'a FlsTest],
-        job: JobKind,
-    ) -> BoxFuture<'a, Result<()>> {
-        Box::pin(async move {
-            self.assemble_workspace(ctx, tests, &job)?;
-            self.prepare_workspace(&job).await
-        })
-    }
-
-    fn batch_stages(&self) -> Vec<Stage> {
-        vec![elaborates(), checked()]
-    }
-
-    fn run_batch<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
-        stage: Stage,
-        tests: &'a [&'a FlsTest],
-        job: JobKind,
-    ) -> BoxFuture<'a, Result<HashSet<String>>> {
-        Box::pin(async move { self.run_batch(ctx, stage, tests, &job).await })
-    }
-
-    fn tool_versions<'a>(&'a self, ctx: &'a FlsContext) -> BoxFuture<'a, Result<ToolVersions>> {
-        Box::pin(self.tool_versions(ctx))
+        let mut command = tokio::process::Command::new("sh");
+        command.args(["-c", &format!("sleep 30 > {} & wait", fifo.display())]);
+        let mut run = Box::pin(output_killed_on_drop(&mut command));
+        let open = tokio::task::spawn_blocking({
+            let fifo = fifo.clone();
+            move || fs::File::open(fifo).unwrap()
+        });
+        let mut reader = tokio::select! {
+            _ = &mut run => panic!("the command finished before it was dropped"),
+            reader = open => reader.unwrap(),
+        };
+        drop(run);
+        let eof = tokio::task::spawn_blocking(move || reader.read_to_end(&mut vec![]));
+        let closed = tokio::time::timeout(Duration::from_secs(10), eof).await;
+        let _ = fs::remove_dir_all(&dir);
+        assert!(closed.is_ok(), "the grandchild survived");
     }
 }

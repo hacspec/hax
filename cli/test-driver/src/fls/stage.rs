@@ -1,7 +1,7 @@
 //! Support tiers, pipeline stages, and their classification. Every backend
 //! has its own scale of stages; a stage is a position on one scale.
 
-use std::{cmp::Ordering, fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 
 use anyhow::{Error, Result, bail};
 use hax_types::cli_options::BackendName;
@@ -145,13 +145,6 @@ impl PartialEq for Stage {
 
 impl Eq for Stage {}
 
-impl PartialOrd for Stage {
-    /// Stages of different scales are not comparable.
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        std::ptr::eq(self.scale, other.scale).then(|| self.index.cmp(&other.index))
-    }
-}
-
 /// What the report says about a test, derived from its tier and its stage.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Classification {
@@ -232,7 +225,7 @@ mod tests {
     fn stages_are_ordered_within_a_scale() {
         let names = LEAN.names;
         for pair in names.windows(2) {
-            assert!(LEAN.stage(pair[0]) < LEAN.stage(pair[1]));
+            assert_eq!(LEAN.stage(pair[0]).next(), Some(LEAN.stage(pair[1])));
         }
         assert_eq!(
             LEAN.stage("extracted").next(),
@@ -246,11 +239,6 @@ mod tests {
     fn scales_do_not_mix() {
         assert!(LEAN.parse("rejected").is_err());
         assert!(OTHER.parse("checked").is_err());
-        assert_eq!(
-            LEAN.stage("extracted")
-                .partial_cmp(&OTHER.stage("extracted")),
-            None
-        );
         assert_ne!(LEAN.stage("extracted"), OTHER.stage("extracted"));
     }
 }

@@ -14,12 +14,17 @@ mod results;
 mod runner;
 pub mod stage;
 mod test;
+mod triage;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use hax_types::cli_options::BackendName;
 
 use self::{
-    package::FlsContext, results::ResultsFile, runner::runner_for, stage::scale_of, test::FlsTest,
+    package::FlsContext,
+    results::{Committed, ResultsFile},
+    runner::runner_for,
+    stage::scale_of,
+    test::FlsTest,
 };
 use crate::{
     cli::{Cli, FlsCommand},
@@ -32,6 +37,7 @@ pub async fn subcommand(options: &Cli, command: FlsCommand) -> Result<()> {
     match command {
         FlsCommand::Refresh { rev, check } => refresh::run(options, &rev, check),
         FlsCommand::Coverage => coverage::run(options).await,
+        FlsCommand::Triage { chapter, all } => triage::run(options, &chapter, all).await,
     }
 }
 
@@ -45,61 +51,56 @@ pub async fn run(options: Cli) -> Result<()> {
 
     // Without `--backend`, the suite runs the Lean backend only until an
     // engine runner exists.
-    let backends = ctx
-        .options
-        .backend()
-        .map_or(vec![BackendName::Lean], |b| vec![b]);
+    let backend = ctx.options.backend().unwrap_or(BackendName::Lean);
+    // Every test with a tier for the backend has a table in the results
+    // file; `--matching` narrows which of them are run.
+    let with_tier: Vec<&FlsTest> = tests
+        .iter()
+        .filter(|test| test.tiers.contains_key(&backend))
+        .collect();
+    let selected: Vec<&FlsTest> = with_tier
+        .iter()
+        .filter(|test| ctx.options.selects(&test.path))
+        .copied()
+        .collect();
+    backend
+        .job_kind(BackendJobKind::NumberBackendJobs(selected.len()))
+        .report_no_message();
+    let results_job = backend.job_kind(BackendJobKind::Phase {
+        name: "results".into(),
+    });
 
-    let mut failed = false;
-    for backend in backends {
-        // Every test with a tier for the backend has a table in the results
-        // file; `--matching` narrows which of them are run.
-        let with_tier: Vec<&FlsTest> = tests
-            .iter()
-            .filter(|test| test.tiers.contains_key(&backend))
-            .collect();
-        let selected: Vec<FlsTest> = with_tier
-            .iter()
-            .filter(|test| ctx.options.selects(&test.path))
-            .cloned()
-            .cloned()
-            .collect();
-        backend
-            .job_kind(BackendJobKind::NumberBackendJobs(selected.len()))
-            .report_no_message();
-        let results_job = backend.job_kind(BackendJobKind::Phase {
-            name: "results".into(),
-        });
-
-        let runner = runner_for(&ctx, backend)?;
-        let tools = runner.tool_versions(&ctx).await?;
-        let stages = runner.run(&ctx, &selected).await?;
-        let checked = results_job
-            .run(async |job| {
-                if ctx.options.no_verify() {
-                    job.report_message("results comparison skipped (--no-verify)");
-                    return Ok(());
-                }
-                let file = ResultsFile::merged(
-                    &ctx,
-                    backend,
-                    scale_of(backend)?,
-                    tools.clone(),
-                    &with_tier,
-                    &selected,
-                    &stages,
-                )?;
-                results::check(&ctx, &file, job).await
-            })
-            .await;
-        match checked {
-            Ok(()) => {}
-            Err(e) if e.is::<results::ResultsDiffer>() => failed = true,
-            Err(e) => return Err(e),
-        }
-    }
-    if failed {
-        bail!("observed results differ from the committed results files")
-    }
-    Ok(())
+    let runner = runner_for(&ctx, backend)?;
+    // Read before the run, so that a malformed file fails before any tool
+    // runs; `--no-verify` never compares with it.
+    let committed = if ctx.options.no_verify() {
+        None
+    } else {
+        Committed::read(&ctx, backend, scale_of(backend)?)?
+    };
+    let tools = runner.tool_versions(&ctx).await?;
+    Committed::check_partial_update(
+        committed.as_ref(),
+        &ctx,
+        &tools,
+        selected.len() < with_tier.len(),
+    )?;
+    let stages = runner.run(&ctx, &selected).await?;
+    results_job
+        .run(async |job| {
+            if ctx.options.no_verify() {
+                job.report_message("results comparison skipped (--no-verify)");
+                return Ok(());
+            }
+            let file = ResultsFile::merged(
+                backend,
+                committed.as_ref(),
+                tools.clone(),
+                &with_tier,
+                &selected,
+                &stages,
+            )?;
+            results::check(&ctx, &file, &with_tier, job).await
+        })
+        .await
 }

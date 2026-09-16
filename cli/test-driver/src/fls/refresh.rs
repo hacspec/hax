@@ -11,10 +11,7 @@ use std::{
 use anyhow::{Context as _, Result, bail};
 use regex::Regex;
 
-use super::{
-    ids::{IdList, Paragraph},
-    results,
-};
+use super::ids::{IdList, Paragraph};
 use crate::cli::Cli;
 
 const FLS_REPOSITORY: &str = "https://github.com/rust-lang/fls";
@@ -26,9 +23,17 @@ const LEVELS: &str = "=-~^\"";
 /// previous fetch is reused only for a full commit hash, since a branch or
 /// tag can move.
 pub fn fetch(cache_dir: &Path, rev: &str) -> Result<PathBuf> {
+    // `rev` becomes a directory that is removed below, so it must stay inside
+    // the cache. No git ref is empty, starts with `/` or `-`, or contains `..`.
+    if rev.is_empty()
+        || rev.starts_with(['/', '-'])
+        || rev.contains("..")
+        || rev.contains(['\\', '\0'])
+    {
+        bail!("`{rev}` is not a revision of rust-lang/fls");
+    }
     let dir = cache_dir.join("fls-source").join(rev);
-    let is_commit = rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit());
-    if is_commit && dir.join("src").join("index.rst").exists() {
+    if is_commit_hash(rev) && dir.join("src").join("index.rst").exists() {
         return Ok(dir);
     }
     if dir.exists() {
@@ -41,44 +46,48 @@ pub fn fetch(cache_dir: &Path, rev: &str) -> Result<PathBuf> {
         &["checkout", "--quiet", "FETCH_HEAD"],
     ];
     for args in steps {
-        let output = Command::new("git")
-            .args(args)
-            .current_dir(&dir)
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .output()
-            .context("cannot run `git`; is it on PATH?")?;
-        if !output.status.success() {
+        if let Err(e) = git(Some(&dir), args) {
             let _ = fs::remove_dir_all(&dir);
-            bail!(
-                "`git {}` failed for revision {rev}:\n{}",
-                args.join(" "),
-                String::from_utf8_lossy(&output.stderr).trim()
-            );
+            return Err(e.context(format!("cannot fetch revision {rev}")));
         }
     }
     Ok(dir)
 }
 
-/// The commit the fetch checked out, so that a tag is recorded by the commit
-/// it names rather than by a name that can move.
-fn resolved_commit(dir: &Path) -> Result<String> {
-    let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(dir)
+/// Runs `git` without prompting for credentials and returns its stdout.
+fn git(dir: Option<&Path>, args: &[&str]) -> Result<String> {
+    let mut command = Command::new("git");
+    command.args(args).env("GIT_TERMINAL_PROMPT", "0");
+    if let Some(dir) = dir {
+        command.current_dir(dir);
+    }
+    let output = command
         .output()
         .context("cannot run `git`; is it on PATH?")?;
     if !output.status.success() {
         bail!(
-            "`git rev-parse HEAD` failed in {}:\n{}",
-            dir.display(),
+            "`git {}` failed:\n{}",
+            args.join(" "),
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// The commit the fetch checked out, so that a tag is recorded by the commit
+/// it names rather than by a name that can move.
+fn resolved_commit(dir: &Path) -> Result<String> {
+    Ok(git(Some(dir), &["rev-parse", "HEAD"])?.trim().to_string())
 }
 
 fn is_commit_hash(rev: &str) -> bool {
     rev.len() == 40 && rev.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// Whether `rev` is a tag of rust-lang/fls, which names a release.
+fn is_release_tag(rev: &str) -> Result<bool> {
+    let tag = format!("refs/tags/{rev}");
+    Ok(!git(None, &["ls-remote", "--tags", FLS_REPOSITORY, &tag])?.is_empty())
 }
 
 /// The chapter files listed by the `.. toctree::` block of `src/index.rst`.
@@ -150,17 +159,56 @@ struct Heading {
     slug: String,
 }
 
+/// A paragraph with what the triage needs from its source: the rubric it
+/// appears under and its text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParsedParagraph {
+    pub paragraph: Paragraph,
+    /// Slug of the last `.. rubric::` above the paragraph in its section,
+    /// `none` without one.
+    pub rubric: String,
+    /// The source lines of the paragraph up to the next blank line, joined
+    /// with single spaces, without the `:dp:` marker.
+    pub text: String,
+}
+
+/// The rubric of a paragraph without a `.. rubric::` line above it.
+pub const NO_RUBRIC: &str = "none";
+
+/// The text of the paragraph whose `:dp:` marker is on line `start`.
+fn paragraph_text(lines: &[&str], start: usize, marker: &str) -> String {
+    let mut words: Vec<String> = vec![];
+    for (i, line) in lines.iter().enumerate().skip(start) {
+        if line.trim().is_empty() {
+            break;
+        }
+        let line = if i == start {
+            line.replacen(marker, "", 1)
+        } else {
+            line.to_string()
+        };
+        // Bullet and list-table markers in front of the text.
+        let line = line.trim().trim_start_matches(['*', '-', ' ']);
+        if !line.is_empty() {
+            words.push(line.to_string());
+        }
+    }
+    words.join(" ")
+}
+
 /// The title and the paragraphs of one chapter file, in document order.
-pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph>)> {
+pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<ParsedParagraph>)> {
     let anchor = Regex::new(r"^\.\. _fls_[A-Za-z0-9]+:$").unwrap();
     let paragraph = Regex::new(r":dp:`(fls_[A-Za-z0-9]+)`").unwrap();
 
     let lines: Vec<&str> = text.lines().collect();
     let mut stack: Vec<Heading> = vec![];
-    let mut informational_level: Option<usize> = None;
     // `.. informational-page::` flags the whole chapter, `.. informational-section::`
-    // the current heading until the next heading of the same or a higher level.
+    // the paragraphs directly under the current heading, not its subsections,
+    // as the FLS's own `paragraph-ids.json` does.
+    let mut informational_sections: HashSet<String> = HashSet::new();
     let mut page_informational = false;
+    let mut rubric = NO_RUBRIC.to_string();
     let mut slugs: HashMap<String, String> = HashMap::new();
     let mut paragraphs = vec![];
 
@@ -168,11 +216,13 @@ pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph
 
     for (i, line) in lines.iter().enumerate() {
         let is_underline = i > 0 && is_underline(line) && {
-            let title = lines[i - 1];
+            let title = lines[i - 1].trim_end();
+            // docutils compares the width of the title without trailing
+            // spaces, so a non-ASCII title needs no longer underline.
             !title.is_empty()
                 && !title.starts_with(char::is_whitespace)
                 && !title.starts_with("..")
-                && line.len() >= title.len()
+                && line.trim_end().chars().count() >= title.chars().count()
         };
         if is_underline {
             let title = lines[i - 1].trim_end();
@@ -204,9 +254,6 @@ pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph
             while stack.last().is_some_and(|h| h.level >= level) {
                 stack.pop();
             }
-            if informational_level.is_some_and(|l| level <= l) {
-                informational_level = None;
-            }
             let heading_slug = if level == 0 {
                 chapter.to_string()
             } else {
@@ -230,9 +277,14 @@ pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph
                 title: title.to_string(),
                 slug: heading_slug,
             });
+            rubric = NO_RUBRIC.to_string();
             continue;
         }
         let directive = line.trim();
+        if let Some(name) = directive.strip_prefix(".. rubric::") {
+            rubric = slug(name);
+            continue;
+        }
         if directive == ".. informational-page::" {
             page_informational = true;
             continue;
@@ -244,19 +296,24 @@ pub fn parse_chapter(chapter: &str, text: &str) -> Result<(String, Vec<Paragraph
                     at(i, "informational section before the chapter heading")
                 );
             };
-            informational_level = Some(current.level);
+            informational_sections.insert(current.slug.clone());
             continue;
         }
         for m in paragraph.captures_iter(line) {
             let Some(section) = stack.last() else {
                 bail!("{}", at(i, "paragraph before the chapter heading"));
             };
-            paragraphs.push(Paragraph {
-                id: m[1].to_string(),
-                chapter: chapter.to_string(),
-                section: section.slug.clone(),
-                section_title: section.title.clone(),
-                informational: page_informational || informational_level.is_some(),
+            paragraphs.push(ParsedParagraph {
+                paragraph: Paragraph {
+                    id: m[1].to_string(),
+                    chapter: chapter.to_string(),
+                    section: section.slug.clone(),
+                    section_title: section.title.clone(),
+                    informational: page_informational
+                        || informational_sections.contains(&section.slug),
+                },
+                rubric: rubric.clone(),
+                text: paragraph_text(&lines, i, &m[0]),
             });
         }
     }
@@ -284,7 +341,7 @@ pub fn read_sources(dir: &Path, rev: &str, version: Option<String>) -> Result<Id
             )
         })?;
         let (title, chapter_paragraphs) = parse_chapter(chapter, &text)?;
-        for p in chapter_paragraphs {
+        for p in chapter_paragraphs.into_iter().map(|p| p.paragraph) {
             if let Some(other) = seen.insert(p.id.clone(), chapter.clone()) {
                 bail!("`{}` appears in both {other}.rst and {chapter}.rst", p.id);
             }
@@ -351,9 +408,9 @@ impl std::error::Error for Drift {}
 pub fn run(options: &Cli, rev: &str, check: bool) -> Result<()> {
     let dir = fetch(options.cache_dir(), rev)?;
     let commit = resolved_commit(&dir)?;
-    // A revision given as anything but a commit hash is a release tag, which
-    // the list records beside the commit.
-    let version = (!is_commit_hash(rev)).then(|| rev.to_string());
+    // A release tag is recorded beside the commit; a commit hash or a branch
+    // names no release.
+    let version = (!is_commit_hash(rev) && is_release_tag(rev)?).then(|| rev.to_string());
     let fresh = read_sources(&dir, &commit, version.clone())?;
     println!("chapters: {}", fresh.chapters.join(", "));
 
@@ -402,20 +459,6 @@ pub fn run(options: &Cli, rev: &str, check: bool) -> Result<()> {
         fresh.paragraphs.len()
     );
 
-    let results_dir = options.tests_crate_dir().join("fls-results");
-    if results_dir.is_dir() {
-        let mut files: Vec<PathBuf> = fs::read_dir(&results_dir)?
-            .map(|e| Ok(e?.path()))
-            .collect::<Result<_>>()?;
-        files.sort();
-        for file in files
-            .iter()
-            .filter(|f| f.extension().is_some_and(|e| e == "toml"))
-        {
-            results::set_fls_revision(file, &commit)?;
-            println!("set fls-revision in {}", file.display());
-        }
-    }
     Ok(())
 }
 
@@ -452,7 +495,7 @@ Deeper
 ~~~~~~
 
 :dp:`fls_i2`
-Still informational.
+Under a subsection.
 
 .. _fls_s1b:
 
@@ -484,6 +527,7 @@ Not informational any more.
         assert_eq!(title, "Values And Things");
         let rows: Vec<(&str, &str, &str, bool)> = paragraphs
             .iter()
+            .map(|p| &p.paragraph)
             .map(|p| {
                 (
                     p.id.as_str(),
@@ -498,12 +542,37 @@ Not informational any more.
             [
                 ("fls_top", "values", "Values And Things", false),
                 ("fls_i1", "attribute-no-std", "Attribute ``no_std``", true),
-                ("fls_i2", "deeper", "Deeper", true),
-                ("fls_I3Mixed", "deepest", "Deepest", true),
+                ("fls_i2", "deeper", "Deeper", false),
+                ("fls_I3Mixed", "deepest", "Deepest", false),
                 ("fls_n1", "sibling", "Sibling", false),
                 ("fls_n2", "sibling", "Sibling", false),
             ]
         );
+        let sources: Vec<(&str, &str)> = paragraphs
+            .iter()
+            .map(|p| (p.rubric.as_str(), p.text.as_str()))
+            .collect();
+        assert_eq!(
+            sources,
+            [
+                ("none", "Directly under the chapter."),
+                ("none", "Informational."),
+                ("none", "Under a subsection."),
+                ("none", "A bullet item."),
+                ("legality-rules", "Not informational any more."),
+                ("legality-rules", "In a table."),
+            ]
+        );
+    }
+
+    #[test]
+    fn rubric_resets_at_headings() {
+        let text = ".. _fls_c:\n\nChapter\n=======\n\n.. rubric:: Dynamic Semantics\n\n:dp:`fls_a`\nFirst line\nsecond line.\n\n.. _fls_s:\n\nS\n---\n\n:dp:`fls_b` inline text.\n";
+        let (_, paragraphs) = parse_chapter("c", text).unwrap();
+        assert_eq!(paragraphs[0].rubric, "dynamic-semantics");
+        assert_eq!(paragraphs[0].text, "First line second line.");
+        assert_eq!(paragraphs[1].rubric, "none");
+        assert_eq!(paragraphs[1].text, "inline text.");
     }
 
     #[test]
@@ -557,10 +626,18 @@ Orphan
     }
 
     #[test]
+    fn fetch_rejects_revisions_outside_the_cache() {
+        let cache = Path::new("/nonexistent-cache");
+        for rev in ["", "/home", "../..", "a/../../b", "-c"] {
+            assert!(fetch(cache, rev).is_err(), "{rev:?}");
+        }
+    }
+
+    #[test]
     fn informational_page_flags_the_chapter() {
         let text = ".. informational-page::\n\n.. _fls_c:\n\nChapter\n=======\n\n:dp:`fls_a`\n\n.. _fls_s:\n\nS\n---\n\n:dp:`fls_b`\n";
         let (_, paragraphs) = parse_chapter("c", text).unwrap();
-        assert!(paragraphs.iter().all(|p| p.informational));
+        assert!(paragraphs.iter().all(|p| p.paragraph.informational));
     }
 
     #[test]

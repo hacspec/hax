@@ -24,14 +24,12 @@ use crate::log::JobKind;
 pub struct TestResult {
     pub stage: Stage,
     pub tier: Tier,
-    /// Derived from `tier` and `stage`; written so that the report needs no
-    /// stage scale.
+    /// Derived from `tier` and `stage`.
     pub classification: Classification,
 }
 
 pub struct ResultsFile {
     pub backend: BackendName,
-    pub fls_revision: String,
     pub tools: ToolVersions,
     pub tests: BTreeMap<String, TestResult>,
 }
@@ -114,17 +112,63 @@ fn merge_tests(
         .collect()
 }
 
+/// The committed results file of a backend.
+pub struct Committed {
+    tools: ToolVersions,
+    tests: BTreeMap<String, TestResult>,
+}
+
+impl Committed {
+    /// Reads and validates the committed file, `None` when there is none.
+    pub fn read(
+        ctx: &FlsContext,
+        backend: BackendName,
+        scale: &'static StageScale,
+    ) -> Result<Option<Self>> {
+        let path = committed_path(ctx, backend);
+        let Some(file) = CommittedFile::read(&path)? else {
+            return Ok(None);
+        };
+        let tests = file
+            .tests(scale)
+            .with_context(|| format!("in {}", path.display()))?;
+        Ok(Some(Self {
+            tools: file.tools(),
+            tests,
+        }))
+    }
+
+    /// A run that observes only some tests keeps the committed entries of the
+    /// others, which are only valid under the committed tool versions.
+    pub fn check_partial_update(
+        committed: Option<&Self>,
+        ctx: &FlsContext,
+        tools: &ToolVersions,
+        partial: bool,
+    ) -> Result<()> {
+        if partial
+            && ctx.options.update_results()
+            && let Some(committed) = committed
+            && &committed.tools != tools
+        {
+            bail!(
+                "the tool versions differ from the committed results file; run without `--matching` so that every test is observed with the current tools"
+            )
+        }
+        Ok(())
+    }
+}
+
 impl ResultsFile {
     /// The results file after this run: observed entries for the tests that
     /// ran, committed entries for the tests `--matching` left out, no entry
     /// for tests that no longer exist or lost their tier.
     pub fn merged(
-        ctx: &FlsContext,
         backend: BackendName,
-        scale: &'static StageScale,
+        committed: Option<&Committed>,
         tools: ToolVersions,
         with_tier: &[&FlsTest],
-        selected: &[FlsTest],
+        selected: &[&FlsTest],
         stages: &Stages,
     ) -> Result<Self> {
         let observed = selected
@@ -140,25 +184,10 @@ impl ResultsFile {
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
 
-        let committed = CommittedFile::read(&committed_path(ctx, backend))?;
-        let partial = selected.len() < with_tier.len();
-        if partial
-            && ctx.options.update_results()
-            && let Some(committed) = &committed
-            && committed.tools() != tools
-        {
-            bail!(
-                "the tool versions differ from the committed results file; run without `--matching` so that every test is observed with the current tools"
-            )
-        }
-        let committed_tests = committed
-            .map(|c| c.tests(scale))
-            .transpose()?
-            .unwrap_or_default();
+        let committed_tests = committed.map(|c| c.tests.clone()).unwrap_or_default();
         let with_tier: HashSet<&str> = with_tier.iter().map(|t| t.path.as_str()).collect();
         Ok(Self {
             backend,
-            fls_revision: fls_revision(ctx),
             tools,
             tests: merge_tests(committed_tests, &with_tier, observed),
         })
@@ -167,7 +196,6 @@ impl ResultsFile {
     pub fn render(&self) -> String {
         let mut out = String::new();
         out += &format!("backend = {}\n", toml_string(&self.backend.to_string()));
-        out += &format!("fls-revision = {}\n", toml_string(&self.fls_revision));
         out += "\n[tools]\n";
         for (name, version) in &self.tools {
             out += &format!("{name} = {}\n", toml_string(version));
@@ -183,6 +211,20 @@ impl ResultsFile {
         }
         out
     }
+}
+
+/// The report shows a reason only for a gap or an unsupported construct, so
+/// a reason on a fully supported test is never read.
+fn unused_reason(backend: BackendName, test: &FlsTest, result: &TestResult) -> Option<String> {
+    let shown = result.classification != Classification::Supported;
+    if shown || !test.reasons.contains_key(&backend) {
+        return None;
+    }
+    let path = &test.path;
+    Some(format!(
+        "{path}: warning: `@{backend}(reason)` is never shown for a test classified as `{}`; drop it or fix the tier",
+        result.classification.as_str()
+    ))
 }
 
 /// The violations of the committed results files in `results_dir`: every test
@@ -259,70 +301,35 @@ fn committed_path(ctx: &FlsContext, backend: BackendName) -> PathBuf {
         .join(format!("{backend}.toml"))
 }
 
-/// The FLS revision pinned by `tests/fls-ids.txt`, empty while that file does not exist.
-fn fls_revision(ctx: &FlsContext) -> String {
-    fs::read_to_string(ctx.options.tests_crate_dir().join("fls-ids.txt"))
-        .ok()
-        .and_then(|s| {
-            s.lines()
-                .next()
-                .and_then(|l| l.strip_prefix("# fls-revision:"))
-                .map(|r| r.trim().to_string())
-        })
-        .unwrap_or_default()
-}
-
-/// Replaces the `fls-revision` line of a results file in place.
-pub fn set_fls_revision(path: &Path, revision: &str) -> Result<()> {
-    let text =
-        fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
-    let mut found = false;
-    let lines: Vec<String> = text
-        .lines()
-        .map(|line| {
-            if line.starts_with("fls-revision = ") {
-                found = true;
-                format!("fls-revision = {}", toml_string(revision))
-            } else {
-                line.to_string()
-            }
-        })
-        .collect();
-    if !found {
-        bail!("{}: no `fls-revision` line", path.display());
-    }
-    fs::write(path, lines.join("\n") + "\n")?;
-    Ok(())
-}
-
-/// A TOML basic string.
+/// A TOML string.
 fn toml_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out += "\\\"",
-            '\\' => out += "\\\\",
-            '\n' => out += "\\n",
-            '\t' => out += "\\t",
-            c if c.is_control() => out += &format!("\\u{:04X}", c as u32),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+    toml::Value::String(s.to_string()).to_string()
 }
 
 /// Writes the merged results to the cache directory and compares them with
 /// the committed file; with `--update-results` the committed file is
 /// rewritten instead.
-pub async fn check(ctx: &FlsContext, file: &ResultsFile, job: JobKind) -> Result<()> {
+pub async fn check(
+    ctx: &FlsContext,
+    file: &ResultsFile,
+    tests: &[&FlsTest],
+    job: JobKind,
+) -> Result<()> {
     for (path, result) in &file.tests {
         job.report_message(format!(
             "{path}: {} ({})",
             result.stage.as_str(),
             result.classification.as_str()
         ));
+    }
+    for test in tests {
+        if let Some(warning) = file
+            .tests
+            .get(&test.path)
+            .and_then(|result| unused_reason(file.backend, test, result))
+        {
+            job.report_message(warning);
+        }
     }
     let rendered = file.render();
     let observed_path = ctx
@@ -350,33 +357,12 @@ pub async fn check(ctx: &FlsContext, file: &ResultsFile, job: JobKind) -> Result
         .header(&committed_path.display().to_string(), "observed")
         .to_string();
     job.report_message(diff);
-    Err(ResultsDiffer {
-        committed: committed_path,
-        observed: observed_path,
-    }
-    .into())
+    bail!(
+        "observed results differ from {}; rerun with `--update-results`, or copy {}",
+        committed_path.display(),
+        observed_path.display()
+    )
 }
-
-/// The error of [`check`] when the observed results differ from the
-/// committed ones, as opposed to a failure to compute or compare them.
-#[derive(Debug)]
-pub struct ResultsDiffer {
-    committed: PathBuf,
-    observed: PathBuf,
-}
-
-impl std::fmt::Display for ResultsDiffer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "observed results differ from {}; rerun with `--update-results`, or copy {}",
-            self.committed.display(),
-            self.observed.display()
-        )
-    }
-}
-
-impl std::error::Error for ResultsDiffer {}
 
 #[cfg(test)]
 mod tests {
@@ -405,6 +391,36 @@ mod tests {
         assert_eq!(merged["a"].stage, LEAN.stage("checked"));
         assert_eq!(merged["b"].stage, LEAN.stage("checked"));
         assert_eq!(merged["new"].stage, LEAN.stage("elaborates"));
+    }
+
+    #[test]
+    fn unused_reason_warns_on_supported_only() {
+        let test = |reason: Option<&str>| FlsTest {
+            path: "c/s/t".into(),
+            source: PathBuf::new(),
+            fls: vec!["fls_a".into()],
+            title: "t".into(),
+            no_equiv: None,
+            tiers: HashMap::from([(BackendName::Lean, Tier::Supported)]),
+            reasons: reason
+                .map(|r| HashMap::from([(BackendName::Lean, r.to_string())]))
+                .unwrap_or_default(),
+            equiv: vec![],
+        };
+        let with_reason = test(Some("why"));
+        let warns = |test: &FlsTest, stage: &str, tier: Tier| {
+            unused_reason(
+                BackendName::Lean,
+                test,
+                &TestResult::new(LEAN.stage(stage), tier),
+            )
+            .is_some()
+        };
+        assert!(warns(&with_reason, "checked", Tier::Supported));
+        assert!(!warns(&with_reason, "extracted", Tier::Supported));
+        assert!(!warns(&with_reason, "aeneas-rejected", Tier::Unsupported));
+        assert!(!warns(&with_reason, "checked", Tier::Unsupported));
+        assert!(!warns(&test(None), "checked", Tier::Supported));
     }
 
     #[test]
@@ -449,7 +465,6 @@ mod tests {
     fn rendered_file_reads_back() {
         let file = ResultsFile {
             backend: BackendName::Lean,
-            fls_revision: String::new(),
             tools: vec![
                 ("hax".into(), "1".into()),
                 ("hax-lean-lib".into(), "v0".into()),

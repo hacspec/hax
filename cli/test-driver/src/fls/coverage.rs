@@ -3,9 +3,13 @@
 //! a paragraph of the chapter the test lives in, and the results files have
 //! an entry for exactly the tests with a tier for their backend.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    fs,
+    path::Path,
+};
 
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 
 use super::{
     exclusions::{self, Category, Exclusion, Exclusions},
@@ -181,8 +185,36 @@ pub fn analyse(list: &IdList, exclusions: &Exclusions, tests: &[Claims<'_>]) -> 
     }
 }
 
-fn check(options: &Cli, tests: &[FlsTest], job: &JobKind) -> Result<()> {
-    let tests_dir = options.tests_crate_dir();
+/// The violations of the rustc coverage retirement list: one path per line
+/// relative to `rustc_coverage`, `#` comments, every path existing and listed
+/// once.
+pub fn check_retired_list(text: &str, rustc_coverage: &Path) -> Vec<String> {
+    let mut violations = vec![];
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    for (i, line) in text.lines().enumerate() {
+        let entry = line.split('#').next().unwrap_or("").trim();
+        if entry.is_empty() {
+            continue;
+        }
+        let line_no = i + 1;
+        if let Some(previous) = seen.insert(entry, line_no) {
+            violations.push(format!(
+                "rustc-coverage-retired.txt:{line_no}: `{entry}` is already listed on line {previous}"
+            ));
+            continue;
+        }
+        if !rustc_coverage.join(entry).is_file() {
+            violations.push(format!(
+                "rustc-coverage-retired.txt:{line_no}: `{entry}` is not a file of {}",
+                rustc_coverage.display()
+            ));
+        }
+    }
+    violations
+}
+
+/// The merged identifier lists of the tests crate.
+pub fn read_lists(tests_dir: &Path) -> Result<IdList> {
     let fls_ids = tests_dir.join("fls-ids.txt");
     if !fls_ids.exists() {
         bail!(
@@ -197,7 +229,12 @@ fn check(options: &Cli, tests: &[FlsTest], job: &JobKind) -> Result<()> {
             hax_ids.display()
         );
     }
-    let list = IdList::merged(IdList::read(&fls_ids)?, IdList::read(&hax_ids)?)?;
+    IdList::merged(IdList::read(&fls_ids)?, IdList::read(&hax_ids)?)
+}
+
+fn check(options: &Cli, tests: &[FlsTest], job: &JobKind) -> Result<()> {
+    let tests_dir = options.tests_crate_dir();
+    let list = read_lists(&tests_dir)?;
     let exclusions = exclusions::read(&tests_dir.join("fls-excluded.toml"), &list.chapters)?;
     let claims: Vec<Claims<'_>> = tests
         .iter()
@@ -211,6 +248,15 @@ fn check(options: &Cli, tests: &[FlsTest], job: &JobKind) -> Result<()> {
         &tests_dir.join("fls-results"),
         tests,
     )?);
+    let retired = options.fls_dir().join("rustc-coverage-retired.txt");
+    if retired.exists() {
+        let text = fs::read_to_string(&retired)
+            .with_context(|| format!("cannot read {}", retired.display()))?;
+        report.violations.extend(check_retired_list(
+            &text,
+            &tests_dir.join("src").join("rustc-coverage"),
+        ));
+    }
     for line in &report.summary {
         job.report_message(line);
     }
@@ -456,6 +502,30 @@ mod tests {
                 "expressions.unsafe: fls_v1 belongs to values/statics",
             ]
         );
+    }
+
+    #[test]
+    fn retired_list() {
+        let dir = std::env::temp_dir().join(format!("fls-retired-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("branch")).unwrap();
+        std::fs::write(dir.join("if.rs"), "").unwrap();
+        std::fs::write(dir.join("branch/if.rs"), "").unwrap();
+        let text = "# replaced by expressions/if-expressions/*\nif.rs\nbranch/if.rs # trailing comment\n\nif.rs\nbranch/while.rs\nbranch\n";
+        let v = check_retired_list(text, &dir);
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(v.len(), 3, "{v:?}");
+        assert!(
+            v[0].contains(":5: `if.rs` is already listed on line 2"),
+            "{}",
+            v[0]
+        );
+        assert!(
+            v[1].contains(":6: `branch/while.rs` is not a file"),
+            "{}",
+            v[1]
+        );
+        assert!(v[2].contains(":7: `branch` is not a file"), "{}", v[2]);
     }
 
     #[test]

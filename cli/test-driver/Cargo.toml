@@ -37,5 +37,8 @@ similar = "2.7.0"
 syn = { version = "2", features = ["full"] }
 toml = { version = "0.8", features = ["preserve_order"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [package.metadata.release]
 release = false

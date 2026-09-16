@@ -1,5 +1,5 @@
-//! How a backend is run on the tests of the suite: the hax-engine backends
-//! through the engine, external tool chains through a pipeline of steps.
+//! How a backend is run on the tests of the suite: external tool chains
+//! through a pipeline of steps.
 
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -31,7 +31,7 @@ pub trait BackendRunner: Send + Sync {
     fn run<'a>(
         &'a self,
         ctx: &'a FlsContext,
-        tests: &'a [FlsTest],
+        tests: &'a [&'a FlsTest],
     ) -> BoxFuture<'a, Result<Stages>>;
 }
 
@@ -40,37 +40,8 @@ pub fn runner_for(ctx: &FlsContext, backend: BackendName) -> Result<Box<dyn Back
         BackendName::Lean => Box::new(ExternalPipeline {
             steps: Lean::new(ctx)?,
         }),
-        other => Box::new(HaxEngine { backend: other }),
+        other => bail!("the FLS suite does not run the hax-engine backend `{other}` yet"),
     })
-}
-
-/// The backends of the hax engine. Not implemented yet.
-pub struct HaxEngine {
-    pub backend: BackendName,
-}
-
-impl BackendRunner for HaxEngine {
-    fn tool_versions<'a>(&'a self, _ctx: &'a FlsContext) -> BoxFuture<'a, Result<ToolVersions>> {
-        Box::pin(async move {
-            bail!(
-                "the FLS suite does not run the hax-engine backend `{}` yet",
-                self.backend
-            )
-        })
-    }
-
-    fn run<'a>(
-        &'a self,
-        _ctx: &'a FlsContext,
-        _tests: &'a [FlsTest],
-    ) -> BoxFuture<'a, Result<Stages>> {
-        Box::pin(async move {
-            bail!(
-                "the FLS suite does not run the hax-engine backend `{}` yet",
-                self.backend
-            )
-        })
-    }
 }
 
 /// The phases of an external pipeline, for naming the jobs in the log.
@@ -91,36 +62,36 @@ pub trait PipelineSteps: Send + Sync {
 
     /// Per test, under the job semaphore: runs the tool chain and returns the
     /// stage reached, up to the first batch stage.
-    fn extract<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
-        test: &'a FlsTest,
+    fn extract(
+        &self,
+        ctx: &FlsContext,
+        test: &FlsTest,
         job: JobKind,
-    ) -> BoxFuture<'a, Result<Stage>>;
+    ) -> impl Future<Output = Result<Stage>> + Send;
 
     /// Called once before the batch stages with every test that reached the
     /// stage below the first batch stage.
-    fn prepare<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
-        tests: &'a [&'a FlsTest],
+    fn prepare(
+        &self,
+        ctx: &FlsContext,
+        tests: &[&FlsTest],
         job: JobKind,
-    ) -> BoxFuture<'a, Result<()>>;
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// The stages decided by one batch command each, in order; each promotes
     /// the tests at the stage below it that do not fail.
     fn batch_stages(&self) -> Vec<Stage>;
 
     /// Runs the batch command of a stage and returns the paths of the tests that failed.
-    fn run_batch<'a>(
-        &'a self,
-        ctx: &'a FlsContext,
+    fn run_batch(
+        &self,
+        ctx: &FlsContext,
         stage: Stage,
-        tests: &'a [&'a FlsTest],
+        tests: &[&FlsTest],
         job: JobKind,
-    ) -> BoxFuture<'a, Result<HashSet<String>>>;
+    ) -> impl Future<Output = Result<HashSet<String>>> + Send;
 
-    fn tool_versions<'a>(&'a self, ctx: &'a FlsContext) -> BoxFuture<'a, Result<ToolVersions>>;
+    fn tool_versions(&self, ctx: &FlsContext) -> impl Future<Output = Result<ToolVersions>> + Send;
 }
 
 const CANARY_SOURCE: &str = include_str!("../../templates/fls-canary/lib.rs");
@@ -179,13 +150,13 @@ impl<S: PipelineSteps> ExternalPipeline<S> {
 
 impl<S: PipelineSteps> BackendRunner for ExternalPipeline<S> {
     fn tool_versions<'a>(&'a self, ctx: &'a FlsContext) -> BoxFuture<'a, Result<ToolVersions>> {
-        self.steps.tool_versions(ctx)
+        Box::pin(self.steps.tool_versions(ctx))
     }
 
     fn run<'a>(
         &'a self,
         ctx: &'a FlsContext,
-        tests: &'a [FlsTest],
+        tests: &'a [&'a FlsTest],
     ) -> BoxFuture<'a, Result<Stages>> {
         Box::pin(async move {
             let batches = self.steps.batch_stages();
@@ -220,6 +191,7 @@ impl<S: PipelineSteps> BackendRunner for ExternalPipeline<S> {
                 tests
                     .iter()
                     .filter(|test| stages.get(&test.path).and_then(|s| s.next()) == Some(stage))
+                    .copied()
                     .collect()
             };
 
