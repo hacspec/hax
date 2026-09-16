@@ -16,6 +16,9 @@ pub fn sum(l: &List) -> u32 {
 
 #[hax_test::equiv]
 pub fn sum_of_three() -> bool {
-    let l = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Cons(3, Box::new(List::Nil))))));
+    let l = List::Cons(
+        1,
+        Box::new(List::Cons(2, Box::new(List::Cons(3, Box::new(List::Nil))))),
+    );
     sum(&l) == 6
 }

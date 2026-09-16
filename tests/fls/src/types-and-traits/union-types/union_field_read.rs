@@ -1,7 +1,7 @@
 //! @fls: fls_nskmnzq95yqm
 //! @title: Reading a union field
 //! @lean(tier): unsupported
-//! @lean(reason): Section 2.9 of the input-language reference: overlapping union fields have no single value representation, and every read is unsafe.
+//! @lean(reason): The value-model boundary of the input-language reference: overlapping union fields have no single value representation, and every read is unsafe.
 
 pub union IntOrBytes {
     pub n: u32,

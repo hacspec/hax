@@ -1,7 +1,7 @@
 //! @fls: fls_t24iojx7yc23, fls_CSuxTkwR96j9, fls_1941wid94hlg
 //! @title: A function item passed to a generic Fn bound and copied
 //! @lean(tier): supported
-//! @lean(reason): The `Copy` bound on the function item type is instantiated with aeneas' builtin `Std.core.marker.Copy` where the generic expects the core model's `core.marker.Copy`; the extraction fails to elaborate (`Application type mismatch`).
+//! @lean(reason): The `Copy` bound on the function item type is instantiated with aeneas' builtin `Std.core.marker.Copy` where the generic expects the core model's `core.marker.Copy`; the extraction fails to elaborate (`Application type mismatch`); the functions section of the input-language reference.
 
 pub fn double(x: u32) -> u32 {
     x * 2

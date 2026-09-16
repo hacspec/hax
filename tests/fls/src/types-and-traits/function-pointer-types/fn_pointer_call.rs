@@ -1,7 +1,7 @@
 //! @fls: fls_v2wrytr3t04h, fls_g1iYVw7upBnH, fls_8gpvNJfVlyaD, fls_KcI6yK0P8Onn
 //! @title: Calling function pointers with and without a return type
 //! @lean(tier): supported
-//! @lean(reason): aeneas rejects a function pointer type with a reference parameter (`We don't support arrow types with locally quantified regions`); Annex A.8 of the input-language reference.
+//! @lean(reason): aeneas rejects a function pointer type with a reference parameter (`We don't support arrow types with locally quantified regions`); the functions section of the input-language reference.
 
 pub fn negate(x: i32) -> i32 {
     -x

@@ -18,5 +18,7 @@ pub fn area(s: &Shape) -> u32 {
 
 #[hax_test::equiv]
 pub fn areas() -> bool {
-    area(&Shape::Empty) == 0 && area(&Shape::Circle(2)) == 12 && area(&Shape::Rect { w: 3, h: 4 }) == 12
+    area(&Shape::Empty) == 0
+        && area(&Shape::Circle(2)) == 12
+        && area(&Shape::Rect { w: 3, h: 4 }) == 12
 }

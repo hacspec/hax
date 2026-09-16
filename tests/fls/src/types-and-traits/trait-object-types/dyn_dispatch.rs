@@ -1,7 +1,7 @@
 //! @fls: fls_sgrvona1nb6h, fls_88b9bmhra55f, fls_eWac7zOda3lh
 //! @title: Dynamic dispatch through a boxed trait object
 //! @lean(tier): supported
-//! @lean(reason): aeneas fails on the method call through `Box<dyn Speak>` (`Assertion failed: new value doesn't have the same type as its destination`); Annex A.4 of the input-language reference.
+//! @lean(reason): aeneas fails on the method call through `Box<dyn Speak>` (`Assertion failed: new value doesn't have the same type as its destination`); the traits section of the input-language reference.
 
 pub trait Speak {
     fn volume(&self) -> u32;
@@ -23,7 +23,11 @@ impl Speak for Quiet {
 }
 
 pub fn pick(loud: bool) -> Box<dyn Speak> {
-    if loud { Box::new(Loud) } else { Box::new(Quiet) }
+    if loud {
+        Box::new(Loud)
+    } else {
+        Box::new(Quiet)
+    }
 }
 
 #[hax_test::equiv]

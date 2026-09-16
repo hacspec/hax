@@ -1,7 +1,7 @@
 //! @fls: fls_fuBYWRrgxlbQ, fls_URl9CeIVsiWs, fls_JhmQpUoExiNZ, fls_MipY2emZFF6d, fls_YPesUZqYHVUX
 //! @title: A type alias for a boxed trait object with the elided 'static bound
 //! @lean(tier): supported
-//! @lean(reason): aeneas fails on the trait object value (`Assertion failed: new value doesn't have the same type as its destination`); Annex A.4 of the input-language reference.
+//! @lean(reason): aeneas fails on the trait object value (`Assertion failed: new value doesn't have the same type as its destination`); the traits section of the input-language reference.
 
 pub trait Tag {
     fn tag(&self) -> u8;
@@ -24,6 +24,5 @@ pub fn boxed() -> Tagged {
 #[hax_test::equiv]
 pub fn constructed_trait_object() -> bool {
     let t: Tagged = boxed();
-    let _keep = t;
-    true
+    t.tag() == 1
 }

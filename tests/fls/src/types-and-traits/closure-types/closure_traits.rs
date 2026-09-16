@@ -1,7 +1,7 @@
 //! @fls: fls_bsykgnbatpmi, fls_zfj4l8bigdg0, fls_bn0ueivujnqk, fls_u01kt5glbuz8
 //! @title: Closures called through Fn, FnMut, and FnOnce bounds
 //! @lean(tier): supported
-//! @lean(reason): The calls through the `FnOnce` and `FnMut` bounds extract with a closure state of the wrong arity (`Type mismatch: call_once has type closure → Unit → RustM (U32 × closure)`), so the extraction fails to elaborate; Annex A.7 of the input-language reference covers the mutating case.
+//! @lean(reason): The calls through the `FnOnce` and `FnMut` bounds extract with a closure state of the wrong arity (`Type mismatch: call_once has type closure → Unit → RustM (U32 × closure)`), so the extraction fails to elaborate; the functions section of the input-language reference.
 
 pub fn call_fn<F: Fn(u32) -> u32>(f: F, x: u32) -> u32 {
     f(x) + f(x)

@@ -1,7 +1,7 @@
 //! @fls: fls_wlnoq1qoq2kr, fls_1xa6fas6laha, fls_emcNJzl2tHSA
 //! @title: A str slice, its byte length, and its equality
 //! @lean(tier): supported
-//! @lean(reason): The Lean core model has neither `str::len` nor `PartialEq for str` (`Unknown identifier core.str.Str.len`, `core.Str.Insts.CoreCmpPartialEqStr.eq`); Annex A.10 of the input-language reference.
+//! @lean(reason): The Lean core model has neither `str::len` nor `PartialEq for str` (`Unknown identifier core.str.Str.len`, `core.Str.Insts.CoreCmpPartialEqStr.eq`); the model-trust section of the input-language reference.
 
 pub fn byte_len(s: &str) -> usize {
     s.len()
