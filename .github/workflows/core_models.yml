@@ -8,6 +8,7 @@ on:
     branches: [main, dev]
     paths:
       - 'hax-lib/**'
+      - 'tests/hax-test-macros/**'
       - 'cli/**'
       - 'engine/**'
       - 'rust-engine/**'
@@ -19,6 +20,7 @@ on:
     branches: [main, dev]
     paths:
       - 'hax-lib/**'
+      - 'tests/hax-test-macros/**'
       - 'cli/**'
       - 'engine/**'
       - 'rust-engine/**'
@@ -54,6 +56,9 @@ jobs:
       # root doesn't reach it.
       - run: cargo fmt -- --check
         working-directory: hax-lib/core-models/tests
+
+      - run: cargo fmt --manifest-path tests/hax-test-macros/Cargo.toml -- --check
+        working-directory: .
 
   # ---------------------------------------------------------------- rust tests
   rust-test:
