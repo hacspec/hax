@@ -69,12 +69,12 @@ HEADERS = {
     "values/statics/gap": """\
 //! @fls: fls_v2
 //! @title: Static with | a pipe
-//! @lean(reason): Annex A.1
+//! @lean(reason): the loops section of the input-language reference
 """,
     "values/statics/unsupported": """\
 //! @fls: fls_v1
 //! @title: Outside the value model
-//! @lean(reason): Section 2.9
+//! @lean(reason): the value-model boundary of the input-language reference
 """,
     "values/statics/accepted": """\
 //! @fls: fls_v2
@@ -173,7 +173,8 @@ class BackendPageTest(unittest.TestCase):
     def test_status_is_coloured_and_carries_the_reason(self):
         chapters = self.chapters()
         self.assertIn(
-            '<span class="fls-status fls-planned fls-reason" title="Annex A.1">'
+            '<span class="fls-status fls-planned fls-reason" '
+            'title="the loops section of the input-language reference">'
             "planned</span>",
             chapters,
         )
@@ -226,7 +227,7 @@ class BackendPageTest(unittest.TestCase):
 
     def test_gap_and_unexpected_sections(self):
         planned = self.page.split("## Planned\n")[1].split("## Unexpectedly accepted\n")
-        self.assertIn("Annex A.1", planned[0])
+        self.assertIn("the loops section", planned[0])
         self.assertNotIn("Plain static", planned[0])
         self.assertIn("Should have been rejected", planned[1])
 

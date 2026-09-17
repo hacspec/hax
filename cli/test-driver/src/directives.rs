@@ -269,7 +269,7 @@ pub enum TestDirective {
     NoEquiv { reason: String },
     /// e.g. `@lean(tier): supported` (FLS suite)
     Tier { backend: BackendName, tier: Tier },
-    /// e.g. `@lean(reason): see Annex A.1` (FLS suite)
+    /// e.g. `@lean(reason): aeneas rejects a break to an outer loop` (FLS suite)
     Reason {
         backend: BackendName,
         reason: String,
