@@ -67,3 +67,10 @@ val zeroed: #v_T: Type0 -> Prims.unit -> Prims.Pure v_T (requires false) (fun _ 
 /// See [`std::mem::transmute`]
 val transmute (#v_Src #v_Dst: Type0) (src: v_Src)
     : Prims.Pure v_Dst (requires false) (fun _ -> Prims.l_True)
+
+/// See [`std::mem::copy`]
+val copy (#v_T: Type0) {| i0: Core_models.Marker.t_Copy v_T |} (x: v_T)
+    : Prims.Pure v_T Prims.l_True (fun _ -> Prims.l_True)
+
+/// See [`std::mem::conjure_zst`]
+val conjure_zst: #v_T: Type0 -> Prims.unit -> Prims.Pure v_T Prims.l_True (fun _ -> Prims.l_True)

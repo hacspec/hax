@@ -16,10 +16,12 @@ Changes to the hax-lib crate:
 Lean backend and library:
  - Add models of `RangeInclusive` and `RangeToInclusive`
  - Add models for more of `clone`, `array`, `option` and `result`
+ - Add models for more of `mem`, `borrow`, `convert` and `error`
 
 F* backend and library:
  - Add models of `RangeInclusive` and `RangeToInclusive`
  - Add models for more of `clone`, `array`, `option` and `result`
+ - Add models for more of `mem`, `borrow`, `convert` and `error`
 
 ### Fixed
 

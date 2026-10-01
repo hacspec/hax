@@ -340,3 +340,5 @@ include Core_models.Bundle {impl_142 as impl_142}
 include Core_models.Bundle {impl_143 as impl_143}
 
 include Core_models.Bundle {impl_144 as impl_144}
+
+include Core_models.Bundle {identity as identity}

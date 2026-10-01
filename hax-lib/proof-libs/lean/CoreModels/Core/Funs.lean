@@ -558,6 +558,19 @@ def array.iter.IntoIter.as_mut_slice
                         s2
   ok (s, back)
 
+/-- [core_models::borrow::{impl core_models::borrow::BorrowMut<T> for T}::borrow_mut]:
+    Source: 'core-models/src/core/borrow.rs', lines 18:4-20:5 -/
+def borrow.BorrowMut.Blanket.borrow_mut
+  {T : Type} (self : T) : RustM (T × (T → T)) := do
+  ok (self, fun self1 => self1)
+
+/-- Trait implementation: [core_models::borrow::{impl core_models::borrow::BorrowMut<T> for T}]
+    Source: 'core-models/src/core/borrow.rs', lines 17:0-21:1 -/
+@[reducible]
+def borrow.BorrowMut.Blanket (T : Type) : borrow.BorrowMut T T := {
+  borrow_mut := borrow.BorrowMut.Blanket.borrow_mut
+}
+
 /-- [core_models::clone::Clone::clone_from]:
     Source: 'core-models/src/core/clone.rs', lines 25:4-30:5
     Visibility: public -/
@@ -1582,481 +1595,481 @@ def Slice.Insts.CoreConvertAsRefSlice (T : Type) : convert.AsRef (Slice
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for u16}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U16.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.U16 := do
   ok (UScalar.cast .U16 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U16.Insts.CoreConvertFromU8 : convert.From Std.U16 Std.U8 := {
   «from» := U16.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for u32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U32.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.U32 := do
   ok (UScalar.cast .U32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U32.Insts.CoreConvertFromU8 : convert.From Std.U32 Std.U8 := {
   «from» := U32.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for u32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U32.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.U32 := do
   ok (UScalar.cast .U32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U32.Insts.CoreConvertFromU16 : convert.From Std.U32 Std.U16 := {
   «from» := U32.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for u64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U64.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.U64 := do
   ok (UScalar.cast .U64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U64.Insts.CoreConvertFromU8 : convert.From Std.U64 Std.U8 := {
   «from» := U64.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for u64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U64.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.U64 := do
   ok (UScalar.cast .U64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U64.Insts.CoreConvertFromU16 : convert.From Std.U64 Std.U16 := {
   «from» := U64.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u32> for u64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U64.Insts.CoreConvertFromU32.from
   (x : Std.U32) : RustM Std.U64 := do
   ok (UScalar.cast .U64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u32> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U64.Insts.CoreConvertFromU32 : convert.From Std.U64 Std.U32 := {
   «from» := U64.Insts.CoreConvertFromU32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for u128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U128.Insts.CoreConvertFromU8.from
   (x : Std.U8) : RustM Std.U128 := do
   ok (UScalar.cast .U128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U128.Insts.CoreConvertFromU8 : convert.From Std.U128 Std.U8 := {
   «from» := U128.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for u128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U128.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.U128 := do
   ok (UScalar.cast .U128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U128.Insts.CoreConvertFromU16 : convert.From Std.U128 Std.U16 := {
   «from» := U128.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u32> for u128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U128.Insts.CoreConvertFromU32.from
   (x : Std.U32) : RustM Std.U128 := do
   ok (UScalar.cast .U128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u32> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U128.Insts.CoreConvertFromU32 : convert.From Std.U128 Std.U32 := {
   «from» := U128.Insts.CoreConvertFromU32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u64> for u128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def U128.Insts.CoreConvertFromU64.from
   (x : Std.U64) : RustM Std.U128 := do
   ok (UScalar.cast .U128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u64> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def U128.Insts.CoreConvertFromU64 : convert.From Std.U128 Std.U64 := {
   «from» := U128.Insts.CoreConvertFromU64.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for usize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def Usize.Insts.CoreConvertFromU8.from
   (x : Std.U8) : RustM Std.Usize := do
   ok (UScalar.cast .Usize x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertFromU8 : convert.From Std.Usize Std.U8 := {
   «from» := Usize.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for usize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def Usize.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.Usize := do
   ok (UScalar.cast .Usize x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertFromU16 : convert.From Std.Usize Std.U16 := {
   «from» := Usize.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i8> for i16}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I16.Insts.CoreConvertFromI8.from (x : Std.I8) : RustM Std.I16 := do
   ok (IScalar.cast .I16 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i8> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I16.Insts.CoreConvertFromI8 : convert.From Std.I16 Std.I8 := {
   «from» := I16.Insts.CoreConvertFromI8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i8> for i32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I32.Insts.CoreConvertFromI8.from (x : Std.I8) : RustM Std.I32 := do
   ok (IScalar.cast .I32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i8> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I32.Insts.CoreConvertFromI8 : convert.From Std.I32 Std.I8 := {
   «from» := I32.Insts.CoreConvertFromI8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i16> for i32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I32.Insts.CoreConvertFromI16.from
   (x : Std.I16) : RustM Std.I32 := do
   ok (IScalar.cast .I32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i16> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I32.Insts.CoreConvertFromI16 : convert.From Std.I32 Std.I16 := {
   «from» := I32.Insts.CoreConvertFromI16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i8> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromI8.from (x : Std.I8) : RustM Std.I64 := do
   ok (IScalar.cast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i8> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromI8 : convert.From Std.I64 Std.I8 := {
   «from» := I64.Insts.CoreConvertFromI8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i16> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromI16.from
   (x : Std.I16) : RustM Std.I64 := do
   ok (IScalar.cast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i16> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromI16 : convert.From Std.I64 Std.I16 := {
   «from» := I64.Insts.CoreConvertFromI16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i32> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromI32.from
   (x : Std.I32) : RustM Std.I64 := do
   ok (IScalar.cast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i32> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromI32 : convert.From Std.I64 Std.I32 := {
   «from» := I64.Insts.CoreConvertFromI32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i8> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromI8.from
   (x : Std.I8) : RustM Std.I128 := do
   ok (IScalar.cast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i8> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromI8 : convert.From Std.I128 Std.I8 := {
   «from» := I128.Insts.CoreConvertFromI8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i16> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromI16.from
   (x : Std.I16) : RustM Std.I128 := do
   ok (IScalar.cast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i16> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromI16 : convert.From Std.I128 Std.I16 := {
   «from» := I128.Insts.CoreConvertFromI16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i32> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromI32.from
   (x : Std.I32) : RustM Std.I128 := do
   ok (IScalar.cast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i32> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromI32 : convert.From Std.I128 Std.I32 := {
   «from» := I128.Insts.CoreConvertFromI32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i64> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromI64.from
   (x : Std.I64) : RustM Std.I128 := do
   ok (IScalar.cast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i64> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromI64 : convert.From Std.I128 Std.I64 := {
   «from» := I128.Insts.CoreConvertFromI64.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i8> for isize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def Isize.Insts.CoreConvertFromI8.from
   (x : Std.I8) : RustM Std.Isize := do
   ok (IScalar.cast .Isize x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i8> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertFromI8 : convert.From Std.Isize Std.I8 := {
   «from» := Isize.Insts.CoreConvertFromI8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<i16> for isize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def Isize.Insts.CoreConvertFromI16.from
   (x : Std.I16) : RustM Std.Isize := do
   ok (IScalar.cast .Isize x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<i16> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertFromI16 : convert.From Std.Isize Std.I16 := {
   «from» := Isize.Insts.CoreConvertFromI16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for i16}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I16.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.I16 := do
   ok (UScalar.hcast .I16 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I16.Insts.CoreConvertFromU8 : convert.From Std.I16 Std.U8 := {
   «from» := I16.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for i32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I32.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.I32 := do
   ok (UScalar.hcast .I32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I32.Insts.CoreConvertFromU8 : convert.From Std.I32 Std.U8 := {
   «from» := I32.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromU8.from (x : Std.U8) : RustM Std.I64 := do
   ok (UScalar.hcast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromU8 : convert.From Std.I64 Std.U8 := {
   «from» := I64.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromU8.from
   (x : Std.U8) : RustM Std.I128 := do
   ok (UScalar.hcast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromU8 : convert.From Std.I128 Std.U8 := {
   «from» := I128.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u8> for isize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def Isize.Insts.CoreConvertFromU8.from
   (x : Std.U8) : RustM Std.Isize := do
   ok (UScalar.hcast .Isize x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u8> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertFromU8 : convert.From Std.Isize Std.U8 := {
   «from» := Isize.Insts.CoreConvertFromU8.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for i32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I32.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.I32 := do
   ok (UScalar.hcast .I32 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I32.Insts.CoreConvertFromU16 : convert.From Std.I32 Std.U16 := {
   «from» := I32.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.I64 := do
   ok (UScalar.hcast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromU16 : convert.From Std.I64 Std.U16 := {
   «from» := I64.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u16> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromU16.from
   (x : Std.U16) : RustM Std.I128 := do
   ok (UScalar.hcast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u16> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromU16 : convert.From Std.I128 Std.U16 := {
   «from» := I128.Insts.CoreConvertFromU16.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u32> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromU32.from
   (x : Std.U32) : RustM Std.I64 := do
   ok (UScalar.hcast .I64 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u32> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromU32 : convert.From Std.I64 Std.U32 := {
   «from» := I64.Insts.CoreConvertFromU32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u32> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromU32.from
   (x : Std.U32) : RustM Std.I128 := do
   ok (UScalar.hcast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u32> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromU32 : convert.From Std.I128 Std.U32 := {
   «from» := I128.Insts.CoreConvertFromU32.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<u64> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 113:16-115:17
+    Source: 'core-models/src/core/convert.rs', lines 121:16-123:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromU64.from
   (x : Std.U64) : RustM Std.I128 := do
   ok (UScalar.hcast .I128 x)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<u64> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 112:12-116:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 120:12-124:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromU64 : convert.From Std.I128 Std.U64 := {
   «from» := I128.Insts.CoreConvertFromU64.from
@@ -2077,7 +2090,7 @@ def I128.Insts.CoreConvertFromU64 : convert.From Std.I128 Std.U64 := {
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromU16TryFromIntError.try_from
   (x : Std.U16) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -2092,7 +2105,7 @@ def U8.Insts.CoreConvertTryFromU16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
   Std.U8 Std.U16 num.error.TryFromIntError := {
@@ -2100,7 +2113,7 @@ def U8.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -2115,7 +2128,7 @@ def U8.Insts.CoreConvertTryFromU32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.U8 Std.U32 num.error.TryFromIntError := {
@@ -2137,7 +2150,7 @@ def U8.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -2152,7 +2165,7 @@ def U16.Insts.CoreConvertTryFromU32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.U16 Std.U32 num.error.TryFromIntError := {
@@ -2160,7 +2173,7 @@ def U16.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -2175,7 +2188,7 @@ def U8.Insts.CoreConvertTryFromU64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.U8 Std.U64 num.error.TryFromIntError := {
@@ -2183,7 +2196,7 @@ def U8.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -2198,7 +2211,7 @@ def U16.Insts.CoreConvertTryFromU64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.U16 Std.U64 num.error.TryFromIntError := {
@@ -2220,7 +2233,7 @@ def U16.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.U32 num.error.TryFromIntError) := do
@@ -2235,7 +2248,7 @@ def U32.Insts.CoreConvertTryFromU64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.U32 Std.U64 num.error.TryFromIntError := {
@@ -2258,7 +2271,7 @@ def num.Usize.MAX : RustM Std.Usize := rust_primitives.arithmetic.USIZE_MAX
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) :
@@ -2276,7 +2289,7 @@ def Usize.Insts.CoreConvertTryFromU64TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.Usize Std.U64 num.error.TryFromIntError := {
@@ -2284,7 +2297,7 @@ def Usize.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -2299,7 +2312,7 @@ def U8.Insts.CoreConvertTryFromU128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.U8 Std.U128 num.error.TryFromIntError := {
@@ -2307,7 +2320,7 @@ def U8.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -2324,7 +2337,7 @@ def U16.Insts.CoreConvertTryFromU128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.U16 Std.U128 num.error.TryFromIntError := {
@@ -2332,7 +2345,7 @@ def U16.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -2349,7 +2362,7 @@ def U32.Insts.CoreConvertTryFromU128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.U32 Std.U128 num.error.TryFromIntError := {
@@ -2372,7 +2385,7 @@ def num.U64.MAX : Std.U64 := 18446744073709551615#u64
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -2389,7 +2402,7 @@ def U64.Insts.CoreConvertTryFromU128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.U64 Std.U128 num.error.TryFromIntError := {
@@ -2397,7 +2410,7 @@ def U64.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -2415,7 +2428,7 @@ def Usize.Insts.CoreConvertTryFromU128TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.Usize Std.U128 num.error.TryFromIntError := {
@@ -2423,7 +2436,7 @@ def Usize.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -2440,7 +2453,7 @@ def U8.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.U8 Std.Usize num.error.TryFromIntError := {
@@ -2448,7 +2461,7 @@ def U8.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -2465,7 +2478,7 @@ def U16.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.U16 Std.Usize num.error.TryFromIntError := {
@@ -2473,7 +2486,7 @@ def U16.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -2490,7 +2503,7 @@ def U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.U32 Std.Usize num.error.TryFromIntError := {
@@ -2498,7 +2511,7 @@ def U32.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -2515,7 +2528,7 @@ def U64.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.U64 Std.Usize num.error.TryFromIntError := {
@@ -2537,7 +2550,7 @@ def U64.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -2552,7 +2565,7 @@ def I8.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.I8 Std.I16 num.error.TryFromIntError := {
@@ -2560,7 +2573,7 @@ def I8.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -2575,7 +2588,7 @@ def I8.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.I8 Std.I32 num.error.TryFromIntError := {
@@ -2597,7 +2610,7 @@ def I8.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.I16 num.error.TryFromIntError) := do
@@ -2612,7 +2625,7 @@ def I16.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.I16 Std.I32 num.error.TryFromIntError := {
@@ -2620,7 +2633,7 @@ def I16.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -2635,7 +2648,7 @@ def I8.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.I8 Std.I64 num.error.TryFromIntError := {
@@ -2643,7 +2656,7 @@ def I8.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.I16 num.error.TryFromIntError) := do
@@ -2658,7 +2671,7 @@ def I16.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.I16 Std.I64 num.error.TryFromIntError := {
@@ -2680,7 +2693,7 @@ def I16.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.I32 num.error.TryFromIntError) := do
@@ -2695,7 +2708,7 @@ def I32.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.I32 Std.I64 num.error.TryFromIntError := {
@@ -2719,7 +2732,7 @@ def num.Isize.MIN : RustM Std.Isize := rust_primitives.arithmetic.ISIZE_MIN
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for isize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def Isize.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) :
@@ -2738,7 +2751,7 @@ def Isize.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i4)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.Isize Std.I64 num.error.TryFromIntError := {
@@ -2746,7 +2759,7 @@ def Isize.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -2761,7 +2774,7 @@ def I8.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.I8 Std.I128 num.error.TryFromIntError := {
@@ -2769,7 +2782,7 @@ def I8.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -2786,7 +2799,7 @@ def I16.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.I16 Std.I128 num.error.TryFromIntError := {
@@ -2794,7 +2807,7 @@ def I16.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -2811,7 +2824,7 @@ def I32.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.I32 Std.I128 num.error.TryFromIntError := {
@@ -2835,7 +2848,7 @@ def num.I64.MIN : Std.I64 := (-9223372036854775808)#i64
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I64.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -2852,7 +2865,7 @@ def I64.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I64.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.I64 Std.I128 num.error.TryFromIntError := {
@@ -2860,7 +2873,7 @@ def I64.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for isize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def Isize.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -2879,7 +2892,7 @@ def Isize.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i4)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.Isize Std.I128 num.error.TryFromIntError := {
@@ -2887,7 +2900,7 @@ def Isize.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -2904,7 +2917,7 @@ def I8.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.I8 Std.Isize num.error.TryFromIntError := {
@@ -2912,7 +2925,7 @@ def I8.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -2929,7 +2942,7 @@ def I16.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.I16 Std.Isize num.error.TryFromIntError := {
@@ -2937,7 +2950,7 @@ def I16.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -2954,7 +2967,7 @@ def I32.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.I32 Std.Isize num.error.TryFromIntError := {
@@ -2962,7 +2975,7 @@ def I32.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 134:16-140:17
+    Source: 'core-models/src/core/convert.rs', lines 142:16-148:17
     Visibility: public -/
 def I64.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -2979,7 +2992,7 @@ def I64.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 132:12-141:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 140:12-149:13 -/
 @[reducible]
 def I64.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.I64 Std.Isize num.error.TryFromIntError := {
@@ -2987,7 +3000,7 @@ def I64.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for isize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 155:16-157:17
+    Source: 'core-models/src/core/convert.rs', lines 163:16-165:17
     Visibility: public -/
 def Isize.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) :
@@ -2997,7 +3010,7 @@ def Isize.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   ok (result.Result.Ok i)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 153:12-158:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 161:12-166:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.Isize Std.I32 num.error.TryFromIntError := {
@@ -3005,7 +3018,7 @@ def Isize.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 155:16-157:17
+    Source: 'core-models/src/core/convert.rs', lines 163:16-165:17
     Visibility: public -/
 def I128.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -3015,7 +3028,7 @@ def I128.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   ok (result.Result.Ok i)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 153:12-158:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 161:12-166:13 -/
 @[reducible]
 def I128.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.I128 Std.Isize num.error.TryFromIntError := {
@@ -3023,7 +3036,7 @@ def I128.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 155:16-157:17
+    Source: 'core-models/src/core/convert.rs', lines 163:16-165:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) :
@@ -3033,7 +3046,7 @@ def Usize.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   ok (result.Result.Ok i)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 153:12-158:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 161:12-166:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.Usize Std.U32 num.error.TryFromIntError := {
@@ -3041,7 +3054,7 @@ def Usize.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 155:16-157:17
+    Source: 'core-models/src/core/convert.rs', lines 163:16-165:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3051,7 +3064,7 @@ def U128.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   ok (result.Result.Ok i)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 153:12-158:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 161:12-166:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.U128 Std.Usize num.error.TryFromIntError := {
@@ -3059,7 +3072,7 @@ def U128.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u8, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromU8TryFromIntError.try_from
   (x : Std.U8) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -3070,7 +3083,7 @@ def I8.Insts.CoreConvertTryFromU8TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u8, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromU8TryFromIntError : convert.TryFrom
   Std.I8 Std.U8 num.error.TryFromIntError := {
@@ -3078,7 +3091,7 @@ def I8.Insts.CoreConvertTryFromU8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromU16TryFromIntError.try_from
   (x : Std.U16) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -3089,7 +3102,7 @@ def I8.Insts.CoreConvertTryFromU16TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
   Std.I8 Std.U16 num.error.TryFromIntError := {
@@ -3097,7 +3110,7 @@ def I8.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromU16TryFromIntError.try_from
   (x : Std.U16) : RustM (result.Result Std.I16 num.error.TryFromIntError) := do
@@ -3108,7 +3121,7 @@ def I16.Insts.CoreConvertTryFromU16TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u16, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
   Std.I16 Std.U16 num.error.TryFromIntError := {
@@ -3116,7 +3129,7 @@ def I16.Insts.CoreConvertTryFromU16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -3127,7 +3140,7 @@ def I8.Insts.CoreConvertTryFromU32TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.I8 Std.U32 num.error.TryFromIntError := {
@@ -3135,7 +3148,7 @@ def I8.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) : RustM (result.Result Std.I16 num.error.TryFromIntError) := do
@@ -3146,7 +3159,7 @@ def I16.Insts.CoreConvertTryFromU32TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.I16 Std.U32 num.error.TryFromIntError := {
@@ -3154,7 +3167,7 @@ def I16.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromU32TryFromIntError.try_from
   (x : Std.U32) : RustM (result.Result Std.I32 num.error.TryFromIntError) := do
@@ -3165,7 +3178,7 @@ def I32.Insts.CoreConvertTryFromU32TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u32, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
   Std.I32 Std.U32 num.error.TryFromIntError := {
@@ -3173,7 +3186,7 @@ def I32.Insts.CoreConvertTryFromU32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -3184,7 +3197,7 @@ def I8.Insts.CoreConvertTryFromU64TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.I8 Std.U64 num.error.TryFromIntError := {
@@ -3192,7 +3205,7 @@ def I8.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.I16 num.error.TryFromIntError) := do
@@ -3203,7 +3216,7 @@ def I16.Insts.CoreConvertTryFromU64TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.I16 Std.U64 num.error.TryFromIntError := {
@@ -3211,7 +3224,7 @@ def I16.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.I32 num.error.TryFromIntError) := do
@@ -3222,7 +3235,7 @@ def I32.Insts.CoreConvertTryFromU64TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.I32 Std.U64 num.error.TryFromIntError := {
@@ -3230,7 +3243,7 @@ def I32.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I64.Insts.CoreConvertTryFromU64TryFromIntError.try_from
   (x : Std.U64) : RustM (result.Result Std.I64 num.error.TryFromIntError) := do
@@ -3241,7 +3254,7 @@ def I64.Insts.CoreConvertTryFromU64TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u64, core_models::num::error::TryFromIntError> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I64.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
   Std.I64 Std.U64 num.error.TryFromIntError := {
@@ -3249,7 +3262,7 @@ def I64.Insts.CoreConvertTryFromU64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) : RustM (result.Result Std.I8 num.error.TryFromIntError) := do
@@ -3260,7 +3273,7 @@ def I8.Insts.CoreConvertTryFromU128TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.I8 Std.U128 num.error.TryFromIntError := {
@@ -3268,7 +3281,7 @@ def I8.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -3281,7 +3294,7 @@ def I16.Insts.CoreConvertTryFromU128TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.I16 Std.U128 num.error.TryFromIntError := {
@@ -3289,7 +3302,7 @@ def I16.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -3302,7 +3315,7 @@ def I32.Insts.CoreConvertTryFromU128TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.I32 Std.U128 num.error.TryFromIntError := {
@@ -3310,7 +3323,7 @@ def I32.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I64.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -3323,7 +3336,7 @@ def I64.Insts.CoreConvertTryFromU128TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I64.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.I64 Std.U128 num.error.TryFromIntError := {
@@ -3339,7 +3352,7 @@ def num.I128.MAX : Std.I128 := 170141183460469231731687303715884105727#i128
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I128.Insts.CoreConvertTryFromU128TryFromIntError.try_from
   (x : Std.U128) :
@@ -3352,7 +3365,7 @@ def I128.Insts.CoreConvertTryFromU128TryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<u128, core_models::num::error::TryFromIntError> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I128.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
   Std.I128 Std.U128 num.error.TryFromIntError := {
@@ -3360,7 +3373,7 @@ def I128.Insts.CoreConvertTryFromU128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I8.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3373,7 +3386,7 @@ def I8.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I8.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.I8 Std.Usize num.error.TryFromIntError := {
@@ -3381,7 +3394,7 @@ def I8.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I16.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3394,7 +3407,7 @@ def I16.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I16.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.I16 Std.Usize num.error.TryFromIntError := {
@@ -3402,7 +3415,7 @@ def I16.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3415,7 +3428,7 @@ def I32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I32.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.I32 Std.Usize num.error.TryFromIntError := {
@@ -3423,7 +3436,7 @@ def I32.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def I64.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3436,7 +3449,7 @@ def I64.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
        ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def I64.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.I64 Std.Usize num.error.TryFromIntError := {
@@ -3444,7 +3457,7 @@ def I64.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for isize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 203:16-209:17
+    Source: 'core-models/src/core/convert.rs', lines 211:16-217:17
     Visibility: public -/
 def Isize.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
   (x : Std.Usize) :
@@ -3458,7 +3471,7 @@ def Isize.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
        ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<usize, core_models::num::error::TryFromIntError> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 201:12-210:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 209:12-218:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
   Std.Isize Std.Usize num.error.TryFromIntError := {
@@ -3467,7 +3480,7 @@ def Isize.Insts.CoreConvertTryFromUsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -3482,7 +3495,7 @@ def U8.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.U8 Std.I8 num.error.TryFromIntError := {
@@ -3490,7 +3503,7 @@ def U8.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -3505,7 +3518,7 @@ def U16.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.U16 Std.I8 num.error.TryFromIntError := {
@@ -3513,7 +3526,7 @@ def U16.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) : RustM (result.Result Std.U32 num.error.TryFromIntError) := do
@@ -3528,7 +3541,7 @@ def U32.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.U32 Std.I8 num.error.TryFromIntError := {
@@ -3536,7 +3549,7 @@ def U32.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) : RustM (result.Result Std.U64 num.error.TryFromIntError) := do
@@ -3551,7 +3564,7 @@ def U64.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.U64 Std.I8 num.error.TryFromIntError := {
@@ -3567,7 +3580,7 @@ def num.U128.MAX : Std.U128 := 340282366920938463463374607431768211455#u128
 -/  -- provided by CoreModels.Core.FunsPrologue
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) : RustM (result.Result Std.U128 num.error.TryFromIntError) := do
@@ -3581,7 +3594,7 @@ def U128.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.U128 Std.I8 num.error.TryFromIntError := {
@@ -3589,7 +3602,7 @@ def U128.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromI8TryFromIntError.try_from
   (x : Std.I8) :
@@ -3607,7 +3620,7 @@ def Usize.Insts.CoreConvertTryFromI8TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i8, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
   Std.Usize Std.I8 num.error.TryFromIntError := {
@@ -3615,7 +3628,7 @@ def Usize.Insts.CoreConvertTryFromI8TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -3630,7 +3643,7 @@ def U8.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.U8 Std.I16 num.error.TryFromIntError := {
@@ -3638,7 +3651,7 @@ def U8.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -3653,7 +3666,7 @@ def U16.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.U16 Std.I16 num.error.TryFromIntError := {
@@ -3661,7 +3674,7 @@ def U16.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) : RustM (result.Result Std.U32 num.error.TryFromIntError) := do
@@ -3676,7 +3689,7 @@ def U32.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.U32 Std.I16 num.error.TryFromIntError := {
@@ -3684,7 +3697,7 @@ def U32.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) : RustM (result.Result Std.U64 num.error.TryFromIntError) := do
@@ -3699,7 +3712,7 @@ def U64.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.U64 Std.I16 num.error.TryFromIntError := {
@@ -3707,7 +3720,7 @@ def U64.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) :
@@ -3723,7 +3736,7 @@ def U128.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.U128 Std.I16 num.error.TryFromIntError := {
@@ -3731,7 +3744,7 @@ def U128.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromI16TryFromIntError.try_from
   (x : Std.I16) :
@@ -3749,7 +3762,7 @@ def Usize.Insts.CoreConvertTryFromI16TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i16, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
   Std.Usize Std.I16 num.error.TryFromIntError := {
@@ -3757,7 +3770,7 @@ def Usize.Insts.CoreConvertTryFromI16TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -3772,7 +3785,7 @@ def U8.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.U8 Std.I32 num.error.TryFromIntError := {
@@ -3780,7 +3793,7 @@ def U8.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -3795,7 +3808,7 @@ def U16.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.U16 Std.I32 num.error.TryFromIntError := {
@@ -3803,7 +3816,7 @@ def U16.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.U32 num.error.TryFromIntError) := do
@@ -3818,7 +3831,7 @@ def U32.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.U32 Std.I32 num.error.TryFromIntError := {
@@ -3826,7 +3839,7 @@ def U32.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) : RustM (result.Result Std.U64 num.error.TryFromIntError) := do
@@ -3841,7 +3854,7 @@ def U64.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.U64 Std.I32 num.error.TryFromIntError := {
@@ -3849,7 +3862,7 @@ def U64.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) :
@@ -3865,7 +3878,7 @@ def U128.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.U128 Std.I32 num.error.TryFromIntError := {
@@ -3873,7 +3886,7 @@ def U128.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromI32TryFromIntError.try_from
   (x : Std.I32) :
@@ -3891,7 +3904,7 @@ def Usize.Insts.CoreConvertTryFromI32TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i32, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
   Std.Usize Std.I32 num.error.TryFromIntError := {
@@ -3899,7 +3912,7 @@ def Usize.Insts.CoreConvertTryFromI32TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -3914,7 +3927,7 @@ def U8.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.U8 Std.I64 num.error.TryFromIntError := {
@@ -3922,7 +3935,7 @@ def U8.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.U16 num.error.TryFromIntError) := do
@@ -3937,7 +3950,7 @@ def U16.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.U16 Std.I64 num.error.TryFromIntError := {
@@ -3945,7 +3958,7 @@ def U16.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.U32 num.error.TryFromIntError) := do
@@ -3960,7 +3973,7 @@ def U32.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.U32 Std.I64 num.error.TryFromIntError := {
@@ -3968,7 +3981,7 @@ def U32.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) : RustM (result.Result Std.U64 num.error.TryFromIntError) := do
@@ -3983,7 +3996,7 @@ def U64.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.U64 Std.I64 num.error.TryFromIntError := {
@@ -3991,7 +4004,7 @@ def U64.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) :
@@ -4007,7 +4020,7 @@ def U128.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.U128 Std.I64 num.error.TryFromIntError := {
@@ -4015,7 +4028,7 @@ def U128.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromI64TryFromIntError.try_from
   (x : Std.I64) :
@@ -4033,7 +4046,7 @@ def Usize.Insts.CoreConvertTryFromI64TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i64, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
   Std.Usize Std.I64 num.error.TryFromIntError := {
@@ -4041,7 +4054,7 @@ def Usize.Insts.CoreConvertTryFromI64TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) : RustM (result.Result Std.U8 num.error.TryFromIntError) := do
@@ -4056,7 +4069,7 @@ def U8.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.U8 Std.I128 num.error.TryFromIntError := {
@@ -4064,7 +4077,7 @@ def U8.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -4081,7 +4094,7 @@ def U16.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.U16 Std.I128 num.error.TryFromIntError := {
@@ -4089,7 +4102,7 @@ def U16.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -4106,7 +4119,7 @@ def U32.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.U32 Std.I128 num.error.TryFromIntError := {
@@ -4114,7 +4127,7 @@ def U32.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -4131,7 +4144,7 @@ def U64.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.U64 Std.I128 num.error.TryFromIntError := {
@@ -4139,7 +4152,7 @@ def U64.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -4155,7 +4168,7 @@ def U128.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.U128 Std.I128 num.error.TryFromIntError := {
@@ -4163,7 +4176,7 @@ def U128.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromI128TryFromIntError.try_from
   (x : Std.I128) :
@@ -4181,7 +4194,7 @@ def Usize.Insts.CoreConvertTryFromI128TryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<i128, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
   Std.Usize Std.I128 num.error.TryFromIntError := {
@@ -4189,7 +4202,7 @@ def Usize.Insts.CoreConvertTryFromI128TryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u8}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U8.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4206,7 +4219,7 @@ def U8.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U8.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.U8 Std.Isize num.error.TryFromIntError := {
@@ -4214,7 +4227,7 @@ def U8.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u16}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U16.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4231,7 +4244,7 @@ def U16.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U16.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.U16 Std.Isize num.error.TryFromIntError := {
@@ -4239,7 +4252,7 @@ def U16.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u32}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U32.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4256,7 +4269,7 @@ def U32.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U32.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.U32 Std.Isize num.error.TryFromIntError := {
@@ -4264,7 +4277,7 @@ def U32.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u64}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U64.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4281,7 +4294,7 @@ def U64.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i2)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U64.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.U64 Std.Isize num.error.TryFromIntError := {
@@ -4289,7 +4302,7 @@ def U64.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u128}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def U128.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4305,7 +4318,7 @@ def U128.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def U128.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.U128 Std.Isize num.error.TryFromIntError := {
@@ -4313,7 +4326,7 @@ def U128.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for usize}::try_from]:
-    Source: 'core-models/src/core/convert.rs', lines 225:16-231:17
+    Source: 'core-models/src/core/convert.rs', lines 233:16-239:17
     Visibility: public -/
 def Usize.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
   (x : Std.Isize) :
@@ -4331,7 +4344,7 @@ def Usize.Insts.CoreConvertTryFromIsizeTryFromIntError.try_from
          ok (result.Result.Ok i3)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<isize, core_models::num::error::TryFromIntError> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 222:12-232:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 230:12-240:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
   Std.Usize Std.Isize num.error.TryFromIntError := {
@@ -4340,7 +4353,7 @@ def Usize.Insts.CoreConvertTryFromIsizeTryFromIntError : convert.TryFrom
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for u8}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def U8.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U8 := do
   if x
@@ -4348,14 +4361,14 @@ def U8.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U8 := do
   else ok 0#u8
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for u8}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def U8.Insts.CoreConvertFromBool : convert.From Std.U8 Bool := {
   «from» := U8.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for u16}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def U16.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U16 := do
   if x
@@ -4363,14 +4376,14 @@ def U16.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U16 := do
   else ok 0#u16
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for u16}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def U16.Insts.CoreConvertFromBool : convert.From Std.U16 Bool := {
   «from» := U16.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for u32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def U32.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U32 := do
   if x
@@ -4378,14 +4391,14 @@ def U32.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U32 := do
   else ok 0#u32
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for u32}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def U32.Insts.CoreConvertFromBool : convert.From Std.U32 Bool := {
   «from» := U32.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for u64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def U64.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U64 := do
   if x
@@ -4393,14 +4406,14 @@ def U64.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.U64 := do
   else ok 0#u64
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for u64}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def U64.Insts.CoreConvertFromBool : convert.From Std.U64 Bool := {
   «from» := U64.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for u128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def U128.Insts.CoreConvertFromBool.from
   (x : Bool) : RustM Std.U128 := do
@@ -4409,14 +4422,14 @@ def U128.Insts.CoreConvertFromBool.from
   else ok 0#u128
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for u128}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def U128.Insts.CoreConvertFromBool : convert.From Std.U128 Bool := {
   «from» := U128.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for usize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def Usize.Insts.CoreConvertFromBool.from
   (x : Bool) : RustM Std.Usize := do
@@ -4425,14 +4438,14 @@ def Usize.Insts.CoreConvertFromBool.from
   else ok 0#usize
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for usize}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def Usize.Insts.CoreConvertFromBool : convert.From Std.Usize Bool := {
   «from» := Usize.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for i8}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def I8.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I8 := do
   if x
@@ -4440,14 +4453,14 @@ def I8.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I8 := do
   else ok 0#i8
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for i8}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def I8.Insts.CoreConvertFromBool : convert.From Std.I8 Bool := {
   «from» := I8.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for i16}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def I16.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I16 := do
   if x
@@ -4455,14 +4468,14 @@ def I16.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I16 := do
   else ok 0#i16
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for i16}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def I16.Insts.CoreConvertFromBool : convert.From Std.I16 Bool := {
   «from» := I16.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for i32}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def I32.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I32 := do
   if x
@@ -4470,14 +4483,14 @@ def I32.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I32 := do
   else ok 0#i32
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for i32}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def I32.Insts.CoreConvertFromBool : convert.From Std.I32 Bool := {
   «from» := I32.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for i64}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def I64.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I64 := do
   if x
@@ -4485,14 +4498,14 @@ def I64.Insts.CoreConvertFromBool.from (x : Bool) : RustM Std.I64 := do
   else ok 0#i64
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for i64}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def I64.Insts.CoreConvertFromBool : convert.From Std.I64 Bool := {
   «from» := I64.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for i128}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def I128.Insts.CoreConvertFromBool.from
   (x : Bool) : RustM Std.I128 := do
@@ -4501,14 +4514,14 @@ def I128.Insts.CoreConvertFromBool.from
   else ok 0#i128
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for i128}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def I128.Insts.CoreConvertFromBool : convert.From Std.I128 Bool := {
   «from» := I128.Insts.CoreConvertFromBool.from
 }
 
 /-- [core_models::convert::{impl core_models::convert::From<bool> for isize}::from]:
-    Source: 'core-models/src/core/convert.rs', lines 257:16-259:17
+    Source: 'core-models/src/core/convert.rs', lines 265:16-267:17
     Visibility: public -/
 def Isize.Insts.CoreConvertFromBool.from
   (x : Bool) : RustM Std.Isize := do
@@ -4517,11 +4530,34 @@ def Isize.Insts.CoreConvertFromBool.from
   else ok 0#isize
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::From<bool> for isize}]
-    Source: 'core-models/src/core/convert.rs', lines 256:12-260:13 -/
+    Source: 'core-models/src/core/convert.rs', lines 264:12-268:13 -/
 @[reducible]
 def Isize.Insts.CoreConvertFromBool : convert.From Std.Isize Bool := {
   «from» := Isize.Insts.CoreConvertFromBool.from
 }
+
+/-- [core_models::convert::{impl core_models::convert::AsMut<[T]> for [T]}::as_mut]:
+    Source: 'core-models/src/core/convert.rs', lines 279:4-281:5
+    Visibility: public -/
+def Slice.Insts.CoreConvertAsMutSlice.as_mut
+  {T : Type} (self : Slice T) :
+  RustM ((Slice T) × (Slice T → Slice T))
+  := do
+  ok (self, fun self1 => self1)
+
+/-- Trait implementation: [core_models::convert::{impl core_models::convert::AsMut<[T]> for [T]}]
+    Source: 'core-models/src/core/convert.rs', lines 278:0-282:1 -/
+@[reducible]
+def Slice.Insts.CoreConvertAsMutSlice (T : Type) : convert.AsMut (Slice
+  T) (Slice T) := {
+  as_mut := Slice.Insts.CoreConvertAsMutSlice.as_mut
+}
+
+/-- [core_models::convert::identity]:
+    Source: 'core-models/src/core/convert.rs', lines 285:0-287:1
+    Visibility: public -/
+def convert.identity {T : Type} (x : T) : RustM T := do
+  ok x
 
 /-- [core_models::fmt::{core_models::fmt::Formatter}::debug_struct_field1_finish]:
     Source: 'core-models/src/core/fmt.rs', lines 20:8-26:9
@@ -8815,6 +8851,87 @@ def Isize.Insts.CoreMarkerCopy : marker.Copy Std.Isize := {
     Visibility: public -/
 def mem.drop {T : Type} (_x : T) : RustM Unit := do
   ok ()
+
+/-- [core_models::mem::copy]:
+    Source: 'core-models/src/core/mem.rs', lines 142:0-144:1
+    Visibility: public -/
+def mem.copy
+  {T : Type} (markerCopyInst : marker.Copy T) (x : T) : RustM T := do
+  markerCopyInst.cloneCloneInst.clone x
+
+/-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::new]:
+    Source: 'core-models/src/core/mem.rs', lines 171:8-173:9
+    Visibility: public -/
+def mem.manually_drop.ManuallyDrop.new
+  {T : Type} (value : T) : RustM (mem.manually_drop.ManuallyDrop T) := do
+  ok { value }
+
+/-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::into_inner]:
+    Source: 'core-models/src/core/mem.rs', lines 176:8-178:9
+    Visibility: public -/
+def mem.manually_drop.ManuallyDrop.into_inner
+  {T : Type} (slot : mem.manually_drop.ManuallyDrop T) : RustM T := do
+  ok slot.value
+
+/-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::drop]:
+    Source: 'core-models/src/core/mem.rs', lines 191:8-191:57
+    Visibility: public -/
+def mem.manually_drop.ManuallyDrop.drop
+  {T : Type} (slot : mem.manually_drop.ManuallyDrop T) :
+  RustM (mem.manually_drop.ManuallyDrop T)
+  := do
+  ok slot
+
+/-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::new]:
+    Source: 'core-models/src/core/mem.rs', lines 201:8-206:9
+    Visibility: public -/
+def mem.maybe_dangling.MaybeDangling.new
+  {P : Type} (x : P) : RustM (mem.maybe_dangling.MaybeDangling P) := do
+  ok x
+
+/-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_ref]:
+    Source: 'core-models/src/core/mem.rs', lines 209:8-211:9
+    Visibility: public -/
+def mem.maybe_dangling.MaybeDangling.as_ref
+  {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
+  ok self
+
+/-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_mut]:
+    Source: 'core-models/src/core/mem.rs', lines 216:8-218:9
+    Visibility: public -/
+def mem.maybe_dangling.MaybeDangling.as_mut
+  {P : Type} (self : mem.maybe_dangling.MaybeDangling P) :
+  RustM (P × (P → mem.maybe_dangling.MaybeDangling P))
+  := do
+  let back := fun t => t
+  ok (self, back)
+
+/-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::into_inner]:
+    Source: 'core-models/src/core/mem.rs', lines 221:8-226:9
+    Visibility: public -/
+def mem.maybe_dangling.MaybeDangling.into_inner
+  {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
+  ok self
+
+/-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::new]:
+    Source: 'core-models/src/core/mem.rs', lines 241:8-243:9
+    Visibility: public -/
+def mem.drop_guard.DropGuard.new
+  {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :
+  core.ops.function.FnOnce F T Unit) (inner : T) (f : F) :
+  RustM (mem.drop_guard.DropGuard T F)
+  := do
+  ok { inner, f }
+
+/-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::dismiss]:
+    Source: 'core-models/src/core/mem.rs', lines 246:8-248:9
+    Visibility: public -/
+def mem.drop_guard.DropGuard.dismiss
+  {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :
+  core.ops.function.FnOnce F T Unit) (guard : mem.drop_guard.DropGuard T F) :
+  RustM T
+  := do
+  ok guard.inner
 
 /-- [core_models::num::error::{impl core_models::cmp::PartialEq<core_models::num::error::TryFromIntError> for core_models::num::error::TryFromIntError}::eq]:
     Source: 'core-models/src/core/num/error.rs', lines 12:4-14:5

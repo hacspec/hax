@@ -246,6 +246,11 @@ structure convert.AsRef (Self : Type) (T : Type) where
 structure borrow.Borrow (Self : Type) (Borrowed : Type) where
   borrow : Self → RustM Borrowed
 
+/-- Trait declaration: [core_models::borrow::BorrowMut]
+    Source: 'core-models/src/core/borrow.rs', lines 11:0-14:1 -/
+structure borrow.BorrowMut (Self : Type) (Borrowed : Type) where
+  borrow_mut : Self → RustM (Borrowed × (Borrowed → Self))
+
 /-- Trait declaration: [core_models::clone::TrivialClone]
     Source: 'core-models/src/core/clone.rs', lines 44:0-44:32
     Visibility: public -/
@@ -341,6 +346,12 @@ def convert.TryFromArrayShared0SliceTryFromSliceError.try_from.closure (T :
   Type) (N : Std.Usize) :=
   Slice T
 
+/-- Trait declaration: [core_models::convert::AsMut]
+    Source: 'core-models/src/core/convert.rs', lines 108:0-111:1
+    Visibility: public -/
+structure convert.AsMut (Self : Type) (T : Type) where
+  as_mut : Self → RustM (T × (T → Self))
+
 /-- [core_models::num::error::TryFromIntError]
     Source: 'core-models/src/core/num/error.rs', lines 6:0-6:42
     Visibility: public -/
@@ -360,6 +371,11 @@ structure fmt.Display (Self : Type) where
 structure error.Error (Self : Type) where
   fmtDisplayInst : fmt.Display Self
   fmtDebugInst : fmt.Debug Self
+
+/-- Trait declaration: [core_models::error::ErrorDefaults]
+    Source: 'core-models/src/core/error.rs', lines 7:0-10:1 -/
+structure error.ErrorDefaults (Self : Type) where
+  description : Self → RustM Str
 
 /-- [core_models::f32::f32]
     Source: 'core-models/src/core/f32.rs', lines 4:0-4:11 -/
@@ -693,10 +709,23 @@ def marker.PhantomData (T : Type) := T
 -/  -- replaced by rewrite_phantom_data in favor of the def in `TypesPrologue.lean`
 
 /-- [core_models::mem::manually_drop::ManuallyDrop]
-    Source: 'core-models/src/core/mem.rs', lines 142:4-144:5
+    Source: 'core-models/src/core/mem.rs', lines 165:4-167:5
     Visibility: public -/
 structure mem.manually_drop.ManuallyDrop (T : Type) where
   value : T
+
+/-- [core_models::mem::maybe_dangling::MaybeDangling]
+    Source: 'core-models/src/core/mem.rs', lines 197:4-197:43
+    Visibility: public -/
+@[reducible]
+def mem.maybe_dangling.MaybeDangling (P : Type) := P
+
+/-- [core_models::mem::drop_guard::DropGuard]
+    Source: 'core-models/src/core/mem.rs', lines 234:4-237:5
+    Visibility: public -/
+structure mem.drop_guard.DropGuard (T : Type) (F : Type) where
+  inner : T
+  f : F
 
 /-- [core_models::num::error::IntErrorKind]
     Source: 'core-models/src/core/num/error.rs', lines 51:0-51:24
