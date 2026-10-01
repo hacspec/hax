@@ -220,6 +220,26 @@ def rewrite_alloc_imports(text: str) -> str:
         text, flags=re.MULTILINE,
     )
     return text
+# Defs matching on a scrutinee that repeats a type variable (`ControlFlow<T, T>`).
+_DUPLICATE_BINDER_DEFS = ("def ops.control_flow.ControlFlow.into_value",)
+
+
+def drop_do_on_duplicate_binder_matches(text: str) -> str:
+    """Turn `:= do` into `:=` for the definitions in `_DUPLICATE_BINDER_DEFS`.
+
+    Aeneas's `do` rejects their duplicate pattern binders; the bodies have no binds.
+    """
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if not any(line.startswith(d) for d in _DUPLICATE_BINDER_DEFS):
+            continue
+        # The signature spans a few lines; `:= do` closes it.
+        for j in range(i, min(i + 6, len(lines))):
+            if lines[j].endswith(":= do"):
+                lines[j] = lines[j][: -len(" do")]
+                break
+    return "\n".join(lines)
+
 
 def rewrite_phantom_data(text: str) -> str:
     """Redefine `PhantomData`.
@@ -693,6 +713,7 @@ def main() -> int:
             text = add_funs_prologue_import(text)
             text = comment_out_num_consts(text)
             text = desugar_pure_num_const_binds(text)
+            text = drop_do_on_duplicate_binder_matches(text)
             text = rename_iter_param(text)
             text = qualify_result_monad_impls(text)
             text = drop_itermut_iterator_instance(text)

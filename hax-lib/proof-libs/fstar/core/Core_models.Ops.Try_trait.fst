@@ -11,6 +11,9 @@ class t_FromResidual (v_Self: Type0) (v_R: Type0) = {
     -> Prims.Pure v_Self (f_from_residual_pre x0) (fun result -> f_from_residual_post x0 result)
 }
 
+/// See [`std::ops::Yeet`]
+type t_Yeet (v_T: Type0) = | Yeet : v_T -> t_Yeet v_T
+
 /// See [`std::ops::Try`]
 class t_Try (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]f_Output:Type0;
@@ -25,4 +28,10 @@ class t_Try (v_Self: Type0) = {
     -> Prims.Pure (Core_models.Ops.Control_flow.t_ControlFlow f_Residual f_Output)
         (f_branch_pre x0)
         (fun result -> f_branch_post x0 result)
+}
+
+/// See [`std::ops::Residual`]
+class t_Residual (v_Self: Type0) (v_O: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]f_TryType:Type0;
+  f_TryType_i0:t_Try f_TryType
 }

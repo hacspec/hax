@@ -13,6 +13,8 @@
 //! Add a new `none_<T>` when you exercise an `Option<T>` for which one
 //! doesn't already exist.
 
+use core::ops::{Bound, ControlFlow};
+
 macro_rules! none_helper {
     ($name:ident, $t:ty, $default:expr) => {
         pub fn $name() -> Option<$t> {
@@ -35,6 +37,24 @@ none_helper!(none_i64, i64, 0);
 none_helper!(none_isize, isize, 0);
 none_helper!(none_bool, bool, false);
 none_helper!(none_pair_u8, (u8, u8), (0, 0));
+
+/// Pins both `ControlFlow` type parameters, which Lean cannot infer from a bare constructor.
+pub fn control_flow_break_u8(b: u8) -> ControlFlow<u8, u8> {
+    ControlFlow::Break(b)
+}
+
+/// See [`control_flow_break_u8`].
+pub fn control_flow_continue_u8(c: u8) -> ControlFlow<u8, u8> {
+    ControlFlow::Continue(c)
+}
+
+/// A `Bound::Unbounded` whose `T` is pinned by the `Included` arm.
+pub fn bound_unbounded_u8() -> Bound<u8> {
+    match none_u8() {
+        Some(x) => Bound::Included(x),
+        None => Bound::Unbounded,
+    }
+}
 
 /// `u8`'s model `Clone`/`PartialEq` are total identities, so a model that drops
 /// a trait dictionary looks correct at that type. `Bumped` makes it observable:

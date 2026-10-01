@@ -46,8 +46,9 @@ const CHARON_DEFAULT_METHOD_ROOTS: &[&str] = &[
     "core::iter::range::Step::forward_unchecked",
     "core::iter::range::Step::backward",
     "core::iter::range::Step::backward_unchecked",
-    // Only a crate with its own `impl RangeBounds` reaches this.
+    // Only a crate with its own `impl RangeBounds` reaches these.
     "core::ops::range::RangeBounds::contains",
+    "core::ops::range::RangeBounds::is_empty",
     // Only a crate with its own `impl Error` reaches this.
     "core::error::Error::description",
 ];

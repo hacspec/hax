@@ -36,15 +36,24 @@
 // `array_into_iter_constructors`, `option_reduce`: for `array::IntoIter::empty`
 // and `Option::reduce`.
 // `drop_guard`, `mem_copy_fn`: for `mem::{DropGuard, copy}`.
+// `bound_*`, `control_flow_*`, `one_sided_range`, `range_*`: for the `ops`
+// range and `ControlFlow` items.
 #![cfg_attr(
     test,
     feature(
         array_into_iter_constructors,
+        bound_as_ref,
+        bound_copied,
+        control_flow_into_value,
+        control_flow_ok,
         drop_guard,
         fmt_helpers_for_derive,
         int_roundings,
         mem_copy_fn,
+        one_sided_range,
         option_reduce,
+        range_bounds_is_empty,
+        range_into_bounds,
         slice_range,
         step_trait
     )

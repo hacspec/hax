@@ -17,11 +17,13 @@ Lean backend and library:
  - Add models of `RangeInclusive` and `RangeToInclusive`
  - Add models for more of `clone`, `array`, `option` and `result`
  - Add models for more of `mem`, `borrow`, `convert` and `error`
+ - Add models for more of `ops`
 
 F* backend and library:
  - Add models of `RangeInclusive` and `RangeToInclusive`
  - Add models for more of `clone`, `array`, `option` and `result`
  - Add models for more of `mem`, `borrow`, `convert` and `error`
+ - Add models for more of `ops`
 
 ### Fixed
 
