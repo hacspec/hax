@@ -33,9 +33,18 @@
 // `fmt_helpers_for_derive`: the proptests compare against std's
 // `Formatter::debug_struct_fields_finish`, which is unstable.
 // `slice_range`: the proptests compare against std's `slice::try_range`.
+// `array_into_iter_constructors`, `option_reduce`: for `array::IntoIter::empty`
+// and `Option::reduce`.
 #![cfg_attr(
     test,
-    feature(step_trait, int_roundings, fmt_helpers_for_derive, slice_range)
+    feature(
+        array_into_iter_constructors,
+        fmt_helpers_for_derive,
+        int_roundings,
+        option_reduce,
+        slice_range,
+        step_trait
+    )
 )]
 
 // Lean-only modules. They carry no operations -- the types exist so that a

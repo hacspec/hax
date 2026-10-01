@@ -1,7 +1,7 @@
 //! Equivalence tests for `core::option::Option::*`.
 
 use crate::helpers::none_u8;
-use crate::helpers::{Bumped, Keyed, keyed};
+use crate::helpers::{Bumped, CopyBumped, Keyed, keyed};
 use rust_lean_test_macro::rust_lean_test;
 
 // ----- is_some / is_none -----------------------------------------------------
@@ -636,4 +636,264 @@ pub fn test_eq_some_differing_keys() -> bool {
 pub fn test_eq_some_vs_none() -> bool {
     let n: Option<Keyed> = None;
     (Some(keyed(5, 1)) == n) == false
+}
+
+// ----- and -------------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_and_some_some() -> bool {
+    Some(0u8).and(Some(7u8)).unwrap_or(99) == 7
+}
+
+#[rust_lean_test]
+pub fn test_and_some_some_max() -> bool {
+    Some(u8::MAX).and(Some(0u8)).unwrap_or(99) == 0
+}
+
+#[rust_lean_test]
+pub fn test_and_some_none() -> bool {
+    Some(0u8).and(none_u8()).is_none()
+}
+
+#[rust_lean_test]
+pub fn test_and_none_some() -> bool {
+    none_u8().and(Some(7u8)).is_none()
+}
+
+#[rust_lean_test]
+pub fn test_and_none_none() -> bool {
+    none_u8().and(none_u8()).is_none()
+}
+
+// ----- unwrap_unchecked ------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_some_zero() -> bool {
+    unsafe { Some(0u8).unwrap_unchecked() == 0 }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_some_max() -> bool {
+    unsafe { Some(u8::MAX).unwrap_unchecked() == u8::MAX }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_some_mid() -> bool {
+    unsafe { Some(7u8).unwrap_unchecked() == 7 }
+}
+
+// ----- unzip -----------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_unzip_some_zero() -> bool {
+    let (a, b) = Some((0u8, 0u8)).unzip();
+    a.unwrap_or(99) == 0 && b.unwrap_or(99) == 0
+}
+
+#[rust_lean_test]
+pub fn test_unzip_some_edges() -> bool {
+    let (a, b) = Some((u8::MAX, 0u8)).unzip();
+    a.unwrap_or(0) == u8::MAX && b.unwrap_or(99) == 0
+}
+
+#[rust_lean_test]
+pub fn test_unzip_none() -> bool {
+    let (a, b) = crate::helpers::none_pair_u8().unzip();
+    a.is_none() && b.is_none()
+}
+
+// ----- transpose -------------------------------------------------------------
+
+// Typed via the return type: Aeneas cannot print unpinned `Result` params.
+fn some_ok_u8(v: u8) -> Option<Result<u8, u8>> {
+    Some(Ok(v))
+}
+fn some_err_u8(e: u8) -> Option<Result<u8, u8>> {
+    Some(Err(e))
+}
+fn none_result_u8() -> Option<Result<u8, u8>> {
+    let mut x: Option<Result<u8, u8>> = Some(Ok(0));
+    x.take();
+    x
+}
+
+#[rust_lean_test]
+pub fn test_transpose_some_ok_zero() -> bool {
+    match some_ok_u8(0).transpose() {
+        Ok(o) => o.unwrap_or(99) == 0,
+        Err(_) => false,
+    }
+}
+
+#[rust_lean_test]
+pub fn test_transpose_some_ok_max() -> bool {
+    match some_ok_u8(u8::MAX).transpose() {
+        Ok(o) => o.unwrap_or(0) == u8::MAX,
+        Err(_) => false,
+    }
+}
+
+#[rust_lean_test]
+pub fn test_transpose_some_err() -> bool {
+    match some_err_u8(3).transpose() {
+        Ok(_) => false,
+        Err(e) => e == 3,
+    }
+}
+
+#[rust_lean_test]
+pub fn test_transpose_none() -> bool {
+    match none_result_u8().transpose() {
+        Ok(o) => o.is_none(),
+        Err(_) => false,
+    }
+}
+
+// ----- reduce ----------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_reduce_some_some() -> bool {
+    Some(1u8).reduce(Some(2u8), |a, b| a + b) == Some(3)
+}
+
+#[rust_lean_test]
+pub fn test_reduce_some_none() -> bool {
+    Some(1u8).reduce(none_u8(), |a, b| a + b) == Some(1)
+}
+
+#[rust_lean_test]
+pub fn test_reduce_none_none() -> bool {
+    none_u8().reduce(none_u8(), |a, b| a + b).is_none()
+}
+
+// ----- iter / into_iter ------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_iter_some_yields_the_value() -> bool {
+    let o: Option<u8> = Some(7);
+    let mut it = o.iter();
+    it.next() == Some(&7) && it.next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_iter_none_is_empty() -> bool {
+    none_u8().iter().next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_into_iter_some() -> bool {
+    let mut it = Some(u8::MAX).into_iter();
+    it.next() == Some(u8::MAX) && it.next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_into_iter_none() -> bool {
+    none_u8().into_iter().next().is_none()
+}
+
+// ----- as_slice --------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_as_slice_some_len() -> bool {
+    let o: Option<u8> = Some(7);
+    let s = o.as_slice();
+    s.len() == 1 && s[0] == 7
+}
+
+#[rust_lean_test]
+pub fn test_as_slice_none_len() -> bool {
+    none_u8().as_slice().len() == 0
+}
+
+// ----- as_mut / as_deref / as_deref_mut --------------------------------------
+
+#[rust_lean_test]
+pub fn test_as_mut_some_mutates() -> bool {
+    let mut o: Option<u8> = Some(0);
+    if let Some(v) = o.as_mut() {
+        *v = u8::MAX;
+    }
+    o == Some(u8::MAX)
+}
+
+#[rust_lean_test]
+pub fn test_as_mut_none() -> bool {
+    let mut o = none_u8();
+    o.as_mut().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_as_deref_some() -> bool {
+    let v: u8 = 7;
+    let o: Option<&u8> = Some(&v);
+    o.as_deref() == Some(&7)
+}
+
+#[rust_lean_test]
+pub fn test_as_deref_none() -> bool {
+    let n = none_u8();
+    let o: Option<&u8> = n.as_ref();
+    o.as_deref().is_none()
+}
+
+// Rust-only: `as_mut_slice` has no Lean definition (opaque in the model).
+#[cfg(test)]
+mod as_mut_slice {
+    #[test]
+    fn test_as_mut_slice_some() {
+        let mut o: Option<u8> = Some(0);
+        o.as_mut_slice()[0] = u8::MAX;
+        assert_eq!(o, Some(u8::MAX));
+    }
+
+    #[test]
+    fn test_as_mut_slice_none() {
+        let mut o: Option<u8> = None;
+        assert!(o.as_mut_slice().is_empty());
+    }
+}
+
+// Rust-only: the model has no `DerefMut for &mut T` in Lean, whose reborrow aeneas
+// mistranslates.
+#[cfg(test)]
+mod as_deref_mut {
+    #[test]
+    fn test_as_deref_mut_some_mutates_through() {
+        let mut v: u8 = 0;
+        let mut o: Option<&mut u8> = Some(&mut v);
+        if let Some(inner) = o.as_deref_mut() {
+            *inner = u8::MAX;
+        }
+        assert!(v == u8::MAX);
+    }
+}
+
+// ----- cloned / copied -------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_cloned_some() -> bool {
+    let v: u8 = 7;
+    let o: Option<&u8> = Some(&v);
+    o.cloned() == Some(7u8)
+}
+
+#[rust_lean_test]
+pub fn test_copied_some() -> bool {
+    let v: u8 = u8::MAX;
+    Some(&v).copied() == Some(u8::MAX)
+}
+
+#[rust_lean_test]
+pub fn test_copied_some_does_not_clone() -> bool {
+    let v = CopyBumped(0);
+    let x: Option<&CopyBumped> = Some(&v);
+    match x.copied() {
+        Some(c) => c.0 == 0,
+        None => false,
+    }
+}
+
+#[rust_lean_test]
+pub fn test_copied_none() -> bool {
+    None::<&u8>.copied() == None
 }

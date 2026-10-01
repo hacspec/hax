@@ -25,6 +25,9 @@
 //! where to add the matching equivalence tests
 //! (`source/src/core/foo.rs`).
 
+// Unstable std items the Rust half of the tests calls.
+#![feature(array_into_iter_constructors, ergonomic_clones, option_reduce)]
+#![allow(incomplete_features)]
 // Some tests deliberately exercise edge comparisons like `u8::MAX < 0u8`
 // to pin the trait-dispatch behaviour at the extremes; rustc warns
 // those are tautologically false, but that *is* the observation we want

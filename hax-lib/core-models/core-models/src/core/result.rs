@@ -11,6 +11,7 @@ use self::Result::*;
 use super::clone::Clone;
 use super::default::Default;
 use super::option::Option;
+use rust_primitives::sequence::{Seq, seq_empty, seq_len, seq_one, seq_remove};
 
 /// See [`std::fmt::Debug`] for [`Result`]
 #[cfg(not(hax_backend_fstar))]
@@ -63,7 +64,6 @@ impl<T, E> Result<T, E> {
     }
 
     /// See [`std::result::Result::as_mut`]
-    #[cfg_attr(hax_backend_lean, hax_lib::exclude)]
     #[hax_lib::exclude]
     pub fn as_mut(&mut self) -> Result<&mut T, &mut E> {
         match *self {
@@ -264,6 +264,57 @@ impl<T, E> Result<T, E> {
             Err(e) => Err(op(e)),
         }
     }
+
+    /// See [`std::result::Result::unwrap_unchecked`]
+    // F*-only: aeneas crashes on a `requires` on an `unsafe fn` in a generic impl.
+    #[cfg_attr(hax_backend_fstar, hax_lib::requires(self.is_ok()))]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        match self {
+            Ok(t) => t,
+            Err(_) => super::panicking::internal::panic(),
+        }
+    }
+
+    /// See [`std::result::Result::unwrap_err_unchecked`]
+    #[cfg_attr(hax_backend_fstar, hax_lib::requires(self.is_err()))]
+    pub unsafe fn unwrap_err_unchecked(self) -> E {
+        match self {
+            Ok(_) => super::panicking::internal::panic(),
+            Err(e) => e,
+        }
+    }
+
+    /// See [`std::result::Result::iter`]
+    pub fn iter(&self) -> Iter<'_, T> {
+        match self {
+            Ok(t) => Iter(seq_one(t)),
+            Err(_) => Iter(seq_empty()),
+        }
+    }
+
+    /// See [`std::result::Result::as_deref`]
+    pub fn as_deref(&self) -> Result<&T::Target, &E>
+    where
+        T: crate::ops::deref::Deref,
+    {
+        match self {
+            Ok(t) => Ok(crate::ops::deref::Deref::deref(t)),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// See [`std::result::Result::as_deref_mut`]
+    // `DerefMut` is not modeled in F*.
+    #[cfg(not(hax_backend_fstar))]
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
+    where
+        T: crate::ops::deref::DerefMut,
+    {
+        match self {
+            Ok(t) => Ok(crate::ops::deref::DerefMut::deref_mut(t)),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 /// aeneas/lean copies of the four methods whose std signature carries a `Debug`
@@ -321,17 +372,38 @@ impl<T, E> Result<T, E> {
     }
 }
 
+// hax names inherent methods `impl_N__*` by impl position, so these match real
+// core's; empty impls carry `hax_lib::attributes` so rustc keeps that order.
+
+// Anonymous lifetime: see `Option<&'_ T>`. `Copy` is `core`'s: `*t` needs a real copy.
 #[hax_lib::attributes]
-#[cfg_attr(hax_backend_lean, hax_lib::exclude)]
-impl<T: Clone, E> Result<T, E> {
+impl<T, E> Result<&'_ T, E> {
+    /// See [`std::result::Result::copied`]
+    pub fn copied(self) -> Result<T, E>
+    where
+        T: Copy,
+    {
+        match self {
+            Ok(t) => Ok(*t),
+            Err(e) => Err(e),
+        }
+    }
+
     /// See [`std::result::Result::cloned`]
-    pub fn cloned(self) -> Result<T, E> {
+    pub fn cloned(self) -> Result<T, E>
+    where
+        T: Clone,
+    {
         match self {
             Ok(t) => Ok(t.clone()),
             Err(e) => Err(e),
         }
     }
 }
+
+// Real core's `impl<T, E> Result<&mut T, E>` (`copied`/`cloned` on `&mut`).
+#[hax_lib::attributes]
+impl<T, E> Result<&'_ mut T, E> {}
 
 #[cfg(hax_backend_fstar)]
 #[hax_lib::attributes]
@@ -485,20 +557,85 @@ impl<T, E, F: crate::convert::From<E>>
 #[cfg(not(hax_backend_fstar))]
 #[hax_lib::attributes]
 impl<T: super::clone::Clone, E: super::clone::Clone> super::clone::Clone for Result<T, E> {
-    fn clone(self) -> Self {
+    fn clone(&self) -> Self {
         match self {
-            Ok(v) => Ok(v.clone()),
-            Err(e) => Err(e.clone()),
+            Ok(v) => Ok(super::clone::Clone::clone(v)),
+            Err(e) => Err(super::clone::Clone::clone(e)),
+        }
+    }
+}
+
+/// See [`std::result::Iter`]
+pub struct Iter<'a, T>(pub Seq<&'a T>);
+
+#[hax_lib::attributes]
+impl<'a, T> crate::iter::traits::iterator::Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
+        if seq_len(&self.0) == 0 {
+            Option::None
+        } else {
+            Option::Some(seq_remove(&mut self.0, 0))
+        }
+    }
+}
+
+// Stand-in for real core's `Iterator for IterMut`.
+#[hax_lib::attributes]
+impl<T, E> Result<T, E> {}
+
+/// See [`std::result::IntoIter`]
+pub struct IntoIter<T>(pub Seq<T>);
+
+#[hax_lib::attributes]
+impl<T> crate::iter::traits::iterator::Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        if seq_len(&self.0) == 0 {
+            Option::None
+        } else {
+            Option::Some(seq_remove(&mut self.0, 0))
+        }
+    }
+}
+
+#[hax_lib::attributes]
+impl<T, E> crate::iter::traits::collect::IntoIterator for Result<T, E> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+    fn into_iter(self) -> IntoIter<T> {
+        match self {
+            Ok(t) => IntoIter(seq_one(t)),
+            Err(_) => IntoIter(seq_empty()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::iter::traits::iterator::Iterator as ModelIterator;
+    use crate::option::Option as ModelOption;
     #[cfg(not(hax_backend_fstar))]
     use crate::testing::CloneWitness;
     use crate::testing::Inject;
     use proptest::prelude::*;
+
+    /// A `DerefMut` target: the model has no `DerefMut` for `&mut T`.
+    #[cfg(not(hax_backend_fstar))]
+    struct Cell(u8);
+    #[cfg(not(hax_backend_fstar))]
+    impl crate::ops::deref::Deref for Cell {
+        type Target = u8;
+        fn deref(&self) -> &u8 {
+            &self.0
+        }
+    }
+    #[cfg(not(hax_backend_fstar))]
+    impl crate::ops::deref::DerefMut for Cell {
+        fn deref_mut(&mut self) -> &mut u8 {
+            &mut self.0
+        }
+    }
 
     /// `Debug` for `Result` forwards to the payload's, on either side.
     #[cfg(not(hax_backend_fstar))]
@@ -515,18 +652,26 @@ mod tests {
         }
     }
 
+    fn drain<I: ModelIterator>(mut it: I) -> Vec<I::Item> {
+        let mut out = Vec::new();
+        while let ModelOption::Some(x) = it.next() {
+            out.push(x);
+        }
+        out
+    }
+
     proptest! {
         #[cfg(not(hax_backend_fstar))]
         #[test]
         fn test_clone_applies_element_clone(v in any::<u8>()) {
             let ok: Result<CloneWitness, CloneWitness> = Ok(CloneWitness::new(v));
             prop_assert_eq!(
-                crate::clone::Clone::clone(ok.inject()),
+                crate::clone::Clone::clone(&ok.inject()),
                 ok.clone().inject()
             );
             let err: Result<CloneWitness, CloneWitness> = Err(CloneWitness::new(v));
             prop_assert_eq!(
-                crate::clone::Clone::clone(err.inject()),
+                crate::clone::Clone::clone(&err.inject()),
                 err.clone().inject()
             );
         }
@@ -673,8 +818,11 @@ mod tests {
 
         #[test]
         fn test_cloned(x in any::<Result<u8, u8>>()) {
-            // In our model, clone is identity, so cloned should be equivalent to identity
-            prop_assert!(x.clone().inject().cloned() == x.clone().inject());
+            let model: super::Result<&u8, u8> = match &x {
+                Ok(t) => super::Result::Ok(t),
+                Err(e) => super::Result::Err(*e),
+            };
+            prop_assert!(model.cloned() == x.inject());
         }
 
         #[test]
@@ -712,6 +860,104 @@ mod tests {
         // std's `Try` is unstable, so these pin the model's documented
         // semantics (which mirror `?`): `from_output` injects into `Ok`,
         // `branch` sends `Ok(v)` to `Continue(v)` and `Err(e)` to `Break(Err(e))`.
+
+        // Only the in-domain half: std's versions are UB on the other variant.
+
+        #[test]
+        fn test_unwrap_unchecked(v in any::<u8>()) {
+            let res: Result<u8, u8> = Ok(v);
+            prop_assert_eq!(
+                unsafe { res.clone().inject().unwrap_unchecked() },
+                unsafe { res.unwrap_unchecked() }
+            );
+        }
+
+        #[test]
+        fn test_unwrap_err_unchecked(e in any::<u8>()) {
+            let res: Result<u8, u8> = Err(e);
+            prop_assert_eq!(
+                unsafe { res.clone().inject().unwrap_err_unchecked() },
+                unsafe { res.unwrap_err_unchecked() }
+            );
+        }
+
+        #[test]
+        fn test_unwrap_unchecked_on_err_panics(e in any::<u8>()) {
+            let res: super::Result<u8, u8> = super::Result::Err(e);
+            let panicked = std::panic::catch_unwind(|| unsafe { res.unwrap_unchecked() }).is_err();
+            prop_assert!(panicked);
+        }
+
+        #[test]
+        fn test_unwrap_err_unchecked_on_ok_panics(v in any::<u8>()) {
+            let res: super::Result<u8, u8> = super::Result::Ok(v);
+            let panicked =
+                std::panic::catch_unwind(|| unsafe { res.unwrap_err_unchecked() }).is_err();
+            prop_assert!(panicked);
+        }
+
+        #[test]
+        fn test_iter(x in any::<Result<u8, u8>>()) {
+            let model = x.clone().inject();
+            prop_assert_eq!(
+                drain(model.iter()).into_iter().copied().collect::<Vec<u8>>(),
+                x.iter().copied().collect::<Vec<u8>>()
+            );
+        }
+
+        #[test]
+        fn test_into_iter(x in any::<Result<u8, u8>>()) {
+            use crate::iter::traits::collect::IntoIterator as ModelIntoIterator;
+            let model = <super::Result<u8, u8> as ModelIntoIterator>::into_iter(x.clone().inject());
+            prop_assert_eq!(drain(model), x.into_iter().collect::<Vec<u8>>());
+        }
+
+        #[test]
+        fn test_as_deref(x in any::<Result<u8, u8>>()) {
+            let std_res: Result<&u8, u8> = match &x {
+                Ok(v) => Ok(v),
+                Err(e) => Err(*e),
+            };
+            let model: super::Result<&u8, u8> = match &x {
+                Ok(v) => super::Result::Ok(v),
+                Err(e) => super::Result::Err(*e),
+            };
+            prop_assert_eq!(
+                model.as_deref().map(|v: &u8| *v).map_err(|e: &u8| *e),
+                std_res.as_deref().map(|v| *v).map_err(|e| *e).inject()
+            );
+        }
+
+        #[cfg(not(hax_backend_fstar))]
+        #[test]
+        fn test_as_deref_mut(v in any::<u8>(), e in any::<u8>(), is_ok in any::<bool>()) {
+            let mut std_res: Result<u8, u8> = if is_ok { Ok(v) } else { Err(e) };
+            let mut model: super::Result<Cell, u8> = if is_ok {
+                super::Result::Ok(Cell(v))
+            } else {
+                super::Result::Err(e)
+            };
+            if let Ok(r) = std_res.as_mut() {
+                *r = r.wrapping_add(1);
+            }
+            prop_assert_eq!(*crate::ops::deref::Deref::deref(&Cell(v)), v);
+            if let super::Result::Ok(r) = model.as_deref_mut() {
+                *r = r.wrapping_add(1);
+            }
+            prop_assert_eq!(model.map(|c: Cell| c.0), std_res.inject());
+        }
+
+        #[test]
+        fn test_copied(x in any::<Result<u8, u8>>()) {
+            let model: super::Result<&u8, u8> = match &x {
+                Ok(v) => super::Result::Ok(v),
+                Err(e) => super::Result::Err(*e),
+            };
+            prop_assert_eq!(
+                model.copied(),
+                x.as_ref().map(|v| *v).map_err(|e| *e).inject()
+            );
+        }
 
         #[test]
         fn test_try_from_output(v in any::<u8>()) {

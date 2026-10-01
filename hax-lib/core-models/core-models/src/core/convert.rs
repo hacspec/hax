@@ -11,7 +11,7 @@ trait TryInto<T> {
 
 /// See [`std::convert::Into`]
 #[hax_lib::attributes]
-trait Into<T> {
+pub trait Into<T> {
     /// See [`std::convert::Into::into`]
     #[hax_lib::requires(true)]
     fn into(self) -> T;

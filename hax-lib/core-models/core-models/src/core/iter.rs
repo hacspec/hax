@@ -2000,8 +2000,8 @@ mod tests {
         // Under the F* cfg `crate::clone::Clone` has a blanket impl.
         #[cfg(not(hax_backend_fstar))]
         impl crate::clone::Clone for Wrap {
-            fn clone(self) -> Self {
-                self
+            fn clone(&self) -> Self {
+                *self
             }
         }
 
@@ -2027,7 +2027,7 @@ mod tests {
             #[test]
             fn steps_between(a in any::<u8>(), b in any::<u8>()) {
                 // `Step: Clone` is only a bound, never called by the defaults.
-                prop_assert_eq!(crate::clone::Clone::clone(Wrap(a)), Wrap(a));
+                prop_assert_eq!(crate::clone::Clone::clone(&Wrap(a)), Wrap(a));
                 let (model_lower, model_exact) = <Wrap as ModelStep>::steps_between(&Wrap(a), &Wrap(b));
                 let (std_lower, std_exact) = <u8 as StdStep>::steps_between(&a, &b);
                 prop_assert_eq!(model_lower, std_lower);
