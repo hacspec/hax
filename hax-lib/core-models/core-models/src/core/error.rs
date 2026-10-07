@@ -43,6 +43,8 @@ mod tests {
         }
     }
 
+    // F*'s `Debug` has a blanket impl.
+    #[cfg(not(hax_backend_fstar))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     impl Debug for ModelError {
         fn fmt(&self, _: &mut Formatter) -> Result {
@@ -68,6 +70,7 @@ mod tests {
     fn test_description_matches_core() {
         #[allow(deprecated)]
         let expected = core::error::Error::description(&StdError);
+        #[cfg(not(hax_backend_fstar))]
         assert_eq!(Error::description(&ModelError), expected);
         assert_eq!(ErrorDefaults::description(&ModelError), expected);
     }
