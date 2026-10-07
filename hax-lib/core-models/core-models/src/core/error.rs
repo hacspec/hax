@@ -1,15 +1,17 @@
 use super::fmt::{Debug, Display};
 
+const DEPRECATED_DESCRIPTION: &str = "description() is deprecated; use Display";
+
 /// See [`std::error::Error`]
 pub trait Error: Display + Debug {
     /// See [`std::error::Error::description`]
     // F* has no default methods: there, `ErrorDefaults` provides it. Opaque for
-    // Lean, where Aeneas cannot translate a `&str` return; `FunsPrologue.lean`
-    // defines it instead.
+    // Lean, where Aeneas cannot translate a `&str` return; a hand-written Lean
+    // definition provides it instead.
     #[cfg(not(hax_backend_fstar))]
     #[cfg_attr(hax_backend_lean, hax_lib::opaque)]
     fn description(&self) -> &str {
-        "description() is deprecated; use Display"
+        DEPRECATED_DESCRIPTION
     }
 }
 
@@ -23,7 +25,7 @@ pub(crate) trait ErrorDefaults {
 #[cfg(any(hax_backend_fstar, test))]
 impl<T: Error> ErrorDefaults for T {
     fn description(&self) -> &str {
-        "description() is deprecated; use Display"
+        DEPRECATED_DESCRIPTION
     }
 }
 

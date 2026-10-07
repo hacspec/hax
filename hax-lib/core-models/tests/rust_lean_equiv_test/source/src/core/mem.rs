@@ -1,11 +1,10 @@
 //! Equivalence tests for `core::mem::*`.
 //!
-//! Both items carry `#[cfg_attr(hax_backend_lean, hax_lib::exclude)]` so Aeneas
-//! does not extract the Rust std bodies; instead the name map routes them to
-//! manually-written Lean definitions in `lean/CoreModels/FunsExternal.lean`
-//! and friends. The Rust side of each test calls std directly — if the
-//! manual Lean def disagrees with std on a given input, the generated
-//! `#guard` fails the Lean build.
+//! `swap` and `replace` carry `#[cfg_attr(hax_backend_lean, hax_lib::exclude)]`
+//! so Aeneas does not extract the Rust std bodies; instead the name map routes
+//! them to hand-written Lean definitions. The Rust side of each test calls std
+//! directly — if the manual Lean def disagrees with std on a given input, the
+//! generated `#guard` fails the Lean build.
 
 use rust_lean_test_macro::rust_lean_test;
 

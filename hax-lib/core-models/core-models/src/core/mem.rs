@@ -166,8 +166,9 @@ pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 
 mod manually_drop {
     /// See [`std::mem::ManuallyDrop`]
-    // DEVIATION(std): dropping the model drops `value`; hax has no destructors, so
-    // only Rust-side tests can observe this.
+    // DEVIATION(std): dropping the model drops `value`, so after `take` a non-`Copy`
+    // `T` is dropped twice. hax has no destructors, so only Rust-side tests can
+    // observe this.
     pub struct ManuallyDrop<T: ?Sized> {
         value: T,
     }
@@ -320,8 +321,6 @@ mod tests {
             prop_assert_eq!(DropGuard::dismiss(DropGuard::new(x, |_: u32| ())), x);
         }
     }
-
-    use proptest::prelude::*;
 
     // Layout queries take no runtime input, so they are checked per type
     // against `std::mem` rather than over a proptest domain.

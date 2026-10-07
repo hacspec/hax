@@ -4572,6 +4572,12 @@ def Slice.Insts.CoreConvertAsMutSlice (T : Type) : convert.AsMut (Slice
 def convert.identity {T : Type} (x : T) : RustM T := do
   ok x
 
+/-- [core_models::error::DEPRECATED_DESCRIPTION]
+    Source: 'core-models/src/core/error.rs', lines 3:0-3:80 -/
+@[global_simps, irreducible]
+def error.DEPRECATED_DESCRIPTION : Str :=
+  toStr "description() is deprecated; use Display"
+
 /-- [core_models::fmt::{core_models::fmt::Formatter}::debug_struct_field1_finish]:
     Source: 'core-models/src/core/fmt.rs', lines 20:8-26:9
     Visibility: public -/
@@ -8873,21 +8879,21 @@ def mem.copy
   markerCopyInst.cloneCloneInst.clone x
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 177:8-179:9
+    Source: 'core-models/src/core/mem.rs', lines 178:8-180:9
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.new
   {T : Type} (value : T) : RustM (mem.manually_drop.ManuallyDrop T) := do
   ok { value }
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::into_inner]:
-    Source: 'core-models/src/core/mem.rs', lines 182:8-184:9
+    Source: 'core-models/src/core/mem.rs', lines 183:8-185:9
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.into_inner
   {T : Type} (slot : mem.manually_drop.ManuallyDrop T) : RustM T := do
   ok slot.value
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::take]:
-    Source: 'core-models/src/core/mem.rs', lines 187:8-189:9
+    Source: 'core-models/src/core/mem.rs', lines 188:8-190:9
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.take
   {T : Type} (slot : mem.manually_drop.ManuallyDrop T) :
@@ -8897,7 +8903,7 @@ def mem.manually_drop.ManuallyDrop.take
   ok (t, slot)
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::drop]:
-    Source: 'core-models/src/core/mem.rs', lines 194:8-194:57
+    Source: 'core-models/src/core/mem.rs', lines 195:8-195:57
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.drop
   {T : Type} (slot : mem.manually_drop.ManuallyDrop T) :
@@ -8906,21 +8912,21 @@ def mem.manually_drop.ManuallyDrop.drop
   ok slot
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 204:8-209:9
+    Source: 'core-models/src/core/mem.rs', lines 205:8-210:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.new
   {P : Type} (x : P) : RustM (mem.maybe_dangling.MaybeDangling P) := do
   ok x
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_ref]:
-    Source: 'core-models/src/core/mem.rs', lines 212:8-214:9
+    Source: 'core-models/src/core/mem.rs', lines 213:8-215:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.as_ref
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
   ok self
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_mut]:
-    Source: 'core-models/src/core/mem.rs', lines 219:8-221:9
+    Source: 'core-models/src/core/mem.rs', lines 220:8-222:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.as_mut
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) :
@@ -8930,14 +8936,14 @@ def mem.maybe_dangling.MaybeDangling.as_mut
   ok (self, back)
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::into_inner]:
-    Source: 'core-models/src/core/mem.rs', lines 224:8-229:9
+    Source: 'core-models/src/core/mem.rs', lines 225:8-230:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.into_inner
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
   ok self
 
 /-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 245:8-247:9
+    Source: 'core-models/src/core/mem.rs', lines 246:8-248:9
     Visibility: public -/
 def mem.drop_guard.DropGuard.new
   {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :
@@ -8947,7 +8953,7 @@ def mem.drop_guard.DropGuard.new
   ok { inner, f }
 
 /-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::dismiss]:
-    Source: 'core-models/src/core/mem.rs', lines 250:8-252:9
+    Source: 'core-models/src/core/mem.rs', lines 251:8-253:9
     Visibility: public -/
 def mem.drop_guard.DropGuard.dismiss
   {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :

@@ -367,7 +367,7 @@ structure fmt.Display (Self : Type) where
     fmt.Formatter)
 
 /-- Trait declaration: [core_models::error::Error]
-    Source: 'core-models/src/core/error.rs', lines 4:0-14:1
+    Source: 'core-models/src/core/error.rs', lines 6:0-16:1
     Visibility: public -/
 structure error.Error (Self : Type) where
   fmtDisplayInst : fmt.Display Self
@@ -706,19 +706,19 @@ def marker.PhantomData (T : Type) := T
 -/  -- replaced by rewrite_phantom_data in favor of the def in `TypesPrologue.lean`
 
 /-- [core_models::mem::manually_drop::ManuallyDrop]
-    Source: 'core-models/src/core/mem.rs', lines 171:4-173:5
+    Source: 'core-models/src/core/mem.rs', lines 172:4-174:5
     Visibility: public -/
 structure mem.manually_drop.ManuallyDrop (T : Type) where
   value : T
 
 /-- [core_models::mem::maybe_dangling::MaybeDangling]
-    Source: 'core-models/src/core/mem.rs', lines 200:4-200:43
+    Source: 'core-models/src/core/mem.rs', lines 201:4-201:43
     Visibility: public -/
 @[reducible]
 def mem.maybe_dangling.MaybeDangling (P : Type) := P
 
 /-- [core_models::mem::drop_guard::DropGuard]
-    Source: 'core-models/src/core/mem.rs', lines 238:4-241:5
+    Source: 'core-models/src/core/mem.rs', lines 239:4-242:5
     Visibility: public -/
 structure mem.drop_guard.DropGuard (T : Type) (F : Type) where
   inner : T
