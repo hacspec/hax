@@ -36,6 +36,7 @@ mod tests {
 
     struct ModelError;
 
+    // Required by `Error`; `description` never formats the value.
     #[cfg_attr(coverage_nightly, coverage(off))]
     impl Display for ModelError {
         fn fmt(&self, _: &mut Formatter) -> Result {
@@ -43,7 +44,8 @@ mod tests {
         }
     }
 
-    // F*'s `Debug` has a blanket impl.
+    // Required by `Error`; `description` never formats the value. F*'s `Debug`
+    // has a blanket impl.
     #[cfg(not(hax_backend_fstar))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     impl Debug for ModelError {
@@ -57,6 +59,7 @@ mod tests {
     #[derive(Debug)]
     struct StdError;
 
+    // Required by `core::error::Error`; `description` never formats the value.
     #[cfg_attr(coverage_nightly, coverage(off))]
     impl core::fmt::Display for StdError {
         fn fmt(&self, _: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
