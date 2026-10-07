@@ -1,17 +1,23 @@
 //! Equivalence tests for `core::error::*`.
-//! Rust-only: the model's `description` lives in `ErrorDefaults`, not `Error`.
 
+// TODO(client-fmt-impls): Aeneas cannot translate the `Display`/`Debug` impls
+// that implementing `Error` requires, so these tests run in Rust only.
 #[cfg(test)]
 mod description {
     use core::error::Error;
     use core::fmt;
 
-    #[derive(Debug)]
     struct E;
 
     impl fmt::Display for E {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.write_str("e")
+        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+            Ok(())
+        }
+    }
+
+    impl fmt::Debug for E {
+        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+            Ok(())
         }
     }
 

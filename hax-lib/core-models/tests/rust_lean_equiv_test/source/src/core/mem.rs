@@ -192,6 +192,21 @@ pub fn test_manually_drop_into_inner_option_none() -> bool {
         .is_none()
 }
 
+// `u8` is `Copy`: the model's slot would drop a value with a destructor again.
+#[rust_lean_test]
+pub fn test_manually_drop_take_u8() -> bool {
+    let mut slot = core::mem::ManuallyDrop::new(7u8);
+    let v = unsafe { core::mem::ManuallyDrop::take(&mut slot) };
+    v == 7
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_take_i32_min() -> bool {
+    let mut slot = core::mem::ManuallyDrop::new(i32::MIN);
+    let v = unsafe { core::mem::ManuallyDrop::take(&mut slot) };
+    v == i32::MIN
+}
+
 // Sound: `u8` has no destructor.
 #[rust_lean_test]
 pub fn test_manually_drop_drop_leaves_u8() -> bool {

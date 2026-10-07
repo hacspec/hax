@@ -1,17 +1,26 @@
 use super::fmt::{Debug, Display};
 
 /// See [`std::error::Error`]
-pub trait Error: Display + Debug {}
-
-// hax does not support default trait methods, hence this blanket-implemented trait.
-trait ErrorDefaults {
+pub trait Error: Display + Debug {
     /// See [`std::error::Error::description`]
+    // F* has no default methods: there, `ErrorDefaults` provides it. Opaque for
+    // Lean, where Aeneas cannot translate a `&str` return; `FunsPrologue.lean`
+    // defines it instead.
+    #[cfg(not(hax_backend_fstar))]
+    #[cfg_attr(hax_backend_lean, hax_lib::opaque)]
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
+}
+
+// `Error::description` for F*, where a trait cannot provide it: this blanket
+// impl gives it to every `Error`, including clients' own.
+#[cfg(any(hax_backend_fstar, test))]
+pub(crate) trait ErrorDefaults {
     fn description(&self) -> &str;
 }
 
-// Excluded, not opaque, for Lean: aeneas cannot translate the `&'static str` body,
-// and an opaque method leaves the instance referring to an undefined function.
-#[cfg_attr(hax_backend_lean, hax_lib::exclude)]
+#[cfg(any(hax_backend_fstar, test))]
 impl<T: Error> ErrorDefaults for T {
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
@@ -21,19 +30,20 @@ impl<T: Error> ErrorDefaults for T {
 #[cfg(test)]
 mod tests {
     use super::{Error, ErrorDefaults};
-    use crate::fmt::{Display, Formatter, Result};
+    use crate::fmt::{Debug, Display, Formatter, Result};
 
     struct ModelError;
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     impl Display for ModelError {
-        fn fmt(&self, f: &mut Formatter) -> Result {
+        fn fmt(&self, _: &mut Formatter) -> Result {
             Result::Ok(())
         }
     }
 
-    #[cfg(not(hax_backend_fstar))]
-    impl crate::fmt::Debug for ModelError {
-        fn fmt(&self, f: &mut Formatter) -> Result {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    impl Debug for ModelError {
+        fn fmt(&self, _: &mut Formatter) -> Result {
             Result::Ok(())
         }
     }
@@ -43,28 +53,20 @@ mod tests {
     #[derive(Debug)]
     struct StdError;
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     impl core::fmt::Display for StdError {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            f.write_str("std error")
+        fn fmt(&self, _: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            Ok(())
         }
     }
 
     impl core::error::Error for StdError {}
 
-    // Runs the `Display`/`Debug` impls, which `description` never calls.
-    #[test]
-    fn test_display_impls_run() {
-        let mut f = Formatter;
-        let _: Result = Display::fmt(&ModelError, &mut f);
-        #[cfg(not(hax_backend_fstar))]
-        let _: Result = crate::fmt::Debug::fmt(&ModelError, &mut f);
-        assert_eq!(std::format!("{}", StdError), "std error");
-    }
-
     #[test]
     fn test_description_matches_core() {
         #[allow(deprecated)]
         let expected = core::error::Error::description(&StdError);
+        assert_eq!(Error::description(&ModelError), expected);
         assert_eq!(ErrorDefaults::description(&ModelError), expected);
     }
 }

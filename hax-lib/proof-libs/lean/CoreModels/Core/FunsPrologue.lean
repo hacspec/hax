@@ -311,6 +311,15 @@ def mem.swap :=
 def mem.replace :=
   fun {T} x y => Aeneas.Std.RustM.ok (@Aeneas.Std.core.mem.replace T x y)
 
+/-! ## Error -/
+
+/-- The model marks `Error::description` opaque: Aeneas cannot translate a
+function that returns `&str`. -/
+@[trait_default]
+def error.Error.description.default
+  {Self : Type} (_ : error.Error Self) : Self → RustM Str :=
+  fun _ => ok (toStr "description() is deprecated; use Display")
+
 /-! ## Redirects to Aeneas's library
 
 The `num.<X>.{MIN,MAX,BITS}` re-exports below stand in for the definitions the

@@ -1,14 +1,19 @@
 /// See [`std::borrow::Borrow`]
 trait Borrow<Borrowed> {
     /// See [`std::borrow::Borrow::borrow`]
-    fn borrow(&self) -> Borrowed;
+    fn borrow(&self) -> &Borrowed;
 }
 
-// No `Borrow` supertrait: the by-value model `Borrow` has no reflexive impl.
+impl<T> Borrow<T> for T {
+    fn borrow(&self) -> &T {
+        self
+    }
+}
+
 /// See [`std::borrow::BorrowMut`]
 // Excluded from F*: hax rejects a `&mut` return.
 #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
-trait BorrowMut<Borrowed> {
+trait BorrowMut<Borrowed>: Borrow<Borrowed> {
     /// See [`std::borrow::BorrowMut::borrow_mut`]
     fn borrow_mut(&mut self) -> &mut Borrowed;
 }
@@ -25,6 +30,14 @@ mod tests {
     use proptest::prelude::*;
 
     proptest! {
+        #[test]
+        fn test_borrow_reflexive(x in any::<u8>()) {
+            prop_assert_eq!(
+                *super::Borrow::borrow(&x),
+                *core::borrow::Borrow::<u8>::borrow(&x)
+            );
+        }
+
         #[test]
         fn test_borrow_mut_reflexive(x in any::<u8>(), y in any::<u8>()) {
             let mut model = x;

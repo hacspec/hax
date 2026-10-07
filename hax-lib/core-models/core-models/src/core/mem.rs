@@ -144,15 +144,19 @@ pub fn copy<T: crate::marker::Copy>(x: &T) -> T {
 }
 
 /// See [`std::mem::conjure_zst`]
-// Opaque: sound only for an inhabited zero-sized `T`, which the model cannot state.
+// `requires(false)`: sound only for an inhabited zero-sized `T`, which the model
+// cannot state.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[hax_lib::opaque]
+#[hax_lib::requires(false)]
 pub unsafe fn conjure_zst<T>() -> T {
     panic!()
 }
 
 /// See [`std::mem::size_of_val_raw`]
-// Excluded from F*, which has no raw pointers; the body needs a layout.
+// Excluded from F*, which has no raw pointers. The body is a placeholder: std
+// computes it from the type's layout and the pointer's metadata, which the model
+// cannot express.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
 #[cfg_attr(hax_backend_lean, hax_lib::opaque)]
@@ -162,6 +166,8 @@ pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 
 mod manually_drop {
     /// See [`std::mem::ManuallyDrop`]
+    // DEVIATION(std): dropping the model drops `value`; hax has no destructors, so
+    // only Rust-side tests can observe this.
     pub struct ManuallyDrop<T: ?Sized> {
         value: T,
     }
@@ -178,11 +184,8 @@ mod manually_drop {
         }
 
         /// See [`std::mem::ManuallyDrop::take`]
-        // Opaque: without raw pointers there is no way to move a `T` out of the slot.
-        #[cfg_attr(coverage_nightly, coverage(off))]
-        #[hax_lib::opaque]
         pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
-            panic!()
+            unsafe { rust_primitives::mem::read(&slot.value) }
         }
     }
 
@@ -229,8 +232,9 @@ mod maybe_dangling {
 
 mod drop_guard {
     /// See [`std::mem::DropGuard`]
-    // DEVIATION(std): no `ManuallyDrop` fields (no destructors) and no `F: FnOnce(T)`
-    // bound on the struct, which F* would turn into a refinement argument of the type.
+    // DEVIATION(std): hax has no destructors, so the model never calls `f`. There is
+    // also no `F: FnOnce(T)` bound on the struct, which F* would turn into a
+    // refinement argument of the type.
     pub struct DropGuard<T, F> {
         inner: T,
         f: F,
@@ -279,6 +283,16 @@ mod tests {
             prop_assert_eq!(
                 ManuallyDrop::into_inner(model),
                 core::mem::ManuallyDrop::into_inner(std_slot)
+            );
+        }
+
+        #[test]
+        fn test_manually_drop_take(x in any::<u32>()) {
+            let mut model = ManuallyDrop::new(x);
+            let mut std_slot = core::mem::ManuallyDrop::new(x);
+            prop_assert_eq!(
+                unsafe { ManuallyDrop::take(&mut model) },
+                unsafe { core::mem::ManuallyDrop::take(&mut std_slot) }
             );
         }
 

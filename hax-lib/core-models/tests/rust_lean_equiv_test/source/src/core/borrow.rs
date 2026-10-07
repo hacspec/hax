@@ -1,7 +1,24 @@
-//! Equivalence tests for `core::borrow::*`. `Borrow` has no model impl to test.
+//! Equivalence tests for `core::borrow::*`.
 
-use core::borrow::BorrowMut;
+use core::borrow::{Borrow, BorrowMut};
 use rust_lean_test_macro::rust_lean_test;
+
+// ----- Borrow::borrow ---------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_borrow_u8_max() -> bool {
+    *Borrow::<u8>::borrow(&u8::MAX) == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_borrow_i32_min() -> bool {
+    *Borrow::<i32>::borrow(&i32::MIN) == i32::MIN
+}
+
+#[rust_lean_test]
+pub fn test_borrow_bool_false() -> bool {
+    *Borrow::<bool>::borrow(&false) == false
+}
 
 // ----- BorrowMut::borrow_mut: read back ---------------------------------------
 

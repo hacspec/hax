@@ -558,16 +558,29 @@ def array.iter.IntoIter.as_mut_slice
                         s2
   ok (s, back)
 
+/-- [core_models::borrow::{impl core_models::borrow::Borrow<T> for T}::borrow]:
+    Source: 'core-models/src/core/borrow.rs', lines 8:4-10:5 -/
+def borrow.Borrow.Blanket.borrow {T : Type} (self : T) : RustM T := do
+  ok self
+
+/-- Trait implementation: [core_models::borrow::{impl core_models::borrow::Borrow<T> for T}]
+    Source: 'core-models/src/core/borrow.rs', lines 7:0-11:1 -/
+@[reducible]
+def borrow.Borrow.Blanket (T : Type) : borrow.Borrow T T := {
+  borrow := borrow.Borrow.Blanket.borrow
+}
+
 /-- [core_models::borrow::{impl core_models::borrow::BorrowMut<T> for T}::borrow_mut]:
-    Source: 'core-models/src/core/borrow.rs', lines 18:4-20:5 -/
+    Source: 'core-models/src/core/borrow.rs', lines 23:4-25:5 -/
 def borrow.BorrowMut.Blanket.borrow_mut
   {T : Type} (self : T) : RustM (T × (T → T)) := do
   ok (self, fun self1 => self1)
 
 /-- Trait implementation: [core_models::borrow::{impl core_models::borrow::BorrowMut<T> for T}]
-    Source: 'core-models/src/core/borrow.rs', lines 17:0-21:1 -/
+    Source: 'core-models/src/core/borrow.rs', lines 22:0-26:1 -/
 @[reducible]
 def borrow.BorrowMut.Blanket (T : Type) : borrow.BorrowMut T T := {
+  BorrowInst := borrow.Borrow.Blanket T
   borrow_mut := borrow.BorrowMut.Blanket.borrow_mut
 }
 
@@ -4537,7 +4550,7 @@ def Isize.Insts.CoreConvertFromBool : convert.From Std.Isize Bool := {
 }
 
 /-- [core_models::convert::{impl core_models::convert::AsMut<[T]> for [T]}::as_mut]:
-    Source: 'core-models/src/core/convert.rs', lines 279:4-281:5
+    Source: 'core-models/src/core/convert.rs', lines 277:4-279:5
     Visibility: public -/
 def Slice.Insts.CoreConvertAsMutSlice.as_mut
   {T : Type} (self : Slice T) :
@@ -4546,7 +4559,7 @@ def Slice.Insts.CoreConvertAsMutSlice.as_mut
   ok (self, fun self1 => self1)
 
 /-- Trait implementation: [core_models::convert::{impl core_models::convert::AsMut<[T]> for [T]}]
-    Source: 'core-models/src/core/convert.rs', lines 278:0-282:1 -/
+    Source: 'core-models/src/core/convert.rs', lines 276:0-280:1 -/
 @[reducible]
 def Slice.Insts.CoreConvertAsMutSlice (T : Type) : convert.AsMut (Slice
   T) (Slice T) := {
@@ -4554,7 +4567,7 @@ def Slice.Insts.CoreConvertAsMutSlice (T : Type) : convert.AsMut (Slice
 }
 
 /-- [core_models::convert::identity]:
-    Source: 'core-models/src/core/convert.rs', lines 285:0-287:1
+    Source: 'core-models/src/core/convert.rs', lines 283:0-285:1
     Visibility: public -/
 def convert.identity {T : Type} (x : T) : RustM T := do
   ok x
@@ -8860,21 +8873,31 @@ def mem.copy
   markerCopyInst.cloneCloneInst.clone x
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 171:8-173:9
+    Source: 'core-models/src/core/mem.rs', lines 177:8-179:9
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.new
   {T : Type} (value : T) : RustM (mem.manually_drop.ManuallyDrop T) := do
   ok { value }
 
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::into_inner]:
-    Source: 'core-models/src/core/mem.rs', lines 176:8-178:9
+    Source: 'core-models/src/core/mem.rs', lines 182:8-184:9
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.into_inner
   {T : Type} (slot : mem.manually_drop.ManuallyDrop T) : RustM T := do
   ok slot.value
 
+/-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::take]:
+    Source: 'core-models/src/core/mem.rs', lines 187:8-189:9
+    Visibility: public -/
+def mem.manually_drop.ManuallyDrop.take
+  {T : Type} (slot : mem.manually_drop.ManuallyDrop T) :
+  RustM (T × (mem.manually_drop.ManuallyDrop T))
+  := do
+  let t ← rust_primitives.mem.read slot.value
+  ok (t, slot)
+
 /-- [core_models::mem::manually_drop::{core_models::mem::manually_drop::ManuallyDrop<T>}::drop]:
-    Source: 'core-models/src/core/mem.rs', lines 191:8-191:57
+    Source: 'core-models/src/core/mem.rs', lines 194:8-194:57
     Visibility: public -/
 def mem.manually_drop.ManuallyDrop.drop
   {T : Type} (slot : mem.manually_drop.ManuallyDrop T) :
@@ -8883,21 +8906,21 @@ def mem.manually_drop.ManuallyDrop.drop
   ok slot
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 201:8-206:9
+    Source: 'core-models/src/core/mem.rs', lines 204:8-209:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.new
   {P : Type} (x : P) : RustM (mem.maybe_dangling.MaybeDangling P) := do
   ok x
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_ref]:
-    Source: 'core-models/src/core/mem.rs', lines 209:8-211:9
+    Source: 'core-models/src/core/mem.rs', lines 212:8-214:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.as_ref
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
   ok self
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::as_mut]:
-    Source: 'core-models/src/core/mem.rs', lines 216:8-218:9
+    Source: 'core-models/src/core/mem.rs', lines 219:8-221:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.as_mut
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) :
@@ -8907,14 +8930,14 @@ def mem.maybe_dangling.MaybeDangling.as_mut
   ok (self, back)
 
 /-- [core_models::mem::maybe_dangling::{core_models::mem::maybe_dangling::MaybeDangling<P>}::into_inner]:
-    Source: 'core-models/src/core/mem.rs', lines 221:8-226:9
+    Source: 'core-models/src/core/mem.rs', lines 224:8-229:9
     Visibility: public -/
 def mem.maybe_dangling.MaybeDangling.into_inner
   {P : Type} (self : mem.maybe_dangling.MaybeDangling P) : RustM P := do
   ok self
 
 /-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::new]:
-    Source: 'core-models/src/core/mem.rs', lines 241:8-243:9
+    Source: 'core-models/src/core/mem.rs', lines 245:8-247:9
     Visibility: public -/
 def mem.drop_guard.DropGuard.new
   {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :
@@ -8924,7 +8947,7 @@ def mem.drop_guard.DropGuard.new
   ok { inner, f }
 
 /-- [core_models::mem::drop_guard::{core_models::mem::drop_guard::DropGuard<T, F>}::dismiss]:
-    Source: 'core-models/src/core/mem.rs', lines 246:8-248:9
+    Source: 'core-models/src/core/mem.rs', lines 250:8-252:9
     Visibility: public -/
 def mem.drop_guard.DropGuard.dismiss
   {T : Type} {F : Type} (coreopsfunctionFnOnceFTupleTTupleInst :

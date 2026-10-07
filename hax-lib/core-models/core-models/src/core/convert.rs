@@ -272,8 +272,6 @@ macro_rules! int_from_bool {
 
 int_from_bool! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
-// Kept last: hax numbers impls by position, so moving these renumbers `From`/`TryFrom`.
-
 #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
 impl<T> AsMut<[T]> for [T] {
     fn as_mut(&mut self) -> &mut [T] {

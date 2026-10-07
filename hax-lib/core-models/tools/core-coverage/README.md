@@ -56,11 +56,9 @@ Two subtleties the walker handles:
 
 ## Model naming workarounds (`MODEL_OWNER_ALIASES`)
 
-The model spells some owners differently from core: primitive methods hang off
-stand-in types (`Slice`, `Array`), and trait default methods live in companion
-traits (`IteratorMethods`, `Neq`, ...), as hax does not support trait defaults.
-`MODEL_OWNER_ALIASES` maps these back to core's
-names, additively. Extend it when you add a companion trait or a stand-in type.
+The model hangs primitive methods off stand-in types (`Slice`, `Array`).
+`MODEL_OWNER_ALIASES` maps these back to core's names, additively. Extend it
+when you add a stand-in type.
 
 ## Scoping (the tiered report)
 

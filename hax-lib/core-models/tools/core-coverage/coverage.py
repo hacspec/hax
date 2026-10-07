@@ -47,13 +47,10 @@ PRIM_BUCKET = {
     "pointer": "ptr", "reference": "ptr",
 }
 
-# Model owners spelled differently from core: primitive stand-ins and companion traits.
+# Model owners spelled differently from core: stand-in types for primitives.
 MODEL_OWNER_ALIASES = {
-    # primitive stand-ins
     "Slice": "slice",
     "Array": "array",
-    # companion traits carrying trait default methods
-    "ErrorDefaults": "Error",
 }
 
 # Modules that a pure-Rust verification model of core/alloc is not trying to
