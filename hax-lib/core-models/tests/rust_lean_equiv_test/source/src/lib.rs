@@ -31,7 +31,8 @@
     drop_guard,
     ergonomic_clones,
     mem_copy_fn,
-    option_reduce
+    option_reduce,
+    range_into_bounds
 )]
 #![allow(incomplete_features)]
 // Some tests deliberately exercise edge comparisons like `u8::MAX < 0u8`

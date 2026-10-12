@@ -247,7 +247,9 @@ impl crate::ops::range::RangeBounds<usize> for ModelRange {
     }
 }
 
-fn bound(kind: u8, x: usize) -> (crate::ops::range::Bound<usize>, std::ops::Bound<usize>) {
+/// The `Bound` that `kind` selects, in the model and in std. A pair of these
+/// is itself a range, and takes every `Bound` shape at either end.
+pub fn bound<T: Copy>(kind: u8, x: T) -> (crate::ops::range::Bound<T>, std::ops::Bound<T>) {
     use crate::ops::range::Bound as M;
     use std::ops::Bound as S;
     match kind {

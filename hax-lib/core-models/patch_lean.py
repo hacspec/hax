@@ -228,6 +228,7 @@ def drop_do_on_duplicate_binder_matches(text: str) -> str:
     """Turn `:= do` into `:=` for the definitions in `_DUPLICATE_BINDER_DEFS`.
 
     Aeneas's `do` rejects their duplicate pattern binders; the bodies have no binds.
+    See https://github.com/AeneasVerif/aeneas/issues/1406.
     """
     lines = text.split("\n")
     for i, line in enumerate(lines):

@@ -138,6 +138,45 @@ pub fn test_range_bounds_contains() -> bool {
 }
 
 // =============================================================================
+// IntoBounds::intersect, called directly and through a generic dictionary
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_into_bounds_intersect_method() -> bool {
+    use core::ops::IntoBounds;
+    matches!(
+        (2u8..8).intersect(5u8..=9),
+        (Bound::Included(5), Bound::Excluded(8))
+    )
+}
+
+#[rust_lean_test]
+pub fn test_into_bounds_intersect_path() -> bool {
+    matches!(
+        core::ops::IntoBounds::intersect(..=4u8, 1u8..),
+        (Bound::Included(1), Bound::Included(4))
+    )
+}
+
+fn intersect_via_bounds<A: core::ops::IntoBounds<u8>, B: core::ops::IntoBounds<u8>>(
+    a: A,
+    b: B,
+) -> (Bound<u8>, Bound<u8>) {
+    a.intersect(b)
+}
+
+#[rust_lean_test]
+pub fn test_into_bounds_intersect_generic() -> bool {
+    matches!(
+        intersect_via_bounds(3u8.., ..7u8),
+        (Bound::Included(3), Bound::Excluded(7))
+    ) && matches!(
+        intersect_via_bounds(.., ..),
+        (Bound::Unbounded, Bound::Unbounded)
+    )
+}
+
+// =============================================================================
 // ControlFlow::is_break / is_continue
 // =============================================================================
 
@@ -376,6 +415,11 @@ pub fn test_range_is_empty_nonempty() -> bool {
 #[rust_lean_test]
 pub fn test_range_is_empty_equal_bounds() -> bool {
     (3u8..3u8).is_empty() == true
+}
+
+#[rust_lean_test]
+pub fn test_range_is_empty_single() -> bool {
+    (4u8..5u8).is_empty() == false
 }
 
 #[rust_lean_test]

@@ -556,6 +556,42 @@ def result.Result.Insts.CoreIterTraitsCollectFromIteratorResult
       FromIteratorInst IntoIteratorInst
 }
 
+/-! ## `IntoBounds::intersect` (a provided method kept OFF the `IntoBounds` structure)
+
+Its `R: IntoBounds<T>` bound would give the `IntoBounds` structure a field taking
+an `IntoBounds R T` argument, a non-positive occurrence the kernel rejects. Being
+standalone functions rather than a field, these cannot be overridden by an impl;
+neither can the Rust model's `intersect`, which no impl in core overrides either. -/
+
+-- aeneas emits `IntoBounds.intersect.default (SelfInst) (OrdInst) (RInst) self other`
+-- at a call on a concrete range type.
+open Aeneas.Std (RustM) in
+@[trait_default, rust_fun "core::ops::range::IntoBounds::intersect"]
+def ops.range.IntoBounds.intersect.default
+    {Self T R : Type}
+    (IntoBoundsInst : ops.range.IntoBounds Self T)
+    (cmpOrdInst : cmp.Ord T)
+    (IntoBoundsInst1 : ops.range.IntoBounds R T)
+    (self : Self) (other : R) :
+    RustM ((ops.range.Bound T) × (ops.range.Bound T)) := do
+  let a ← IntoBoundsInst.into_bounds self
+  let b ← IntoBoundsInst1.into_bounds other
+  ops.range.bounds_intersect cmpOrdInst a b
+
+-- At a call through a generic `IntoBounds` dictionary, aeneas emits the projection
+-- `IntoBoundsInst.intersect (OrdInst) (RInst) self other`; generalized field
+-- notation resolves it to this function.
+open Aeneas.Std (RustM) in
+def ops.range.IntoBounds.intersect
+    {Self T : Type}
+    (IntoBoundsInst : ops.range.IntoBounds Self T)
+    {R : Type}
+    (cmpOrdInst : cmp.Ord T)
+    (IntoBoundsInst1 : ops.range.IntoBounds R T)
+    (self : Self) (other : R) :
+    RustM ((ops.range.Bound T) × (ops.range.Bound T)) :=
+  ops.range.IntoBounds.intersect.default
+    IntoBoundsInst cmpOrdInst IntoBoundsInst1 self other
 
 end core
 

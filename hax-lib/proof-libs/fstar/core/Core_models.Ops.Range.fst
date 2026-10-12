@@ -17,8 +17,6 @@ include Core_models.Bundle {t_RangeInclusive as t_RangeInclusive}
 
 include Core_models.Bundle {t_RangeToInclusive as t_RangeToInclusive}
 
-include Core_models.Bundle {impl_28__from__range as impl_28}
-
 include Core_models.Bundle {impl_29__from__range as impl_29}
 
 include Core_models.Bundle {impl_30__from__range as impl_30}
@@ -40,6 +38,8 @@ include Core_models.Bundle {impl_37__from__range as impl_37}
 include Core_models.Bundle {impl_38__from__range as impl_38}
 
 include Core_models.Bundle {impl_39__from__range as impl_39}
+
+include Core_models.Bundle {impl_40__from__range as impl_40}
 
 include Core_models.Bundle {t_Bound as t_Bound}
 
@@ -125,7 +125,7 @@ include Core_models.Bundle {impl_7__end as impl_7__end}
 
 include Core_models.Bundle {impl_7__into_inner as impl_7__into_inner}
 
-include Core_models.Bundle {impl_9__from__range as impl_9}
+include Core_models.Bundle {impl_9 as impl_9}
 
 include Core_models.Bundle {impl_10__contains as impl_10__contains}
 
@@ -163,6 +163,8 @@ include Core_models.Bundle {impl_24__from__range as impl_24}
 
 include Core_models.Bundle {impl_25__from__range as impl_25}
 
+include Core_models.Bundle {impl_26__from__range as impl_26}
+
 include Core_models.Bundle {t_RangeBoundsDefaults as t_RangeBoundsDefaults}
 
 include Core_models.Bundle {f_contains_pre as f_contains_pre}
@@ -177,7 +179,7 @@ include Core_models.Bundle {f_is_empty_post as f_is_empty_post}
 
 include Core_models.Bundle {f_is_empty as f_is_empty}
 
-include Core_models.Bundle {impl_26__from__range as impl_26}
+include Core_models.Bundle {impl_27__from__range as impl_27}
 
 include Core_models.Bundle {t_IntoBoundsDefaults as t_IntoBoundsDefaults}
 
@@ -187,4 +189,4 @@ include Core_models.Bundle {f_intersect_post as f_intersect_post}
 
 include Core_models.Bundle {f_intersect as f_intersect}
 
-include Core_models.Bundle {impl_27__from__range as impl_27}
+include Core_models.Bundle {impl_28__from__range as impl_28}

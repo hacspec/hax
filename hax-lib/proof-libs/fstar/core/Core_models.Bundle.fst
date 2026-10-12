@@ -3000,14 +3000,8 @@ let impl_14__copied
       (self: t_Bound v_T)
     : t_Bound v_T =
   match self <: t_Bound v_T with
-  | Bound_Included x ->
-    Bound_Included (Core_models.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x)
-    <:
-    t_Bound v_T
-  | Bound_Excluded x ->
-    Bound_Excluded (Core_models.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x)
-    <:
-    t_Bound v_T
+  | Bound_Included x -> Bound_Included x <: t_Bound v_T
+  | Bound_Excluded x -> Bound_Excluded x <: t_Bound v_T
   | Bound_Unbounded  -> Bound_Unbounded <: t_Bound v_T
 
 /// See [`std::ops::Bound::cloned`]
@@ -4681,7 +4675,7 @@ let impl_8__from__convert: t_From u32 u16 =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_9: t_From u64 u8 =
+let impl_9__from__convert: t_From u64 u8 =
   {
     f_from_pre = (fun (x: u8) -> true);
     f_from_post = (fun (x: u8) (out: u64) -> true);
@@ -5089,7 +5083,7 @@ let impl_5 (#v_T: Type0) : t_RangeBounds (t_Range v_T) v_T =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_9__from__range (#v_T: Type0) : t_RangeBounds (t_Bound v_T & t_Bound v_T) v_T =
+let impl_9 (#v_T: Type0) : t_RangeBounds (t_Bound v_T & t_Bound v_T) v_T =
   {
     f_start_bound_pre = (fun (self: (t_Bound v_T & t_Bound v_T)) -> true);
     f_start_bound_post = (fun (self: (t_Bound v_T & t_Bound v_T)) (out: t_Bound v_T) -> true);
@@ -8228,7 +8222,7 @@ let iter_reduce
      = iter_reduce' #v_I #v_F #i0 #i1
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_28__from__range: t_Iterator (t_Range u8) =
+let impl_29__from__range: t_Iterator (t_Range u8) =
   {
     f_Item = u8;
     f_next_pre = (fun (self: t_Range u8) -> true);
@@ -8248,7 +8242,7 @@ let impl_28__from__range: t_Iterator (t_Range u8) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_29__from__range: t_Iterator (t_Range u16) =
+let impl_30__from__range: t_Iterator (t_Range u16) =
   {
     f_Item = u16;
     f_next_pre = (fun (self: t_Range u16) -> true);
@@ -8268,7 +8262,7 @@ let impl_29__from__range: t_Iterator (t_Range u16) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_30__from__range: t_Iterator (t_Range u32) =
+let impl_31__from__range: t_Iterator (t_Range u32) =
   {
     f_Item = u32;
     f_next_pre = (fun (self: t_Range u32) -> true);
@@ -8288,7 +8282,7 @@ let impl_30__from__range: t_Iterator (t_Range u32) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_31__from__range: t_Iterator (t_Range u64) =
+let impl_32__from__range: t_Iterator (t_Range u64) =
   {
     f_Item = u64;
     f_next_pre = (fun (self: t_Range u64) -> true);
@@ -8308,7 +8302,7 @@ let impl_31__from__range: t_Iterator (t_Range u64) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_32__from__range: t_Iterator (t_Range u128) =
+let impl_33__from__range: t_Iterator (t_Range u128) =
   {
     f_Item = u128;
     f_next_pre = (fun (self: t_Range u128) -> true);
@@ -8330,7 +8324,7 @@ let impl_32__from__range: t_Iterator (t_Range u128) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_33__from__range: t_Iterator (t_Range usize) =
+let impl_34__from__range: t_Iterator (t_Range usize) =
   {
     f_Item = usize;
     f_next_pre = (fun (self: t_Range usize) -> true);
@@ -8352,7 +8346,7 @@ let impl_33__from__range: t_Iterator (t_Range usize) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_34__from__range: t_Iterator (t_Range i8) =
+let impl_35__from__range: t_Iterator (t_Range i8) =
   {
     f_Item = i8;
     f_next_pre = (fun (self: t_Range i8) -> true);
@@ -8372,7 +8366,7 @@ let impl_34__from__range: t_Iterator (t_Range i8) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_35__from__range: t_Iterator (t_Range i16) =
+let impl_36__from__range: t_Iterator (t_Range i16) =
   {
     f_Item = i16;
     f_next_pre = (fun (self: t_Range i16) -> true);
@@ -8392,7 +8386,7 @@ let impl_35__from__range: t_Iterator (t_Range i16) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_36__from__range: t_Iterator (t_Range i32) =
+let impl_37__from__range: t_Iterator (t_Range i32) =
   {
     f_Item = i32;
     f_next_pre = (fun (self: t_Range i32) -> true);
@@ -8412,7 +8406,7 @@ let impl_36__from__range: t_Iterator (t_Range i32) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_37__from__range: t_Iterator (t_Range i64) =
+let impl_38__from__range: t_Iterator (t_Range i64) =
   {
     f_Item = i64;
     f_next_pre = (fun (self: t_Range i64) -> true);
@@ -8432,7 +8426,7 @@ let impl_37__from__range: t_Iterator (t_Range i64) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_38__from__range: t_Iterator (t_Range i128) =
+let impl_39__from__range: t_Iterator (t_Range i128) =
   {
     f_Item = i128;
     f_next_pre = (fun (self: t_Range i128) -> true);
@@ -8454,7 +8448,7 @@ let impl_38__from__range: t_Iterator (t_Range i128) =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_39__from__range: t_Iterator (t_Range isize) =
+let impl_40__from__range: t_Iterator (t_Range isize) =
   {
     f_Item = isize;
     f_next_pre = (fun (self: t_Range isize) -> true);
@@ -8738,7 +8732,18 @@ let impl_22__from__range (#v_T: Type0) : t_IntoBounds (t_RangeToInclusive v_T) v
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_23__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeFrom v_T) v_T =
+let impl_23__from__range (#v_T: Type0) : t_IntoBounds (t_Bound v_T & t_Bound v_T) v_T =
+  {
+    _super_i0 = FStar.Tactics.Typeclasses.solve;
+    f_into_bounds_pre = (fun (self: (t_Bound v_T & t_Bound v_T)) -> true);
+    f_into_bounds_post
+    =
+    (fun (self: (t_Bound v_T & t_Bound v_T)) (out: (t_Bound v_T & t_Bound v_T)) -> true);
+    f_into_bounds = fun (self: (t_Bound v_T & t_Bound v_T)) -> self
+  }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_24__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeFrom v_T) v_T =
   {
     _super_i0 = FStar.Tactics.Typeclasses.solve;
     f_bound_pre = (fun (self: t_RangeFrom v_T) -> true);
@@ -8752,7 +8757,7 @@ let impl_23__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeFrom v_T) v_T =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_24__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeTo v_T) v_T =
+let impl_25__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeTo v_T) v_T =
   {
     _super_i0 = FStar.Tactics.Typeclasses.solve;
     f_bound_pre = (fun (self: t_RangeTo v_T) -> true);
@@ -8764,7 +8769,7 @@ let impl_24__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeTo v_T) v_T =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_25__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeToInclusive v_T) v_T =
+let impl_26__from__range (#v_T: Type0) : t_OneSidedRange (t_RangeToInclusive v_T) v_T =
   {
     _super_i0 = FStar.Tactics.Typeclasses.solve;
     f_bound_pre = (fun (self: t_RangeToInclusive v_T) -> true);
@@ -9512,7 +9517,7 @@ class t_RangeBoundsDefaults (v_Self: Type0) (v_T: Type0) = {
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_26__from__range (#v_T #v_R: Type0) : t_RangeBoundsDefaults v_R v_T =
+let impl_27__from__range (#v_T #v_R: Type0) : t_RangeBoundsDefaults v_R v_T =
   {
     f_contains_pre
     =
@@ -9680,7 +9685,7 @@ class t_IntoBoundsDefaults (v_Self: Type0) (v_T: Type0) = {
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_27__from__range (#v_T #v_S: Type0) : t_IntoBoundsDefaults v_S v_T =
+let impl_28__from__range (#v_T #v_S: Type0) : t_IntoBoundsDefaults v_S v_T =
   {
     f_intersect_pre
     =

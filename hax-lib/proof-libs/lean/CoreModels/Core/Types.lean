@@ -1177,14 +1177,14 @@ structure ops.range.RangeBounds (Self : Type) (T : Type) where
     Bool
 
 /-- Trait declaration: [core_models::ops::range::IntoBounds]
-    Source: 'core-models/src/core/ops.rs', lines 564:4-568:5
+    Source: 'core-models/src/core/ops.rs', lines 564:4-583:5
     Visibility: public -/
 structure ops.range.IntoBounds (Self : Type) (T : Type) where
   RangeBoundsInst : ops.range.RangeBounds Self T
   into_bounds : Self → RustM ((ops.range.Bound T) × (ops.range.Bound T))
 
 /-- [core_models::ops::range::OneSidedRangeBound]
-    Source: 'core-models/src/core/ops.rs', lines 572:4-579:5
+    Source: 'core-models/src/core/ops.rs', lines 587:4-594:5
     Visibility: public -/
 @[discriminant isize]
 inductive ops.range.OneSidedRangeBound where
@@ -1193,18 +1193,11 @@ inductive ops.range.OneSidedRangeBound where
 | EndInclusive : ops.range.OneSidedRangeBound
 
 /-- Trait declaration: [core_models::ops::range::OneSidedRange]
-    Source: 'core-models/src/core/ops.rs', lines 583:4-587:5
+    Source: 'core-models/src/core/ops.rs', lines 598:4-602:5
     Visibility: public -/
 structure ops.range.OneSidedRange (Self : Type) (T : Type) where
   RangeBoundsInst : ops.range.RangeBounds Self T
   bound : Self → RustM (ops.range.OneSidedRangeBound × T)
-
-/-- Trait declaration: [core_models::ops::range::IntoBoundsDefaults]
-    Source: 'core-models/src/core/ops.rs', lines 989:4-996:5 -/
-structure ops.range.IntoBoundsDefaults (Self : Type) (T : Type) where
-  intersect : forall {R : Type} (IntoBoundsInst : ops.range.IntoBounds Self T)
-    (cmpOrdInst : cmp.Ord T) (IntoBoundsInst1 : ops.range.IntoBounds R T), Self
-    → R → RustM ((ops.range.Bound T) × (ops.range.Bound T))
 
 /-- [core_models::option::Iter]
     Source: 'core-models/src/core/option.rs', lines 491:0-491:39

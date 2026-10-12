@@ -51,10 +51,6 @@ PRIM_BUCKET = {
 MODEL_OWNER_ALIASES = {
     "Slice": "slice",
     "Array": "array",
-    # companion traits carrying trait default methods
-    "ErrorDefaults": "Error",
-    "RangeBoundsDefaults": "RangeBounds",
-    "IntoBoundsDefaults": "IntoBounds",
 }
 
 # Modules that a pure-Rust verification model of core/alloc is not trying to
