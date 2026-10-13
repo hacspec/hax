@@ -64,7 +64,7 @@ For Lean and F*, we model Rust's `core` and `alloc` libraries directly in Rust
 (see [our core models library](https://github.com/cryspen/hax/tree/main/hax-lib/core-models)).
 This Rust library gets extracted via hax into Lean and F*. Only some Rust primitives
 that can not be modeled in terms of others are implemented directly in the backend languages.
-With this approach, we need to trust the Rust model, their translation into the backend language, 
+With this approach, we need to trust the Rust model, their translation into the backend language,
 and the Rust primitives written in the backend language. The advantage of the approach is
 that a Rust model of Rust is easier to audit and that sharing the code between backends
 leads to a higher chance of finding bugs.
@@ -84,16 +84,16 @@ running `lake build`.
 Most provers allow users to state axioms that the prover is supposed to assume as fact
 as a basis for its proofs.
 Depending on the prover, such assumptions can be called `sorry`s, `admit`s, or `assume`s.
-If there are unintended axioms in the code, the verification 
+If there are unintended axioms in the code, the verification
 is compromised.
 In Lean, `#print axioms` can be used to guard against this.
 Also, correctness theorems stated in the prover language may carry additional preconditions
-that are not present in the Rust annotations. 
+that are not present in the Rust annotations.
 
 And of course, even widely used tools like Lean can have soundness bugs,
 allowing users (and AI) to prove false statements.
 For Lean in particular, there are various known ways to trick the system when relying only
-on the compilation of the code to pass. The tool [comparator](https://github.com/leanprover/comparator) 
+on the compilation of the code to pass. The tool [comparator](https://github.com/leanprover/comparator)
 is recommended for code that might use Lean adversarially,
 in particular for AI generated proofs.
 Comparator can also be used to check
