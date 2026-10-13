@@ -20,8 +20,8 @@ what you are looking for!
 
  - Create the folder `proofs/fstar/extraction`, right next to the `Cargo.toml` of the crate you want to verify.  
    `mkdir -p proofs/fstar/extraction`
- - Copy [this makefile](https://github.com/cryspen/hax/blob/main/docs/manual/fstar/tutorial/proofs/fstar/extraction/Makefile) to `proofs/fstar/extraction/Makefile`  
-   `curl -o proofs/fstar/extraction/Makefile https://raw.githubusercontent.com/cryspen/hax/main/docs/manual/fstar/tutorial/proofs/fstar/extraction/Makefile`
+ - Copy [this makefile](https://github.com/cryspen/hax/blob/main/hax-lib/proofs/fstar/extraction/Makefile) to `proofs/fstar/extraction/Makefile`  
+   `curl -o proofs/fstar/extraction/Makefile https://raw.githubusercontent.com/cryspen/hax/main/hax-lib/proofs/fstar/extraction/Makefile`
  - Add `hax-lib` as a dependency to your crate, enabled only when using hax.  
    `cargo add --target 'cfg(hax)' --git https://github.com/cryspen/hax hax-lib`  
    *(`hax-lib` is not mandatory, but this guide assumes it is present)*
