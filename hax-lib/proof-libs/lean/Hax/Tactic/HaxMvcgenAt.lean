@@ -15,27 +15,6 @@ set_option autoImplicit true
 
 open Lean Std.Do Elab Parser Tactic Meta Aeneas Std
 
-theorem Triple.of_pure_postcondition {f : RustM α} (h : ⦃⌜True⌝⦄ f ⦃PostCond.noThrow fun _ => ⌜p⌝⦄) : p := by
-  match f with
-  | .ok _ | .fail _ | .div => simp [Triple, WP.wp, PredTrans.apply] at h <;> exact h
-
-theorem triple_in_hypothesis {f : RustM α} {Q : α → Assertion _} (p : Prop)
-    (h : ⦃ ⌜ True ⌝ ⦄ f ⦃ ⇓ r => Q r ⦄)
-    (hp : ⦃ ⌜ True ⌝ ⦄ f ⦃ ⇓? r => Q r → ⌜ p ⌝ ⦄) :
-    p := by
-  have : ⦃ ⌜ True ⌝ ⦄ f ⦃ (⇓ r => Q r) →ₚ (⇓ r => ⌜ p ⌝) ⦄ := by
-    apply Triple.of_entails_right _ hp
-    constructor
-    · intro a
-      dsimp; simp
-    · simp
-  have := Triple.mp f h this
-  simp only [SPred.and_nil, SPred.down_pure, and_self] at this
-  have : ⦃ ⌜ True ⌝ ⦄ f ⦃ ⇓ r => ⌜ p ⌝ ⦄ := by
-    apply Triple.of_entails_right _ this
-    simp
-  apply Triple.of_pure_postcondition this
-
 initialize Lean.registerTraceClass `Hax.hax_mvcgen_at
 
 register_option hax_mvcgen.warnings : Bool := {
@@ -49,10 +28,10 @@ for, leaving a goal that mentions `wp⟦f a₁ ... aₙ⟧`. Returns `none` when
 is not a constant, or is mere monadic plumbing, which says nothing about the missing spec. -/
 private def missingSpecCandidate? (e : Expr) : Option Name := Id.run do
   let some wpApp := e.find? (·.isAppOfArity' ``WP.wp 5) | return none
-  -- Look through `bind`s: the missing specification is the one of the program bound first,
-  -- i.e. the second-to-last argument of `Bind.bind .. x f`.
+  -- Look through `bind`s (`Bind.bind .. x f` or `Aeneas.Std.bind .. x f`): the missing
+  -- specification is the one of the program bound first, i.e. the second-to-last argument.
   let mut prog := wpApp.appArg!
-  while prog.isAppOf ``Bind.bind && prog.getAppNumArgs ≥ 2 do
+  while (prog.isAppOf ``Bind.bind || prog.isAppOf ``Aeneas.Std.bind) && prog.getAppNumArgs ≥ 2 do
     prog := prog.getAppArgs[prog.getAppNumArgs - 2]!
   let .const n _ := prog.getAppFn | return none
   return some n
@@ -73,7 +52,7 @@ def haxMvcgenAt (mainGoal : MVarId) (hyp : LocalDecl) (cfgStx : TSyntax `Lean.Pa
     -- To prove `newHyp`, we apply `triple_in_hypothesis`, followed by `hax_mvcgen`.
     trace `Hax.hax_mvcgen_at fun () => m!"apply `triple_in_hypthesis`"
     let newHypProof ← mkFreshExprMVar newHyp
-    let lem ← mkAppM ``triple_in_hypothesis #[newHyp, mkAppN (mkFVar hyp.fvarId) xs]
+    let lem ← mkAppM ``Aeneas.Std.triple_in_hypothesis #[newHyp, mkAppN (mkFVar hyp.fvarId) xs]
     let goals ← newHypProof.mvarId!.applyN lem 1
     let [goal] := goals
       | Lean.Meta.throwTacticEx `hax_mvcgen mainGoal

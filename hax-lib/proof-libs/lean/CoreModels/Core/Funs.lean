@@ -69,7 +69,7 @@ def array.Array.as_mut_slice
   := do
   rust_primitives.slice.array_as_mut_slice s
 
-/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnMut<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::closure<'_0, T, N>}::call_mut]:
+/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnMut<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::{closure}<'_0, T, N>}::call_mut]:
     Source: 'core-models/src/core/array.rs', lines 65:22-65:43 -/
 def
   array.Array.each_ref.closure.Insts.CoreOpsFunctionFnMutTupleUsizeSharedT.call_mut
@@ -80,7 +80,7 @@ def
   let t ← rust_primitives.slice.array_index c tupled_args
   ok (t, c)
 
-/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnOnce<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::closure<'_0, T, N>}::call_once]:
+/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnOnce<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::{closure}<'_0, T, N>}::call_once]:
     Source: 'core-models/src/core/array.rs', lines 65:22-65:43 -/
 def
   array.Array.each_ref.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeSharedT.call_once
@@ -93,7 +93,7 @@ def
       c i
   ok t
 
-/-- Trait implementation: [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnOnce<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::closure<'_0, T, N>}]
+/-- Trait implementation: [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnOnce<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::{closure}<'_0, T, N>}]
     Source: 'core-models/src/core/array.rs', lines 65:22-65:43 -/
 @[reducible]
 def array.Array.each_ref.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeSharedT
@@ -103,7 +103,7 @@ def array.Array.each_ref.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeSharedT
     array.Array.each_ref.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeSharedT.call_once
 }
 
-/-- Trait implementation: [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnMut<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::closure<'_0, T, N>}]
+/-- Trait implementation: [core_models::array::{core_models::array::Array<T, N>}::each_ref::{impl core::ops::function::FnMut<(usize,), &'_ T> for core_models::array::{core_models::array::Array<T, N>}::each_ref::{closure}<'_0, T, N>}]
     Source: 'core-models/src/core/array.rs', lines 65:22-65:43 -/
 @[reducible]
 def array.Array.each_ref.closure.Insts.CoreOpsFunctionFnMutTupleUsizeSharedT (T
@@ -233,7 +233,7 @@ def Array.Insts.CoreOpsIndexIndexMut {T : Type} {I : Type}
     opsindexIndexMutSliceIClause0_Clause0_OutputInst
 }
 
-/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnMut<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure<T, N>}::call_mut]:
+/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnMut<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{closure}<T, N>}::call_mut]:
     Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
 def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut
   {T : Type} {N : Std.Usize} (cloneCloneInst : clone.Clone T)
@@ -243,7 +243,7 @@ def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut
   let t ← cloneCloneInst.clone tupled_args
   ok (t, c)
 
-/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnOnce<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure<T, N>}::call_once]:
+/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnOnce<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{closure}<T, N>}::call_once]:
     Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
 def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnOnceTupleTT.call_once
   {T : Type} {N : Std.Usize} (cloneCloneInst : clone.Clone T)
@@ -255,7 +255,7 @@ def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnOnceTupleTT.call_once
       cloneCloneInst c t
   ok t1
 
-/-- Trait implementation: [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnOnce<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure<T, N>}]
+/-- Trait implementation: [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnOnce<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{closure}<T, N>}]
     Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
 @[reducible]
 def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnOnceTupleTT {T :
@@ -266,7 +266,7 @@ def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnOnceTupleTT {T :
     cloneCloneInst
 }
 
-/-- Trait implementation: [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnMut<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure<T, N>}]
+/-- Trait implementation: [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{impl core::ops::function::FnMut<(T,), T> for core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{closure}<T, N>}]
     Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
 @[reducible]
 def array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT {T : Type}
@@ -379,7 +379,7 @@ def Array.Insts.CoreCmpPartialEqArray {T : Type} {U : Type} (N :
   ne := Array.Insts.CoreCmpPartialEqArray.ne cmpPartialEqInst
 }
 
-/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnMut<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::closure<T, N>}::call_mut]:
+/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnMut<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::{closure}<T, N>}::call_mut]:
     Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
 def
   array.DefaultArray.default.closure.Insts.CoreOpsFunctionFnMutTupleUsizeT.call_mut
@@ -390,7 +390,7 @@ def
   let t ← defaultDefaultInst.default
   ok (t, c)
 
-/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnOnce<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::closure<T, N>}::call_once]:
+/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnOnce<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::{closure}<T, N>}::call_once]:
     Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
 def
   array.DefaultArray.default.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeT.call_once
@@ -403,7 +403,7 @@ def
       defaultDefaultInst c i
   ok t
 
-/-- Trait implementation: [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnOnce<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::closure<T, N>}]
+/-- Trait implementation: [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnOnce<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::{closure}<T, N>}]
     Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
 @[reducible]
 def array.DefaultArray.default.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeT
@@ -415,7 +415,7 @@ def array.DefaultArray.default.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeT
     defaultDefaultInst
 }
 
-/-- Trait implementation: [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnMut<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::closure<T, N>}]
+/-- Trait implementation: [core_models::array::{impl core_models::default::Default for [T; N]}::default::{impl core::ops::function::FnMut<(usize,), T> for core_models::array::{impl core_models::default::Default for [T; N]}::default::{closure}<T, N>}]
     Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
 @[reducible]
 def array.DefaultArray.default.closure.Insts.CoreOpsFunctionFnMutTupleUsizeT {T
@@ -1204,7 +1204,7 @@ def convert.TryFromUTInfallible.Blanket {T : Type} {U : Type} (FromInst :
   try_from := convert.TryFromUTInfallible.Blanket.try_from FromInst
 }
 
-/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnMut<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::closure<'_0, '_1, T, N>}::call_mut]:
+/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnMut<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{closure}<'_0, '_1, T, N>}::call_mut]:
     Source: 'core-models/src/core/convert.rs', lines 67:61-69:13 -/
 def
   convert.TryFromArrayShared0SliceTryFromSliceError.try_from.closure.Insts.CoreOpsFunctionFnMutTupleUsizeT.call_mut
@@ -1217,7 +1217,7 @@ def
   let t ← rust_primitives.slice.slice_index c tupled_args
   ok (t, c)
 
-/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnOnce<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::closure<'_0, '_1, T, N>}::call_once]:
+/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnOnce<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{closure}<'_0, '_1, T, N>}::call_once]:
     Source: 'core-models/src/core/convert.rs', lines 67:61-69:13 -/
 def
   convert.TryFromArrayShared0SliceTryFromSliceError.try_from.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeT.call_once
@@ -1231,7 +1231,7 @@ def
       coremarkerCopyInst c i
   ok t
 
-/-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnOnce<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::closure<'_0, '_1, T, N>}]
+/-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnOnce<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{closure}<'_0, '_1, T, N>}]
     Source: 'core-models/src/core/convert.rs', lines 67:61-69:13 -/
 @[reducible]
 def
@@ -1245,7 +1245,7 @@ def
     coremarkerCopyInst
 }
 
-/-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnMut<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::closure<'_0, '_1, T, N>}]
+/-- Trait implementation: [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{impl core::ops::function::FnMut<(usize,), T> for core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{closure}<'_0, '_1, T, N>}]
     Source: 'core-models/src/core/convert.rs', lines 67:61-69:13 -/
 @[reducible]
 def
@@ -4916,7 +4916,7 @@ def U8.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U8) (h : H) :
   RustM H
   := do
-  let s ← lift (Array.to_slice (Array.make 1#usize [ self ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ self ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u8}]
@@ -4935,7 +4935,7 @@ def U16.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (UScalar.cast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u16}]
@@ -4954,7 +4954,7 @@ def U32.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (UScalar.cast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u32}]
@@ -4973,7 +4973,7 @@ def U64.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (UScalar.cast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u64}]
@@ -4992,7 +4992,7 @@ def U128.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (UScalar.cast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u128}]
@@ -5011,7 +5011,7 @@ def Usize.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (UScalar.cast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for usize}]
@@ -5030,7 +5030,7 @@ def I8.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i8}]
@@ -5049,7 +5049,7 @@ def I16.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i16}]
@@ -5068,7 +5068,7 @@ def I32.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i32}]
@@ -5087,7 +5087,7 @@ def I64.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i64}]
@@ -5106,7 +5106,7 @@ def I128.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i128}]
@@ -5125,7 +5125,7 @@ def Isize.Insts.CoreHashHash.hash
   RustM H
   := do
   let i ← lift (IScalar.hcast .U8 self)
-  let s ← lift (Array.to_slice (Array.make 1#usize [ i ]))
+  let s ← core.array.Array.as_slice (Array.make 1#usize [ i ])
   HasherInst.write h s
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for isize}]
@@ -6526,7 +6526,7 @@ def
         coreopsfunctionFnMutPTupleShared0Clause0_ItemBoolInst.call_mut
           self.predicate x
       if b
-      then ok (o, { iter := t, flag := false, predicate := t1 })
+      then ok (o, { self with iter := t, predicate := t1 })
       else
         ok (option.Option.None, { iter := t, flag := true, predicate := t1 })
     | option.Option.None => ok (option.Option.None, { self with iter := t })
@@ -6580,7 +6580,7 @@ def
         coreopsfunctionFnMutPTupleSharedClause0_ItemBoolInst.call_mut
           self.predicate x
       if b
-      then ok (cont { iter := t, flag := false, predicate := t1 })
+      then ok (cont { self with iter := t, predicate := t1 })
       else ok (done (o, t, true, t1))
   | option.Option.None =>
     ok (done (option.Option.None, t, self.flag, self.predicate))
@@ -6749,7 +6749,7 @@ def iter.adapters.fuse.Fuse.Insts.CoreIterTraitsIteratorIterator.next
   else
     let (o, t) ← traitsiteratorIteratorInst.next self.iter
     match o with
-    | option.Option.Some _ => ok (o, { iter := t, done := false })
+    | option.Option.Some _ => ok (o, { self with iter := t })
     | option.Option.None =>
       ok (option.Option.None, { iter := t, done := true })
 
@@ -9813,7 +9813,7 @@ def num.Usize.to_be_bytes
   (bytes : Std.Usize) : RustM (Array Std.U8 8#usize) := do
   rust_primitives.arithmetic.to_be_bytes_usize bytes
 
-/-- [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.U8.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -9825,7 +9825,7 @@ def num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i3 ← c >>> i2
   ok (i3, c)
 
-/-- [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -9835,7 +9835,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -9844,7 +9844,7 @@ def num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u8}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -9862,7 +9862,7 @@ def num.U8.to_le_bytes (bytes : Std.U8) : RustM (Array Std.U8 1#usize) := do
   rust_primitives.slice.array_from_fn 1#usize
     num.U8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.U16.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -9875,7 +9875,7 @@ def num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (UScalar.cast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -9885,7 +9885,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -9894,7 +9894,7 @@ def num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u16}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -9912,7 +9912,7 @@ def num.U16.to_le_bytes (bytes : Std.U16) : RustM (Array Std.U8 2#usize) := do
   rust_primitives.slice.array_from_fn 2#usize
     num.U16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.U32.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -9925,7 +9925,7 @@ def num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (UScalar.cast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -9935,7 +9935,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -9944,7 +9944,7 @@ def num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u32}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -9962,7 +9962,7 @@ def num.U32.to_le_bytes (bytes : Std.U32) : RustM (Array Std.U8 4#usize) := do
   rust_primitives.slice.array_from_fn 4#usize
     num.U32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.U64.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -9975,7 +9975,7 @@ def num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (UScalar.cast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -9985,7 +9985,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -9994,7 +9994,7 @@ def num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u64}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -10012,7 +10012,7 @@ def num.U64.to_le_bytes (bytes : Std.U64) : RustM (Array Std.U8 8#usize) := do
   rust_primitives.slice.array_from_fn 8#usize
     num.U64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
@@ -10026,7 +10026,7 @@ def
   let i4 ← lift (UScalar.cast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -10036,7 +10036,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -10045,7 +10045,7 @@ def num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::u128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::u128}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -10064,7 +10064,7 @@ def num.U128.to_le_bytes
   rust_primitives.slice.array_from_fn 16#usize
     num.U128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
@@ -10079,7 +10079,7 @@ def
   let i5 ← lift (UScalar.cast .U8 i4)
   ok (i5, c)
 
-/-- [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 def
   num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -10089,7 +10089,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -10098,7 +10098,7 @@ def num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::usize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::usize}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.Usize.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -11770,7 +11770,7 @@ def num.Isize.to_be_bytes
   (bytes : Std.Isize) : RustM (Array Std.U8 8#usize) := do
   rust_primitives.arithmetic.to_be_bytes_isize bytes
 
-/-- [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.I8.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -11783,7 +11783,7 @@ def num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (IScalar.hcast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -11793,7 +11793,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -11802,7 +11802,7 @@ def num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i8}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i8}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -11820,7 +11820,7 @@ def num.I8.to_le_bytes (bytes : Std.I8) : RustM (Array Std.U8 1#usize) := do
   rust_primitives.slice.array_from_fn 1#usize
     num.I8.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.I16.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -11833,7 +11833,7 @@ def num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (IScalar.hcast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -11843,7 +11843,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -11852,7 +11852,7 @@ def num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i16}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i16}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -11870,7 +11870,7 @@ def num.I16.to_le_bytes (bytes : Std.I16) : RustM (Array Std.U8 2#usize) := do
   rust_primitives.slice.array_from_fn 2#usize
     num.I16.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.I32.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -11883,7 +11883,7 @@ def num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (IScalar.hcast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -11893,7 +11893,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -11902,7 +11902,7 @@ def num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i32}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i32}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -11920,7 +11920,7 @@ def num.I32.to_le_bytes (bytes : Std.I32) : RustM (Array Std.U8 4#usize) := do
   rust_primitives.slice.array_from_fn 4#usize
     num.I32.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   (c : num.I64.to_le_bytes.closure) (tupled_args : Std.Usize) :
@@ -11933,7 +11933,7 @@ def num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
   let i4 ← lift (IScalar.hcast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -11943,7 +11943,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -11952,7 +11952,7 @@ def num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i64}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i64}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -11970,7 +11970,7 @@ def num.I64.to_le_bytes (bytes : Std.I64) : RustM (Array Std.U8 8#usize) := do
   rust_primitives.slice.array_from_fn 8#usize
     num.I64.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
@@ -11984,7 +11984,7 @@ def
   let i4 ← lift (IScalar.hcast .U8 i3)
   ok (i4, c)
 
-/-- [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -11994,7 +11994,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -12003,7 +12003,7 @@ def num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::i128}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::i128}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -12022,7 +12022,7 @@ def num.I128.to_le_bytes
   rust_primitives.slice.array_from_fn 16#usize
     num.I128.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 bytes
 
-/-- [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::closure<'_0>}::call_mut]:
+/-- [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::{closure}<'_0>}::call_mut]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8.call_mut
@@ -12037,7 +12037,7 @@ def
   let i5 ← lift (IScalar.hcast .U8 i4)
   ok (i5, c)
 
-/-- [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::closure<'_0>}::call_once]:
+/-- [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::{closure}<'_0>}::call_once]:
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 def
   num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
@@ -12047,7 +12047,7 @@ def
       c i
   ok i1
 
-/-- Trait implementation: [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnOnce<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
@@ -12056,7 +12056,7 @@ def num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8 :
     num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeU8.call_once
 }
 
-/-- Trait implementation: [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::closure<'_0>}]
+/-- Trait implementation: [core_models::num::{core_models::num::isize}::to_le_bytes::{impl core::ops::function::FnMut<(usize,), u8> for core_models::num::{core_models::num::isize}::to_le_bytes::{closure}<'_0>}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.Isize.to_le_bytes.closure.Insts.CoreOpsFunctionFnMutTupleUsizeU8 :
@@ -15019,10 +15019,7 @@ def slice.Slice.split_at_mut
   {T : Type} (s : Slice T) (mid : Std.Usize) :
   RustM (((Slice T) × (Slice T)) × (((Slice T) × (Slice T)) → Slice T))
   := do
-  let ((s1, s2), slice_split_at_mut_back) ←
-    rust_primitives.slice.slice_split_at_mut s mid
-  let back := fun p => slice_split_at_mut_back p
-  ok ((s1, s2), back)
+  rust_primitives.slice.slice_split_at_mut s mid
 
 /-- [core_models::slice::{core_models::slice::Slice<T>}::iter_mut]:
     Source: 'core-models/src/core/slice.rs', lines 207:4-209:5 -/
@@ -15354,9 +15351,9 @@ def Slice.Insts.CoreCmpPartialEqSlice.eq_loop.body
       let t1 ← Slice.index_usize other i
       let b ← cmpPartialEqInst.eq t t1
       if b
-      then ok (cont (iter2, true))
+      then ok (cont (iter2, res))
       else ok (cont (iter2, false))
-    else ok (cont (iter2, false))
+    else ok (cont (iter2, res))
 
 /-- [core_models::slice::{impl core_models::cmp::PartialEq<[U]> for [T]}::eq]: loop 0:
     Source: 'core-models/src/core/slice.rs', lines 401:12-406:13
@@ -16246,9 +16243,9 @@ def Slice.Insts.CoreCmpPartialEqArray.eq_loop.body
       let t1 ← rust_primitives.slice.array_index other i
       let b ← cmpPartialEqInst.eq t t1
       if b
-      then ok (cont (iter2, true))
+      then ok (cont (iter2, res))
       else ok (cont (iter2, false))
-    else ok (cont (iter2, false))
+    else ok (cont (iter2, res))
 
 /-- [core_models::slice::equality::{impl core_models::cmp::PartialEq<[U; N]> for [T]}::eq]: loop 0:
     Source: 'core-models/src/core/slice.rs', lines 905:16-910:17

@@ -51,15 +51,22 @@ private def substXSnd (e : Expr) (x aFvar : Expr) : Expr :=
       if e'.isAppOfArity ``Prod.snd 3 && e'.appArg! == x then some aFvar
       else none
 
+/-- The action and continuation `(x, f)` of a monadic bind `x >>= f`, written either with the
+typeclass `Bind.bind` or with `Aeneas.Std.bind`, which is what extracted code binds with. -/
+private def bindParts? (e : Expr) : Option (Expr × Expr) :=
+  if e.isAppOfArity ``Bind.bind 6 then some (e.getArg! 4, e.getArg! 5)
+  else if e.isAppOfArity ``Aeneas.Std.bind 4 then some (e.getArg! 2, e.getArg! 3)
+  else none
+
 /-- Extract the user-level step body from a loop body in the precise shape
-produced by Aeneas extraction (after `simp only [← Aeneas.Std.bind_assoc_eq]`)
-for a `for i in s..e` Rust loop:
+produced by Aeneas extraction (after re-associating its binds to the left with
+`Aeneas.Std.bind_assoc`) for a `for i in s..e` Rust loop:
 ```
-Bind.bind (next StepUsize x.1) <|
+bind (next StepUsize x.1) <|
   Function.uncurry fun o iter1 =>
     <match>.match_1 _motive o
       (fun _ : Unit => RustM.ok (ControlFlow.done x.2))
-      fun i => Bind.bind userBody fun acc' =>
+      fun i => bind userBody fun acc' =>
         RustM.ok (ControlFlow.cont (iter1, acc'))
 ```
 Returns `(userBody, stepDict)` with the match-bound index substituted by `jFvar`,
@@ -67,14 +74,13 @@ where `stepDict` is the `Step` dictionary taken from the loop's `next` call. -/
 private def extractStepBody (jFvar : Expr) (loopBodyInner : Expr) :
     MetaM (Option (Expr × Expr)) := do
   let inner ← whnfR loopBodyInner
-  unless inner.isAppOfArity ``Bind.bind 6 do return none
+  let some (nextAction, cont) := bindParts? inner | return none
   -- Recover the `Step` dictionary argument of the iterator `next` call.
-  let nextAction := inner.getArg! 4
   let some stepDict ← nextAction.getAppArgs.findSomeM? (fun a => do
       let t ← inferType a
       return if t.isAppOf ``core.iter.range.Step then some a else none)
     | return none
-  let cont ← whnfR (inner.getArg! 5)
+  let cont ← whnfR cont
   unless cont.isAppOfArity ``Aeneas.Std.uncurry 4 do return none
   let uncurryFn ← whnfR (cont.getArg! 3)
   unless uncurryFn.isLambda do return none
@@ -90,10 +96,9 @@ private def extractStepBody (jFvar : Expr) (loopBodyInner : Expr) :
     lambdaTelescope someBranch fun is bodyInSome => do
       unless is.size == 1 do return none
       let i := is[0]!
-      -- bodyInSome = Bind.bind _ _ _ _ userBody (fun acc' => ok (cont (iter1, acc')))
+      -- bodyInSome = bind userBody (fun acc' => ok (cont (iter1, acc')))
       let bodyInSome ← whnfR bodyInSome
-      unless bodyInSome.isAppOfArity ``Bind.bind 6 do return none
-      let userBody := bodyInSome.getArg! 4
+      let some (userBody, _) := bindParts? bodyInSome | return none
       let result := userBody.replace fun e' =>
         if e' == i then some jFvar else none
       return some (result, stepDict)
@@ -138,7 +143,7 @@ private def buildForLoopWithInvariant
         let some (body, stepDict) ← extractStepBody j inner
           | throwError "for_loop_with_invariant: could not extract the loop \
               step body (expected shape \
-              `Bind.bind userBody (fun acc' => ok (cont (_, acc')))`)"
+              `bind userBody (fun acc' => ok (cont (_, acc')))`)"
         let stepLambda ← mkLambdaFVars #[j, a] body
         return (stepLambda, stepDict)
   mkAppM ``Hax.forLoopWithInvariant #[stepDict, inv, stepLambda, iter, init]
@@ -160,7 +165,7 @@ private def elabInvariant (iter init : Expr) (invStx : Term) : TacticM Expr := d
 
 `conv ... => for_loop_with_invariant inv` expects the conv focus to be a
 `loop _ _` expression. It normalizes the focused term with
-`simp only [← Aeneas.Std.bind_assoc_eq]`, extracts the user-level step body
+re-associating its binds to the left, extracts the user-level step body
 automatically, and rewrites the focus to
 `Hax.forLoopWithInvariant inv body iter init`. -/
 
@@ -171,7 +176,8 @@ def elabForLoopWithInvariantConv : Tactic := fun stx => do
   let invStx : Term := ⟨stx[1]⟩
   -- The focus is the `loop _ _` expression itself; this simp is naturally
   -- scoped to it.
-  evalTactic (← `(conv| (try simp only [← Aeneas.Std.bind_assoc_eq])))
+  evalTactic (← `(conv|
+    (try simp only [← Aeneas.Std.bind_assoc_eq, ← Aeneas.Std.bind_assoc])))
   withMainContext do
     let lhs ← instantiateMVars (← Conv.getLhs)
     let initialPair := lhs.getArg! 3

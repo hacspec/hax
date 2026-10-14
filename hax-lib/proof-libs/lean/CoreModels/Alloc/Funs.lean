@@ -449,9 +449,9 @@ def vec.Vec.Insts.CoreCmpPartialEqVec.eq_loop.body
           (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT U) other i
       let b ← corecmpPartialEqInst.eq t t1
       if b
-      then ok (cont (iter1, true))
+      then ok (cont (iter1, res))
       else ok (cont (iter1, false))
-    else ok (cont (iter1, false))
+    else ok (cont (iter1, res))
 
 /-- [alloc::vec::{impl core::cmp::PartialEq<alloc::vec::Vec<U>> for alloc::vec::Vec<T>}::eq]: loop 0:
     Source: 'src/lib.rs', lines 1:0-765:17

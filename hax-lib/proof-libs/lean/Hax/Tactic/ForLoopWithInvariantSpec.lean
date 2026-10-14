@@ -62,7 +62,6 @@ theorem IteratorRange_next_spec (i e : I32) {Q}
     mvcgen
     all_goals first
       | refine h_lt' _ ?_
-        subst_vars
         exact i32_wrapping_add_one_val i (by scalar_tac) (by scalar_tac)
       | simp_all only [U32.rMax, hcast_cast_one_val]
         first | scalar_tac | grind

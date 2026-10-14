@@ -1,6 +1,7 @@
 import Aeneas
 import CoreModels.Core
 import Hax.MissingLean
+import CoreModels.MissingAeneas
 
 /-!
 
@@ -15,18 +16,12 @@ open Std.Do
 
 abbrev RustM.holds (x : RustM Prop) : Prop := ⦃ ⌜ True ⌝ ⦄ x ⦃ ⇓ p => ⌜ p ⌝ ⦄
 
-@[spec]
-theorem RustM.ok_spec {α : Type} {a : α} {Q} (hQ : (Q.1 a).down) :
-  ⦃ ⌜ True ⌝ ⦄ RustM.ok a ⦃ Q ⦄ := by simpa [Triple]
-
-@[spec]
-theorem RustM.fail_spec {α : Type} {e : Error} {Q} (hQ : (Q.2.1 (.up e)).down) :
-  ⦃ ⌜ True ⌝ ⦄ (RustM.fail e : RustM α) ⦃ Q ⦄ := by simpa [Triple]
-
 theorem RustM.deterministic (f : RustM α) [Inhabited α]:
     ∃ a, ⦃ ⌜ True ⌝ ⦄ f ⦃ ⇓?r =>  ⌜ r = a ⌝ ⦄ := by
-  match f with
-  | .ok a | .fail _ | .div => simp [Triple, WP.wp, PredTrans.apply]
+  cases f with
+  | ret a => simp [Triple, WP.wp, PredTrans.apply]
+  | vis i k => cases i; simp [Triple, WP.wp, PredTrans.apply]
+  | div => simp [Triple, WP.wp, PredTrans.apply]
 
 noncomputable def RustM.toPure (f : RustM α) [Inhabited α] : α :=
   f.deterministic.choose
@@ -43,6 +38,18 @@ noncomputable def RustM.toPure_spec (f : RustM α) [Inhabited α]
     <;> simp
 
 attribute [spec] Function.uncurry lift
+
+/- Aeneas translates the coercion of an array to a slice into a call to this model. -/
+attribute [spec] CoreModels.core.array.Array.as_slice
+
+/-- A total-correctness `spec` on `RustM` means the program returns: failure is the only
+effect, and both failure and divergence falsify `spec`. -/
+theorem WP.spec_imp_exists {α : Type u} {m : RustM α} {P : WP.Post α} :
+    WP.spec m P → (∃ y, m = .ok y ∧ P y) := by
+  cases m with
+  | ret y => intro h; exact ⟨y, rfl, by simpa using h⟩
+  | vis i k => intro h; exact ((WP.spec_vis i k).1 h).elim
+  | div => intro h; exact (WP.spec_div.1 h).elim
 
 end Aeneas.Std
 
@@ -61,21 +68,19 @@ here until they can be upstreamed. -/
 
 section loop_range_helpers
 
-abbrev RustMPS := PostShape.except Error (PostShape.except PUnit PostShape.pure)
-
 variable {α : Type}
 
-theorem triple_noThrow_elim {x : RustM α} {Q : α → Assertion RustMPS}
+theorem triple_noThrow_elim {x : RustM α} {Q : α → Assertion RustM.postShape}
     (h : ⦃ ⌜ True ⌝ ⦄ x ⦃ PostCond.noThrow Q ⦄) {v : α} (hv : x = ok v) :
     (Q v).down := by
   subst hv; simpa [Triple, WP.wp, PredTrans.apply] using h
 
-theorem triple_noThrow_exists_ok {x : RustM α} {Q : α → Assertion RustMPS}
+theorem triple_noThrow_exists_ok {x : RustM α} {Q : α → Assertion RustM.postShape}
     (h : ⦃ ⌜ True ⌝ ⦄ x ⦃ PostCond.noThrow Q ⦄) : ∃ v, x = ok v := by
-  match x, h with
-  | .ok v, _ => exact ⟨v, rfl⟩
-  | .fail e, h => exact absurd h (by simp [Triple, WP.wp, PredTrans.apply])
-  | .div, h => exact absurd h (by simp [Triple, WP.wp, PredTrans.apply])
+  cases x with
+  | ret v => exact ⟨v, rfl⟩
+  | vis i k => cases i; exact absurd h (by simp [Triple, WP.wp, PredTrans.apply])
+  | div => exact absurd h (by simp [Triple, WP.wp, PredTrans.apply])
 
 theorem triple_of_ok {x : RustM α} {v : α} {P : α → Prop}
     (hx : x = ok v) (hp : P v) :
@@ -117,7 +122,7 @@ theorem loop_range_spec {ty : IScalarTy} {β : Type}
     have hs := h_step acc start hs_le hse_le hinv
     obtain ⟨r, hbody⟩ := triple_noThrow_exists_ok hs
     have hpost := triple_noThrow_elim hs hbody
-    rw [loop.eq_def, hbody]
+    rw [loop.eq_def, hbody, bind_ok]
     match r with
     | .cont (iter', acc') =>
       simp at hpost; exact absurd hpost.1 (by omega)
@@ -128,7 +133,7 @@ theorem loop_range_spec {ty : IScalarTy} {β : Type}
     have hs := h_step acc start hs_le hse_le hinv
     obtain ⟨r, hbody⟩ := triple_noThrow_exists_ok hs
     have hpost := triple_noThrow_elim hs hbody
-    rw [loop.eq_def, hbody]
+    rw [loop.eq_def, hbody, bind_ok]
     match r with
     | .done y =>
       simp at hpost; exact triple_of_ok rfl hpost
@@ -175,7 +180,7 @@ theorem loop_range_spec_unsigned {β : Type}
     have hs := h_step acc start hs_le hse_le hinv
     obtain ⟨r, hbody⟩ := triple_noThrow_exists_ok hs
     have hpost := triple_noThrow_elim hs hbody
-    rw [loop.eq_def, hbody]
+    rw [loop.eq_def, hbody, bind_ok]
     match r with
     | .cont (iter', acc') =>
       simp at hpost; exact absurd hpost.1 (by omega)
@@ -186,7 +191,7 @@ theorem loop_range_spec_unsigned {β : Type}
     have hs := h_step acc start hs_le hse_le hinv
     obtain ⟨r, hbody⟩ := triple_noThrow_exists_ok hs
     have hpost := triple_noThrow_elim hs hbody
-    rw [loop.eq_def, hbody]
+    rw [loop.eq_def, hbody, bind_ok]
     match r with
     | .done y =>
       simp at hpost; exact triple_of_ok rfl hpost

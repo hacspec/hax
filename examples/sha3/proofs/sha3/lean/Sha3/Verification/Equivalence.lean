@@ -98,20 +98,20 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
   · -- j < N case
     have hjLt' : (j < N : Prop) := hjLt
     rw [if_pos hjLt']
-    rw [array_index_U64_eq a0 j hjLt]
+    rw [array_index_U64_eq a0 j hjLt, bind_ok]
     show Aeneas.Std.WP.spec (do
       let t1 ← rust_primitives.slice.array_index a1 j
       let b ← core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! t1
       if b then let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1)
       else RustM.ok (ControlFlow.done false)) _
-    rw [array_index_U64_eq a1 j hjLt]
+    rw [array_index_U64_eq a1 j hjLt, bind_ok]
     show Aeneas.Std.WP.spec (do
       let b ← core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! a1.val[j.val]!
       if b then let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1)
       else RustM.ok (ControlFlow.done false)) _
     have hcmp : core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! a1.val[j.val]!
         = .ok (a0.val[j.val]! == a1.val[j.val]!) := rfl
-    rw [hcmp]
+    rw [hcmp, bind_ok]
     show Aeneas.Std.WP.spec
       (if (a0.val[j.val]! == a1.val[j.val]!)
        then (do let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1))
@@ -125,7 +125,7 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
       have hbeq' : (a0.val[j.val]! == a1.val[j.val]!) = true := beq_iff_eq.mpr hbeq
       rw [if_pos hbeq']
       obtain ⟨jp1, hjp1Eq, hjp1Val⟩ := add_one_usize j hj1Bound
-      rw [hjp1Eq]
+      rw [hjp1Eq, bind_ok, Aeneas.Std.WP.spec_ok]
       refine ⟨⟨?_, ?_⟩, ?_⟩
       · rw [hjp1Val]; omega
       · intro k hk
@@ -138,7 +138,7 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
         rw [hjp1Val]; omega
     · -- not equal
       have hbeq' : (a0.val[j.val]! == a1.val[j.val]!) = false := beq_eq_false_iff_ne.mpr hbeq
-      rw [if_neg (by rw [hbeq']; simp)]
+      rw [if_neg (by rw [hbeq']; simp), Aeneas.Std.WP.spec_ok]
       show (false : Bool) = (a0.val == a1.val)
       have hne : a0.val ≠ a1.val := fun hEq => hbeq (by rw [hEq])
       simp [hne]
@@ -177,6 +177,46 @@ theorem array.equality.PartialEqArray.eq_spec {N : Usize} (a0 : Array U64 N) (a1
 
 attribute [local spec] uncurry
 
+/-- `_ensures_theta` clones the state: the clone of a state of `U64`s is that state. -/
+private theorem array_map_id {T F : Type} {N : Usize}
+    (inst : core.ops.function.FnMut F T T) (a : Std.Array T N) (f : F)
+    (hid : ∀ x, inst.call_mut f x = .ok (x, f)) :
+    rust_primitives.slice.array_map inst a f = .ok a := by
+  have hpure : ∀ x ∈ a.val, ⦃ ⌜ True ⌝ ⦄ inst.call_mut f x ⦃ ⇓ r => ⌜ r.2 = f ⌝ ⦄ :=
+    fun x _ => Aeneas.Std.triple_iff_exists_ok.2 ⟨(x, f), hid x, rfl⟩
+  obtain ⟨b, hb, hpt⟩ :=
+    Aeneas.Std.triple_iff_exists_ok.1 (rust_primitives.slice.array_map_spec inst a f hpure)
+  have ha := a.property
+  have hbp := b.property
+  have : b = a := by
+    apply Aeneas.Std.Array.ext
+    apply List.ext_getElem (by omega)
+    intro i _ _
+    obtain ⟨y, hy, hyi⟩ := Aeneas.Std.triple_iff_exists_ok.1 (hpt i (by omega))
+    rw [hid] at hy
+    simp only [RustM.ok.injEq] at hy
+    subst hy
+    exact hyi.symm
+  rw [hb, this]
+
+@[spec]
+theorem clone_spec (st : KeccakState Std.U64 1#usize) :
+    ⦃ ⌜ True ⌝ ⦄
+    KeccakState.Insts.CoreCloneClone.clone core.U64.Insts.CoreCloneClone inst st
+    ⦃ ⇓ r => ⌜ r = st ⌝ ⦄ := by
+  have h : KeccakState.Insts.CoreCloneClone.clone core.U64.Insts.CoreCloneClone inst st
+      = .ok st := by
+    unfold KeccakState.Insts.CoreCloneClone.clone core.Array.Insts.CoreCloneClone.clone
+      core.array.Array.map
+    rw [array_map_id]
+    · simp
+    · intro x
+      simp [core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut,
+        core.U64.Insts.CoreCloneClone.clone]
+  rw [h]
+  apply RustM.ok_spec
+  simp [PostCond.ok]
+
 /-
 We prove two examples of equivalences between implementation and specification:
 
@@ -202,8 +242,6 @@ theorem iota_spec
   hax_mvcgen
   · have hr : ROUNDCONSTANTS = specification.ROUND_CONSTANTS := by
       unfold ROUNDCONSTANTS specification.ROUND_CONSTANTS; rfl
-    expose_names
-    have hx : r_9 = r_8 ^^^ r_7 := by grind
     grind
   all_goals grind
 
@@ -303,8 +341,7 @@ stuck at `rho` while putting some useful information into the verification condi
 -/
 
 -- Some `Inhabited` instances are currently required for `core.RustM.toPure_spec`
-instance : Inhabited (KeccakState Std.U64 1#usize) := ⟨{st := ⟨List.replicate 25 0#u64, by simp⟩}⟩
-instance [Inhabited α] : Inhabited (Std.Array α n) := ⟨⟨List.replicate n.val default, by simp⟩⟩
+instance : Inhabited (KeccakState Std.U64 1#usize) := ⟨{st := default}⟩
 
 @[spec]
 def rho_spec' {st} {t} := Std.RustM.toPure_spec (KeccakState.rho inst st t) (rho_spec st)
@@ -324,7 +361,6 @@ def specification_chi_spec' {st} := Std.RustM.toPure_spec (specification.chi st)
 @[spec]
 def specification_iota_spec' {st i} := Std.RustM.toPure_spec (specification.iota st i) (specification_iota_spec st i)
 
-
 /- ### Equivalence proof
 
 Now we can prove equivalence for `round`:
@@ -342,6 +378,7 @@ theorem round_spec
     KeccakState.round inst st i
     ⦃ ⇓ r => ⌜ (_ensures_round st i r).holds ⌝ ⦄ := by
   unfold KeccakState.round at *
-  hax_mvcgen -- Try `hax_mvcgen -trivial` to see some exemplary verification conditions here
+  hax_mvcgen
+  simp_all [← Aeneas.Std.Array.eq_iff]
 
 end sha3

@@ -24,8 +24,6 @@ theorem g.spec.proof {N : Std.Usize} (arr : Array Std.U64 N) : g.spec arr := by
     pure (∀ (j : Usize), (do let a ← f_loop_inv r arr i j; pure (a = true)).holds)
   hax_mvcgen
   all_goals try grind
-  -- The element-level side condition of `Array`'s `clone` spec.
-  all_goals try rfl
   · -- [g] loop step (j < i'): g_loop_inv branch 1.
     expose_names
     apply (‹∀ (j : Usize) (p : Prop), _ → _ → _ → p›) j <;> grind

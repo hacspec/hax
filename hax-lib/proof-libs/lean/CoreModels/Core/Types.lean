@@ -154,7 +154,7 @@ def array.TryFromSliceError := Unit
 def array.Array (T : Type) (N : Std.Usize) := Array T N
 -/
 
-/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::closure]
+/-- [core_models::array::{core_models::array::Array<T, N>}::each_ref::{closure}]
     Source: 'core-models/src/core/array.rs', lines 65:22-65:43 -/
 @[reducible]
 def array.Array.each_ref.closure (T : Type) (N : Std.Usize) := Array T N
@@ -212,7 +212,7 @@ structure clone.Clone (Self : Type) where
   clone : Self → RustM Self
   clone_from : Self → Self → RustM Self
 
-/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure]
+/-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::{closure}]
     Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
 @[reducible]
 def array.CloneArray.clone.closure (T : Type) (N : Std.Usize) := Unit
@@ -230,7 +230,7 @@ structure cmp.PartialEq (Self : Type) (Rhs : Type) where
 structure default.Default (Self : Type) where
   default : RustM Self
 
-/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::closure]
+/-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::{closure}]
     Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
 @[reducible]
 def array.DefaultArray.default.closure (T : Type) (N : Std.Usize) := Unit
@@ -321,7 +321,7 @@ structure convert.TryFrom (Self : Type) (T : Type) (Self_Error : Type) where
 @[reducible]
 def convert.Infallible := Unit
 
-/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::closure]
+/-- [core_models::convert::{impl core_models::convert::TryFrom<&'_0 [T], core_models::array::TryFromSliceError> for [T; N]}::try_from::{closure}]
     Source: 'core-models/src/core/convert.rs', lines 67:61-69:13 -/
 @[reducible]
 def convert.TryFromArrayShared0SliceTryFromSliceError.try_from.closure (T :
@@ -697,62 +697,62 @@ def num.error.IntErrorKind := Unit
 structure num.error.ParseIntError where
   kind : num.error.IntErrorKind
 
-/-- [core_models::num::{core_models::num::u8}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::u8}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U8.to_le_bytes.closure := Std.U8
 
-/-- [core_models::num::{core_models::num::u16}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::u16}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U16.to_le_bytes.closure := Std.U16
 
-/-- [core_models::num::{core_models::num::u32}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::u32}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U32.to_le_bytes.closure := Std.U32
 
-/-- [core_models::num::{core_models::num::u64}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::u64}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U64.to_le_bytes.closure := Std.U64
 
-/-- [core_models::num::{core_models::num::u128}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::u128}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.U128.to_le_bytes.closure := Std.U128
 
-/-- [core_models::num::{core_models::num::usize}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::usize}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 210:54-213:17 -/
 @[reducible]
 def num.Usize.to_le_bytes.closure := Std.Usize
 
-/-- [core_models::num::{core_models::num::i8}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::i8}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I8.to_le_bytes.closure := Std.I8
 
-/-- [core_models::num::{core_models::num::i16}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::i16}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I16.to_le_bytes.closure := Std.I16
 
-/-- [core_models::num::{core_models::num::i32}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::i32}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I32.to_le_bytes.closure := Std.I32
 
-/-- [core_models::num::{core_models::num::i64}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::i64}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I64.to_le_bytes.closure := Std.I64
 
-/-- [core_models::num::{core_models::num::i128}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::i128}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.I128.to_le_bytes.closure := Std.I128
 
-/-- [core_models::num::{core_models::num::isize}::to_le_bytes::closure]
+/-- [core_models::num::{core_models::num::isize}::to_le_bytes::{closure}]
     Source: 'core-models/src/core/num/mod.rs', lines 496:54-500:17 -/
 @[reducible]
 def num.Isize.to_le_bytes.closure := Std.Isize

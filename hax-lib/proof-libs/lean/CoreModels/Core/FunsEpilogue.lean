@@ -43,6 +43,36 @@ abbrev result.Result.Insts.CoreOpsTry_traitTry.branch :=
 abbrev option.Option.Insts.CoreOpsTry_traitTry.branch :=
   @option.Option.Insts.CoreOpsTry_traitTryTOptionInfallible.branch
 
+/-- Downstream `?` on `Result` converts the residual through std's
+    `FromResidual<Result<!, E>>` impl: std's `Infallible` is an alias of `!`, so that
+    impl is suffixed `…NeverE`, while ours, written against our own `Infallible`, is
+    suffixed `…InfallibleE`. Alias so `?` on `Result` elaborates. -/
+abbrev result.Result.Insts.CoreOpsTry_traitFromResidualResultNeverE.from_residual :=
+  @result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+
+/-- Same aliasing as `Result` above, for `?` on `Option`. -/
+abbrev option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual :=
+  @option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+
+/-! ## `core::array::repeat`
+
+Downstream extractions translate an array repeat expression `[x; N]` into a call to
+`core::array::repeat`. Like std, the model clones `val` for all but the last element,
+which is `val` itself moved in. -/
+
+def array.repeat {T : Type} (N : Aeneas.Std.Usize) (cloneInst : clone.Clone T) (val : T) :
+    Aeneas.Std.RustM (Aeneas.Std.Array T N) :=
+  if h0 : N.val = 0 then Aeneas.Std.RustM.ok (Aeneas.Std.Array.from [] (by simp [h0]))
+  else do
+    let cloned ← (List.replicate (N.val - 1) val).mapM cloneInst.clone
+    -- The `else` branch is unreachable: `mapM` returns one element per input, so
+    -- `cloned` has `N.val - 1` elements and, as `N.val ≠ 0`, `cloned ++ [val]` has
+    -- `N.val`. The `if` is parenthesized because Aeneas's `do` elaborator does not
+    -- accept a dependent `if` as a `do` element.
+    (if h : (cloned ++ [val]).length = N.val then
+      Aeneas.Std.RustM.ok (Aeneas.Std.Array.from (cloned ++ [val]) h)
+    else Aeneas.Std.RustM.fail .panic)
+
 /-! ## Scalar Debug instances -/
 
 /-! ## Provided methods kept OFF the `Iterator` structure
