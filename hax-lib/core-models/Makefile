@@ -152,8 +152,9 @@ clean-generated:
 alloc-clean:
 	rm -rf $(ALLOC_STAGE_DIR)
 
-# Full clean: drop the staged extraction (LLBC included) and the build cache too.
-clean: clean-generated alloc-clean fstar-clean
+# Drop the staged extraction (LLBC included) and the build cache. The
+# committed Lean extraction stays; `clean-generated` removes it.
+clean: alloc-clean fstar-clean
 	rm -rf $(EXTRACT_DIR)
 	rm -rf $(LEAN_DIR)/.lake
 

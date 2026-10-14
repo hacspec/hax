@@ -32,9 +32,9 @@ build: extract
 	cd $(LEAN_DIR) && lake exe cache get && lake build
 
 # Remove the generated files; keep the hand-written project files
-# (lakefile.toml, lean-toolchain, ClientTest.lean, and the
-# Assumptions/*External.lean stubs).
+# (lakefile.toml, lean-toolchain, ClientTest.lean) and the user-owned
+# Assumptions/ and Verification/ files that hax seeds only when missing.
 clean:
-	rm -rf $(EXTRACTION_DIR)
+	rm -rf $(EXTRACTION_DIR)Extraction $(EXTRACTION_DIR)Extraction.lean
 	rm -rf $(LEAN_DIR)/llbc $(LEAN_DIR)/.lake
 	rm -f $(LEAN_DIR)/.gitignore
