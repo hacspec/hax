@@ -1,9 +1,11 @@
 ---
-title: TCB & Trust
+title: TCB & Assumptions
 weight: -4
 ---
 
-# What is the TCB of Hax ? Is hax-verified code guaranteed to be correct ?
+# Trusted Computing Base (TCB) and assumptions
+
+*What guarantees does verification with Hax actually provide ?*
 
 Formally verifying code with hax (or any other tool) gives a high assurance that
 the code is correct, higher than what can be achieved with auditing and testing
