@@ -34,7 +34,7 @@ translation and the proof checking is correct.*
 What can go wrong falls into two groups, of very different likelihood:
 
 - **The claim is not the intended one.** The specification is wrong, does not
-  covers the intended code, or the proofs are not actually checked. They are
+  cover the intended code, or the proofs are not actually checked. They are
   discussed in [Common pitfalls](#common-pitfalls).
 - **The claim is the intended one, but a trusted component is wrong.** A tool in
   the pipeline has a bug that makes a wrong claim pass. This is much less
