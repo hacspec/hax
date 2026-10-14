@@ -97,7 +97,7 @@ Here are some resources for learning more about hax:
     + Quick start: [Lean](https://hax.cryspen.com/manual/lean/quick_start/), [F*](https://hax.cryspen.com/manual/fstar/quick_start/)
     + Tutorial: [Lean](https://hax.cryspen.com/manual/lean/tutorial/), [F*](https://hax.cryspen.com/manual/fstar/tutorial/)
  - [Examples](./examples/): a set of examples that show what hax can do for you.
- - [Is hax-verified code guaranteed to be correct?](https://hax.cryspen.com/trust/)
+ - [Is hax-verified code guaranteed to be correct?](https://hax.cryspen.com/manual/faq/trust/)
  - Other [specifications](https://github.com/hacspec/specs) of cryptographic protocols.
 
 Questions? Join us on [Zulip](https://hacspec.zulipchat.com/) or open a [GitHub Discussion](https://github.com/cryspen/hax/discussions). For bugs, file an [Issue](https://github.com/cryspen/hax/issues).
