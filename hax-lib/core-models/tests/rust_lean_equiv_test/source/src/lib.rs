@@ -33,7 +33,8 @@
     ergonomic_clones,
     likely_unlikely,
     mem_copy_fn,
-    option_reduce
+    option_reduce,
+    phantom_variance_markers
 )]
 #![allow(incomplete_features)]
 // Some tests deliberately exercise edge comparisons like `u8::MAX < 0u8`

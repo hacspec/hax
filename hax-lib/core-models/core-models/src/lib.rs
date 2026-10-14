@@ -40,6 +40,7 @@
 // range and `ControlFlow` items.
 // `cold_path`, `likely_unlikely`: for `hint::{cold_path, likely, unlikely}`.
 // `hasher_prefixfree_extras`: for `Hasher::{write_length_prefix, write_str}`.
+// `phantom_variance_markers`: for the `marker::Phantom*` variance markers.
 #![cfg_attr(
     test,
     feature(
@@ -57,6 +58,7 @@
         mem_copy_fn,
         one_sided_range,
         option_reduce,
+        phantom_variance_markers,
         range_bounds_is_empty,
         range_into_bounds,
         slice_range,

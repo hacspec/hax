@@ -222,21 +222,24 @@ def rewrite_alloc_imports(text: str) -> str:
     return text
 
 
-# A `structure hash.{Hash,BuildHasher}` header and its field lines.
+# The `structure hash.Hash` header and its field lines.
 _HASH_TRAIT_BLOCK = re.compile(
-    r"^(structure hash\.(?:Hash|BuildHasher) [^\n]*\n)((?:[ \t]+[^\n]*\n)*)",
+    r"^(structure hash\.Hash [^\n]*\n)((?:[ \t]+[^\n]*\n)*)",
     re.MULTILINE,
 )
 
 
 def qualify_hash_trait_refs(text: str) -> str:
-    """Qualify `hash.{Hash,Hasher}` as `core.hash.…` inside the `hash` traits' fields.
+    """Qualify `hash.Hasher` as `core.hash.Hasher` inside `structure hash.Hash`.
 
-    Lean brings the `hash` field into scope for later fields, shadowing the namespace.
+    The trait's first field is the method `hash`, and a structure's fields are in
+    scope in the later fields' types, so `hash_slice`'s `hash.Hasher` resolves to
+    a projection out of that field instead of the namespace and fails to elaborate.
+    See https://github.com/AeneasVerif/aeneas/issues/1411.
     """
     return _HASH_TRAIT_BLOCK.sub(
         lambda m: m.group(1)
-        + re.sub(r"\bhash\.(Hasher|Hash)\b", r"core.hash.\1", m.group(2)),
+        + re.sub(r"(?<![\w.])hash\.Hasher\b", "core.hash.Hasher", m.group(2)),
         text,
     )
 

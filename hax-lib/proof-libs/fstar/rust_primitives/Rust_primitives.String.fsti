@@ -11,3 +11,6 @@ val str_sub: string -> usize -> usize -> string
 val str_index: string -> usize -> FStar.Char.char
 
 val str_len: string -> usize
+
+/// The UTF-8 encoding of a string.
+val str_as_bytes: string -> Rust_primitives.Arrays.t_Slice u8
