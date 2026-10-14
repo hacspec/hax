@@ -1,6 +1,9 @@
-import Hax.Tactic.HaxMvcgen
-import Hax.Tactic.HaxMvcgenAt
-import Hax.Tactic.ForLoopWithInvariant
+module
+public import Hax.Tactic.HaxMvcgen
+public import Hax.Tactic.HaxMvcgenAt
+public import Hax.Tactic.ForLoopWithInvariant
+
+@[expose] public section
 
 /-!
 

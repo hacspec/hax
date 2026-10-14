@@ -3,4 +3,6 @@
 -- parent `CoreModels.FunsExternal` module, which is pulled in by
 -- `import CoreModels` from the generated `Funs.lean`. This file just needs
 -- to exist to satisfy the shim hax writes at `Extraction/FunsExternal.lean`.
-import Aeneas
+module
+public import Aeneas
+@[expose] public section

@@ -1,5 +1,8 @@
-import CoreModels.RustPrimitives.Types
-import CoreModels.RustPrimitives.Funs
+module
+public import CoreModels.RustPrimitives.Types
+public import CoreModels.RustPrimitives.Funs
+
+@[expose] public section
 
 /-!
 

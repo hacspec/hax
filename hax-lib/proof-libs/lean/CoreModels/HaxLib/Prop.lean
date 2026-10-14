@@ -1,7 +1,10 @@
-import Aeneas
-import CoreModels.Core.TypesPrologue
-import CoreModels.Core.Types
-import Hax.MissingAeneas
+module
+public import Aeneas
+public import CoreModels.Core.TypesPrologue
+public import CoreModels.Core.Types
+public import Hax.MissingAeneas
+
+@[expose] public section
 
 /-!
 # Model of `hax_lib::prop`

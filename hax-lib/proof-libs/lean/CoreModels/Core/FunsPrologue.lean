@@ -1,6 +1,9 @@
-import CoreModels.Core.Types
-import CoreModels.Alloc.Types
-import CoreModels.RustPrimitives.Funs
+module
+public import CoreModels.Core.Types
+public import CoreModels.Alloc.Types
+public import CoreModels.RustPrimitives.Funs
+
+@[expose] public section
 
 /-!
 

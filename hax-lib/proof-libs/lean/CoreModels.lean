@@ -1,10 +1,13 @@
-import CoreModels.Command
-import CoreModels.MissingAeneas
-import CoreModels.Core
-import CoreModels.Alloc
-import CoreModels.HaxLib
-import CoreModels.RustPrimitives
-import CoreModels.Spec
+module
+public import CoreModels.Command
+public import CoreModels.MissingAeneas
+public import CoreModels.Core
+public import CoreModels.Alloc
+public import CoreModels.HaxLib
+public import CoreModels.RustPrimitives
+public import CoreModels.Spec
+
+@[expose] public section
 
 /-!
 

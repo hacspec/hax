@@ -1,7 +1,10 @@
-import Aeneas
-import CoreModels.Command
-import CoreModels.Core.TypesPrologue
-import CoreModels.Core.Types
+module
+public import Aeneas
+public import CoreModels.Command
+public import CoreModels.Core.TypesPrologue
+public import CoreModels.Core.Types
+
+@[expose] public section
 
 /-!
 

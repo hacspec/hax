@@ -688,17 +688,14 @@ pub fn run(
     // (`Funs.lean`/`Types.lean`, and any proof-obligation / external-template
     // files) separately, and `-subdir <LibName>/Extraction` so they land in
     // `<lean_dir>/<LibName>/Extraction/` with import paths prefixed by
-    // `<LibName>.Extraction.`. `-use-lean-modules false` makes it emit plain
-    // (non-module) Lean files: the hax Lean library is not written with the
-    // module system, and a module cannot import a non-module file.
+    // `<LibName>.Extraction.`. The files are Lean modules (aeneas's default),
+    // like the hax Lean library they import.
     let subdir = format!("{lib_name}/Extraction");
     let mut aeneas_cmd = process::Command::new(&aeneas);
     aeneas_cmd.args([
         "-backend",
         "lean",
         "-core-models-lib",
-        "-use-lean-modules",
-        "false",
         "-split-files",
         "-specs",
         "hax",

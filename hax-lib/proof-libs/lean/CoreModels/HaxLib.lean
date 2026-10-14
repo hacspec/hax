@@ -1,5 +1,8 @@
-import CoreModels.HaxLib.Prop
-import CoreModels.HaxLib.Int
+module
+public import CoreModels.HaxLib.Prop
+public import CoreModels.HaxLib.Int
+
+@[expose] public section
 
 /-!
 

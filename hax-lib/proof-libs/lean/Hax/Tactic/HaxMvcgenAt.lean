@@ -1,6 +1,9 @@
-import Lean
-import Aeneas
-import Hax.MissingLean
+module
+public import Lean
+public import Aeneas
+public import Hax.MissingLean
+
+@[expose] public section
 
 /-!
 
@@ -17,7 +20,7 @@ open Lean Std.Do Elab Parser Tactic Meta Aeneas Std
 
 initialize Lean.registerTraceClass `Hax.hax_mvcgen_at
 
-register_option hax_mvcgen.warnings : Bool := {
+meta register_option hax_mvcgen.warnings : Bool := {
   defValue := true
   descr := "Enable or disable warnings produced by hax_mvcgen"
 }
@@ -26,7 +29,7 @@ register_option hax_mvcgen.warnings : Bool := {
 `mvcgen` could not discharge: `mvcgen` gets stuck on the first program it has no specification
 for, leaving a goal that mentions `wp⟦f a₁ ... aₙ⟧`. Returns `none` when the head of that program
 is not a constant, or is mere monadic plumbing, which says nothing about the missing spec. -/
-private def missingSpecCandidate? (e : Expr) : Option Name := Id.run do
+private meta def missingSpecCandidate? (e : Expr) : Option Name := Id.run do
   let some wpApp := e.find? (·.isAppOfArity' ``WP.wp 5) | return none
   -- Look through `bind`s (`Bind.bind .. x f` or `Aeneas.Std.bind .. x f`): the missing
   -- specification is the one of the program bound first, i.e. the second-to-last argument.
@@ -37,7 +40,7 @@ private def missingSpecCandidate? (e : Expr) : Option Name := Id.run do
   return some n
 
 /-- Main entry point of `hax_mvcgen at` -/
-def haxMvcgenAt (mainGoal : MVarId) (hyp : LocalDecl) (cfgStx : TSyntax `Lean.Parser.Tactic.optConfig) (argStx : Syntax) : TacticM (List MVarId) := do
+meta def haxMvcgenAt (mainGoal : MVarId) (hyp : LocalDecl) (cfgStx : TSyntax `Lean.Parser.Tactic.optConfig) (argStx : Syntax) : TacticM (List MVarId) := do
   forallTelescope (cleanupAnnotations := true) (← instantiateMVars hyp.type) fun xs hbody => do
 
     trace `Hax.hax_mvcgen_at fun () => m!"hax_mvcgen at {mkFVar hyp.fvarId}: {mainGoal}"
@@ -168,7 +171,7 @@ syntax (name := hax_mvcgen_at_hyp) "hax_mvcgen" optConfig
   (" [" withoutPosition((simpStar <|> simpErase <|> simpLemma),*,?) "] ")? "at" ident : tactic
 
 @[tactic hax_mvcgen_at_hyp]
-def elabHaxMvcgenAtHyp : Tactic := fun stx => do
+meta def elabHaxMvcgenAtHyp : Tactic := fun stx => do
   let cfgStx : TSyntax `Lean.Parser.Tactic.optConfig := ⟨stx[1]⟩
   let argStx := stx[2]
   let mainGoal ← getMainGoal

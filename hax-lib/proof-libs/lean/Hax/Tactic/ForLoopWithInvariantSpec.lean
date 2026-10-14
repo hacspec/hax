@@ -1,4 +1,7 @@
-import Hax.Tactic.ForLoopWithInvariant
+module
+public import Hax.Tactic.ForLoopWithInvariant
+
+@[expose] public section
 
 /-! # Spec lemmas for `forLoopWithInvariant`
 

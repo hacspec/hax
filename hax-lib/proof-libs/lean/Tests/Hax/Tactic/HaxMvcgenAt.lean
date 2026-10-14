@@ -1,4 +1,7 @@
-import Hax
+module
+public import Hax
+
+@[expose] public section
 
 /-! # Tests for `Hax.Tactic.HaxMvcgenAt` -/
 

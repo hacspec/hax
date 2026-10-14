@@ -1,5 +1,8 @@
-import CoreModels.Core.Funs
-import CoreModels.Core.FunsEpilogue
+module
+public import CoreModels.Core.Funs
+public import CoreModels.Core.FunsEpilogue
+
+@[expose] public section
 
 /-!
 

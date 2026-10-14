@@ -1,7 +1,10 @@
-import Aeneas
-import CoreModels.Core
-import Hax.MissingLean
-import CoreModels.MissingAeneas
+module
+public import Aeneas
+public import CoreModels.Core
+public import Hax.MissingLean
+public import CoreModels.MissingAeneas
+
+@[expose] public section
 
 /-!
 

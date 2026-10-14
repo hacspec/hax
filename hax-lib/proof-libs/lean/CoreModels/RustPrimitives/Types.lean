@@ -1,4 +1,7 @@
-import Aeneas
+module
+public import Aeneas
+
+@[expose] public section
 
 /-- [rust_primitives::sequence::Seq]
     Source: 'rust_primitives/src/lib.rs', lines 47:4-47:21

@@ -1,4 +1,7 @@
-import Std.Do.Triple.Basic
+module
+public import Std.Do.Triple.Basic
+
+@[expose] public section
 
 namespace Std.Do
 

@@ -1,5 +1,8 @@
-import CoreModels.Core.Funs
-import CoreModels.MissingAeneas
+module
+public import CoreModels.Core.Funs
+public import CoreModels.MissingAeneas
+
+@[expose] public section
 
 /-! # Specs for `rust_primitives::slice` -/
 

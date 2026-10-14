@@ -1,5 +1,8 @@
-import Hax.MissingAeneas
-import CoreModels
+module
+public import Hax.MissingAeneas
+public import CoreModels
+
+@[expose] public section
 
 /-! # `for_loop_with_invariant`
 
@@ -43,7 +46,7 @@ def forLoopWithInvariant {ι β : Type} (stepInst : core.iter.range.Step ι)
 
 /-- Substitute every occurrence of `x.2` in `e` by `aFvar`, recognizing both
 `Expr.proj Prod 1 x` and `Prod.snd _ _ x` (application) forms. -/
-private def substXSnd (e : Expr) (x aFvar : Expr) : Expr :=
+private meta def substXSnd (e : Expr) (x aFvar : Expr) : Expr :=
   e.replace fun e' =>
     match e' with
     | .proj ``Prod 1 inner => if inner == x then some aFvar else none
@@ -53,7 +56,7 @@ private def substXSnd (e : Expr) (x aFvar : Expr) : Expr :=
 
 /-- The action and continuation `(x, f)` of a monadic bind `x >>= f`, written either with the
 typeclass `Bind.bind` or with `Aeneas.Std.bind`, which is what extracted code binds with. -/
-private def bindParts? (e : Expr) : Option (Expr × Expr) :=
+private meta def bindParts? (e : Expr) : Option (Expr × Expr) :=
   if e.isAppOfArity ``Bind.bind 6 then some (e.getArg! 4, e.getArg! 5)
   else if e.isAppOfArity ``Aeneas.Std.bind 4 then some (e.getArg! 2, e.getArg! 3)
   else none
@@ -71,7 +74,7 @@ bind (next StepUsize x.1) <|
 ```
 Returns `(userBody, stepDict)` with the match-bound index substituted by `jFvar`,
 where `stepDict` is the `Step` dictionary taken from the loop's `next` call. -/
-private def extractStepBody (jFvar : Expr) (loopBodyInner : Expr) :
+private meta def extractStepBody (jFvar : Expr) (loopBodyInner : Expr) :
     MetaM (Option (Expr × Expr)) := do
   let inner ← whnfR loopBodyInner
   let some (nextAction, cont) := bindParts? inner | return none
@@ -106,7 +109,7 @@ private def extractStepBody (jFvar : Expr) (loopBodyInner : Expr) :
 /-- Recover the index type `ι` from the iterator's type, which must be
 `core.ops.range.Range ι`. Throws otherwise: we only support for-loops over
 ranges. -/
-private def indexTypeOfIter (iter : Expr) : MetaM Expr := do
+private meta def indexTypeOfIter (iter : Expr) : MetaM Expr := do
   let iterTy ← whnfR (← inferType iter)
   unless iterTy.isAppOfArity ``core.ops.range.Range 1 do
     throwError "for_loop_with_invariant: expected the iterator to have type \
@@ -117,7 +120,7 @@ private def indexTypeOfIter (iter : Expr) : MetaM Expr := do
 invariant `inv`, build `Hax.forLoopWithInvariant inv body iter init` by extracting
 `body`. Returns the new expression. Throws if the loop body doesn't have the
 expected iterator/`ControlFlow.cont` shape. -/
-private def buildForLoopWithInvariant
+private meta def buildForLoopWithInvariant
     (loopExpr inv : Expr) : MetaM Expr := do
   unless loopExpr.isAppOfArity ``Aeneas.Std.loop 4 do
     throwError "for_loop_with_invariant: expected a `loop _ _` expression"
@@ -151,7 +154,7 @@ private def buildForLoopWithInvariant
 /-- Elaborate the user-supplied invariant against the expected type
 `ι → β → RustM Prop`, where `β` is the element type taken from `init` and the index
 type `ι` is recovered from the iterator's type `core.ops.range.Range ι`. -/
-private def elabInvariant (iter init : Expr) (invStx : Term) : TacticM Expr := do
+private meta def elabInvariant (iter init : Expr) (invStx : Term) : TacticM Expr := do
   let elemTy ← inferType init
   let ι ← indexTypeOfIter iter
   let resultProp ← mkAppM ``Aeneas.Std.RustM #[mkSort .zero]
@@ -172,7 +175,7 @@ automatically, and rewrites the focus to
 syntax (name := for_loop_with_invariant_conv) "for_loop_with_invariant " term : conv
 
 @[tactic for_loop_with_invariant_conv]
-def elabForLoopWithInvariantConv : Tactic := fun stx => do
+meta def elabForLoopWithInvariantConv : Tactic := fun stx => do
   let invStx : Term := ⟨stx[1]⟩
   -- The focus is the `loop _ _` expression itself; this simp is naturally
   -- scoped to it.
@@ -199,7 +202,7 @@ wrapper around the conv tactic: `conv in (loop _ _) => for_loop_with_invariant i
 syntax (name := for_loop_with_invariant) "for_loop_with_invariant " term : tactic
 
 @[tactic for_loop_with_invariant]
-def elabForLoopWithInvariant : Tactic := fun stx => do
+meta def elabForLoopWithInvariant : Tactic := fun stx => do
   let invStx : Term := ⟨stx[1]⟩
   evalTactic (← `(tactic|
     conv in (Aeneas.Std.loop _ _) => for_loop_with_invariant $invStx))
