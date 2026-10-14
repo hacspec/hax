@@ -102,7 +102,10 @@ $(SOURCES_STAMP): FORCE | $(CACHE_DIR)
 $(DEPEND): $(ROOTS) $(LIB_ROOTS) $(SOURCES_STAMP) | $(CACHE_DIR)
 	$(Q)$(FSTAR) $(OTHERFLAGS) --dep full $(ROOTS) --extract '* -Prims -LowStar -FStar' > $@
 
+# Regenerating $(DEPEND) runs F*, which `clean` and `describe` must not need.
+ifneq ($(if $(MAKECMDGOALS),$(filter-out clean describe,$(MAKECMDGOALS)),all),)
 include $(DEPEND)
+endif
 
 $(CACHE_DIR)/%$(CHECKED): | $(DEPEND) $(CACHE_DIR)
 	$(Q)printf '[CHECK] %s\n' "$(basename $(notdir $*))"

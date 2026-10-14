@@ -64,7 +64,10 @@ FSTAR = $(FSTAR_BIN) $(FSTAR_FLAGS) $(OTHERFLAGS)
 	$(info $(ROOTS))
 	$(FSTAR) --cmi --dep full $(ROOTS) --extract '* -Prims -LowStar -FStar' > $@
 
+# Regenerating `.depend` runs F*, which `clean` must not need.
+ifneq ($(MAKECMDGOALS),clean)
 include .depend
+endif
 
 $(HINT_DIR):
 	mkdir -p $@
@@ -94,3 +97,4 @@ SHELL=/usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*
+	rm -f .depend
