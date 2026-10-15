@@ -40,9 +40,9 @@ check-skipped: gen-lean-tests
 # Remove the generated files, including the generated `LeanTests.lean`;
 # keep the hand-written project files.
 clean:
-	rm -f $(addprefix $(EXTRACTION_DIR)/,Funs.lean Types.lean \
-	      FunsExternal_Template.lean TypesExternal_Template.lean)
-	rm -f $(LEAN_DIR)/RustLeanTests/LeanTests.lean \
+	rm -rf $(EXTRACTION_DIR)
+	rm -f $(EXTRACTION_DIR).lean \
+	      $(LEAN_DIR)/RustLeanTests/LeanTests.lean \
 	      $(LEAN_DIR)/RustLeanTests/SkippedTests.lean \
 	      skipped.log
 	rm -rf $(LEAN_DIR)/llbc $(LEAN_DIR)/.lake

@@ -1,1 +1,0 @@
-import RustLeanTests.Assumptions.FunsExternal
