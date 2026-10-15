@@ -11,4 +11,4 @@ lean:
 
 clean:
 	-rm -rf proofs/lean-tutorial/lean/LeanTutorial/Extraction
-	-cd proofs/lean-tutorial/lean && lake clean
+	-rm -rf proofs/lean-tutorial/lean/.lake

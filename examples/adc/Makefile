@@ -8,4 +8,4 @@ lean:
 
 clean:
 	-rm -rf proofs/adc/lean/Adc/Extraction
-	-cd proofs/adc/lean && lake clean
+	-rm -rf proofs/adc/lean/.lake

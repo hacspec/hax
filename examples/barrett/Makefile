@@ -23,4 +23,4 @@ clean:
 	rm -f proofs/barrett/fstar/extraction/*.fst
 	rm -f proofs/rust/extraction/*.rs
 	-rm -rf proofs/barrett/lean/Barrett/Extraction
-	-cd proofs/barrett/lean && lake clean
+	-rm -rf proofs/barrett/lean/.lake

@@ -19,4 +19,4 @@ clean:
 	rm -f proofs/anodized/fstar/extraction/.depend
 	rm -f proofs/anodized/fstar/extraction/*.fst
 	-rm -rf proofs/anodized/lean/AnodizedLean/Extraction
-	-cd proofs/anodized/lean && lake clean
+	-rm -rf proofs/anodized/lean/.lake
