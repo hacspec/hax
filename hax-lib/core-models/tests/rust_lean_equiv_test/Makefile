@@ -41,7 +41,8 @@ check-skipped: gen-lean-tests
 # keep the hand-written project files.
 clean:
 	rm -rf $(EXTRACTION_DIR)
-	rm -f $(LEAN_DIR)/RustLeanTests/LeanTests.lean \
+	rm -f $(EXTRACTION_DIR).lean \
+	      $(LEAN_DIR)/RustLeanTests/LeanTests.lean \
 	      $(LEAN_DIR)/RustLeanTests/SkippedTests.lean \
 	      skipped.log
 	rm -rf $(LEAN_DIR)/llbc $(LEAN_DIR)/.lake

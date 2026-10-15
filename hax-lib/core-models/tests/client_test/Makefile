@@ -32,8 +32,7 @@ build: extract
 	cd $(LEAN_DIR) && lake exe cache get && lake build
 
 # Remove the generated files; keep the hand-written project files
-# (lakefile.toml, lean-toolchain, ClientTest.lean, and the
-# Assumptions/*External.lean stubs).
+# (lakefile.toml, lean-toolchain, ClientTest.lean).
 clean:
 	rm -rf $(EXTRACTION_DIR)
 	rm -rf $(LEAN_DIR)/llbc $(LEAN_DIR)/.lake

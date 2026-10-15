@@ -8,4 +8,4 @@ lean:
 
 clean:
 	-rm -rf proofs/loop-equivalence/lean/LoopEquivalence/Extraction
-	-cd proofs/loop-equivalence/lean && lake clean
+	-rm -rf proofs/loop-equivalence/lean/.lake

@@ -173,7 +173,8 @@ make test-coverage       # what model code the test suite misses
 make test-coverage-check # the CI gate: 100% or fail
 make mutants             # mutation testing (slow; needs a clean tree)
 
-make clean          # remove all generated Lean + F* + LLBC, keep hand-written
+make clean          # remove build state and F* + LLBC output, keep the committed Lean
+make clean-generated # remove the committed Lean extraction too
 ```
 
 `make lean` and `make fstar` are independent pipelines over the same Rust

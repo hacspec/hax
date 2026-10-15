@@ -7,4 +7,5 @@ lean:
 		lake build)
 
 clean:
-	-cd proofs/sha3/lean && lake clean
+	-rm -rf proofs/sha3/lean/Sha3/Extraction
+	-rm -rf proofs/sha3/lean/.lake

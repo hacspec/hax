@@ -65,6 +65,25 @@ fmt:
   cargo fmt
   cd engine && dune fmt
 
+# Remove build artifacts and verification caches. A failing step (e.g. a
+# missing tool) does not skip the remaining ones.
+clean:
+  -cargo clean
+  -cargo clean --manifest-path examples/Cargo.toml
+  -cargo clean --manifest-path hax-lib/core-models/Cargo.toml
+  -cargo clean --manifest-path hax-lib/core-models/tests/Cargo.toml
+  -cargo clean --manifest-path tests/Cargo.toml
+  -cd engine && dune clean
+  rm -rf .hax-tests-cache .fstar-cache .mypy_cache .ruff_cache \
+    hax-lib/proof-libs/legacy-lean/.lake
+  -make -C tests/verify/fstar clean
+  -make -C tests/verify/lean clean
+  -make -C hax-lib/core-models clean tests-clean
+  -make -C hax-lib/proof-libs/fstar/core clean
+  -make -C hax-lib/proof-libs/fstar/rust_primitives clean
+  -make -C hax-lib/proof-libs/fstar/hax_lib clean
+  -for makefile in examples/*/Makefile; do make -C "$(dirname "$makefile")" clean; done
+
 # Type-check the committed F* snapshots. The optional argument narrows to
 # snapshots whose path matches, e.g. `just verify-fstar legacy/tuples`.
 verify-fstar MATCHING='':
