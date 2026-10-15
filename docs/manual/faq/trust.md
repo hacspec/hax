@@ -88,12 +88,12 @@ code, the verification is compromised.
 
 #### Lean specific
 
-The command, `#print axioms` can be used to list the axioms, ensuring that
-no unwanted hypothesis was added.
-
-The tool [comparator](https://github.com/leanprover/comparator) can check
-for unintended axioms and preconditions and ensure that a given list of theorems is
-actually part of the verification.
+In Lean, the command `#print axioms` lists all axioms used to prove a theorem
+and can be used in combination with `#guard_msgs` to ensure no unwanted axioms
+are used.  On top of that, the tool
+[comparator](https://github.com/leanprover/comparator) can check for unintended
+axioms, too, and it can ensure that a given list of theorems is actually part of
+the verification.
 
 ### Models of external dependencies
 
