@@ -86,8 +86,6 @@ as fact as a basis for its proofs.  Depending on the prover, such axioms can be
 called `sorry`s, `admit`s, or `assume`s.  If there are unintended axioms in the
 code, the verification is compromised.
 
-#### Lean specific
-
 In Lean, the command `#print axioms` lists all axioms used to prove a theorem
 and can be used in combination with `#guard_msgs` to ensure no unwanted axioms
 are used.  On top of that, the tool
