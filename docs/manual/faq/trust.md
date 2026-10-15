@@ -5,25 +5,25 @@ weight: -4
 
 # Trusted Computing Base (TCB) and assumptions
 
-*What guarantees does verification with Hax actually provide ?*
+*What guarantees does verification with hax actually provide ?*
 
-Formally verifying code with Hax (or any other tool) gives a high assurance that
+Formally verifying code with hax (or any other tool) gives a high assurance that
 the code is correct, higher than what can be achieved with auditing and testing
 alone. But there are still moving parts that can fail. The goal of this page is
-to give an overview of the *trusted computing base* underlying Hax and the
+to give an overview of the *trusted computing base* underlying hax and the
 mitigation strategies.
 
 ## Overview
 
-Verifying a Rust crate with Hax usually goes through the following steps:
+Verifying a Rust crate with hax usually goes through the following steps:
 
-1. The user writes a specification for the Rust code, either as `Hax-lib`
+1. The user writes a specification for the Rust code, either as `hax-lib`
    annotations (pre- and postconditions, invariants, ...) or as backend code.
-2. Hax translates the Rust code (and its specification) into a backend language
+2. hax translates the Rust code (and its specification) into a backend language
    (e.g., Lean or F\* ), turning the specification into *proof obligations* that
    must be discharged by the backend.
 3. Dependencies of the code are *modeled*. This includes Rust' pervasive `core`,
-   `std` and `alloc` crates, for which Hax provides `core-models`, but also
+   `std` and `alloc` crates, for which hax provides `core-models`, but also
    foreign crates, intrinsics or code excluded from translation.
 4. The user writes proofs in the backend language for the obligations, and the
    backend prover checks them.
@@ -43,7 +43,7 @@ What can go wrong falls into two groups, of very different likelihood:
   likely, but cannot be ruled out. Components in the critical path form the
   trusted computing base (TCB), and are discussed in [Trusted computing
   base](#trusted-computing-base). Part of it is shared with the wider Rust and
-  proof assistant ecosystems, and part of it is specific to Hax.
+  proof assistant ecosystems, and part of it is specific to hax.
 
 ## Common pitfalls
 
@@ -53,7 +53,7 @@ The most common issue with verified code is that the specification does not
 state what it is intended to. No improvements to our tools can eradicate this
 fundamental issue entirely. The specification is the source of truth and is
 therefore unverifiable. To mitigate this danger, auditing and testing of the
-specification is crucial. After extraction via Hax, one can also prove
+specification is crucial. After extraction via hax, one can also prove
 properties about the specification itself to gain more confidence about its
 correctness.
 
@@ -61,13 +61,13 @@ correctness.
 
 This is probably the second-most common issue with verified code. It is rare
 that 100% of a crate can be extracted and verified. Understanding exactly the
-scope of what should be extracted is paramount to using Hax on real-world
-projects. The Hax CLI has various options to exclude parts of the code from
+scope of what should be extracted is paramount to using hax on real-world
+projects. The hax CLI has various options to exclude parts of the code from
 extraction, and parts of the code can also be excluded via annotations. If used
 incorrectly, this can result in excluding parts of the code that should have
 been verified.
 
-For now, Hax only targets safe Rust, and can only be used to prove functional
+For now, hax only targets safe Rust, and can only be used to prove functional
 correctness and security properties. It cannot guard against side channel
 attacks, verify unsafe Rust code or model concurrency. Wrappers around Rust
 code that are written in other languages are out of scope, even though they
@@ -107,31 +107,31 @@ correctness of these models.
 
 These components are under scrutiny by a community:
 
-- **The Rust compiler.** Hax verifies the Rust code, not the machine code that
+- **The Rust compiler.** hax verifies the Rust code, not the machine code that
   the Rust compiler produces. To run the verified code, we still need to compile
-  it, so we trust the Rust compiler. Hax also uses the Rust compiler internally
+  it, so we trust the Rust compiler. hax also uses the Rust compiler internally
   to parse and type-check the code before translating it.
-- **charon and aeneas (Lean backend).** For Lean, Hax uses charon to extract the
+- **charon and aeneas (Lean backend).** For Lean, hax uses charon to extract the
   Rust code from the Rust compiler, and aeneas to translate it into Lean. Both
   are trusted.
 - **The backend provers.** We rely on Lean and F\* to check proofs correctly.
   Even widely used tools like Lean can have soundness bugs, allowing users (and
   AI) to prove false statements.
 
-### Hax-specific components
+### hax-specific components
 
-These components are developed as part of Hax.
+These components are developed as part of hax.
 
-- **The translation.** For F\*, the Hax frontend and the Hax engine translate the
-  Rust code. For Lean, Hax uses aeneas with some modifications, which are
-  trusted as well. In both cases, we rely on the `Hax-lib` macros to expand
-  correctly and on Hax to faithfully translate them and the specification as a
+- **The translation.** For F\*, the hax frontend and the hax engine translate the
+  Rust code. For Lean, hax uses aeneas with some modifications, which are
+  trusted as well. In both cases, we rely on the `hax-lib` macros to expand
+  correctly and on hax to faithfully translate them and the specification as a
   whole.
 - **Rust primitives & core/std/alloc crates.** Each backend comes with a library
   modeling the semantics of Rust and its core library. For Lean and F\*, we model
   Rust's `core` and `alloc` libraries directly in Rust (see [our core models
-  library](https://github.com/cryspen/Hax/tree/main/Hax-lib/core-models)). This
-  Rust library gets extracted via Hax into Lean and F\*. Only some Rust
+  library](https://github.com/cryspen/hax/tree/main/hax-lib/core-models)). This
+  Rust library gets extracted via hax into Lean and F\*. Only some Rust
   primitives that can not be modeled in terms of others are implemented directly
   in the backend languages. With this approach, we need to trust the Rust model,
   its translation into the backend language, and the primitives written in the
