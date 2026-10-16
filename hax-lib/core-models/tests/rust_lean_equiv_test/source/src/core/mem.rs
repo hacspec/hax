@@ -1,11 +1,10 @@
-//! Equivalence tests for `core::mem::swap` and `core::mem::replace`.
+//! Equivalence tests for `core::mem::*`.
 //!
-//! Both items carry `#[cfg_attr(hax_backend_lean, hax_lib::exclude)]` so Aeneas
-//! does not extract the Rust std bodies; instead the name map routes them to
-//! manually-written Lean definitions in `lean/CoreModels/FunsExternal.lean`
-//! and friends. The Rust side of each test calls std directly — if the
-//! manual Lean def disagrees with std on a given input, the generated
-//! `#guard` fails the Lean build.
+//! `swap` and `replace` carry `#[cfg_attr(hax_backend_lean, hax_lib::exclude)]`
+//! so Aeneas does not extract the Rust std bodies; instead the name map routes
+//! them to hand-written Lean definitions. The Rust side of each test calls std
+//! directly — if the manual Lean def disagrees with std on a given input, the
+//! generated `#guard` fails the Lean build.
 
 use rust_lean_test_macro::rust_lean_test;
 
@@ -122,4 +121,117 @@ pub fn test_replace_option_some_with_some() -> bool {
     let mut dst: Option<u8> = Some(1);
     let old = core::mem::replace(&mut dst, Some(2));
     old == Some(1) && dst == Some(2)
+}
+
+// ----- mem::copy -------------------------------------------------------------
+
+// Integers only: the model has no other `Copy` impls.
+
+#[rust_lean_test]
+pub fn test_copy_u8_zero() -> bool {
+    core::mem::copy(&0u8) == 0
+}
+
+#[rust_lean_test]
+pub fn test_copy_u8_max() -> bool {
+    core::mem::copy(&u8::MAX) == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_copy_i8_min() -> bool {
+    core::mem::copy(&i8::MIN) == i8::MIN
+}
+
+#[rust_lean_test]
+pub fn test_copy_u32_max() -> bool {
+    core::mem::copy(&u32::MAX) == u32::MAX
+}
+
+#[rust_lean_test]
+pub fn test_copy_i32_min() -> bool {
+    core::mem::copy(&i32::MIN) == i32::MIN
+}
+
+#[rust_lean_test]
+pub fn test_copy_usize_zero() -> bool {
+    core::mem::copy(&0usize) == 0
+}
+
+#[rust_lean_test]
+pub fn test_copy_u64_max() -> bool {
+    core::mem::copy(&u64::MAX) == u64::MAX
+}
+
+// ----- ManuallyDrop ----------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_manually_drop_into_inner_u8() -> bool {
+    core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(7u8)) == 7
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_into_inner_u8_max() -> bool {
+    core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(u8::MAX)) == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_into_inner_i32_min() -> bool {
+    core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(i32::MIN)) == i32::MIN
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_into_inner_tuple() -> bool {
+    let t = core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new((1u32, 2u32)));
+    t.0 == 1 && t.1 == 2
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_into_inner_option_none() -> bool {
+    core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(crate::helpers::none_u8()))
+        .is_none()
+}
+
+// `u8` is `Copy`: the model's slot would drop a value with a destructor again.
+#[rust_lean_test]
+pub fn test_manually_drop_take_u8() -> bool {
+    let mut slot = core::mem::ManuallyDrop::new(7u8);
+    let v = unsafe { core::mem::ManuallyDrop::take(&mut slot) };
+    v == 7
+}
+
+#[rust_lean_test]
+pub fn test_manually_drop_take_i32_min() -> bool {
+    let mut slot = core::mem::ManuallyDrop::new(i32::MIN);
+    let v = unsafe { core::mem::ManuallyDrop::take(&mut slot) };
+    v == i32::MIN
+}
+
+// Sound: `u8` has no destructor.
+#[rust_lean_test]
+pub fn test_manually_drop_drop_leaves_u8() -> bool {
+    let mut slot = core::mem::ManuallyDrop::new(7u8);
+    unsafe { core::mem::ManuallyDrop::drop(&mut slot) };
+    core::mem::ManuallyDrop::into_inner(slot) == 7
+}
+
+// ----- Rust-only: DropGuard --------------------------------------------------
+
+// TODO(closure-extraction): `DropGuard::new` takes a closure.
+#[cfg(test)]
+mod drop_guard {
+    #[test]
+    fn test_dismiss_returns_inner() {
+        let guard = core::mem::DropGuard::new(5u8, |_: u8| ());
+        assert_eq!(core::mem::DropGuard::into_inner(guard), 5);
+    }
+
+    #[test]
+    fn test_dismiss_does_not_run_the_closure() {
+        let mut ran = false;
+        {
+            let guard = core::mem::DropGuard::new(1u8, |_: u8| ran = true);
+            let _ = core::mem::DropGuard::into_inner(guard);
+        }
+        assert!(!ran);
+    }
 }

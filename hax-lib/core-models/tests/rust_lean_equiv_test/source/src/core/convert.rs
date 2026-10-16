@@ -314,3 +314,70 @@ pub fn test_try_from_i32_to_i16_above_max_is_err() -> bool {
 pub fn test_try_from_i32_to_i16_below_min_is_err() -> bool {
     i16::try_from(-32769i32).is_err()
 }
+
+// ----- identity ---------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_identity_u8_zero() -> bool {
+    core::convert::identity(0u8) == 0u8
+}
+
+#[rust_lean_test]
+pub fn test_identity_u8_max() -> bool {
+    core::convert::identity(u8::MAX) == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_identity_i32_min() -> bool {
+    core::convert::identity(i32::MIN) == i32::MIN
+}
+
+#[rust_lean_test]
+pub fn test_identity_bool_false() -> bool {
+    core::convert::identity(false) == false
+}
+
+#[rust_lean_test]
+pub fn test_identity_option_none() -> bool {
+    core::convert::identity(crate::helpers::none_u8()) == crate::helpers::none_u8()
+}
+
+// ----- AsMut<[T]> for [T] -----------------------------------------------------
+// No `IndexMut` in the model: unsize instead of slicing, write via `swap`/`fill`.
+
+#[rust_lean_test]
+pub fn test_as_mut_slice_read_first() -> bool {
+    let mut arr = [7u8, 8, 9];
+    let s: &mut [u8] = &mut arr;
+    core::convert::AsMut::<[u8]>::as_mut(s)[0] == 7u8
+}
+
+#[rust_lean_test]
+pub fn test_as_mut_slice_read_last() -> bool {
+    let mut arr = [7u8, 8, 9];
+    let s: &mut [u8] = &mut arr;
+    core::convert::AsMut::<[u8]>::as_mut(s)[2] == 9u8
+}
+
+#[rust_lean_test]
+pub fn test_as_mut_slice_len() -> bool {
+    let mut arr = [0u8; 1];
+    let s: &mut [u8] = &mut arr;
+    core::convert::AsMut::<[u8]>::as_mut(s).len() == 1usize
+}
+
+#[rust_lean_test]
+pub fn test_as_mut_slice_swap_writes_through() -> bool {
+    let mut arr = [7u8, 8, 9];
+    let s: &mut [u8] = &mut arr;
+    core::convert::AsMut::<[u8]>::as_mut(s).swap(0, 2);
+    arr == [9u8, 8, 7]
+}
+
+#[rust_lean_test]
+pub fn test_as_mut_slice_fill_writes_through() -> bool {
+    let mut arr = [7u8, 8, 9];
+    let s: &mut [u8] = &mut arr;
+    core::convert::AsMut::<[u8]>::as_mut(s).fill(u8::MAX);
+    arr == [u8::MAX; 3]
+}

@@ -54,6 +54,12 @@ Two subtleties the walker handles:
   reaches it, and pure re-export aggregators (`prelude`) are skipped, so
   re-exports don't inflate or misattribute the denominator.
 
+## Model naming workarounds (`MODEL_OWNER_ALIASES`)
+
+The model hangs primitive methods off stand-in types (`Slice`, `Array`).
+`MODEL_OWNER_ALIASES` maps these back to core's names, additively. Extend it
+when you add a stand-in type.
+
 ## Scoping (the tiered report)
 
 `OUT_OF_SCOPE` in `coverage.py` lists modules a pure-Rust verification model is

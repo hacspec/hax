@@ -35,12 +35,15 @@
 // `slice_range`: the proptests compare against std's `slice::try_range`.
 // `array_into_iter_constructors`, `option_reduce`: for `array::IntoIter::empty`
 // and `Option::reduce`.
+// `drop_guard`, `mem_copy_fn`: for `mem::{DropGuard, copy}`.
 #![cfg_attr(
     test,
     feature(
         array_into_iter_constructors,
+        drop_guard,
         fmt_helpers_for_derive,
         int_roundings,
+        mem_copy_fn,
         option_reduce,
         slice_range,
         step_trait

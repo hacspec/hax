@@ -333,6 +333,11 @@ def rust_primitives.sequence.seq_remove
       have := s.property; omega⟩)
   else fail .panic
 
+/-- [rust_primitives::mem::read]: shared borrows are values, so reading one is
+the identity. -/
+@[spec]
+def rust_primitives.mem.read {T : Type} : T → RustM T := fun x => ok x
+
 def usaturating_mul {ty : UScalarTy} (x y : UScalar ty) : UScalar ty :=
   ⟨BitVec.ofNat _ (Min.min (UScalar.max ty) (x.val * y.val))⟩
 

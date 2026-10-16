@@ -47,6 +47,12 @@ PRIM_BUCKET = {
     "pointer": "ptr", "reference": "ptr",
 }
 
+# Model owners spelled differently from core: stand-in types for primitives.
+MODEL_OWNER_ALIASES = {
+    "Slice": "slice",
+    "Array": "array",
+}
+
 # Modules that a pure-Rust verification model of core/alloc is not trying to
 # provide (platform/runtime/compiler surface). Reported separately, not in the
 # headline. Edit this to re-scope the report.
@@ -165,8 +171,29 @@ def collect(doc) -> dict[str, set[str]]:
     return out
 
 
+def apply_model_aliases(mods: dict[str, set[str]]) -> dict[str, set[str]]:
+    """Add, for every aliased model key, the key real core uses for it.
+
+    Additive: the original key stays, so an alias can never remove coverage.
+    """
+    out = {}
+    for mod, keys in mods.items():
+        aliased = set(keys)
+        for key in keys:
+            owner, _, method = key.partition("::")
+            alias = MODEL_OWNER_ALIASES.get(owner)
+            if alias is None:
+                continue
+            if method:
+                aliased.add(f"{alias}::{method}")
+            else:
+                aliased.add(alias)
+        out[mod] = aliased
+    return out
+
+
 def crate_report(den_doc, num_doc, out_of_scope: set[str]) -> dict:
-    den, num = collect(den_doc), collect(num_doc)
+    den, num = collect(den_doc), apply_model_aliases(collect(num_doc))
     mods = []
     for mod in sorted(den):
         covered = sorted(den[mod] & num.get(mod, set()))

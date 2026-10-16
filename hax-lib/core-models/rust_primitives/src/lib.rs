@@ -114,6 +114,10 @@ pub mod mem {
     pub fn swap<T>(x: &mut T, y: &mut T) {
         core::mem::swap(x, y)
     }
+    // The caller must not drop or use `*x` afterwards, as for `core::ptr::read`.
+    pub unsafe fn read<T>(x: &T) -> T {
+        unsafe { core::ptr::read(x) }
+    }
     pub unsafe fn zeroed<T>() -> T {
         unsafe { core::mem::zeroed() }
     }

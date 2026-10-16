@@ -138,15 +138,189 @@ pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst {
     unsafe { rust_primitives::mem::transmute(src) }
 }
 
+/// See [`std::mem::copy`]
+pub fn copy<T: crate::marker::Copy>(x: &T) -> T {
+    crate::clone::Clone::clone(x)
+}
+
+/// See [`std::mem::conjure_zst`]
+// `requires(false)`: sound only for an inhabited zero-sized `T`, which the model
+// cannot state.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[hax_lib::opaque]
+#[hax_lib::requires(false)]
+pub unsafe fn conjure_zst<T>() -> T {
+    panic!()
+}
+
+/// See [`std::mem::size_of_val_raw`]
+// Excluded from F*, which has no raw pointers. The body is a placeholder: std
+// computes it from the type's layout and the pointer's metadata, which the model
+// cannot express.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+#[cfg_attr(hax_backend_lean, hax_lib::opaque)]
+pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    panic!()
+}
+
 mod manually_drop {
+    /// See [`std::mem::ManuallyDrop`]
+    // DEVIATION(std): dropping the model drops `value`, so after `take` a non-`Copy`
+    // `T` is dropped twice. hax has no destructors, so only Rust-side tests can
+    // observe this.
     pub struct ManuallyDrop<T: ?Sized> {
         value: T,
+    }
+
+    impl<T> ManuallyDrop<T> {
+        /// See [`std::mem::ManuallyDrop::new`]
+        pub fn new(value: T) -> ManuallyDrop<T> {
+            ManuallyDrop { value }
+        }
+
+        /// See [`std::mem::ManuallyDrop::into_inner`]
+        pub fn into_inner(slot: ManuallyDrop<T>) -> T {
+            slot.value
+        }
+
+        /// See [`std::mem::ManuallyDrop::take`]
+        pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
+            unsafe { rust_primitives::mem::read(&slot.value) }
+        }
+    }
+
+    impl<T: ?Sized> ManuallyDrop<T> {
+        /// See [`std::mem::ManuallyDrop::drop`]
+        pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {}
+    }
+}
+
+mod maybe_dangling {
+    /// See [`std::mem::MaybeDangling`]
+    pub struct MaybeDangling<P: ?Sized>(P);
+
+    impl<P: ?Sized> MaybeDangling<P> {
+        /// See [`std::mem::MaybeDangling::new`]
+        pub fn new(x: P) -> Self
+        where
+            P: Sized,
+        {
+            MaybeDangling(x)
+        }
+
+        /// See [`std::mem::MaybeDangling::as_ref`]
+        pub fn as_ref(&self) -> &P {
+            &self.0
+        }
+
+        /// See [`std::mem::MaybeDangling::as_mut`]
+        // Not in F*: hax rejects a `&mut` into a field (hacspec/hax#420).
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn as_mut(&mut self) -> &mut P {
+            &mut self.0
+        }
+
+        /// See [`std::mem::MaybeDangling::into_inner`]
+        pub fn into_inner(self) -> P
+        where
+            P: Sized,
+        {
+            self.0
+        }
+    }
+}
+
+mod drop_guard {
+    /// See [`std::mem::DropGuard`]
+    // DEVIATION(std): hax has no destructors, so the model never calls `f`. There is
+    // also no `F: FnOnce(T)` bound on the struct, which F* would turn into a
+    // refinement argument of the type.
+    pub struct DropGuard<T, F> {
+        inner: T,
+        f: F,
+    }
+
+    impl<T, F: FnOnce(T)> DropGuard<T, F> {
+        /// See [`std::mem::DropGuard::new`]
+        pub fn new(inner: T, f: F) -> Self {
+            DropGuard { inner, f }
+        }
+
+        /// See [`std::mem::DropGuard::dismiss`]
+        pub fn dismiss(guard: Self) -> T {
+            guard.inner
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::drop_guard::DropGuard;
+    use super::manually_drop::ManuallyDrop;
+    use super::maybe_dangling::MaybeDangling;
     use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_copy(x in any::<u32>()) {
+            prop_assert_eq!(super::copy(&x), core::mem::copy(&x));
+        }
+
+        #[test]
+        fn test_manually_drop_round_trip(x in any::<u32>()) {
+            prop_assert_eq!(
+                ManuallyDrop::into_inner(ManuallyDrop::new(x)),
+                core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(x))
+            );
+        }
+
+        #[test]
+        fn test_manually_drop_drop_is_noop(x in any::<u32>()) {
+            let mut model = ManuallyDrop::new(x);
+            unsafe { ManuallyDrop::drop(&mut model) };
+            let mut std_slot = core::mem::ManuallyDrop::new(x);
+            unsafe { core::mem::ManuallyDrop::drop(&mut std_slot) };
+            prop_assert_eq!(
+                ManuallyDrop::into_inner(model),
+                core::mem::ManuallyDrop::into_inner(std_slot)
+            );
+        }
+
+        #[test]
+        fn test_manually_drop_take(x in any::<u32>()) {
+            let mut model = ManuallyDrop::new(x);
+            let mut std_slot = core::mem::ManuallyDrop::new(x);
+            prop_assert_eq!(
+                unsafe { ManuallyDrop::take(&mut model) },
+                unsafe { core::mem::ManuallyDrop::take(&mut std_slot) }
+            );
+        }
+
+        // `core::mem::MaybeDangling` is not on this toolchain, so these pin the behaviour.
+        #[test]
+        fn test_maybe_dangling_round_trip(x in any::<u32>()) {
+            prop_assert_eq!(MaybeDangling::new(x).into_inner(), x);
+        }
+
+        #[test]
+        fn test_maybe_dangling_as_ref(x in any::<u32>()) {
+            prop_assert_eq!(*MaybeDangling::new(x).as_ref(), x);
+        }
+
+        #[test]
+        fn test_maybe_dangling_as_mut(x in any::<u32>(), y in any::<u32>()) {
+            let mut m = MaybeDangling::new(x);
+            *m.as_mut() = y;
+            prop_assert_eq!(m.into_inner(), y);
+        }
+
+        // Not compared with std: the accessor's name differs between the CI nightlies.
+        #[test]
+        fn test_drop_guard_dismiss(x in any::<u32>()) {
+            prop_assert_eq!(DropGuard::dismiss(DropGuard::new(x, |_: u32| ())), x);
+        }
+    }
 
     // Layout queries take no runtime input, so they are checked per type
     // against `std::mem` rather than over a proptest domain.

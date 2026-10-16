@@ -26,7 +26,13 @@
 //! (`source/src/core/foo.rs`).
 
 // Unstable std items the Rust half of the tests calls.
-#![feature(array_into_iter_constructors, ergonomic_clones, option_reduce)]
+#![feature(
+    array_into_iter_constructors,
+    drop_guard,
+    ergonomic_clones,
+    mem_copy_fn,
+    option_reduce
+)]
 #![allow(incomplete_features)]
 // Some tests deliberately exercise edge comparisons like `u8::MAX < 0u8`
 // to pin the trait-dispatch behaviour at the extremes; rustc warns

@@ -8,22 +8,22 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 
 ## `core`
 
-**Targeted coverage: 816/3888 items (21%) across 35 modules — 23 have at least a partial model.**
+**Targeted coverage: 867/3888 items (22%) across 35 modules — 23 have at least a partial model.**
 
 | module | covered | total | coverage |
 |---|--:|--:|---|
 | `(root)` | 0 | 37 | 0% |
 | `any` | 0 | 9 | 0% |
-| `array` | 9 | 25 | 36% |
+| `array` | 13 | 25 | 52% |
 | `ascii` | 0 | 29 | 0% |
-| `borrow` | 2 | 4 | 50% |
+| `borrow` | 4 | 4 | 100% |
 | `cell` | 0 | 81 | 0% |
 | `char` | 0 | 67 | 0% |
 | `clone` | 5 | 7 | 71% |
 | `cmp` | 25 | 35 | 71% |
-| `convert` | 13 | 17 | 76% |
+| `convert` | 16 | 17 | 94% |
 | `default` | 2 | 2 | 100% |
-| `error` | 1 | 15 | 7% |
+| `error` | 2 | 15 | 13% |
 | `f128` | 0 | 91 | 0% |
 | `f16` | 0 | 92 | 0% |
 | `f32` | 1 | 107 | 1% |
@@ -35,7 +35,7 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 | `index` | 0 | 2 | 0% |
 | `iter` | 38 | 170 | 22% |
 | `marker` | 6 | 35 | 17% |
-| `mem` | 19 | 80 | 24% |
+| `mem` | 34 | 80 | 42% |
 | `num` | 471 | 1835 | 26% |
 | `ops` | 100 | 151 | 66% |
 | `option` | 44 | 57 | 77% |
@@ -45,9 +45,9 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 | `ptr` | 1 | 191 | 1% |
 | `range` | 0 | 19 | 0% |
 | `result` | 38 | 42 | 90% |
-| `slice` | 15 | 205 | 7% |
+| `slice` | 41 | 205 | 20% |
 | `str` | 6 | 160 | 4% |
-| **subtotal** | **816** | **3888** | **21%** |
+| **subtotal** | **867** | **3888** | **22%** |
 
 <details><summary>Non-targeted modules: 20 modules, 7/14842 items</summary>
 
