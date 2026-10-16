@@ -71,6 +71,18 @@ pub fn from_fn<T, const N: usize, F: FnMut(usize) -> T>(f: F) -> [T; N] {
     array_from_fn(f)
 }
 
+/// See [`std::array::from_ref`]
+pub fn from_ref<T>(s: &T) -> &[T; 1] {
+    array_from_ref(s)
+}
+
+/// See [`std::array::from_mut`]
+// `&mut` returns are unsupported in the F* backend.
+#[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+    array_from_mut(s)
+}
+
 #[cfg_attr(hax_backend_legacy_lean, hax_lib::exclude)]
 impl<T, const N: usize> crate::iter::traits::collect::IntoIterator for [T; N] {
     type Item = T;
@@ -166,8 +178,8 @@ impl<T, const N: usize> Index<RangeFull> for [T; N] {
 // already covers arrays, and both in scope fails coherence.
 #[cfg(not(hax_backend_fstar))]
 impl<T: crate::clone::Clone, const N: usize> crate::clone::Clone for [T; N] {
-    fn clone(self) -> Self {
-        Array::map(self, |x| x.clone())
+    fn clone(&self) -> Self {
+        array_from_fn(|i| crate::clone::Clone::clone(array_index(self, i)))
     }
     // Overridden, not left to the default: charon only emits the per-impl
     // `clone_from` symbol when the impl overrides it, and clients resolve to it.
@@ -236,6 +248,8 @@ mod iter {
     use crate::option::Option;
     use rust_primitives::sequence::*;
     pub struct IntoIter<T, const N: usize>(pub Seq<T>);
+    // Placeholder so the inherent methods below get real core's `impl_2__*` names.
+    impl<T, const N: usize> IntoIter<T, N> {}
     #[cfg_attr(hax_backend_legacy_lean, hax_lib::exclude)]
     impl<T, const N: usize> crate::iter::traits::iterator::Iterator for IntoIter<T, N> {
         type Item = T;
@@ -246,6 +260,28 @@ mod iter {
                 let res = seq_remove(&mut self.0, 0);
                 Option::Some(res)
             }
+        }
+    }
+
+    // Must stay after the `Iterator` impl: hax names inherent methods by impl order.
+    impl<T, const N: usize> IntoIter<T, N> {
+        /// See [`std::array::IntoIter::new`]
+        pub fn new(arr: [T; N]) -> IntoIter<T, N> {
+            IntoIter(seq_from_array(arr))
+        }
+        /// See [`std::array::IntoIter::empty`]
+        pub fn empty() -> IntoIter<T, N> {
+            IntoIter(seq_empty())
+        }
+        /// See [`std::array::IntoIter::as_slice`]
+        pub fn as_slice(&self) -> &[T] {
+            seq_to_slice(&self.0)
+        }
+        /// See [`std::array::IntoIter::as_mut_slice`]
+        // `&mut` returns are unsupported in the F* backend.
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn as_mut_slice(&mut self) -> &mut [T] {
+            seq_to_slice_mut(&mut self.0)
         }
     }
 }
@@ -263,6 +299,8 @@ mod tests {
         }
     }
 
+    use crate::iter::traits::iterator::Iterator as ModelIterator;
+    use crate::option::Option as ModelOption;
     use proptest::prelude::*;
 
     #[test]
@@ -368,6 +406,14 @@ mod tests {
         }
     }
 
+    fn drain<I: ModelIterator>(mut it: I) -> Vec<I::Item> {
+        let mut out = Vec::new();
+        while let ModelOption::Some(x) = it.next() {
+            out.push(x);
+        }
+        out
+    }
+
     proptest! {
         // Under the F* cfg `map` takes a `fn`, which this closure can't coerce to.
         #[cfg(not(hax_backend_fstar))]
@@ -387,7 +433,7 @@ mod tests {
         #[test]
         fn test_clone(arr in any::<[u8; 4]>()) {
             prop_assert_eq!(
-                crate::clone::Clone::clone(arr.inject()),
+                crate::clone::Clone::clone(&arr.inject()),
                 arr.clone().inject()
             );
         }
@@ -491,6 +537,54 @@ mod tests {
             );
         }
 
+        #[test]
+        fn test_from_ref(x in any::<u8>()) {
+            let model_x = x.inject();
+            prop_assert_eq!(super::from_ref(&model_x), std::array::from_ref(&x));
+        }
+
+        #[test]
+        fn test_from_mut(x in any::<u8>(), v in any::<u8>()) {
+            let mut model_x = x.inject();
+            let mut std_x = x;
+            super::from_mut(&mut model_x)[0] = v;
+            std::array::from_mut(&mut std_x)[0] = v;
+            prop_assert_eq!(model_x, std_x);
+        }
+
+        #[allow(deprecated)]
+        #[test]
+        fn test_into_iter_new(arr in any::<[u8; 4]>()) {
+            prop_assert_eq!(
+                drain(super::iter::IntoIter::new(arr.inject())),
+                std::array::IntoIter::new(arr).collect::<Vec<_>>()
+            );
+        }
+
+        #[test]
+        fn test_into_iter_as_slice(arr in any::<[u8; 4]>(), taken in 0usize..=4) {
+            let mut model = super::iter::IntoIter::new(arr.inject());
+            let mut std_it = arr.into_iter();
+            for _ in 0..taken {
+                model.next();
+                std_it.next();
+            }
+            prop_assert_eq!(model.as_slice(), std_it.as_slice());
+        }
+
+        #[test]
+        fn test_into_iter_as_mut_slice(arr in any::<[u8; 4]>(), taken in 0usize..=4, v in any::<u8>()) {
+            let mut model = super::iter::IntoIter::new(arr.inject());
+            let mut std_it = arr.into_iter();
+            for _ in 0..taken {
+                model.next();
+                std_it.next();
+            }
+            model.as_mut_slice().fill(v);
+            std_it.as_mut_slice().fill(v);
+            prop_assert_eq!(model.as_mut_slice(), std_it.as_mut_slice());
+        }
+
         #[cfg(not(hax_backend_fstar))]
         #[test]
         fn test_model_index_range(arr in any::<[u8; 8]>(), start in 0usize..8, len in 0usize..8) {
@@ -561,7 +655,7 @@ mod tests {
         #[test]
         fn test_array_clone_applies_element_clone(arr in any::<[u8; 3]>()) {
             prop_assert_eq!(
-                crate::clone::Clone::clone(arr.map(CloneWitness::new)),
+                crate::clone::Clone::clone(&arr.map(CloneWitness::new)),
                 arr.map(CloneWitness::new).clone()
             );
         }
@@ -579,5 +673,13 @@ mod tests {
                 std_dst
             );
         }
+    }
+
+    #[test]
+    fn test_into_iter_empty() {
+        assert_eq!(
+            drain(super::iter::IntoIter::<u8, 4>::empty()),
+            std::array::IntoIter::<u8, 4>::empty().collect::<Vec<_>>()
+        );
     }
 }

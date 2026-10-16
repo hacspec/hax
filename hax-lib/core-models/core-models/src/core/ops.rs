@@ -277,11 +277,14 @@ pub mod try_trait {
     }
 }
 
-mod deref {
+pub mod deref {
     /// See [`std::ops::Deref`]
+    #[hax_lib::attributes]
     pub trait Deref {
         type Target: ?Sized;
 
+        /// See [`std::ops::Deref::deref`]
+        #[hax_lib::requires(true)]
         fn deref(&self) -> &Self::Target;
     }
 
@@ -289,6 +292,15 @@ mod deref {
         type Target = T;
         fn deref(&self) -> &T {
             &self
+        }
+    }
+
+    // Not in F*, where `&mut T` and `&T` are both `T`.
+    #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+    impl<T> Deref for &mut T {
+        type Target = T;
+        fn deref(&self) -> &T {
+            &**self
         }
     }
 

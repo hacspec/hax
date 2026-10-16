@@ -226,6 +226,24 @@ def rust_primitives.slice.array_as_mut_slice
   Array T N → RustM ((Slice T) × (Slice T → Array T N)) :=
   fun a => ok (Array.to_slice_mut a)
 
+-- The empty slice.
+@[spec]
+def rust_primitives.slice.slice_empty
+  (T : Type) : RustM (Slice T) := ok (Slice.new T)
+
+-- `&x` seen as a one-element array.
+@[spec]
+def rust_primitives.slice.array_from_ref
+  {T : Type} : T → RustM (Array T 1#usize) :=
+  fun x => ok (Array.repeat 1#usize x)
+
+-- The same, plus the write-back. The array always has length 1, so `headD`'s
+-- fallback is unreachable.
+@[spec]
+def rust_primitives.slice.array_from_mut
+  {T : Type} : T → RustM ((Array T 1#usize) × (Array T 1#usize → T)) :=
+  fun x => ok (Array.repeat 1#usize x, fun a => a.val.headD x)
+
 @[spec]
 def rust_primitives.slice.array_slice
   {T : Type} {N : Std.Usize} :
@@ -936,6 +954,12 @@ def rust_primitives.sequence.seq_push
     let extended := s.val ++ [x]
     if h : extended.length ≤ Usize.max then ok ⟨extended, h⟩
     else fail .panic
+
+-- `x` as a one-element sequence.
+@[spec]
+def rust_primitives.sequence.seq_one
+  {T : Type} : T → RustM (rust_primitives.sequence.Seq T) :=
+  fun x => ok ⟨[x], by simp; scalar_tac⟩
 
 -- std clones `x` for all but the last element, which is `x` itself moved in.
 @[spec]

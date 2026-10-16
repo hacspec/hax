@@ -184,7 +184,7 @@ structure iter.traits.collect.IntoIterator (Self : Type) (Self_Item : Type)
   into_iter : Self → RustM Self_IntoIter
 
 /-- [core_models::array::iter::IntoIter]
-    Source: 'core-models/src/core/array.rs', lines 238:4-238:55
+    Source: 'core-models/src/core/array.rs', lines 250:4-250:55
     Visibility: public -/
 @[reducible]
 def array.iter.IntoIter (T : Type) (N : Std.Usize) :=
@@ -206,16 +206,16 @@ structure ops.index.IndexMut (Self : Type) (Idx : Type) (Self_Clause0_Output :
     (Self_Clause0_Output → Self))
 
 /-- Trait declaration: [core_models::clone::Clone]
-    Source: 'core-models/src/core/clone.rs', lines 13:0-25:1
+    Source: 'core-models/src/core/clone.rs', lines 19:0-31:1
     Visibility: public -/
 structure clone.Clone (Self : Type) where
   clone : Self → RustM Self
   clone_from : Self → Self → RustM Self
 
 /-- [core_models::array::{impl core_models::clone::Clone for [T; N]}::clone::closure]
-    Source: 'core-models/src/core/array.rs', lines 170:25-170:38 -/
+    Source: 'core-models/src/core/array.rs', lines 182:22-182:74 -/
 @[reducible]
-def array.CloneArray.clone.closure (T : Type) (N : Std.Usize) := Unit
+def array.CloneArray.clone.closure (T : Type) (N : Std.Usize) := Array T N
 
 /-- Trait declaration: [core_models::cmp::PartialEq]
     Source: 'core-models/src/core/cmp.rs', lines 5:0-23:1
@@ -231,7 +231,7 @@ structure default.Default (Self : Type) where
   default : RustM Self
 
 /-- [core_models::array::{impl core_models::default::Default for [T; N]}::default::closure]
-    Source: 'core-models/src/core/array.rs', lines 208:22-208:68 -/
+    Source: 'core-models/src/core/array.rs', lines 220:22-220:68 -/
 @[reducible]
 def array.DefaultArray.default.closure (T : Type) (N : Std.Usize) := Unit
 
@@ -245,6 +245,18 @@ structure convert.AsRef (Self : Type) (T : Type) where
     Source: 'core-models/src/core/borrow.rs', lines 2:0-5:1 -/
 structure borrow.Borrow (Self : Type) (Borrowed : Type) where
   borrow : Self → RustM Borrowed
+
+/-- Trait declaration: [core_models::clone::TrivialClone]
+    Source: 'core-models/src/core/clone.rs', lines 44:0-44:32
+    Visibility: public -/
+structure clone.TrivialClone (Self : Type) where
+  CloneInst : clone.Clone Self
+
+/-- Trait declaration: [core_models::clone::UseCloned]
+    Source: 'core-models/src/core/clone.rs', lines 47:0-47:29
+    Visibility: public -/
+structure clone.UseCloned (Self : Type) where
+  CloneInst : clone.Clone Self
 
 /-- Trait declaration: [core_models::cmp::Eq]
     Source: 'core-models/src/core/cmp.rs', lines 26:0-26:32
@@ -299,7 +311,8 @@ structure convert.TryInto (Self : Type) (T : Type) (Self_Error : Type) where
   try_into : Self → RustM (result.Result T Self_Error)
 
 /-- Trait declaration: [core_models::convert::Into]
-    Source: 'core-models/src/core/convert.rs', lines 14:0-18:1 -/
+    Source: 'core-models/src/core/convert.rs', lines 14:0-18:1
+    Visibility: public -/
 structure convert.Into (Self : Type) (T : Type) where
   into : Self → RustM T
 
@@ -1014,13 +1027,13 @@ structure ops.try_trait.Try (Self : Type) (Self_Output : Type) (Self_Residual :
     Self_Output)
 
 /-- Trait declaration: [core_models::ops::deref::Deref]
-    Source: 'core-models/src/core/ops.rs', lines 282:4-286:5
+    Source: 'core-models/src/core/ops.rs', lines 283:4-289:5
     Visibility: public -/
 structure ops.deref.Deref (Self : Type) (Self_Target : Type) where
   deref : Self → RustM Self_Target
 
 /-- Trait declaration: [core_models::ops::deref::DerefMut]
-    Source: 'core-models/src/core/ops.rs', lines 300:4-302:5
+    Source: 'core-models/src/core/ops.rs', lines 312:4-314:5
     Visibility: public -/
 structure ops.deref.DerefMut (Self : Type) (Self_Clause0_Target : Type) where
   DerefInst : ops.deref.Deref Self Self_Clause0_Target
@@ -1028,38 +1041,38 @@ structure ops.deref.DerefMut (Self : Type) (Self_Clause0_Target : Type) where
     Self))
 
 /-- Trait declaration: [core_models::ops::drop::Drop]
-    Source: 'core-models/src/core/ops.rs', lines 307:4-313:5
+    Source: 'core-models/src/core/ops.rs', lines 319:4-325:5
     Visibility: public -/
 structure ops.drop.Drop (Self : Type) where
   drop : Self → RustM Self
 
 /-- [core_models::ops::range::RangeTo]
-    Source: 'core-models/src/core/ops.rs', lines 319:4-321:5
+    Source: 'core-models/src/core/ops.rs', lines 331:4-333:5
     Visibility: public -/
 structure ops.range.RangeTo (T : Type) where
   «end» : T
 
 /-- [core_models::ops::range::RangeFrom]
-    Source: 'core-models/src/core/ops.rs', lines 323:4-325:5
+    Source: 'core-models/src/core/ops.rs', lines 335:4-337:5
     Visibility: public -/
 structure ops.range.RangeFrom (T : Type) where
   start : T
 
 /-- [core_models::ops::range::Range]
-    Source: 'core-models/src/core/ops.rs', lines 327:4-330:5
+    Source: 'core-models/src/core/ops.rs', lines 339:4-342:5
     Visibility: public -/
 structure ops.range.Range (T : Type) where
   start : T
   «end» : T
 
 /-- [core_models::ops::range::RangeFull]
-    Source: 'core-models/src/core/ops.rs', lines 332:4-332:25
+    Source: 'core-models/src/core/ops.rs', lines 344:4-344:25
     Visibility: public -/
 @[reducible]
 def ops.range.RangeFull := Unit
 
 /-- [core_models::ops::range::RangeInclusive]
-    Source: 'core-models/src/core/ops.rs', lines 336:4-340:5
+    Source: 'core-models/src/core/ops.rs', lines 348:4-352:5
     Visibility: public -/
 structure ops.range.RangeInclusive (T : Type) where
   start_ : T
@@ -1067,13 +1080,13 @@ structure ops.range.RangeInclusive (T : Type) where
   exhausted : Bool
 
 /-- [core_models::ops::range::RangeToInclusive]
-    Source: 'core-models/src/core/ops.rs', lines 342:4-344:5
+    Source: 'core-models/src/core/ops.rs', lines 354:4-356:5
     Visibility: public -/
 structure ops.range.RangeToInclusive (T : Type) where
   «end» : T
 
 /-- [core_models::ops::range::Bound]
-    Source: 'core-models/src/core/ops.rs', lines 384:4-388:5
+    Source: 'core-models/src/core/ops.rs', lines 396:4-400:5
     Visibility: public -/
 @[discriminant isize]
 inductive ops.range.Bound (T : Type) where
@@ -1082,13 +1095,25 @@ inductive ops.range.Bound (T : Type) where
 | Unbounded : ops.range.Bound T
 
 /-- Trait declaration: [core_models::ops::range::RangeBounds]
-    Source: 'core-models/src/core/ops.rs', lines 391:4-407:5
+    Source: 'core-models/src/core/ops.rs', lines 403:4-419:5
     Visibility: public -/
 structure ops.range.RangeBounds (Self : Type) (T : Type) where
   start_bound : Self → RustM (ops.range.Bound T)
   end_bound : Self → RustM (ops.range.Bound T)
   contains : forall {U : Type} (cmpPartialOrdInst : cmp.PartialOrd T U)
     (cmpPartialOrdInst1 : cmp.PartialOrd U T), Self → U → RustM Bool
+
+/-- [core_models::option::Iter]
+    Source: 'core-models/src/core/option.rs', lines 491:0-491:39
+    Visibility: public -/
+@[reducible]
+def option.Iter (T : Type) := rust_primitives.sequence.Seq T
+
+/-- [core_models::option::IntoIter]
+    Source: 'core-models/src/core/option.rs', lines 511:0-511:35
+    Visibility: public -/
+@[reducible]
+def option.IntoIter (T : Type) := rust_primitives.sequence.Seq T
 
 /-- [core_models::panic::location::Location]
     Source: 'core-models/src/core/panic.rs', lines 11:4-15:5
@@ -1128,10 +1153,22 @@ structure pin.Pin (Ptr : Type) where
 structure pin.helper.PinHelper (Ptr : Type) where
   pointer : Ptr
 
+/-- [core_models::result::Iter]
+    Source: 'core-models/src/core/result.rs', lines 569:0-569:39
+    Visibility: public -/
+@[reducible]
+def result.Iter (T : Type) := rust_primitives.sequence.Seq T
+
 /-- [core_models::result::SeqIter]
-    Source: 'core-models/src/core/result.rs', lines 364:0-364:53 -/
+    Source: 'core-models/src/core/result.rs', lines 436:0-436:53 -/
 @[reducible]
 def result.SeqIter (A : Type) := rust_primitives.sequence.Seq A
+
+/-- [core_models::result::IntoIter]
+    Source: 'core-models/src/core/result.rs', lines 588:0-588:35
+    Visibility: public -/
+@[reducible]
+def result.IntoIter (T : Type) := rust_primitives.sequence.Seq T
 
 /-
 /-- [core_models::slice::Slice]

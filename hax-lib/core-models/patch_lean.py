@@ -221,13 +221,6 @@ def rewrite_alloc_imports(text: str) -> str:
     )
     return text
 
-def fix_result_match(text: str) -> str:
-    """ A match on `result.Result` cannot be parsed properly by Lean in
-    `I128.Insts.Core_modelsIterStepStep.steps_between`.
-    """
-    return sub("fix_result_match", r"\| result\.Result\.",
-               r"| core.result.Result.", text)
-
 def rewrite_phantom_data(text: str) -> str:
     """Redefine `PhantomData`.
 
@@ -315,29 +308,25 @@ _BARE_OK_RE = re.compile(r"(?<![\w.])ok\b")
 
 
 def qualify_result_monad_impls(text: str) -> str:
-    """Fully qualify the Aeneas error monad's `ok` inside any trait impl whose
-    `Self` is `Result<_, _>` (e.g. the `Try` impl's `from_output` / `«branch»`,
-    and the `FromIterator<Result<_, _>>` impl's `from_iter`).
+    """Spell the monad's `ok` as `Aeneas.Std.RustM.ok` in the `result.Result.*` defs.
 
-    Those defs are emitted into the `result.Result.*` namespace. Inside that
-    namespace the bare name `ok` resolves to *our* `result.Result.ok`
-    projection rather than to Aeneas's `Aeneas.Std.RustM.ok`, so the generated
-    bodies fail to elaborate.
+    Aeneas emits `ok` unqualified, relying on `open RustM`. Inside the
+    `result.Result` namespace, Lean resolves it to the model's own
+    `result.Result.ok` (Rust's `Result::ok`) instead, so the bodies fail to
+    elaborate. The clash is on the constructor name, not on the monad's: it is
+    already named `RustM`, so only Aeneas qualifying `ok` (or naming it
+    differently) would make this pass unnecessary.
 
-    In every block of an impl `for ... result::Result`, rewrite each
-    *standalone* `ok` -> `Aeneas.Std.RustM.ok` (dotted paths like
-    `result.Result.Ok` are left untouched). The doc-comment header is
-    preserved verbatim. The match keys on the un-renamed Rust path in the doc
-    header (`core_models` survives `rename_namespace`, which only rewrites
-    `namespace`/`end` lines and `Core_models`).
+    Applies to everything defined in `core_models::result` (the inherent methods,
+    and the `Iter`/`IntoIter` impls whose `next` mentions `Result`) and to impls
+    for `Result` declared elsewhere. Only standalone `ok` is rewritten; the doc
+    header is kept, and matched on the Rust path it still contains.
     """
     def fn(ident: str, block_lines: list[str]) -> str | None:
-        # Match both trait impls whose `Self` is `Result` (`... for
-        # core_models::result::Result<...>`) and *inherent* methods on
-        # `Result` (`{core_models::result::Result<...>}::method`, e.g.
-        # `unwrap_or` / `map_err`) — both land in the `result.Result.*`
-        # namespace and hit the same bare-`ok` monad clash.
-        if "for core_models::result::Result" not in ident \
+        # Items defined in `core_models::result`, and impls for `Result` declared
+        # elsewhere, land in the `result.*` namespace and hit the bare-`ok` clash.
+        if not ident.startswith("core_models::result::") \
+                and "for core_models::result::Result" not in ident \
                 and "{core_models::result::Result<" not in ident:
             return None
         # Preserve the `/-- ... -/` doc comment; only rewrite the code below it.
@@ -704,7 +693,6 @@ def main() -> int:
             text = add_funs_prologue_import(text)
             text = comment_out_num_consts(text)
             text = desugar_pure_num_const_binds(text)
-            text = fix_result_match(text)
             text = rename_iter_param(text)
             text = qualify_result_monad_impls(text)
             text = drop_itermut_iterator_instance(text)

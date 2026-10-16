@@ -15,6 +15,8 @@ include Core_models.Bundle {impl_23__each_ref as impl_23__each_ref}
 
 include Core_models.Bundle {from_fn as from_fn}
 
+include Core_models.Bundle {from_ref as from_ref}
+
 include Core_models.Bundle {impl_24 as impl_24}
 
 include Core_models.Bundle {impl_27 as impl_27}

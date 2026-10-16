@@ -140,7 +140,7 @@ impl std::clone::Clone for CloneWitness {
 
 #[cfg(not(hax_backend_fstar))]
 impl crate::clone::Clone for CloneWitness {
-    fn clone(self) -> Self {
+    fn clone(&self) -> Self {
         CloneWitness {
             value: self.value,
             cloned: true,

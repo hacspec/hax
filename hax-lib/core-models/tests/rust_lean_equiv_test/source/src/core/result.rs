@@ -1,6 +1,6 @@
 //! Equivalence tests for `core::result::Result::*`.
 
-use crate::helpers::{Bumped, Keyed, keyed};
+use crate::helpers::{Bumped, CopyBumped, Keyed, keyed};
 use rust_lean_test_macro::rust_lean_test;
 
 // Local helpers: function-level return-type annotations survive Aeneas
@@ -256,11 +256,31 @@ pub fn test_or_err_err() -> bool {
 
 // ----- cloned ----------------------------------------------------------------
 
-// TODO(result-cloned-shape): the model's `cloned` takes `self` and returns
-// `Result<T, E>` (an identity over our clone-by-value `Clone`). Std's
-// `Result::cloned` lives on `Result<&T, E>` and is unstable, so calling
-// `.cloned()` directly from the Rust side does not type-check on stable.
-// Revisit when references/shared semantics get a typed test surface.
+#[rust_lean_test]
+pub fn test_cloned_ok() -> bool {
+    let v: u8 = 7;
+    let r: Result<&u8, u8> = Ok(&v);
+    r.cloned() == Ok(7u8)
+}
+
+#[rust_lean_test]
+pub fn test_cloned_err() -> bool {
+    let r: Result<&u8, u8> = Err(u8::MAX);
+    r.cloned() == Err(u8::MAX)
+}
+
+fn ok_bumped_ref(b: &Bumped) -> Result<&Bumped, u8> {
+    Ok(b)
+}
+
+#[rust_lean_test]
+pub fn test_cloned_applies_clone() -> bool {
+    let b = Bumped(0);
+    match ok_bumped_ref(&b).cloned() {
+        Ok(c) => c.0 == 1,
+        Err(_) => false,
+    }
+}
 
 // ----- transpose -------------------------------------------------------------
 
@@ -482,5 +502,126 @@ pub fn test_clone_err_applies_element_clone() -> bool {
     match a.clone() {
         Err(b) => b.0 == 2,
         Ok(_) => false,
+    }
+}
+
+// ----- unwrap_unchecked ------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_ok_zero() -> bool {
+    unsafe { ok_u8_u8(0).unwrap_unchecked() == 0 }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_ok_max() -> bool {
+    unsafe { ok_u8_u8(u8::MAX).unwrap_unchecked() == u8::MAX }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_unchecked_ok_mid() -> bool {
+    unsafe { ok_u8_u8(7).unwrap_unchecked() == 7 }
+}
+
+// ----- unwrap_err_unchecked --------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_unwrap_err_unchecked_err_zero() -> bool {
+    unsafe { err_u8_u8(0).unwrap_err_unchecked() == 0 }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_err_unchecked_err_max() -> bool {
+    unsafe { err_u8_u8(u8::MAX).unwrap_err_unchecked() == u8::MAX }
+}
+
+#[rust_lean_test]
+pub fn test_unwrap_err_unchecked_err_mid() -> bool {
+    unsafe { err_u8_u8(7).unwrap_err_unchecked() == 7 }
+}
+
+// ----- iter / into_iter ------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_iter_ok_yields_the_value() -> bool {
+    let r = ok_u8_u8(7);
+    let mut it = r.iter();
+    it.next() == Some(&7) && it.next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_iter_err_is_empty() -> bool {
+    err_u8_u8(u8::MAX).iter().next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_into_iter_ok() -> bool {
+    let mut it = ok_u8_u8(0).into_iter();
+    it.next() == Some(0) && it.next().is_none()
+}
+
+#[rust_lean_test]
+pub fn test_into_iter_err() -> bool {
+    err_u8_u8(0).into_iter().next().is_none()
+}
+
+// ----- as_deref / as_deref_mut / copied --------------------------------------
+
+#[rust_lean_test]
+pub fn test_as_deref_ok() -> bool {
+    let v: u8 = 7;
+    let r: Result<&u8, u8> = Ok(&v);
+    r.as_deref() == Ok(&7)
+}
+
+#[rust_lean_test]
+pub fn test_as_deref_err() -> bool {
+    let r: Result<&u8, u8> = Err(u8::MAX);
+    r.as_deref() == Err(&u8::MAX)
+}
+
+#[rust_lean_test]
+pub fn test_copied_ok() -> bool {
+    let v: u8 = 0;
+    let r: Result<&u8, u8> = Ok(&v);
+    r.copied() == Ok(0)
+}
+
+fn ok_copy_bumped_ref(b: &CopyBumped) -> Result<&CopyBumped, u8> {
+    Ok(b)
+}
+
+#[rust_lean_test]
+pub fn test_copied_ok_does_not_clone() -> bool {
+    let v = CopyBumped(0);
+    match ok_copy_bumped_ref(&v).copied() {
+        Ok(c) => c.0 == 0,
+        Err(_) => false,
+    }
+}
+
+#[rust_lean_test]
+pub fn test_copied_err() -> bool {
+    let r: Result<&u8, u8> = Err(u8::MAX);
+    r.copied() == Err(u8::MAX)
+}
+
+// Rust-only: the model has no `DerefMut for &mut T` in Lean, whose reborrow aeneas
+// mistranslates.
+#[cfg(test)]
+mod as_deref_mut {
+    #[test]
+    fn test_as_deref_mut_ok_mutates_through() {
+        let mut v: u8 = 0;
+        let mut r: Result<&mut u8, u8> = Ok(&mut v);
+        if let Ok(inner) = r.as_deref_mut() {
+            *inner = u8::MAX;
+        }
+        assert!(v == u8::MAX);
+    }
+
+    #[test]
+    fn test_as_deref_mut_err() {
+        let mut r: Result<&mut u8, u8> = Err(3);
+        assert!(r.as_deref_mut().is_err());
     }
 }

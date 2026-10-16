@@ -13604,19 +13604,21 @@
    },
    {
     "module": "array",
-    "covered": 3,
+    "covered": 9,
     "total": 25,
     "in_scope": true,
     "covered_items": [
      "IntoIter",
-     "TryFromSliceError",
-     "from_fn"
-    ],
-    "missing_items": [
      "IntoIter::as_mut_slice",
      "IntoIter::as_slice",
      "IntoIter::empty",
      "IntoIter::new",
+     "TryFromSliceError",
+     "from_fn",
+     "from_mut",
+     "from_ref"
+    ],
+    "missing_items": [
      "IntoIter::new_unchecked",
      "array::as_ascii",
      "array::as_ascii_unchecked",
@@ -13631,8 +13633,6 @@
      "array::split_array_ref",
      "array::transpose",
      "array::try_map",
-     "from_mut",
-     "from_ref",
      "repeat",
      "try_from_fn"
     ]
@@ -13900,19 +13900,19 @@
    },
    {
     "module": "clone",
-    "covered": 3,
+    "covered": 5,
     "total": 7,
     "in_scope": true,
     "covered_items": [
      "Clone",
      "Clone::clone",
-     "Clone::clone_from"
+     "Clone::clone_from",
+     "TrivialClone",
+     "UseCloned"
     ],
     "missing_items": [
      "CloneToUninit",
-     "CloneToUninit::clone_to_uninit",
-     "TrivialClone",
-     "UseCloned"
+     "CloneToUninit::clone_to_uninit"
     ]
    },
    {
@@ -17563,23 +17563,34 @@
    },
    {
     "module": "option",
-    "covered": 28,
+    "covered": 44,
     "total": 57,
     "in_scope": true,
     "covered_items": [
+     "IntoIter",
+     "Iter",
      "Option",
+     "Option::and",
      "Option::and_then",
+     "Option::as_deref",
+     "Option::as_deref_mut",
      "Option::as_mut",
+     "Option::as_mut_slice",
      "Option::as_ref",
+     "Option::as_slice",
      "Option::cloned",
+     "Option::copied",
      "Option::expect",
      "Option::filter",
      "Option::flatten",
+     "Option::flatten_mut",
+     "Option::flatten_ref",
      "Option::inspect",
      "Option::is_none",
      "Option::is_none_or",
      "Option::is_some",
      "Option::is_some_and",
+     "Option::iter",
      "Option::map",
      "Option::map_or",
      "Option::map_or_default",
@@ -17588,43 +17599,32 @@
      "Option::ok_or_else",
      "Option::or",
      "Option::or_else",
+     "Option::reduce",
      "Option::take",
+     "Option::transpose",
      "Option::unwrap",
      "Option::unwrap_or",
      "Option::unwrap_or_default",
      "Option::unwrap_or_else",
+     "Option::unwrap_unchecked",
+     "Option::unzip",
      "Option::xor",
-     "Option::zip"
+     "Option::zip",
+     "Option::zip_with"
     ],
     "missing_items": [
-     "IntoIter",
-     "Iter",
      "IterMut",
-     "Option::and",
-     "Option::as_deref",
-     "Option::as_deref_mut",
-     "Option::as_mut_slice",
      "Option::as_pin_mut",
      "Option::as_pin_ref",
-     "Option::as_slice",
-     "Option::copied",
-     "Option::flatten_mut",
-     "Option::flatten_ref",
      "Option::get_or_insert",
      "Option::get_or_insert_default",
      "Option::get_or_insert_with",
      "Option::get_or_try_insert_with",
      "Option::insert",
      "Option::into_flat_iter",
-     "Option::iter",
      "Option::iter_mut",
-     "Option::reduce",
      "Option::replace",
      "Option::take_if",
-     "Option::transpose",
-     "Option::unwrap_unchecked",
-     "Option::unzip",
-     "Option::zip_with",
      "OptionFlatten"
     ]
    },
@@ -18016,16 +18016,21 @@
    },
    {
     "module": "result",
-    "covered": 30,
+    "covered": 38,
     "total": 42,
     "in_scope": true,
     "covered_items": [
+     "IntoIter",
+     "Iter",
      "Result",
      "Result::and",
      "Result::and_then",
+     "Result::as_deref",
+     "Result::as_deref_mut",
      "Result::as_mut",
      "Result::as_ref",
      "Result::cloned",
+     "Result::copied",
      "Result::err",
      "Result::expect",
      "Result::expect_err",
@@ -18036,6 +18041,7 @@
      "Result::is_err_and",
      "Result::is_ok",
      "Result::is_ok_and",
+     "Result::iter",
      "Result::map",
      "Result::map_err",
      "Result::map_or",
@@ -18047,23 +18053,17 @@
      "Result::transpose",
      "Result::unwrap",
      "Result::unwrap_err",
+     "Result::unwrap_err_unchecked",
      "Result::unwrap_or",
      "Result::unwrap_or_default",
-     "Result::unwrap_or_else"
+     "Result::unwrap_or_else",
+     "Result::unwrap_unchecked"
     ],
     "missing_items": [
-     "IntoIter",
-     "Iter",
      "IterMut",
-     "Result::as_deref",
-     "Result::as_deref_mut",
-     "Result::copied",
      "Result::into_err",
      "Result::into_ok",
-     "Result::iter",
-     "Result::iter_mut",
-     "Result::unwrap_err_unchecked",
-     "Result::unwrap_unchecked"
+     "Result::iter_mut"
     ]
    },
    {

@@ -26,3 +26,5 @@ let array_slice (#t: Type) (l: usize) (s: t_Array t l) = slice_slice s
 val array_from_fn (#t: Type) (len: usize) (#ft: Type) (f: (x: usize {x <. len}) -> t): 
   Pure (t_Array t len) (requires True) (ensures (fun a -> forall i. Seq.index a i == f (sz i)))
 let array_index (#t: Type) (l: usize) (s: t_Array t l) (i: usize {i <. length s}): t = Seq.index s (v i)
+let slice_empty (#t: Type) (): t_Slice t = Seq.empty
+let array_from_ref (#t: Type) (x: t): t_Array t (mk_usize 1) = Seq.create 1 x

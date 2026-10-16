@@ -70,6 +70,16 @@ pub mod slice {
     pub fn array_as_mut_slice<T, const N: usize>(s: &mut [T; N]) -> &mut [T] {
         &mut s[..]
     }
+    // A `&[]` in the model borrows a constant, which Aeneas cannot translate.
+    pub fn slice_empty<'a, T>() -> &'a [T] {
+        &[]
+    }
+    pub fn array_from_ref<T>(s: &T) -> &[T; 1] {
+        std::array::from_ref(s)
+    }
+    pub fn array_from_mut<T>(s: &mut T) -> &mut [T; 1] {
+        std::array::from_mut(s)
+    }
     pub fn array_slice<T, const N: usize>(a: &[T; N], b: usize, e: usize) -> &[T] {
         &a[b..e]
     }
@@ -158,6 +168,9 @@ pub mod sequence {
     }
     pub fn seq_push<T>(s1: &mut Seq<T>, v: T) {
         s1.0.push(v)
+    }
+    pub fn seq_one<T>(x: T) -> Seq<T> {
+        Seq(vec![x])
     }
     pub fn seq_create<T: Clone>(x: T, n: usize) -> Seq<T> {
         Seq(vec![x; n])

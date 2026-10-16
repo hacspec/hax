@@ -57,14 +57,50 @@ include Core_models.Bundle {impl__zip as impl__zip}
 
 include Core_models.Bundle {impl__inspect as impl__inspect}
 
-include Core_models.Bundle {impl_1__flatten as impl_1__flatten}
+include Core_models.Bundle {impl__and as impl__and}
+
+include Core_models.Bundle {impl__as_slice as impl__as_slice}
+
+include Core_models.Bundle {impl__unwrap_unchecked as impl__unwrap_unchecked}
+
+include Core_models.Bundle {impl__iter as impl__iter}
+
+include Core_models.Bundle {impl__zip_with as impl__zip_with}
+
+include Core_models.Bundle {impl__reduce as impl__reduce}
+
+include Core_models.Bundle {impl__as_deref as impl__as_deref}
+
+include Core_models.Bundle {impl_1__unzip as impl_1__unzip}
+
+include Core_models.Bundle {impl_2__copied as impl_2__copied}
 
 include Core_models.Bundle {impl_2__cloned as impl_2__cloned}
 
-include Core_models.Bundle {impl_3__from__option as impl_3}
-
-include Core_models.Bundle {impl_4__from__option as impl_4}
+include Core_models.Bundle {impl_4__transpose as impl_4__transpose}
 
 include Core_models.Bundle {impl_5__from__option as impl_5}
 
 include Core_models.Bundle {impl_6__from__option as impl_6}
+
+include Core_models.Bundle {impl_7__from__option as impl_7}
+
+include Core_models.Bundle {impl_8__from__option as impl_8}
+
+include Core_models.Bundle {t_Iter as t_Iter}
+
+include Core_models.Bundle {Iter as Iter}
+
+include Core_models.Bundle {impl_9__from__option as impl_9}
+
+include Core_models.Bundle {t_IntoIter__from__option as t_IntoIter}
+
+include Core_models.Bundle {IntoIter__from__option as IntoIter}
+
+include Core_models.Bundle {impl_11__from__option as impl_11}
+
+include Core_models.Bundle {impl_12__from__option as impl_12}
+
+include Core_models.Bundle {impl_44__flatten as impl_44__flatten}
+
+include Core_models.Bundle {impl_45__flatten_ref as impl_45__flatten_ref}

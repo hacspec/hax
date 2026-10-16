@@ -34,6 +34,7 @@ none_helper!(none_i32, i32, 0);
 none_helper!(none_i64, i64, 0);
 none_helper!(none_isize, isize, 0);
 none_helper!(none_bool, bool, false);
+none_helper!(none_pair_u8, (u8, u8), (0, 0));
 
 /// `u8`'s model `Clone`/`PartialEq` are total identities, so a model that drops
 /// a trait dictionary looks correct at that type. `Bumped` makes it observable:
@@ -54,6 +55,17 @@ impl PartialEq for Bumped {
     // trait default is not synthesised for a manual impl.
     fn ne(&self, other: &Bumped) -> bool {
         !(self.0 + 1 == other.0 + 1)
+    }
+}
+
+/// A `Copy` type whose `clone` is not a copy, so a `copied` that clones shows.
+#[derive(Copy)]
+pub struct CopyBumped(pub u8);
+
+#[allow(clippy::non_canonical_clone_impl)]
+impl Clone for CopyBumped {
+    fn clone(&self) -> CopyBumped {
+        CopyBumped(self.0 + 1)
     }
 }
 

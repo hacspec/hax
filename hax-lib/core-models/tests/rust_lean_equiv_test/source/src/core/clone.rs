@@ -7,6 +7,10 @@
 
 use rust_lean_test_macro::rust_lean_test;
 
+fn clone_through_use_cloned<T: core::clone::UseCloned>(x: T) -> T {
+    x.clone()
+}
+
 // ----- u8 --------------------------------------------------------------------
 
 #[rust_lean_test]
@@ -157,4 +161,36 @@ pub fn test_clone_bool_true() -> bool {
 pub fn test_clone_bool_false() -> bool {
     let x: bool = false;
     x.clone() == x
+}
+
+// ----- UseCloned -------------------------------------------------------------
+
+#[rust_lean_test]
+pub fn test_use_cloned_u8_zero() -> bool {
+    clone_through_use_cloned(0u8) == 0u8
+}
+
+#[rust_lean_test]
+pub fn test_use_cloned_u8_max() -> bool {
+    clone_through_use_cloned(u8::MAX) == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_use_cloned_u32_max() -> bool {
+    clone_through_use_cloned(u32::MAX) == u32::MAX
+}
+
+#[rust_lean_test]
+pub fn test_use_cloned_i8_min() -> bool {
+    clone_through_use_cloned(i8::MIN) == i8::MIN
+}
+
+#[rust_lean_test]
+pub fn test_use_cloned_i32_neg_one() -> bool {
+    clone_through_use_cloned(-1i32) == -1i32
+}
+
+#[rust_lean_test]
+pub fn test_use_cloned_bool_false() -> bool {
+    clone_through_use_cloned(false) == false
 }

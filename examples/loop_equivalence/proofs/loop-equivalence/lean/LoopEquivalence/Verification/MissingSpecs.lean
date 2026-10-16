@@ -159,26 +159,16 @@ theorem array.equality.PartialEqArray.eq_spec {N : Usize} (a0 : Array U64 N) (a1
   apply RustM.ok_spec
   rw [hb]; exact h
 
-private theorem array_map_id {T F : Type} {N : Usize}
-    (inst : core.ops.function.FnMut F T T) (a : Array T N) (f : F)
-    (hid : ∀ x, inst.call_mut f x = ok (x, f)) :
-    rust_primitives.slice.array_map inst a f = ok a := by
-  have hpure : ∀ x ∈ a.val, ⦃ ⌜ True ⌝ ⦄ inst.call_mut f x ⦃ ⇓ r => ⌜ r.2 = f ⌝ ⦄ :=
-    fun x _ => WP.triple_iff_exists_ok.2 ⟨(x, f), hid x, rfl⟩
-  obtain ⟨b, hb, hpt⟩ :=
-    WP.triple_iff_exists_ok.1 (rust_primitives.slice.array_map_spec inst a f hpure)
-  have ha := a.property
-  have hbp := b.property
-  have : b = a := by
-    apply Subtype.ext
-    apply List.ext_getElem (by omega)
-    intro i _ _
-    obtain ⟨y, hy, hyi⟩ := WP.triple_iff_exists_ok.1 (hpt i (by omega))
-    rw [hid] at hy
-    simp only [RustM.ok.injEq] at hy
-    subst hy
-    exact hyi.symm
-  rw [hb, this]
+private theorem array_from_fn_go_eq {T F : Type}
+    (inst : core.ops.function.FnMut F Usize T) (c : F) (g : Nat → T) (n : Nat)
+    (hcall : ∀ k, k < n → inst.call_mut c ⟨BitVec.ofNat _ k⟩ = ok (g k, c)) :
+    rust_primitives.slice.array_from_fn_go inst c n = ok ((List.range n).map g, c) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    simp only [rust_primitives.slice.array_from_fn_go, ih (fun k hk => hcall k (by omega)),
+      hcall n (by omega), bind_tc_ok, List.range_succ, List.map_append, List.map_cons,
+      List.map_nil]
 
 open Std.Do in
 @[spec]
@@ -186,12 +176,25 @@ theorem array.CloneArray.clone_spec {N : Usize} (arr : Array U64 N) :
     ⦃ ⌜ True ⌝ ⦄
     core.Array.Insts.CoreCloneClone.clone core.U64.Insts.CoreCloneClone arr
     ⦃ ⇓ r => ⌜ r = arr ⌝ ⦄ := by
+  have hlen := arr.property
+  have hgo := array_from_fn_go_eq
+    (core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleUsizeT N
+      core.U64.Insts.CoreCloneClone) arr (fun k => arr.val[k]!) N.val (by
+    intro k hk
+    have hN := N.hBounds
+    have hk' : (⟨BitVec.ofNat _ k⟩ : Usize).val = k := by
+      simp only [UScalar.val, BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
+    simp only [core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleUsizeT.call_mut]
+    rw [array_index_U64_eq arr _ (by rw [hk']; exact hk), hk']
+    simp [core.U64.Insts.CoreCloneClone.clone])
   have h : core.Array.Insts.CoreCloneClone.clone core.U64.Insts.CoreCloneClone arr = ok arr := by
-    unfold core.Array.Insts.CoreCloneClone.clone core.array.Array.map
-    apply array_map_id
-    intro x
-    simp [core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut]
-    rfl
+    unfold core.Array.Insts.CoreCloneClone.clone rust_primitives.slice.array_from_fn
+    simp only [hgo, bind_tc_ok, List.length_map, List.length_range, _root_.dite_true]
+    congr 1
+    apply Subtype.ext
+    apply List.ext_getElem (by simp [hlen])
+    intro i h1 h2
+    simp [List.getElem?_eq_getElem h2]
   rw [h]
   apply RustM.ok_spec
   simp

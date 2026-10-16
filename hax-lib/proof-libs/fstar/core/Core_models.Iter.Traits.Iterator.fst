@@ -223,4 +223,4 @@ include Core_models.Bundle {iter_max as iter_max}
 
 include Core_models.Bundle {impl__from__iterator as impl}
 
-include Core_models.Bundle {impl_1 as impl_1}
+include Core_models.Bundle {impl_1__from__iterator as impl_1}
