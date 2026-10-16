@@ -3,6 +3,12 @@ module Core_models.Ops.Deref
 open FStar.Mul
 open Rust_primitives
 
+/// See [`std::ops::DerefPure`]. Not `unsafe`, unlike in real core.
+class t_DerefPure (v_Self: Type0) = { __marker_trait_t_DerefPure:Prims.unit }
+
+/// See [`std::ops::Receiver`]
+class t_Receiver (v_Self: Type0) = { [@@@ FStar.Tactics.Typeclasses.no_method]f_Target:Type0 }
+
 /// See [`std::ops::Deref`]
 class t_Deref (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]f_Target:Type0;

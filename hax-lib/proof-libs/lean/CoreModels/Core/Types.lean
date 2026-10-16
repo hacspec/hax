@@ -191,13 +191,13 @@ def array.iter.IntoIter (T : Type) (N : Std.Usize) :=
   rust_primitives.sequence.Seq T
 
 /-- Trait declaration: [core_models::ops::index::Index]
-    Source: 'core-models/src/core/ops.rs', lines 144:4-147:5
+    Source: 'core-models/src/core/ops.rs', lines 229:4-232:5
     Visibility: public -/
 structure ops.index.Index (Self : Type) (Idx : Type) (Self_Output : Type) where
   index : Self → Idx → RustM Self_Output
 
 /-- Trait declaration: [core_models::ops::index::IndexMut]
-    Source: 'core-models/src/core/ops.rs', lines 155:4-157:5
+    Source: 'core-models/src/core/ops.rs', lines 240:4-242:5
     Visibility: public -/
 structure ops.index.IndexMut (Self : Type) (Idx : Type) (Self_Clause0_Output :
   Type) where
@@ -1001,7 +1001,7 @@ structure ops.bit.BitOrAssign (Self : Type) (Rhs : Type) where
   bitor_assign : Self → Rhs → RustM Self
 
 /-- [core_models::ops::control_flow::ControlFlow]
-    Source: 'core-models/src/core/ops.rs', lines 134:4-139:5
+    Source: 'core-models/src/core/ops.rs', lines 138:4-143:5
     Visibility: public -/
 @[discriminant isize]
 inductive ops.control_flow.ControlFlow (B : Type) (C : Type) where
@@ -1010,7 +1010,7 @@ inductive ops.control_flow.ControlFlow (B : Type) (C : Type) where
 
 /-
 /-- Trait declaration: [core_models::ops::function::FnOnce]
-    Source: 'core-models/src/core/ops.rs', lines 163:4-167:5
+    Source: 'core-models/src/core/ops.rs', lines 248:4-252:5
     Visibility: public -/
 structure ops.function.FnOnce (Self : Type) (Args : Type) (Self_Output : Type)
   where
@@ -1019,7 +1019,7 @@ structure ops.function.FnOnce (Self : Type) (Args : Type) (Self_Output : Type)
 
 /-
 /-- Trait declaration: [core_models::ops::function::FnMut]
-    Source: 'core-models/src/core/ops.rs', lines 171:4-174:5
+    Source: 'core-models/src/core/ops.rs', lines 256:4-259:5
     Visibility: public -/
 structure ops.function.FnMut (Self : Type) (Args : Type) (Self_Clause0_Output :
   Type) where
@@ -1029,7 +1029,7 @@ structure ops.function.FnMut (Self : Type) (Args : Type) (Self_Clause0_Output :
 
 /-
 /-- Trait declaration: [core_models::ops::function::Fn]
-    Source: 'core-models/src/core/ops.rs', lines 259:4-262:5
+    Source: 'core-models/src/core/ops.rs', lines 344:4-347:5
     Visibility: public -/
 structure ops.function.Fn (Self : Type) (Args : Type)
   (Self_Clause0_Clause0_Output : Type) where
@@ -1038,13 +1038,13 @@ structure ops.function.Fn (Self : Type) (Args : Type)
 -/
 
 /-- Trait declaration: [core_models::ops::try_trait::FromResidual]
-    Source: 'core-models/src/core/ops.rs', lines 267:4-269:5
+    Source: 'core-models/src/core/ops.rs', lines 352:4-354:5
     Visibility: public -/
 structure ops.try_trait.FromResidual (Self : Type) (R : Type) where
   from_residual : R → RustM Self
 
 /-- Trait declaration: [core_models::ops::try_trait::Try]
-    Source: 'core-models/src/core/ops.rs', lines 272:4-277:5
+    Source: 'core-models/src/core/ops.rs', lines 357:4-362:5
     Visibility: public -/
 structure ops.try_trait.Try (Self : Type) (Self_Output : Type) (Self_Residual :
   Type) where
@@ -1052,53 +1052,98 @@ structure ops.try_trait.Try (Self : Type) (Self_Output : Type) (Self_Residual :
   branch : Self → RustM (ops.control_flow.ControlFlow Self_Residual
     Self_Output)
 
+/-- Trait declaration: [core_models::ops::try_trait::Residual]
+    Source: 'core-models/src/core/ops.rs', lines 365:4-368:5
+    Visibility: public -/
+structure ops.try_trait.Residual (Self : Type) (O : Type) (Self_TryType : Type)
+  where
+  TryInst : ops.try_trait.Try Self_TryType O Self
+
+/-- [core_models::ops::try_trait::Yeet]
+    Source: 'core-models/src/core/ops.rs', lines 371:4-371:30
+    Visibility: public -/
+@[reducible]
+def ops.try_trait.Yeet (T : Type) := T
+
 /-- Trait declaration: [core_models::ops::deref::Deref]
-    Source: 'core-models/src/core/ops.rs', lines 283:4-289:5
+    Source: 'core-models/src/core/ops.rs', lines 377:4-383:5
     Visibility: public -/
 structure ops.deref.Deref (Self : Type) (Self_Target : Type) where
   deref : Self → RustM Self_Target
 
 /-- Trait declaration: [core_models::ops::deref::DerefMut]
-    Source: 'core-models/src/core/ops.rs', lines 312:4-314:5
+    Source: 'core-models/src/core/ops.rs', lines 406:4-408:5
     Visibility: public -/
 structure ops.deref.DerefMut (Self : Type) (Self_Clause0_Target : Type) where
   DerefInst : ops.deref.Deref Self Self_Clause0_Target
   deref_mut : Self → RustM (Self_Clause0_Target × (Self_Clause0_Target →
     Self))
 
+/-- Trait declaration: [core_models::ops::deref::DerefPure]
+    Source: 'core-models/src/core/ops.rs', lines 411:4-411:26
+    Visibility: public -/
+structure ops.deref.DerefPure (Self : Type) where
+
+/-- Trait declaration: [core_models::ops::deref::Receiver]
+    Source: 'core-models/src/core/ops.rs', lines 414:4-417:5
+    Visibility: public -/
+structure ops.deref.Receiver (Self : Type) (Self_Target : Type) where
+
+/-- Trait declaration: [core_models::ops::unsize::CoerceUnsized]
+    Source: 'core-models/src/core/ops.rs', lines 423:4-423:41
+    Visibility: public -/
+structure ops.unsize.CoerceUnsized (Self : Type) (T : Type) where
+
+/-- Trait declaration: [core_models::ops::unsize::DispatchFromDyn]
+    Source: 'core-models/src/core/ops.rs', lines 426:4-426:35
+    Visibility: public -/
+structure ops.unsize.DispatchFromDyn (Self : Type) (T : Type) where
+
+/-- Trait declaration: [core_models::ops::reborrow::Reborrow]
+    Source: 'core-models/src/core/ops.rs', lines 431:4-431:25
+    Visibility: public -/
+structure ops.reborrow.Reborrow (Self : Type) where
+
+/-- Trait declaration: [core_models::ops::reborrow::CoerceShared]
+    Source: 'core-models/src/core/ops.rs', lines 434:4-437:5
+    Visibility: public -/
+structure ops.reborrow.CoerceShared (Self : Type) (Self_Target : Type) where
+  ReborrowInst : ops.reborrow.Reborrow Self
+  markerCopyInst : marker.Copy Self_Target
+
 /-- Trait declaration: [core_models::ops::drop::Drop]
-    Source: 'core-models/src/core/ops.rs', lines 319:4-325:5
+    Source: 'core-models/src/core/ops.rs', lines 442:4-448:5
     Visibility: public -/
 structure ops.drop.Drop (Self : Type) where
   drop : Self → RustM Self
 
 /-- [core_models::ops::range::RangeTo]
-    Source: 'core-models/src/core/ops.rs', lines 331:4-333:5
+    Source: 'core-models/src/core/ops.rs', lines 456:4-458:5
     Visibility: public -/
 structure ops.range.RangeTo (T : Type) where
   «end» : T
 
 /-- [core_models::ops::range::RangeFrom]
-    Source: 'core-models/src/core/ops.rs', lines 335:4-337:5
+    Source: 'core-models/src/core/ops.rs', lines 460:4-462:5
     Visibility: public -/
 structure ops.range.RangeFrom (T : Type) where
   start : T
 
 /-- [core_models::ops::range::Range]
-    Source: 'core-models/src/core/ops.rs', lines 339:4-342:5
+    Source: 'core-models/src/core/ops.rs', lines 464:4-467:5
     Visibility: public -/
 structure ops.range.Range (T : Type) where
   start : T
   «end» : T
 
 /-- [core_models::ops::range::RangeFull]
-    Source: 'core-models/src/core/ops.rs', lines 344:4-344:25
+    Source: 'core-models/src/core/ops.rs', lines 469:4-469:25
     Visibility: public -/
 @[reducible]
 def ops.range.RangeFull := Unit
 
 /-- [core_models::ops::range::RangeInclusive]
-    Source: 'core-models/src/core/ops.rs', lines 348:4-352:5
+    Source: 'core-models/src/core/ops.rs', lines 473:4-477:5
     Visibility: public -/
 structure ops.range.RangeInclusive (T : Type) where
   start_ : T
@@ -1106,13 +1151,13 @@ structure ops.range.RangeInclusive (T : Type) where
   exhausted : Bool
 
 /-- [core_models::ops::range::RangeToInclusive]
-    Source: 'core-models/src/core/ops.rs', lines 354:4-356:5
+    Source: 'core-models/src/core/ops.rs', lines 479:4-481:5
     Visibility: public -/
 structure ops.range.RangeToInclusive (T : Type) where
   «end» : T
 
 /-- [core_models::ops::range::Bound]
-    Source: 'core-models/src/core/ops.rs', lines 396:4-400:5
+    Source: 'core-models/src/core/ops.rs', lines 521:4-528:5
     Visibility: public -/
 @[discriminant isize]
 inductive ops.range.Bound (T : Type) where
@@ -1121,13 +1166,38 @@ inductive ops.range.Bound (T : Type) where
 | Unbounded : ops.range.Bound T
 
 /-- Trait declaration: [core_models::ops::range::RangeBounds]
-    Source: 'core-models/src/core/ops.rs', lines 403:4-419:5
+    Source: 'core-models/src/core/ops.rs', lines 533:4-560:5
     Visibility: public -/
 structure ops.range.RangeBounds (Self : Type) (T : Type) where
   start_bound : Self → RustM (ops.range.Bound T)
   end_bound : Self → RustM (ops.range.Bound T)
   contains : forall {U : Type} (cmpPartialOrdInst : cmp.PartialOrd T U)
     (cmpPartialOrdInst1 : cmp.PartialOrd U T), Self → U → RustM Bool
+  is_empty : forall (cmpPartialOrdInst : cmp.PartialOrd T T), Self → RustM
+    Bool
+
+/-- Trait declaration: [core_models::ops::range::IntoBounds]
+    Source: 'core-models/src/core/ops.rs', lines 564:4-583:5
+    Visibility: public -/
+structure ops.range.IntoBounds (Self : Type) (T : Type) where
+  RangeBoundsInst : ops.range.RangeBounds Self T
+  into_bounds : Self → RustM ((ops.range.Bound T) × (ops.range.Bound T))
+
+/-- [core_models::ops::range::OneSidedRangeBound]
+    Source: 'core-models/src/core/ops.rs', lines 587:4-594:5
+    Visibility: public -/
+@[discriminant isize]
+inductive ops.range.OneSidedRangeBound where
+| StartInclusive : ops.range.OneSidedRangeBound
+| End : ops.range.OneSidedRangeBound
+| EndInclusive : ops.range.OneSidedRangeBound
+
+/-- Trait declaration: [core_models::ops::range::OneSidedRange]
+    Source: 'core-models/src/core/ops.rs', lines 598:4-602:5
+    Visibility: public -/
+structure ops.range.OneSidedRange (Self : Type) (T : Type) where
+  RangeBoundsInst : ops.range.RangeBounds Self T
+  bound : Self → RustM (ops.range.OneSidedRangeBound × T)
 
 /-- [core_models::option::Iter]
     Source: 'core-models/src/core/option.rs', lines 491:0-491:39

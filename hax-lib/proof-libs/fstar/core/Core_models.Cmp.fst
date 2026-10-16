@@ -45,7 +45,7 @@ include Core_models.Bundle {f_neq_post as f_neq_post}
 
 include Core_models.Bundle {f_neq as f_neq}
 
-include Core_models.Bundle {impl as impl}
+include Core_models.Bundle {impl__from__cmp as impl}
 
 include Core_models.Bundle {t_PartialOrdDefaults as t_PartialOrdDefaults}
 

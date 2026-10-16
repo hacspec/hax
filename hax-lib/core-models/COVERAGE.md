@@ -8,7 +8,7 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 
 ## `core`
 
-**Targeted coverage: 867/3888 items (22%) across 35 modules — 23 have at least a partial model.**
+**Targeted coverage: 904/3888 items (23%) across 35 modules — 23 have at least a partial model.**
 
 | module | covered | total | coverage |
 |---|--:|--:|---|
@@ -37,7 +37,7 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 | `marker` | 6 | 35 | 17% |
 | `mem` | 34 | 80 | 42% |
 | `num` | 471 | 1835 | 26% |
-| `ops` | 100 | 151 | 66% |
+| `ops` | 137 | 151 | 91% |
 | `option` | 44 | 57 | 77% |
 | `panicking` | 2 | 31 | 6% |
 | `pin` | 1 | 27 | 4% |
@@ -47,7 +47,7 @@ Some platform and runtime modules are not targeted and taken out of the count. S
 | `result` | 38 | 42 | 90% |
 | `slice` | 41 | 205 | 20% |
 | `str` | 6 | 160 | 4% |
-| **subtotal** | **867** | **3888** | **22%** |
+| **subtotal** | **904** | **3888** | **23%** |
 
 <details><summary>Non-targeted modules: 20 modules, 7/14842 items</summary>
 

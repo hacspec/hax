@@ -30,7 +30,7 @@ const AENEAS_WARN_FLAGS: &[&str] = &["-backend", "-dest", "-subdir", "-split-fil
 /// drops a provided method the crate never calls, and aeneas then emits the
 /// trait impl without that field, which Lean rejects (#2172); naming them as
 /// translation roots keeps them. Must match the structures' fields exactly:
-/// these are the only twelve methods the model crates give a default body.
+/// these are the only thirteen methods the model crates give a default body.
 /// (`Drop::drop` also has one, but an `impl Drop` cannot omit its only
 /// method, so no instance is ever emitted without the field.)
 const CHARON_DEFAULT_METHOD_ROOTS: &[&str] = &[
@@ -46,8 +46,9 @@ const CHARON_DEFAULT_METHOD_ROOTS: &[&str] = &[
     "core::iter::range::Step::forward_unchecked",
     "core::iter::range::Step::backward",
     "core::iter::range::Step::backward_unchecked",
-    // Only a crate with its own `impl RangeBounds` reaches this.
+    // Only a crate with its own `impl RangeBounds` reaches these.
     "core::ops::range::RangeBounds::contains",
+    "core::ops::range::RangeBounds::is_empty",
     // Only a crate with its own `impl Error` reaches this.
     "core::error::Error::description",
 ];

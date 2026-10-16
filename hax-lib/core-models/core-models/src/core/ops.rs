@@ -130,12 +130,97 @@ pub mod bit {
 }
 
 pub mod control_flow {
+    use crate::option::Option;
+    use crate::result::Result;
+
     /// See [`std::ops::ControlFlow`]
+    #[cfg_attr(test, derive(PartialEq, Debug))]
     pub enum ControlFlow<B, C> {
         /// See [`std::ops::ControlFlow::Continue`]
         Continue(C),
         /// See [`std::ops::ControlFlow::Break`]
         Break(B),
+    }
+
+    // Placeholders keep the inherent impls below at real core's `impl_3`/`impl_4`.
+    impl<B, C> ControlFlow<B, C> {}
+    impl<B, C> ControlFlow<B, C> {}
+    impl<B, C> ControlFlow<B, C> {}
+
+    impl<B, C> ControlFlow<B, C> {
+        /// See [`std::ops::ControlFlow::is_break`]
+        pub fn is_break(&self) -> bool {
+            matches!(*self, ControlFlow::Break(_))
+        }
+
+        /// See [`std::ops::ControlFlow::is_continue`]
+        pub fn is_continue(&self) -> bool {
+            matches!(*self, ControlFlow::Continue(_))
+        }
+
+        /// See [`std::ops::ControlFlow::break_value`]
+        // F*-excluded: returning `Option`/`Result` here creates a module cycle.
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn break_value(self) -> Option<B> {
+            match self {
+                ControlFlow::Continue(_) => Option::None,
+                ControlFlow::Break(x) => Option::Some(x),
+            }
+        }
+
+        /// See [`std::ops::ControlFlow::break_ok`]
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn break_ok(self) -> Result<B, C> {
+            match self {
+                ControlFlow::Continue(c) => Result::Err(c),
+                ControlFlow::Break(b) => Result::Ok(b),
+            }
+        }
+
+        /// See [`std::ops::ControlFlow::map_break`]
+        pub fn map_break<T, F: FnOnce(B) -> T>(self, f: F) -> ControlFlow<T, C> {
+            match self {
+                ControlFlow::Continue(x) => ControlFlow::Continue(x),
+                ControlFlow::Break(x) => ControlFlow::Break(f(x)),
+            }
+        }
+
+        /// See [`std::ops::ControlFlow::continue_value`]
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn continue_value(self) -> Option<C> {
+            match self {
+                ControlFlow::Continue(x) => Option::Some(x),
+                ControlFlow::Break(_) => Option::None,
+            }
+        }
+
+        /// See [`std::ops::ControlFlow::continue_ok`]
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn continue_ok(self) -> Result<C, B> {
+            match self {
+                ControlFlow::Continue(c) => Result::Ok(c),
+                ControlFlow::Break(b) => Result::Err(b),
+            }
+        }
+
+        /// See [`std::ops::ControlFlow::map_continue`]
+        pub fn map_continue<T, F: FnOnce(C) -> T>(self, f: F) -> ControlFlow<B, T> {
+            match self {
+                ControlFlow::Continue(x) => ControlFlow::Continue(f(x)),
+                ControlFlow::Break(x) => ControlFlow::Break(x),
+            }
+        }
+    }
+
+    // `patch_lean.py` drops the `do` from `into_value`, which Aeneas rejects here.
+    impl<T> ControlFlow<T, T> {
+        /// See [`std::ops::ControlFlow::into_value`]
+        pub fn into_value(self) -> T {
+            match self {
+                ControlFlow::Continue(x) => x,
+                ControlFlow::Break(x) => x,
+            }
+        }
     }
 }
 
@@ -275,6 +360,15 @@ pub mod try_trait {
         fn from_output(x: Self::Output) -> Self;
         fn branch(self) -> super::control_flow::ControlFlow<Self::Residual, Self::Output>;
     }
+
+    /// See [`std::ops::Residual`]
+    pub trait Residual<O> {
+        /// See [`std::ops::Residual::TryType`]
+        type TryType: Try<Output = O, Residual = Self>;
+    }
+
+    /// See [`std::ops::Yeet`]
+    pub struct Yeet<T>(pub T);
 }
 
 pub mod deref {
@@ -312,6 +406,35 @@ pub mod deref {
     pub trait DerefMut: Deref {
         fn deref_mut(&mut self) -> &mut Self::Target;
     }
+
+    /// See [`std::ops::DerefPure`]. Not `unsafe`, unlike in real core.
+    pub trait DerefPure {}
+
+    /// See [`std::ops::Receiver`]
+    pub trait Receiver {
+        /// See [`std::ops::Receiver::Target`]
+        type Target: ?Sized;
+    }
+}
+
+/// Unsize/`dyn` coercion marker traits, without real core's pointer impls.
+mod unsize {
+    /// See [`std::ops::CoerceUnsized`]
+    pub trait CoerceUnsized<T: ?Sized> {}
+
+    /// See [`std::ops::DispatchFromDyn`]
+    pub trait DispatchFromDyn<T> {}
+}
+
+mod reborrow {
+    /// See [`std::ops::Reborrow`]
+    pub trait Reborrow {}
+
+    /// See [`std::ops::CoerceShared`]
+    pub trait CoerceShared: Reborrow {
+        /// See [`std::ops::CoerceShared::Target`]
+        type Target: crate::marker::Copy;
+    }
 }
 
 pub mod drop {
@@ -327,6 +450,8 @@ pub mod drop {
 
 pub mod range {
     use crate::cmp::PartialOrd;
+    use crate::option::Option;
+
     /// See [`std::ops::RangeTo`]
     pub struct RangeTo<T> {
         pub end: T,
@@ -357,7 +482,6 @@ pub mod range {
 
     macro_rules! impl_iterator_range_int {
         ($($int_type: ident)*) => {
-            use crate::option::Option;
             $(
                 #[cfg_attr(hax_backend_legacy_lean, hax_lib::exclude)]
                 impl crate::iter::traits::iterator::Iterator for Range<$int_type> {
@@ -393,16 +517,24 @@ pub mod range {
     impl_iterator_range_int!(u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
 
     /// See [`std::ops::Bound`]
+    #[cfg_attr(test, derive(PartialEq, Debug))]
     pub enum Bound<T> {
+        /// See [`std::ops::Bound::Included`]
         Included(T),
+        /// See [`std::ops::Bound::Excluded`]
         Excluded(T),
+        /// See [`std::ops::Bound::Unbounded`]
         Unbounded,
     }
+
+    // `requires(true)` constrains the F* `f_*_pre`, so the blanket impls can call these.
     /// See [`std::ops::RangeBounds`]
     #[hax_lib::attributes]
     pub trait RangeBounds<T> {
+        /// See [`std::ops::RangeBounds::start_bound`]
         #[hax_lib::requires(true)]
         fn start_bound(&self) -> Bound<&T>;
+        /// See [`std::ops::RangeBounds::end_bound`]
         #[hax_lib::requires(true)]
         fn end_bound(&self) -> Bound<&T>;
         /// See [`std::ops::RangeBounds::contains`]
@@ -416,7 +548,59 @@ pub mod range {
         {
             after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
         }
+        /// See [`std::ops::RangeBounds::is_empty`]
+        #[cfg(not(hax_backend_fstar))]
+        #[hax_lib::requires(true)]
+        fn is_empty(&self) -> bool
+        where
+            T: PartialOrd<T>,
+        {
+            bounds_are_empty(self.start_bound(), self.end_bound())
+        }
     }
+
+    /// See [`std::ops::IntoBounds`]
+    #[hax_lib::attributes]
+    pub trait IntoBounds<T>: RangeBounds<T> {
+        /// See [`std::ops::IntoBounds::into_bounds`]
+        #[hax_lib::requires(true)]
+        fn into_bounds(self) -> (Bound<T>, Bound<T>);
+        /// See [`std::ops::IntoBounds::intersect`]
+        // Kept off both backends. F* has no default methods: there,
+        // `IntoBoundsDefaults` provides it. In Lean, the `R: IntoBounds<T>` bound
+        // would make the `IntoBounds` structure non-positive, so it is hand-written
+        // as standalone functions in `CoreModels/Core/FunsEpilogue.lean`.
+        #[cfg(not(any(hax_backend_fstar, hax_backend_lean)))]
+        #[hax_lib::requires(true)]
+        fn intersect<R>(self, other: R) -> (Bound<T>, Bound<T>)
+        where
+            Self: Sized,
+            T: crate::cmp::Ord,
+            R: IntoBounds<T>,
+        {
+            bounds_intersect(self.into_bounds(), other.into_bounds())
+        }
+    }
+
+    /// See [`std::ops::OneSidedRangeBound`]
+    #[cfg_attr(test, derive(PartialEq, Debug))]
+    pub enum OneSidedRangeBound {
+        /// See [`std::ops::OneSidedRangeBound::StartInclusive`]
+        StartInclusive,
+        /// See [`std::ops::OneSidedRangeBound::End`]
+        End,
+        /// See [`std::ops::OneSidedRangeBound::EndInclusive`]
+        EndInclusive,
+    }
+
+    /// See [`std::ops::OneSidedRange`]
+    #[hax_lib::attributes]
+    pub trait OneSidedRange<T>: RangeBounds<T> {
+        /// See [`std::ops::OneSidedRange::bound`]
+        #[hax_lib::requires(true)]
+        fn bound(self) -> (OneSidedRangeBound, T);
+    }
+
     // Like std, `end_bound` is only called once the start check passes, via
     // `after_start(..) && before_end(..)`.
     fn after_start<T, U: ?Sized>(start: Bound<&T>, item: &U) -> bool
@@ -439,6 +623,51 @@ pub mod range {
             Bound::Unbounded => true,
         }
     }
+    fn bounds_are_empty<T: PartialOrd<T>>(start: Bound<&T>, end: Bound<&T>) -> bool {
+        let non_empty = match (start, end) {
+            (Bound::Unbounded, _) => true,
+            (_, Bound::Unbounded) => true,
+            (Bound::Included(s), Bound::Included(e)) => bound_le(s, e),
+            (Bound::Included(s), Bound::Excluded(e)) => bound_lt(s, e),
+            (Bound::Excluded(s), Bound::Included(e)) => bound_lt(s, e),
+            (Bound::Excluded(s), Bound::Excluded(e)) => bound_lt(s, e),
+        };
+        non_empty == false
+    }
+    fn bounds_intersect<T: crate::cmp::Ord>(
+        a: (Bound<T>, Bound<T>),
+        b: (Bound<T>, Bound<T>),
+    ) -> (Bound<T>, Bound<T>) {
+        let (a_start, a_end) = a;
+        let (b_start, b_end) = b;
+        let start = match (a_start, b_start) {
+            (Bound::Unbounded, y) => y,
+            (x, Bound::Unbounded) => x,
+            (Bound::Included(x), Bound::Included(y)) => Bound::Included(crate::cmp::max(x, y)),
+            (Bound::Excluded(x), Bound::Excluded(y)) => Bound::Excluded(crate::cmp::max(x, y)),
+            (Bound::Included(i), Bound::Excluded(e)) | (Bound::Excluded(e), Bound::Included(i)) => {
+                if bound_lt(&e, &i) {
+                    Bound::Included(i)
+                } else {
+                    Bound::Excluded(e)
+                }
+            }
+        };
+        let end = match (a_end, b_end) {
+            (Bound::Unbounded, y) => y,
+            (x, Bound::Unbounded) => x,
+            (Bound::Included(x), Bound::Included(y)) => Bound::Included(crate::cmp::min(x, y)),
+            (Bound::Excluded(x), Bound::Excluded(y)) => Bound::Excluded(crate::cmp::min(x, y)),
+            (Bound::Included(i), Bound::Excluded(e)) | (Bound::Excluded(e), Bound::Included(i)) => {
+                if bound_lt(&i, &e) {
+                    Bound::Included(i)
+                } else {
+                    Bound::Excluded(e)
+                }
+            }
+        };
+        (start, end)
+    }
     // std compares with `<=` and `<`, so a type's own `le` and `lt` are used.
     #[cfg(not(hax_backend_fstar))]
     fn bound_le<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
@@ -460,6 +689,7 @@ pub mod range {
     fn bound_lt<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
         matches!(a.partial_cmp(b), Option::Some(crate::cmp::Ordering::Less))
     }
+
     impl<T> RangeBounds<T> for RangeFull {
         fn start_bound(&self) -> Bound<&T> {
             Bound::Unbounded
@@ -476,12 +706,40 @@ pub mod range {
             Bound::Unbounded
         }
     }
+    impl<Idx: PartialOrd<Idx>> Range<Idx> {
+        /// See [`std::ops::Range::contains`]
+        pub fn contains<U>(&self, item: &U) -> bool
+        where
+            Idx: PartialOrd<U>,
+            U: ?Sized + PartialOrd<Idx>,
+        {
+            after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
+        }
+        /// See [`std::ops::Range::is_empty`]
+        // The bound repeats the impl's, as in core: clients pass both.
+        pub fn is_empty(&self) -> bool
+        where
+            Idx: PartialOrd<Idx>,
+        {
+            bound_lt(&self.start, &self.end) == false
+        }
+    }
     impl<T> RangeBounds<T> for RangeTo<T> {
         fn start_bound(&self) -> Bound<&T> {
             Bound::Unbounded
         }
         fn end_bound(&self) -> Bound<&T> {
             Bound::Excluded(&self.end)
+        }
+    }
+    impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
+        /// See [`std::ops::RangeFrom::contains`]
+        pub fn contains<U>(&self, item: &U) -> bool
+        where
+            Idx: PartialOrd<U>,
+            U: ?Sized + PartialOrd<Idx>,
+        {
+            after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
         }
     }
     impl<T> RangeBounds<T> for Range<T> {
@@ -492,42 +750,14 @@ pub mod range {
             Bound::Excluded(&self.end)
         }
     }
-    impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
-        fn start_bound(&self) -> Bound<&T> {
-            bound_as_ref(&self.0)
-        }
-        fn end_bound(&self) -> Bound<&T> {
-            bound_as_ref(&self.1)
-        }
-    }
-    // std's `Bound::as_ref`, as a function: an inherent `impl Bound` block
-    // would take a positional `impl_N` name that must match real core's.
-    fn bound_as_ref<T>(bound: &Bound<T>) -> Bound<&T> {
-        match bound {
-            Bound::Included(x) => Bound::Included(x),
-            Bound::Excluded(x) => Bound::Excluded(x),
-            Bound::Unbounded => Bound::Unbounded,
-        }
-    }
-    // An exhausted iterator ends with `start == end`, and must look empty.
-    impl<T> RangeBounds<T> for RangeInclusive<T> {
-        fn start_bound(&self) -> Bound<&T> {
-            Bound::Included(&self.start_)
-        }
-        fn end_bound(&self) -> Bound<&T> {
-            if self.exhausted {
-                Bound::Excluded(&self.end_)
-            } else {
-                Bound::Included(&self.end_)
-            }
-        }
-    }
-    impl<T> RangeBounds<T> for RangeToInclusive<T> {
-        fn start_bound(&self) -> Bound<&T> {
-            Bound::Unbounded
-        }
-        fn end_bound(&self) -> Bound<&T> {
-            Bound::Included(&self.end)
+    impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
+        /// See [`std::ops::RangeTo::contains`]
+        pub fn contains<U>(&self, item: &U) -> bool
+        where
+            Idx: PartialOrd<U>,
+            U: ?Sized + PartialOrd<Idx>,
+        {
+            after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
         }
     }
     impl<T> RangeInclusive<T> {
@@ -552,9 +782,17 @@ pub mod range {
             (self.start_, self.end_)
         }
     }
-    // Stand-ins for real core's `impl RangeInclusive<usize>` and `Debug` impl.
+    // Placeholder for core's `impl RangeInclusive<usize>`: hax numbers impls by
+    // position, so the impls after it keep core's `impl_N` names.
     impl RangeInclusive<usize> {}
-    impl<T> RangeInclusive<T> {}
+    impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
+        fn start_bound(&self) -> Bound<&T> {
+            self.0.as_ref()
+        }
+        fn end_bound(&self) -> Bound<&T> {
+            self.1.as_ref()
+        }
+    }
     impl<T: PartialOrd<T>> RangeInclusive<T> {
         /// See [`std::ops::RangeInclusive::contains`]
         pub fn contains<U>(&self, item: &U) -> bool
@@ -573,10 +811,150 @@ pub mod range {
             self.exhausted || !bound_le(&self.start_, &self.end_)
         }
     }
+    // An exhausted iterator ends with `start == end`, and must look empty.
+    impl<T> RangeBounds<T> for RangeInclusive<T> {
+        fn start_bound(&self) -> Bound<&T> {
+            Bound::Included(&self.start_)
+        }
+        fn end_bound(&self) -> Bound<&T> {
+            if self.exhausted {
+                Bound::Excluded(&self.end_)
+            } else {
+                Bound::Included(&self.end_)
+            }
+        }
+    }
+    impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
+        /// See [`std::ops::RangeToInclusive::contains`]
+        pub fn contains<U>(&self, item: &U) -> bool
+        where
+            Idx: PartialOrd<U>,
+            U: ?Sized + PartialOrd<Idx>,
+        {
+            after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
+        }
+    }
+    impl<T> Bound<T> {
+        /// See [`std::ops::Bound::as_ref`]
+        pub fn as_ref(&self) -> Bound<&T> {
+            match *self {
+                Bound::Included(ref x) => Bound::Included(x),
+                Bound::Excluded(ref x) => Bound::Excluded(x),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+        /// See [`std::ops::Bound::as_mut`]
+        // `&mut` returns are unsupported in the F* backend.
+        #[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+        pub fn as_mut(&mut self) -> Bound<&mut T> {
+            match *self {
+                Bound::Included(ref mut x) => Bound::Included(x),
+                Bound::Excluded(ref mut x) => Bound::Excluded(x),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+        /// See [`std::ops::Bound::map`]
+        pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Bound<U> {
+            match self {
+                Bound::Included(x) => Bound::Included(f(x)),
+                Bound::Excluded(x) => Bound::Excluded(f(x)),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+    }
+    // `Copy` is `core`'s: `*x` needs a real copy.
+    impl<T: Copy> Bound<&'_ T> {
+        /// See [`std::ops::Bound::copied`]
+        pub fn copied(self) -> Bound<T> {
+            match self {
+                Bound::Included(x) => Bound::Included(*x),
+                Bound::Excluded(x) => Bound::Excluded(*x),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+    }
+    impl<T: crate::clone::Clone> Bound<&'_ T> {
+        /// See [`std::ops::Bound::cloned`]
+        // Repeated bound, as in core: callers pass one dictionary per clause.
+        pub fn cloned(self) -> Bound<T>
+        where
+            T: crate::clone::Clone,
+        {
+            match self {
+                Bound::Included(x) => Bound::Included(x.clone()),
+                Bound::Excluded(x) => Bound::Excluded(x.clone()),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+    }
 
-    // `RangeBounds::contains` for F*, where a trait cannot provide it: this
-    // blanket impl gives it to every `RangeBounds`, including clients' own.
-    // Last in the module, so that it does not shift the `impl_N` names above.
+    impl<T> RangeBounds<T> for RangeToInclusive<T> {
+        fn start_bound(&self) -> Bound<&T> {
+            Bound::Unbounded
+        }
+        fn end_bound(&self) -> Bound<&T> {
+            Bound::Included(&self.end)
+        }
+    }
+
+    impl<T> IntoBounds<T> for Range<T> {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            (Bound::Included(self.start), Bound::Excluded(self.end))
+        }
+    }
+    impl<T> IntoBounds<T> for RangeFrom<T> {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            (Bound::Included(self.start), Bound::Unbounded)
+        }
+    }
+    impl<T> IntoBounds<T> for RangeTo<T> {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            (Bound::Unbounded, Bound::Excluded(self.end))
+        }
+    }
+    impl<T> IntoBounds<T> for RangeFull {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            (Bound::Unbounded, Bound::Unbounded)
+        }
+    }
+    impl<T> IntoBounds<T> for RangeInclusive<T> {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            let end = if self.exhausted {
+                Bound::Excluded(self.end_)
+            } else {
+                Bound::Included(self.end_)
+            };
+            (Bound::Included(self.start_), end)
+        }
+    }
+    impl<T> IntoBounds<T> for RangeToInclusive<T> {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            (Bound::Unbounded, Bound::Included(self.end))
+        }
+    }
+    impl<T> IntoBounds<T> for (Bound<T>, Bound<T>) {
+        fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+            self
+        }
+    }
+
+    impl<T> OneSidedRange<T> for RangeFrom<T> {
+        fn bound(self) -> (OneSidedRangeBound, T) {
+            (OneSidedRangeBound::StartInclusive, self.start)
+        }
+    }
+    impl<T> OneSidedRange<T> for RangeTo<T> {
+        fn bound(self) -> (OneSidedRangeBound, T) {
+            (OneSidedRangeBound::End, self.end)
+        }
+    }
+    impl<T> OneSidedRange<T> for RangeToInclusive<T> {
+        fn bound(self) -> (OneSidedRangeBound, T) {
+            (OneSidedRangeBound::EndInclusive, self.end)
+        }
+    }
+
+    // `RangeBounds`'s provided methods, for F*, which has no default methods.
     #[cfg(any(hax_backend_fstar, test))]
     #[hax_lib::attributes]
     pub(crate) trait RangeBoundsDefaults<T> {
@@ -586,6 +964,11 @@ pub mod range {
             Self: RangeBounds<T>,
             T: PartialOrd<U>,
             U: ?Sized + PartialOrd<T>;
+        #[hax_lib::requires(true)]
+        fn is_empty(&self) -> bool
+        where
+            Self: RangeBounds<T>,
+            T: PartialOrd<T>;
     }
     #[cfg(any(hax_backend_fstar, test))]
     impl<T, R> RangeBoundsDefaults<T> for R {
@@ -597,172 +980,43 @@ pub mod range {
         {
             after_start(self.start_bound(), item) && before_end(self.end_bound(), item)
         }
+        fn is_empty(&self) -> bool
+        where
+            Self: RangeBounds<T>,
+            T: PartialOrd<T>,
+        {
+            bounds_are_empty(self.start_bound(), self.end_bound())
+        }
+    }
+    // `IntoBounds`'s provided methods, for F*, which has no default methods.
+    #[cfg(any(hax_backend_fstar, test))]
+    #[hax_lib::attributes]
+    pub(crate) trait IntoBoundsDefaults<T> {
+        #[hax_lib::requires(true)]
+        fn intersect<R>(self, other: R) -> (Bound<T>, Bound<T>)
+        where
+            Self: IntoBounds<T>,
+            T: crate::cmp::Ord,
+            R: IntoBounds<T>;
+    }
+    #[cfg(any(hax_backend_fstar, test))]
+    impl<T, S> IntoBoundsDefaults<T> for S {
+        fn intersect<R>(self, other: R) -> (Bound<T>, Bound<T>)
+        where
+            Self: IntoBounds<T>,
+            T: crate::cmp::Ord,
+            R: IntoBounds<T>,
+        {
+            bounds_intersect(self.into_bounds(), other.into_bounds())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::Inject;
+    use crate::testing::{Inject, bound};
     use pastey::paste;
     use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn test_range_inclusive_new(start in any::<u8>(), end in any::<u8>()) {
-            let model = super::range::RangeInclusive::new(start, end);
-            let std_range = start..=end;
-            prop_assert_eq!(*model.start(), *std_range.start());
-            prop_assert_eq!(*model.end(), *std_range.end());
-            prop_assert_eq!(model.into_inner(), std_range.into_inner());
-        }
-
-        #[test]
-        fn test_range_inclusive_contains(
-            start in any::<u8>(),
-            end in any::<u8>(),
-            same in any::<bool>(),
-            item in any::<u8>(),
-        ) {
-            // Independent draws are almost never equal: that edge is `same`.
-            let end = if same { start } else { end };
-            let model = super::range::RangeInclusive::new(start, end);
-            let std_range = start..=end;
-            prop_assert_eq!(model.contains(&item), std_range.contains(&item));
-            prop_assert_eq!(model.is_empty(), std_range.is_empty());
-            if start <= end {
-                let exhausted = super::range::RangeInclusive { start_: end, end_: end, exhausted: true };
-                let mut std_range = std_range;
-                std_range.nth((end - start) as usize);
-                prop_assert_eq!(exhausted.contains(&item), std_range.contains(&item));
-                prop_assert_eq!(exhausted.is_empty(), std_range.is_empty());
-            }
-        }
-
-        #[test]
-        fn test_range_bounds_contains(
-            start in crate::testing::range_endpoint(),
-            end in crate::testing::range_endpoint(),
-            item in crate::testing::range_endpoint(),
-        ) {
-            use std::ops::RangeBounds as _;
-            for (model, real) in crate::testing::range_forms(start, end) {
-                let expected = real.contains(&item);
-                #[cfg(not(hax_backend_fstar))]
-                prop_assert_eq!(
-                    crate::ops::range::RangeBounds::<usize>::contains(&model, &item),
-                    expected
-                );
-                prop_assert_eq!(
-                    crate::ops::range::RangeBoundsDefaults::<usize>::contains(&model, &item),
-                    expected
-                );
-            }
-        }
-    }
-
-    /// std does not compare against the end once the start rules the item out.
-    #[test]
-    fn test_contains_skips_end_below_start() {
-        use crate::ops::range::{Bound, RangeBoundsDefaults, RangeInclusive};
-        use crate::testing::Tripwire;
-        let item = Tripwire(1);
-        assert!(!(Tripwire(2)..=Tripwire(u8::MAX)).contains(&item));
-        let model = RangeInclusive::new(Tripwire(2), Tripwire(u8::MAX));
-        assert!(!model.contains(&item));
-        let model = (
-            Bound::Excluded(Tripwire(1)),
-            Bound::Included(Tripwire(u8::MAX)),
-        );
-        #[cfg(not(hax_backend_fstar))]
-        assert!(!crate::ops::range::RangeBounds::contains(&model, &item));
-        assert!(!RangeBoundsDefaults::contains(&model, &item));
-    }
-
-    /// std does not call `end_bound` once the start rules the item out.
-    #[test]
-    fn test_contains_skips_end_bound_below_start() {
-        use crate::ops::range::{Bound, RangeBounds, RangeBoundsDefaults};
-        struct PanickyEnd(u8);
-        impl std::ops::RangeBounds<u8> for PanickyEnd {
-            fn start_bound(&self) -> std::ops::Bound<&u8> {
-                std::ops::Bound::Included(&self.0)
-            }
-            // Never called: the test checks exactly that.
-            #[cfg_attr(coverage_nightly, coverage(off))]
-            fn end_bound(&self) -> std::ops::Bound<&u8> {
-                panic!("end_bound called")
-            }
-        }
-        impl RangeBounds<u8> for PanickyEnd {
-            fn start_bound(&self) -> Bound<&u8> {
-                Bound::Included(&self.0)
-            }
-            // Never called: the test checks exactly that.
-            #[cfg_attr(coverage_nightly, coverage(off))]
-            fn end_bound(&self) -> Bound<&u8> {
-                panic!("end_bound called")
-            }
-        }
-        assert!(!std::ops::RangeBounds::contains(&PanickyEnd(2), &1));
-        #[cfg(not(hax_backend_fstar))]
-        assert!(!RangeBounds::contains(&PanickyEnd(2), &1));
-        assert!(!RangeBoundsDefaults::contains(&PanickyEnd(2), &1));
-    }
-
-    // F* compares with `partial_cmp`, having no `le`/`lt` to override.
-    #[cfg(not(hax_backend_fstar))]
-    mod contains_uses_le_and_lt {
-        /// Incomparable, yet `le` holds and `lt` does not: std goes by the latter.
-        struct Skewed;
-        impl std::cmp::PartialEq for Skewed {
-            fn eq(&self, _: &Self) -> bool {
-                false
-            }
-        }
-        impl std::cmp::PartialOrd for Skewed {
-            fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
-                None
-            }
-            fn le(&self, _: &Self) -> bool {
-                true
-            }
-            fn lt(&self, _: &Self) -> bool {
-                false
-            }
-        }
-        impl crate::cmp::PartialEq<Skewed> for Skewed {
-            fn eq(&self, _: &Self) -> bool {
-                false
-            }
-        }
-        impl crate::cmp::PartialOrd<Skewed> for Skewed {
-            fn partial_cmp(&self, _: &Self) -> crate::option::Option<crate::cmp::Ordering> {
-                crate::option::Option::None
-            }
-            fn le(&self, _: &Self) -> bool {
-                true
-            }
-            fn lt(&self, _: &Self) -> bool {
-                false
-            }
-        }
-
-        #[test]
-        fn test_contains_uses_le_and_lt() {
-            use crate::ops::range::{Bound, RangeBounds, RangeInclusive};
-            assert!(Skewed.partial_cmp(&Skewed).is_none());
-            assert!(Skewed != Skewed);
-            assert!(crate::cmp::PartialOrd::partial_cmp(&Skewed, &Skewed).is_none());
-            assert!(!crate::cmp::PartialEq::eq(&Skewed, &Skewed));
-            assert!((Skewed..=Skewed).contains(&Skewed));
-            assert!(RangeInclusive::new(Skewed, Skewed).contains(&Skewed));
-            assert!(!(Skewed..Skewed).contains(&Skewed));
-            let model = (Bound::Included(Skewed), Bound::Excluded(Skewed));
-            assert!(!RangeBounds::contains(&model, &Skewed));
-            assert!(!(Skewed..=Skewed).is_empty());
-            assert!(!RangeInclusive::new(Skewed, Skewed).is_empty());
-        }
-    }
 
     // `int_trait_impls!` covers u8..u64. The `requires` rules out wrapping, so
     // the domain is every non-overflowing pair, edges included.
@@ -844,6 +1098,16 @@ mod tests {
                 *core::ops::Deref::deref(&r)
             );
         }
+
+        #[test]
+        fn test_deref_mut_ref(x in any::<u8>()) {
+            let mut v = x;
+            let r: &mut u8 = &mut v;
+            prop_assert_eq!(
+                *super::deref::Deref::deref(&r),
+                *core::ops::Deref::deref(&r)
+            );
+        }
     }
 
     /// `Drop::drop`'s provided body. Real `core` has no default there (the
@@ -858,5 +1122,797 @@ mod tests {
         let mut g = Guard(7);
         crate::ops::drop::Drop::drop(&mut g);
         assert_eq!(g.0, 7);
+    }
+    // ----- ControlFlow ------------------------------------------------------
+
+    use super::control_flow::ControlFlow;
+
+    macro_rules! model_cf {
+        ($which:expr, $b:expr, $c:expr) => {
+            if $which {
+                ControlFlow::Break($b)
+            } else {
+                ControlFlow::Continue($c)
+            }
+        };
+    }
+
+    macro_rules! std_cf {
+        ($which:expr, $b:expr, $c:expr) => {
+            if $which {
+                std::ops::ControlFlow::Break($b)
+            } else {
+                std::ops::ControlFlow::Continue($c)
+            }
+        };
+    }
+
+    proptest! {
+        #[test]
+        fn test_control_flow_is_break(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).is_break(),
+                std_cf!(which, b, c).is_break()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_is_continue(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).is_continue(),
+                std_cf!(which, b, c).is_continue()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_break_value(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).break_value(),
+                std_cf!(which, b, c).break_value().inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_continue_value(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).continue_value(),
+                std_cf!(which, b, c).continue_value().inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_break_ok(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).break_ok(),
+                std_cf!(which, b, c).break_ok().inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_continue_ok(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).continue_ok(),
+                std_cf!(which, b, c).continue_ok().inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_map_break(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).map_break(|x: u8| x.wrapping_add(1)),
+                std_cf!(which, b, c).map_break(|x: u8| x.wrapping_add(1)).inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_map_continue(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).map_continue(|x: u8| x.wrapping_add(1)),
+                std_cf!(which, b, c).map_continue(|x: u8| x.wrapping_add(1)).inject()
+            );
+        }
+
+        #[test]
+        fn test_control_flow_into_value(which in any::<bool>(), b in any::<u8>(), c in any::<u8>()) {
+            prop_assert_eq!(
+                model_cf!(which, b, c).into_value(),
+                std_cf!(which, b, c).into_value()
+            );
+        }
+    }
+
+    // ----- Bound ------------------------------------------------------------
+
+    use super::range::Bound;
+
+    macro_rules! model_bound {
+        ($which:expr, $x:expr) => {
+            match $which {
+                0u8 => Bound::Included($x),
+                1u8 => Bound::Excluded($x),
+                _ => Bound::Unbounded,
+            }
+        };
+    }
+
+    macro_rules! std_bound {
+        ($which:expr, $x:expr) => {
+            match $which {
+                0u8 => std::ops::Bound::Included($x),
+                1u8 => std::ops::Bound::Excluded($x),
+                _ => std::ops::Bound::Unbounded,
+            }
+        };
+    }
+
+    // A non-identity `Clone`, so `cloned` visibly applies it.
+    #[cfg(not(hax_backend_fstar))]
+    #[derive(Debug, PartialEq)]
+    struct Bumped(u8);
+
+    #[cfg(not(hax_backend_fstar))]
+    impl crate::clone::Clone for Bumped {
+        fn clone(&self) -> Bumped {
+            Bumped(self.0.wrapping_add(1))
+        }
+    }
+
+    #[cfg(not(hax_backend_fstar))]
+    impl std::clone::Clone for Bumped {
+        fn clone(&self) -> Bumped {
+            Bumped(self.0.wrapping_add(1))
+        }
+    }
+
+    #[cfg(not(hax_backend_fstar))]
+    impl Inject for Bumped {
+        type Model = Bumped;
+        fn inject(&self) -> Bumped {
+            Bumped(self.0)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_bound_as_ref(which in 0u8..3, x in any::<u8>()) {
+            let model = model_bound!(which, x);
+            let std_value = std_bound!(which, x);
+            prop_assert_eq!(
+                model.as_ref().map(|r: &u8| *r),
+                std_value.as_ref().inject()
+            );
+        }
+
+        #[test]
+        fn test_bound_map(which in 0u8..3, x in any::<u8>()) {
+            prop_assert_eq!(
+                model_bound!(which, x).map(|v: u8| v.wrapping_add(1)),
+                std_bound!(which, x).map(|v: u8| v.wrapping_add(1)).inject()
+            );
+        }
+
+        #[test]
+        fn test_bound_cloned_u8(which in 0u8..3, x in any::<u8>()) {
+            prop_assert_eq!(
+                model_bound!(which, &x).cloned(),
+                std_bound!(which, &x).cloned().inject()
+            );
+        }
+
+        #[test]
+        fn test_bound_copied(which in 0u8..3, x in any::<u8>()) {
+            prop_assert_eq!(
+                model_bound!(which, &x).copied(),
+                std_bound!(which, &x).copied().inject()
+            );
+        }
+    }
+
+    #[cfg(not(hax_backend_fstar))]
+    proptest! {
+        #[test]
+        fn test_bound_cloned_applies_the_dictionary(which in 0u8..3, x in any::<u8>()) {
+            let source = Bumped(x);
+            prop_assert_eq!(
+                model_bound!(which, &source).cloned(),
+                std_bound!(which, &source).cloned().inject()
+            );
+        }
+
+        #[test]
+        fn test_bound_as_mut(which in 0u8..3, x in any::<u8>(), v in any::<u8>()) {
+            let mut model = model_bound!(which, x);
+            let mut std_value = std_bound!(which, x);
+            if let Bound::Included(r) | Bound::Excluded(r) = model.as_mut() {
+                *r = v;
+            }
+            if let std::ops::Bound::Included(r) | std::ops::Bound::Excluded(r) = std_value.as_mut() {
+                *r = v;
+            }
+            prop_assert_eq!(model, std_value.inject());
+        }
+    }
+
+    // ----- RangeBounds / IntoBounds / OneSidedRange -------------------------
+
+    use super::range::{
+        IntoBounds, IntoBoundsDefaults, OneSidedRange, OneSidedRangeBound, Range, RangeBounds,
+        RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+    };
+
+    fn model_osb_tag(b: &OneSidedRangeBound) -> u8 {
+        match b {
+            OneSidedRangeBound::StartInclusive => 0,
+            OneSidedRangeBound::End => 1,
+            OneSidedRangeBound::EndInclusive => 2,
+        }
+    }
+
+    fn std_osb_tag(b: &std::ops::OneSidedRangeBound) -> u8 {
+        match b {
+            std::ops::OneSidedRangeBound::StartInclusive => 0,
+            std::ops::OneSidedRangeBound::End => 1,
+            std::ops::OneSidedRangeBound::EndInclusive => 2,
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_range_inclusive_new(start in any::<u8>(), end in any::<u8>()) {
+            let model = super::range::RangeInclusive::new(start, end);
+            let std_range = start..=end;
+            prop_assert_eq!(*model.start(), *std_range.start());
+            prop_assert_eq!(*model.end(), *std_range.end());
+            prop_assert_eq!(model.into_inner(), std_range.into_inner());
+        }
+
+        #[test]
+        fn test_range_inclusive_contains(
+            start in any::<u8>(),
+            end in any::<u8>(),
+            same in any::<bool>(),
+            item in any::<u8>(),
+        ) {
+            // Independent draws are almost never equal: that edge is `same`.
+            let end = if same { start } else { end };
+            let model = super::range::RangeInclusive::new(start, end);
+            let std_range = start..=end;
+            prop_assert_eq!(model.contains(&item), std_range.contains(&item));
+            prop_assert_eq!(model.is_empty(), std_range.is_empty());
+            if start <= end {
+                let exhausted = super::range::RangeInclusive { start_: end, end_: end, exhausted: true };
+                let mut std_range = std_range;
+                std_range.nth((end - start) as usize);
+                prop_assert_eq!(exhausted.contains(&item), std_range.contains(&item));
+                prop_assert_eq!(exhausted.is_empty(), std_range.is_empty());
+            }
+        }
+
+        #[test]
+        fn test_range_bounds_range(a in any::<u8>(), b in any::<u8>()) {
+            let model = Range { start: a, end: b };
+            prop_assert_eq!(
+                model.start_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::start_bound(&(a..b)).inject()
+            );
+            prop_assert_eq!(
+                model.end_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::end_bound(&(a..b)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_range_from(a in any::<u8>()) {
+            let model = RangeFrom { start: a };
+            prop_assert_eq!(
+                model.start_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::start_bound(&(a..)).inject()
+            );
+            prop_assert_eq!(
+                model.end_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::end_bound(&(a..)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_range_to(b in any::<u8>()) {
+            let model = RangeTo { end: b };
+            prop_assert_eq!(
+                model.start_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::start_bound(&(..b)).inject()
+            );
+            prop_assert_eq!(
+                model.end_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::end_bound(&(..b)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_range_inclusive(a in any::<u8>(), b in any::<u8>()) {
+            let model = RangeInclusive::new(a, b);
+            prop_assert_eq!(
+                model.start_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::start_bound(&(a..=b)).inject()
+            );
+            prop_assert_eq!(
+                model.end_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::end_bound(&(a..=b)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_range_to_inclusive(b in any::<u8>()) {
+            let model = RangeToInclusive { end: b };
+            prop_assert_eq!(
+                model.start_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::start_bound(&(..=b)).inject()
+            );
+            prop_assert_eq!(
+                model.end_bound().map(|r: &u8| *r),
+                std::ops::RangeBounds::end_bound(&(..=b)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_range_full(_x in any::<u8>()) {
+            let model = RangeFull;
+            prop_assert_eq!(
+                RangeBounds::<u8>::start_bound(&model).map(|r: &u8| *r),
+                std::ops::RangeBounds::<u8>::start_bound(&(..)).inject()
+            );
+            prop_assert_eq!(
+                RangeBounds::<u8>::end_bound(&model).map(|r: &u8| *r),
+                std::ops::RangeBounds::<u8>::end_bound(&(..)).inject()
+            );
+        }
+
+        #[test]
+        fn test_range_bounds_contains(
+            start in crate::testing::range_endpoint(),
+            end in crate::testing::range_endpoint(),
+            item in crate::testing::range_endpoint(),
+        ) {
+            use std::ops::RangeBounds as _;
+            for (model, real) in crate::testing::range_forms(start, end) {
+                let expected = std::ops::RangeBounds::contains(&real, &item);
+                #[cfg(not(hax_backend_fstar))]
+                prop_assert_eq!(
+                    crate::ops::range::RangeBounds::<usize>::contains(&model, &item),
+                    expected
+                );
+                prop_assert_eq!(
+                    crate::ops::range::RangeBoundsDefaults::<usize>::contains(&model, &item),
+                    expected
+                );
+            }
+        }
+
+        #[test]
+        fn test_range_bounds_is_empty(
+            start in crate::testing::range_endpoint(),
+            end in crate::testing::range_endpoint(),
+        ) {
+            for (model, real) in crate::testing::range_forms(start, end) {
+                let expected = std::ops::RangeBounds::<usize>::is_empty(&real);
+                #[cfg(not(hax_backend_fstar))]
+                prop_assert_eq!(
+                    crate::ops::range::RangeBounds::<usize>::is_empty(&model),
+                    expected
+                );
+                prop_assert_eq!(
+                    crate::ops::range::RangeBoundsDefaults::<usize>::is_empty(&model),
+                    expected
+                );
+            }
+        }
+
+        #[test]
+        fn test_range_contains(a in any::<u8>(), b in any::<u8>(), item in any::<u8>()) {
+            prop_assert_eq!(
+                Range { start: a, end: b }.contains(&item),
+                (a..b).contains(&item)
+            );
+        }
+
+        #[test]
+        fn test_range_is_empty(a in any::<u8>(), b in any::<u8>()) {
+            prop_assert_eq!(Range { start: a, end: b }.is_empty(), (a..b).is_empty());
+        }
+
+        #[test]
+        fn test_range_from_contains(a in any::<u8>(), item in any::<u8>()) {
+            prop_assert_eq!(RangeFrom { start: a }.contains(&item), (a..).contains(&item));
+        }
+
+        #[test]
+        fn test_range_to_contains(b in any::<u8>(), item in any::<u8>()) {
+            prop_assert_eq!(RangeTo { end: b }.contains(&item), (..b).contains(&item));
+        }
+
+        #[test]
+        fn test_range_to_inclusive_contains(b in any::<u8>(), item in any::<u8>()) {
+            prop_assert_eq!(
+                RangeToInclusive { end: b }.contains(&item),
+                (..=b).contains(&item)
+            );
+        }
+
+        #[test]
+        fn test_range_inclusive_contains_item(a in any::<u8>(), b in any::<u8>(), item in any::<u8>()) {
+            prop_assert_eq!(
+                RangeInclusive::new(a, b).contains(&item),
+                (a..=b).contains(&item)
+            );
+        }
+
+        #[test]
+        fn test_range_inclusive_is_empty(a in any::<u8>(), b in any::<u8>()) {
+            prop_assert_eq!(RangeInclusive::new(a, b).is_empty(), (a..=b).is_empty());
+        }
+
+        #[test]
+        fn test_range_inclusive_new_start_end(a in any::<u8>(), b in any::<u8>()) {
+            let model = RangeInclusive::new(a, b);
+            let std_value = std::ops::RangeInclusive::new(a, b);
+            prop_assert_eq!(model.start(), std_value.start());
+            prop_assert_eq!(model.end(), std_value.end());
+        }
+
+        #[test]
+        fn test_range_inclusive_into_inner(a in any::<u8>(), b in any::<u8>()) {
+            prop_assert_eq!(
+                RangeInclusive::new(a, b).into_inner(),
+                (a..=b).into_inner()
+            );
+        }
+
+        #[test]
+        fn test_into_bounds(a in any::<u8>(), b in any::<u8>(), sa in 0u8..3, sb in 0u8..3) {
+            prop_assert_eq!(
+                Range { start: a, end: b }.into_bounds(),
+                std::ops::IntoBounds::into_bounds(a..b).inject()
+            );
+            prop_assert_eq!(
+                RangeFrom { start: a }.into_bounds(),
+                std::ops::IntoBounds::into_bounds(a..).inject()
+            );
+            prop_assert_eq!(
+                RangeTo { end: b }.into_bounds(),
+                std::ops::IntoBounds::into_bounds(..b).inject()
+            );
+            prop_assert_eq!(
+                RangeInclusive::new(a, b).into_bounds(),
+                std::ops::IntoBounds::into_bounds(a..=b).inject()
+            );
+            prop_assert_eq!(
+                RangeToInclusive { end: b }.into_bounds(),
+                std::ops::IntoBounds::into_bounds(..=b).inject()
+            );
+            prop_assert_eq!(
+                IntoBounds::<u8>::into_bounds(RangeFull),
+                std::ops::IntoBounds::<u8>::into_bounds(..).inject()
+            );
+            let (ms, ss) = bound(sa, a);
+            let (me, se) = bound(sb, b);
+            prop_assert_eq!(
+                IntoBounds::into_bounds((ms, me)),
+                std::ops::IntoBounds::into_bounds((ss, se)).inject()
+            );
+        }
+
+        #[test]
+        fn test_into_bounds_exhausted(start in any::<u8>(), end in any::<u8>()) {
+            prop_assume!(start <= end);
+            let model = super::range::RangeInclusive { start_: end, end_: end, exhausted: true };
+            let mut real = start..=end;
+            real.nth((end - start) as usize);
+            prop_assert_eq!(
+                super::range::IntoBounds::into_bounds(model),
+                std::ops::IntoBounds::into_bounds(real).inject()
+            );
+        }
+
+        #[test]
+        fn test_into_bounds_intersect(a in any::<u8>(), b in any::<u8>(), c in any::<u8>(),
+                                      d in any::<u8>(), sa in 0u8..3, sb in 0u8..3,
+                                      sc in 0u8..3, sd in 0u8..3) {
+            let pairs = || {
+                let (ma, xa) = bound(sa, a);
+                let (mb, xb) = bound(sb, b);
+                let (mc, xc) = bound(sc, c);
+                let (md, xd) = bound(sd, d);
+                let expected = std::ops::IntoBounds::intersect((xa, xb), (xc, xd));
+                ((ma, mb), (mc, md), expected.inject())
+            };
+            prop_assert_eq!(
+                IntoBoundsDefaults::intersect(Range { start: a, end: b }, Range { start: c, end: d }),
+                std::ops::IntoBounds::intersect(a..b, c..d).inject()
+            );
+            prop_assert_eq!(
+                IntoBoundsDefaults::intersect(RangeFrom { start: a }, RangeTo { end: b }),
+                std::ops::IntoBounds::intersect(a.., ..b).inject()
+            );
+            prop_assert_eq!(
+                IntoBoundsDefaults::intersect(RangeInclusive::new(a, b), Range { start: c, end: d }),
+                std::ops::IntoBounds::intersect(a..=b, c..d).inject()
+            );
+            prop_assert_eq!(
+                IntoBoundsDefaults::intersect(RangeFull, RangeInclusive::new(a, b)),
+                std::ops::IntoBounds::intersect(.., a..=b).inject()
+            );
+            let (p, q, expected) = pairs();
+            prop_assert_eq!(IntoBoundsDefaults::intersect(p, q), expected);
+            // The provided method itself, which only the Rust model has.
+            #[cfg(not(any(hax_backend_fstar, hax_backend_lean)))]
+            {
+                prop_assert_eq!(
+                    IntoBounds::intersect(Range { start: a, end: b }, RangeInclusive::new(c, d)),
+                    std::ops::IntoBounds::intersect(a..b, c..=d).inject()
+                );
+                prop_assert_eq!(
+                    IntoBounds::intersect(RangeToInclusive { end: a }, RangeFrom { start: b }),
+                    std::ops::IntoBounds::intersect(..=a, b..).inject()
+                );
+                let (p, q, expected) = pairs();
+                prop_assert_eq!(IntoBounds::intersect(p, q), expected);
+            }
+        }
+
+        #[test]
+        fn test_one_sided_range_bound(a in any::<u8>()) {
+            let (model_tag, model_v) = OneSidedRange::bound(RangeFrom { start: a });
+            let (std_tag, std_v) = std::ops::OneSidedRange::bound(a..);
+            prop_assert_eq!(model_osb_tag(&model_tag), std_osb_tag(&std_tag));
+            prop_assert_eq!(model_v, std_v);
+
+            let (model_tag, model_v) = OneSidedRange::bound(RangeTo { end: a });
+            let (std_tag, std_v) = std::ops::OneSidedRange::bound(..a);
+            prop_assert_eq!(model_osb_tag(&model_tag), std_osb_tag(&std_tag));
+            prop_assert_eq!(model_v, std_v);
+
+            let (model_tag, model_v) = OneSidedRange::bound(RangeToInclusive { end: a });
+            let (std_tag, std_v) = std::ops::OneSidedRange::bound(..=a);
+            prop_assert_eq!(model_osb_tag(&model_tag), std_osb_tag(&std_tag));
+            prop_assert_eq!(model_v, std_v);
+        }
+    }
+
+    /// std does not compare against the end once the start rules the item out.
+    #[test]
+    fn test_contains_skips_end_below_start() {
+        use crate::ops::range::{Bound, RangeBoundsDefaults, RangeInclusive};
+        use crate::testing::Tripwire;
+        let item = Tripwire(1);
+        assert_eq!(
+            RangeInclusive::new(Tripwire(2), Tripwire(u8::MAX)).contains(&item),
+            (Tripwire(2)..=Tripwire(u8::MAX)).contains(&item)
+        );
+        let model = (
+            Bound::Excluded(Tripwire(1)),
+            Bound::Included(Tripwire(u8::MAX)),
+        );
+        let real = (
+            std::ops::Bound::Excluded(Tripwire(1)),
+            std::ops::Bound::Included(Tripwire(u8::MAX)),
+        );
+        let expected = std::ops::RangeBounds::contains(&real, &item);
+        #[cfg(not(hax_backend_fstar))]
+        assert_eq!(
+            crate::ops::range::RangeBounds::contains(&model, &item),
+            expected
+        );
+        assert_eq!(RangeBoundsDefaults::contains(&model, &item), expected);
+    }
+
+    /// std does not call `end_bound` once the start rules the item out.
+    #[test]
+    fn test_contains_skips_end_bound_below_start() {
+        use crate::ops::range::{Bound, RangeBounds, RangeBoundsDefaults};
+        struct PanickyEnd(u8);
+        impl std::ops::RangeBounds<u8> for PanickyEnd {
+            fn start_bound(&self) -> std::ops::Bound<&u8> {
+                std::ops::Bound::Included(&self.0)
+            }
+            // Never called: the test checks exactly that.
+            #[cfg_attr(coverage_nightly, coverage(off))]
+            fn end_bound(&self) -> std::ops::Bound<&u8> {
+                panic!("end_bound called")
+            }
+        }
+        impl RangeBounds<u8> for PanickyEnd {
+            fn start_bound(&self) -> Bound<&u8> {
+                Bound::Included(&self.0)
+            }
+            // Never called: the test checks exactly that.
+            #[cfg_attr(coverage_nightly, coverage(off))]
+            fn end_bound(&self) -> Bound<&u8> {
+                panic!("end_bound called")
+            }
+        }
+        let expected = std::ops::RangeBounds::contains(&PanickyEnd(2), &1);
+        #[cfg(not(hax_backend_fstar))]
+        assert_eq!(RangeBounds::contains(&PanickyEnd(2), &1), expected);
+        assert_eq!(RangeBoundsDefaults::contains(&PanickyEnd(2), &1), expected);
+    }
+
+    // F* compares with `partial_cmp`, having no `le`/`lt` to override.
+    #[cfg(not(hax_backend_fstar))]
+    mod contains_uses_le_and_lt {
+        /// Incomparable, yet `le` holds and `lt` does not: std goes by the latter.
+        struct Skewed;
+        impl std::cmp::PartialEq for Skewed {
+            fn eq(&self, _: &Self) -> bool {
+                false
+            }
+        }
+        impl std::cmp::PartialOrd for Skewed {
+            fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
+                None
+            }
+            fn le(&self, _: &Self) -> bool {
+                true
+            }
+            fn lt(&self, _: &Self) -> bool {
+                false
+            }
+        }
+        impl crate::cmp::PartialEq<Skewed> for Skewed {
+            fn eq(&self, _: &Self) -> bool {
+                false
+            }
+        }
+        impl crate::cmp::PartialOrd<Skewed> for Skewed {
+            fn partial_cmp(&self, _: &Self) -> crate::option::Option<crate::cmp::Ordering> {
+                crate::option::Option::None
+            }
+            fn le(&self, _: &Self) -> bool {
+                true
+            }
+            fn lt(&self, _: &Self) -> bool {
+                false
+            }
+        }
+
+        #[test]
+        fn test_contains_uses_le_and_lt() {
+            use crate::ops::range::{Bound, Range, RangeBounds, RangeInclusive};
+            // `Skewed` is incomparable on both sides, so only `le`/`lt` can make
+            // the assertions below hold. These checks are also the only callers
+            // of its `eq` and `partial_cmp`, which keeps those bodies covered.
+            assert!(Skewed.partial_cmp(&Skewed).is_none());
+            assert!(Skewed != Skewed);
+            assert!(crate::cmp::PartialOrd::partial_cmp(&Skewed, &Skewed).is_none());
+            assert!(!crate::cmp::PartialEq::eq(&Skewed, &Skewed));
+            assert_eq!(
+                RangeInclusive::new(Skewed, Skewed).contains(&Skewed),
+                (Skewed..=Skewed).contains(&Skewed)
+            );
+            assert_eq!(
+                RangeInclusive::new(Skewed, Skewed).is_empty(),
+                (Skewed..=Skewed).is_empty()
+            );
+            let model = Range {
+                start: Skewed,
+                end: Skewed,
+            };
+            assert_eq!(model.contains(&Skewed), (Skewed..Skewed).contains(&Skewed));
+            assert_eq!(model.is_empty(), (Skewed..Skewed).is_empty());
+            let model = (Bound::Included(Skewed), Bound::Included(Skewed));
+            let real = (
+                std::ops::Bound::Included(Skewed),
+                std::ops::Bound::Included(Skewed),
+            );
+            assert_eq!(
+                RangeBounds::contains(&model, &Skewed),
+                std::ops::RangeBounds::contains(&real, &Skewed)
+            );
+            assert_eq!(
+                RangeBounds::is_empty(&model),
+                std::ops::RangeBounds::is_empty(&real)
+            );
+        }
+    }
+
+    // ----- DerefMut / IndexMut ----------------------------------------------
+
+    #[cfg(not(hax_backend_fstar))]
+    mod mut_traits {
+        use super::*;
+
+        struct Cell(u8);
+
+        impl crate::ops::deref::Deref for Cell {
+            type Target = u8;
+            fn deref(&self) -> &u8 {
+                &self.0
+            }
+        }
+
+        impl crate::ops::deref::DerefMut for Cell {
+            fn deref_mut(&mut self) -> &mut u8 {
+                &mut self.0
+            }
+        }
+
+        impl std::ops::Deref for Cell {
+            type Target = u8;
+            fn deref(&self) -> &u8 {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for Cell {
+            fn deref_mut(&mut self) -> &mut u8 {
+                &mut self.0
+            }
+        }
+
+        struct Buf([u8; 4]);
+
+        impl crate::ops::index::Index<usize> for Buf {
+            type Output = u8;
+            fn index(&self, i: usize) -> &u8 {
+                &self.0[i]
+            }
+        }
+
+        impl crate::ops::index::IndexMut<usize> for Buf {
+            fn index_mut(&mut self, i: usize) -> &mut u8 {
+                &mut self.0[i]
+            }
+        }
+
+        impl std::ops::Index<usize> for Buf {
+            type Output = u8;
+            fn index(&self, i: usize) -> &u8 {
+                &self.0[i]
+            }
+        }
+
+        impl std::ops::IndexMut<usize> for Buf {
+            fn index_mut(&mut self, i: usize) -> &mut u8 {
+                &mut self.0[i]
+            }
+        }
+
+        proptest! {
+            #[test]
+            fn test_deref(x in any::<u8>()) {
+                let model = Cell(x);
+                let std_value = Cell(x);
+                prop_assert_eq!(
+                    *crate::ops::deref::Deref::deref(&model),
+                    *std::ops::Deref::deref(&std_value)
+                );
+            }
+
+            #[test]
+            fn test_index(xs in prop::array::uniform4(any::<u8>()), i in 0usize..4) {
+                let model = Buf(xs);
+                let std_value = Buf(xs);
+                prop_assert_eq!(
+                    *crate::ops::index::Index::index(&model, i),
+                    *std::ops::Index::index(&std_value, i)
+                );
+            }
+
+            #[test]
+            fn test_deref_mut(x in any::<u8>(), v in any::<u8>()) {
+                let mut model = Cell(x);
+                *crate::ops::deref::DerefMut::deref_mut(&mut model) = v;
+                let mut std_value = Cell(x);
+                *std::ops::DerefMut::deref_mut(&mut std_value) = v;
+                prop_assert_eq!(model.0, std_value.0);
+            }
+
+            #[test]
+            fn test_index_mut(xs in prop::array::uniform4(any::<u8>()), i in 0usize..4, v in any::<u8>()) {
+                let mut model = Buf(xs);
+                *crate::ops::index::IndexMut::index_mut(&mut model, i) = v;
+                let mut std_value = Buf(xs);
+                *std::ops::IndexMut::index_mut(&mut std_value, i) = v;
+                prop_assert_eq!(model.0, std_value.0);
+            }
+        }
     }
 }

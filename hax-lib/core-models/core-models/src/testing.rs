@@ -64,6 +64,31 @@ impl<T: Inject> Inject for std::cmp::Reverse<T> {
     }
 }
 
+impl<B: Inject, C: Inject> Inject for std::ops::ControlFlow<B, C> {
+    type Model = crate::ops::control_flow::ControlFlow<B::Model, C::Model>;
+    fn inject(&self) -> Self::Model {
+        match self {
+            std::ops::ControlFlow::Continue(c) => {
+                crate::ops::control_flow::ControlFlow::Continue(c.inject())
+            }
+            std::ops::ControlFlow::Break(b) => {
+                crate::ops::control_flow::ControlFlow::Break(b.inject())
+            }
+        }
+    }
+}
+
+impl<T: Inject> Inject for std::ops::Bound<T> {
+    type Model = crate::ops::range::Bound<T::Model>;
+    fn inject(&self) -> Self::Model {
+        match self {
+            std::ops::Bound::Included(x) => crate::ops::range::Bound::Included(x.inject()),
+            std::ops::Bound::Excluded(x) => crate::ops::range::Bound::Excluded(x.inject()),
+            std::ops::Bound::Unbounded => crate::ops::range::Bound::Unbounded,
+        }
+    }
+}
+
 impl Inject for std::num::TryFromIntError {
     type Model = crate::num::error::TryFromIntError;
     fn inject(&self) -> Self::Model {
@@ -222,7 +247,9 @@ impl crate::ops::range::RangeBounds<usize> for ModelRange {
     }
 }
 
-fn bound(kind: u8, x: usize) -> (crate::ops::range::Bound<usize>, std::ops::Bound<usize>) {
+/// The `Bound` that `kind` selects, in the model and in std. A pair of these
+/// is itself a range, and takes every `Bound` shape at either end.
+pub fn bound<T: Copy>(kind: u8, x: T) -> (crate::ops::range::Bound<T>, std::ops::Bound<T>) {
     use crate::ops::range::Bound as M;
     use std::ops::Bound as S;
     match kind {
