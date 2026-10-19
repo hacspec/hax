@@ -1,6 +1,15 @@
-// F* traits have no provided methods: there, `HasherDefaults` provides them.
-// DEVIATION(std): they write little-endian bytes where std writes native-endian ones,
-// and `write_usize` always writes 8 bytes where std writes `size_of::<usize>()`.
+//! F* traits have no provided methods. Each trait's provided methods are therefore
+//! gated off F*, which takes them from a companion trait with a blanket impl:
+//! `HasherDefaults`, `HashDefaults` and `BuildHasherDefaults`. Code that calls one
+//! under F* names the companion, as in `HasherDefaults::write_u8(state, x)`.
+//!
+//! The `Clone` impl overrides `clone_from` instead of inheriting the default:
+//! charon only emits the per-impl `clone_from` symbol when the impl overrides it,
+//! and clients resolve to it.
+
+// DEVIATION(std): the provided `write_*` methods, here and in `HasherDefaults`,
+// write little-endian bytes where std writes native-endian ones, and `write_usize`
+// always writes 8 bytes where std writes `size_of::<usize>()`.
 /// See [`std::hash::Hasher`]
 #[hax_lib::attributes]
 pub trait Hasher {
@@ -128,7 +137,6 @@ pub trait Hash {
     #[hax_lib::requires(true)]
     fn hash<H: Hasher>(&self, state: &mut H);
     /// See [`std::hash::Hash::hash_slice`]
-    // F* has no default methods: there, `HashDefaults` provides it.
     #[cfg(not(hax_backend_fstar))]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
     where
@@ -151,7 +159,6 @@ pub trait BuildHasher {
     #[hax_lib::requires(true)]
     fn build_hasher(&self) -> Self::Hasher;
     /// See [`std::hash::BuildHasher::hash_one`]
-    // F* has no default methods: there, `BuildHasherDefaults` provides it.
     #[cfg(not(hax_backend_fstar))]
     // The `Self::Hasher` bound repeats the associated type's, as core does:
     // callers pass one dictionary per clause.
@@ -208,8 +215,6 @@ impl<H> crate::clone::Clone for BuildHasherDefault<H> {
     fn clone(&self) -> Self {
         BuildHasherDefault(std::marker::PhantomData)
     }
-    // Overridden, not left to the default: charon only emits the per-impl
-    // `clone_from` symbol when the impl overrides it, and clients resolve to it.
     fn clone_from(self, source: Self) -> Self {
         source
     }
@@ -240,7 +245,7 @@ impl<H> crate::cmp::PartialEq<BuildHasherDefault<H>> for BuildHasherDefault<H> {
 /// See [`std::cmp::Eq`] for [`BuildHasherDefault`]
 impl<H> crate::cmp::Eq for BuildHasherDefault<H> {}
 
-// `Hasher`'s provided methods, for F*, which has no default methods.
+// `Hasher`'s provided methods, for F*.
 #[cfg(any(hax_backend_fstar, test))]
 #[hax_lib::attributes]
 pub(crate) trait HasherDefaults: Hasher {
@@ -376,7 +381,7 @@ impl<H: Hasher> HasherDefaults for H {
     }
 }
 
-// `Hash`'s provided method, for F*, which has no default methods.
+// `Hash`'s provided method, for F*.
 //
 // DEVIATION(std): the integer types do not override it here, so in F* an integer
 // slice reaches the hasher one element per `write`, where std uses a single `write`.
@@ -398,7 +403,7 @@ impl<T: Hash> HashDefaults for T {
     }
 }
 
-// `BuildHasher`'s provided method, for F*, which has no default methods.
+// `BuildHasher`'s provided method, for F*.
 #[cfg(any(hax_backend_fstar, test))]
 #[hax_lib::attributes]
 pub(crate) trait BuildHasherDefaults: BuildHasher {
@@ -483,8 +488,7 @@ impl_hash_for_int!(
     core::primitive::isize => write_isize
 );
 
-// The other `Hash` impls std keeps in `core::hash::impls`. F* takes the `Hasher`
-// and `Hash` provided methods from `HasherDefaults` and `HashDefaults`.
+// The other `Hash` impls std keeps in `core::hash::impls`.
 
 /// See [`std::hash::Hash`] for `bool`
 #[hax_lib::attributes]

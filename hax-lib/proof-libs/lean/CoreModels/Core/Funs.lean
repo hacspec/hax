@@ -5190,7 +5190,7 @@ def fmt.rt.Argument.none : RustM (Array fmt.rt.Argument 0#usize) := do
   ok (Std.Array.empty fmt.rt.Argument)
 
 /-- [core_models::hash::Hasher::write_u8]:
-    Source: 'core-models/src/core/hash.rs', lines 15:4-17:5
+    Source: 'core-models/src/core/hash.rs', lines 24:4-26:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_u8.default
@@ -5201,7 +5201,7 @@ def hash.Hasher.write_u8.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_u16]:
-    Source: 'core-models/src/core/hash.rs', lines 20:4-22:5
+    Source: 'core-models/src/core/hash.rs', lines 29:4-31:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_u16.default
@@ -5215,7 +5215,7 @@ def hash.Hasher.write_u16.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_u32]:
-    Source: 'core-models/src/core/hash.rs', lines 25:4-27:5
+    Source: 'core-models/src/core/hash.rs', lines 34:4-36:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_u32.default
@@ -5233,7 +5233,7 @@ def hash.Hasher.write_u32.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_u64]:
-    Source: 'core-models/src/core/hash.rs', lines 30:4-41:5
+    Source: 'core-models/src/core/hash.rs', lines 39:4-50:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_u64.default
@@ -5261,7 +5261,7 @@ def hash.Hasher.write_u64.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_u128]:
-    Source: 'core-models/src/core/hash.rs', lines 44:4-63:5
+    Source: 'core-models/src/core/hash.rs', lines 53:4-72:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_u128.default
@@ -5308,7 +5308,7 @@ def hash.Hasher.write_u128.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_usize]:
-    Source: 'core-models/src/core/hash.rs', lines 68:4-80:5
+    Source: 'core-models/src/core/hash.rs', lines 77:4-89:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_usize.default
@@ -5337,7 +5337,7 @@ def hash.Hasher.write_usize.default
   HasherInst.write self s
 
 /-- [core_models::hash::Hasher::write_i8]:
-    Source: 'core-models/src/core/hash.rs', lines 83:4-85:5
+    Source: 'core-models/src/core/hash.rs', lines 92:4-94:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_i8.default
@@ -5348,7 +5348,7 @@ def hash.Hasher.write_i8.default
   HasherInst.write_u8 self i1
 
 /-- [core_models::hash::Hasher::write_i16]:
-    Source: 'core-models/src/core/hash.rs', lines 88:4-90:5
+    Source: 'core-models/src/core/hash.rs', lines 97:4-99:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_i16.default
@@ -5359,7 +5359,7 @@ def hash.Hasher.write_i16.default
   HasherInst.write_u16 self i1
 
 /-- [core_models::hash::Hasher::write_i32]:
-    Source: 'core-models/src/core/hash.rs', lines 93:4-95:5
+    Source: 'core-models/src/core/hash.rs', lines 102:4-104:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_i32.default
@@ -5370,7 +5370,7 @@ def hash.Hasher.write_i32.default
   HasherInst.write_u32 self i1
 
 /-- [core_models::hash::Hasher::write_i64]:
-    Source: 'core-models/src/core/hash.rs', lines 98:4-100:5
+    Source: 'core-models/src/core/hash.rs', lines 107:4-109:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_i64.default
@@ -5381,7 +5381,7 @@ def hash.Hasher.write_i64.default
   HasherInst.write_u64 self i1
 
 /-- [core_models::hash::Hasher::write_i128]:
-    Source: 'core-models/src/core/hash.rs', lines 103:4-105:5
+    Source: 'core-models/src/core/hash.rs', lines 112:4-114:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_i128.default
@@ -5392,7 +5392,7 @@ def hash.Hasher.write_i128.default
   HasherInst.write_u128 self i1
 
 /-- [core_models::hash::Hasher::write_isize]:
-    Source: 'core-models/src/core/hash.rs', lines 108:4-110:5
+    Source: 'core-models/src/core/hash.rs', lines 117:4-119:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_isize.default
@@ -5403,7 +5403,7 @@ def hash.Hasher.write_isize.default
   HasherInst.write_usize self i1
 
 /-- [core_models::hash::Hasher::write_length_prefix]:
-    Source: 'core-models/src/core/hash.rs', lines 113:4-115:5
+    Source: 'core-models/src/core/hash.rs', lines 122:4-124:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_length_prefix.default
@@ -5414,7 +5414,7 @@ def hash.Hasher.write_length_prefix.default
   HasherInst.write_usize self len
 
 /-- [core_models::hash::Hasher::write_str]:
-    Source: 'core-models/src/core/hash.rs', lines 118:4-121:5
+    Source: 'core-models/src/core/hash.rs', lines 127:4-130:5
     Visibility: public -/
 @[trait_default]
 def hash.Hasher.write_str.default
@@ -5426,7 +5426,7 @@ def hash.Hasher.write_str.default
   HasherInst.write_u8 self1 255#u8
 
 /-- [core_models::hash::Hash::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 138:8-141:9
+    Source: 'core-models/src/core/hash.rs', lines 146:8-149:9
     Visibility: public -/
 @[rust_loop_body, trait_default]
 def hash.Hash.hash_slice.default_loop.body
@@ -5444,7 +5444,7 @@ def hash.Hash.hash_slice.default_loop.body
   else ok (done state)
 
 /-- [core_models::hash::Hash::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 138:8-141:9
+    Source: 'core-models/src/core/hash.rs', lines 146:8-149:9
     Visibility: public -/
 @[rust_loop, trait_default]
 def hash.Hash.hash_slice.default_loop
@@ -5458,7 +5458,7 @@ def hash.Hash.hash_slice.default_loop
     (state, i)
 
 /-- [core_models::hash::Hash::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 133:4-142:5
+    Source: 'core-models/src/core/hash.rs', lines 141:4-150:5
     Visibility: public -/
 @[reducible, trait_default]
 def hash.Hash.hash_slice.default
@@ -5469,7 +5469,7 @@ def hash.Hash.hash_slice.default
   hash.Hash.hash_slice.default_loop HashInst HasherInst data state 0#usize
 
 /-- [core_models::hash::BuildHasher::hash_one]:
-    Source: 'core-models/src/core/hash.rs', lines 158:4-166:5
+    Source: 'core-models/src/core/hash.rs', lines 165:4-173:5
     Visibility: public -/
 @[trait_default]
 def hash.BuildHasher.hash_one.default
@@ -5483,14 +5483,14 @@ def hash.BuildHasher.hash_one.default
   HasherInst.finish hasher1
 
 /-- [core_models::hash::{core_models::hash::BuildHasherDefault<H>}::new]:
-    Source: 'core-models/src/core/hash.rs', lines 181:4-183:5
+    Source: 'core-models/src/core/hash.rs', lines 188:4-190:5
     Visibility: public -/
 def hash.BuildHasherDefault.new
   (H : Type) : RustM (hash.BuildHasherDefault H) := do
   ok ()
 
 /-- [core_models::hash::{impl core_models::fmt::Debug for core_models::hash::BuildHasherDefault<H>}::fmt]:
-    Source: 'core-models/src/core/hash.rs', lines 189:4-191:5
+    Source: 'core-models/src/core/hash.rs', lines 196:4-198:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreFmtDebug.fmt
   {H : Type} (self : hash.BuildHasherDefault H) (f : fmt.Formatter) :
@@ -5499,7 +5499,7 @@ def hash.BuildHasherDefault.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::hash::{impl core_models::fmt::Debug for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 188:0-192:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 195:0-199:1 -/
 @[reducible]
 def hash.BuildHasherDefault.Insts.CoreFmtDebug (H : Type) : fmt.Debug
   (hash.BuildHasherDefault H) := {
@@ -5507,7 +5507,7 @@ def hash.BuildHasherDefault.Insts.CoreFmtDebug (H : Type) : fmt.Debug
 }
 
 /-- [core_models::hash::{impl core_models::hash::BuildHasher<H> for core_models::hash::BuildHasherDefault<H>}::build_hasher]:
-    Source: 'core-models/src/core/hash.rs', lines 200:4-202:5
+    Source: 'core-models/src/core/hash.rs', lines 207:4-209:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreHashBuildHasher.build_hasher
   {H : Type} (defaultDefaultInst : default.Default H) (HasherInst : hash.Hasher
@@ -5517,7 +5517,7 @@ def hash.BuildHasherDefault.Insts.CoreHashBuildHasher.build_hasher
   defaultDefaultInst.default
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::BuildHasher<H> for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 198:0-203:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 205:0-210:1 -/
 @[reducible]
 impl_def hash.BuildHasherDefault.Insts.CoreHashBuildHasher {H : Type}
   (defaultDefaultInst : default.Default H) (HasherInst1 : hash.Hasher H) :
@@ -5533,7 +5533,7 @@ impl_def hash.BuildHasherDefault.Insts.CoreHashBuildHasher {H : Type}
 }
 
 /-- [core_models::hash::{impl core_models::clone::Clone for core_models::hash::BuildHasherDefault<H>}::clone_from]:
-    Source: 'core-models/src/core/hash.rs', lines 213:4-215:5
+    Source: 'core-models/src/core/hash.rs', lines 218:4-220:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreCloneClone.clone_from
   {H : Type} (self : hash.BuildHasherDefault H)
@@ -5543,7 +5543,7 @@ def hash.BuildHasherDefault.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::hash::{impl core_models::clone::Clone for core_models::hash::BuildHasherDefault<H>}::clone]:
-    Source: 'core-models/src/core/hash.rs', lines 208:4-210:5
+    Source: 'core-models/src/core/hash.rs', lines 215:4-217:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreCloneClone.clone
   {H : Type} (self : hash.BuildHasherDefault H) :
@@ -5552,7 +5552,7 @@ def hash.BuildHasherDefault.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::hash::{impl core_models::clone::Clone for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 207:0-216:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 214:0-221:1 -/
 @[reducible]
 def hash.BuildHasherDefault.Insts.CoreCloneClone (H : Type) :
   clone.Clone (hash.BuildHasherDefault H) := {
@@ -5561,14 +5561,14 @@ def hash.BuildHasherDefault.Insts.CoreCloneClone (H : Type) :
 }
 
 /-- [core_models::hash::{impl core_models::default::Default for core_models::hash::BuildHasherDefault<H>}::default]:
-    Source: 'core-models/src/core/hash.rs', lines 224:4-226:5
+    Source: 'core-models/src/core/hash.rs', lines 229:4-231:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreDefaultDefault.default
   (H : Type) : RustM (hash.BuildHasherDefault H) := do
   hash.BuildHasherDefault.new H
 
 /-- Trait implementation: [core_models::hash::{impl core_models::default::Default for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 223:0-227:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 228:0-232:1 -/
 @[reducible]
 def hash.BuildHasherDefault.Insts.CoreDefaultDefault (H : Type) :
   default.Default (hash.BuildHasherDefault H) := {
@@ -5576,7 +5576,7 @@ def hash.BuildHasherDefault.Insts.CoreDefaultDefault (H : Type) :
 }
 
 /-- [core_models::hash::{impl core_models::cmp::PartialEq<core_models::hash::BuildHasherDefault<H>> for core_models::hash::BuildHasherDefault<H>}::ne]:
-    Source: 'core-models/src/core/hash.rs', lines 235:4-237:5
+    Source: 'core-models/src/core/hash.rs', lines 240:4-242:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault.ne
   {H : Type} (self : hash.BuildHasherDefault H)
@@ -5586,7 +5586,7 @@ def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault.ne
   ok false
 
 /-- [core_models::hash::{impl core_models::cmp::PartialEq<core_models::hash::BuildHasherDefault<H>> for core_models::hash::BuildHasherDefault<H>}::eq]:
-    Source: 'core-models/src/core/hash.rs', lines 231:4-233:5
+    Source: 'core-models/src/core/hash.rs', lines 236:4-238:5
     Visibility: public -/
 def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault.eq
   {H : Type} (self : hash.BuildHasherDefault H)
@@ -5596,7 +5596,7 @@ def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault.eq
   ok true
 
 /-- Trait implementation: [core_models::hash::{impl core_models::cmp::PartialEq<core_models::hash::BuildHasherDefault<H>> for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 230:0-238:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 235:0-243:1 -/
 @[reducible]
 def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault (H
   : Type) : cmp.PartialEq (hash.BuildHasherDefault H) (hash.BuildHasherDefault
@@ -5608,7 +5608,7 @@ def hash.BuildHasherDefault.Insts.CoreCmpPartialEqBuildHasherDefault (H
 }
 
 /-- Trait implementation: [core_models::hash::{impl core_models::cmp::Eq for core_models::hash::BuildHasherDefault<H>}]
-    Source: 'core-models/src/core/hash.rs', lines 241:0-241:51 -/
+    Source: 'core-models/src/core/hash.rs', lines 246:0-246:51 -/
 @[reducible]
 def hash.BuildHasherDefault.Insts.CoreCmpEq (H : Type) : cmp.Eq
   (hash.BuildHasherDefault H) := {
@@ -5617,7 +5617,7 @@ def hash.BuildHasherDefault.Insts.CoreCmpEq (H : Type) : cmp.Eq
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hasher for core_models::hash::ByteBuffer}::write]:
-    Source: 'core-models/src/core/hash.rs', lines 438:4-440:5
+    Source: 'core-models/src/core/hash.rs', lines 443:4-445:5
     Visibility: public -/
 def hash.ByteBuffer.Insts.CoreHashHasher.write
   (self : hash.ByteBuffer) (bytes : Slice Std.U8) : RustM hash.ByteBuffer := do
@@ -5626,14 +5626,14 @@ def hash.ByteBuffer.Insts.CoreHashHasher.write
   ok s
 
 /-- [core_models::hash::{impl core_models::hash::Hasher for core_models::hash::ByteBuffer}::finish]:
-    Source: 'core-models/src/core/hash.rs', lines 435:4-437:5
+    Source: 'core-models/src/core/hash.rs', lines 440:4-442:5
     Visibility: public -/
 def hash.ByteBuffer.Insts.CoreHashHasher.finish
   (self : hash.ByteBuffer) : RustM Std.U64 := do
   ok 0#u64
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hasher for core_models::hash::ByteBuffer}]
-    Source: 'core-models/src/core/hash.rs', lines 432:0-441:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 437:0-446:1 -/
 @[reducible]
 impl_def hash.ByteBuffer.Insts.CoreHashHasher : hash.Hasher
   hash.ByteBuffer := {
@@ -5670,7 +5670,7 @@ impl_def hash.ByteBuffer.Insts.CoreHashHasher : hash.Hasher
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u8}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def U8.Insts.CoreHashHash.hash_slice_loop.body
@@ -5689,7 +5689,7 @@ def U8.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u8}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def U8.Insts.CoreHashHash.hash_slice_loop
@@ -5702,7 +5702,7 @@ def U8.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u8}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def U8.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.U8) (state : H) :
@@ -5714,7 +5714,7 @@ def U8.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u8}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def U8.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U8) (state : H) :
@@ -5723,7 +5723,7 @@ def U8.Insts.CoreHashHash.hash
   HasherInst.write_u8 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u8}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def U8.Insts.CoreHashHash : hash.Hash Std.U8 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -5733,7 +5733,7 @@ def U8.Insts.CoreHashHash : hash.Hash Std.U8 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u16}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def U16.Insts.CoreHashHash.hash_slice_loop.body
@@ -5752,7 +5752,7 @@ def U16.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u16}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def U16.Insts.CoreHashHash.hash_slice_loop
@@ -5765,7 +5765,7 @@ def U16.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u16}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def U16.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.U16) (state : H) :
@@ -5777,7 +5777,7 @@ def U16.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u16}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def U16.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U16) (state : H) :
@@ -5786,7 +5786,7 @@ def U16.Insts.CoreHashHash.hash
   HasherInst.write_u16 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u16}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def U16.Insts.CoreHashHash : hash.Hash Std.U16 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -5796,7 +5796,7 @@ def U16.Insts.CoreHashHash : hash.Hash Std.U16 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u32}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def U32.Insts.CoreHashHash.hash_slice_loop.body
@@ -5815,7 +5815,7 @@ def U32.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u32}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def U32.Insts.CoreHashHash.hash_slice_loop
@@ -5828,7 +5828,7 @@ def U32.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u32}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def U32.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.U32) (state : H) :
@@ -5840,7 +5840,7 @@ def U32.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u32}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def U32.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U32) (state : H) :
@@ -5849,7 +5849,7 @@ def U32.Insts.CoreHashHash.hash
   HasherInst.write_u32 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u32}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def U32.Insts.CoreHashHash : hash.Hash Std.U32 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -5859,7 +5859,7 @@ def U32.Insts.CoreHashHash : hash.Hash Std.U32 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u64}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def U64.Insts.CoreHashHash.hash_slice_loop.body
@@ -5878,7 +5878,7 @@ def U64.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u64}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def U64.Insts.CoreHashHash.hash_slice_loop
@@ -5891,7 +5891,7 @@ def U64.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u64}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def U64.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.U64) (state : H) :
@@ -5903,7 +5903,7 @@ def U64.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u64}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def U64.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U64) (state : H) :
@@ -5912,7 +5912,7 @@ def U64.Insts.CoreHashHash.hash
   HasherInst.write_u64 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u64}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def U64.Insts.CoreHashHash : hash.Hash Std.U64 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -5922,7 +5922,7 @@ def U64.Insts.CoreHashHash : hash.Hash Std.U64 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u128}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def U128.Insts.CoreHashHash.hash_slice_loop.body
@@ -5941,7 +5941,7 @@ def U128.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u128}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def U128.Insts.CoreHashHash.hash_slice_loop
@@ -5954,7 +5954,7 @@ def U128.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u128}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def U128.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.U128) (state : H) :
@@ -5966,7 +5966,7 @@ def U128.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for u128}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def U128.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.U128) (state : H) :
@@ -5975,7 +5975,7 @@ def U128.Insts.CoreHashHash.hash
   HasherInst.write_u128 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for u128}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def U128.Insts.CoreHashHash : hash.Hash Std.U128 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -5985,7 +5985,7 @@ def U128.Insts.CoreHashHash : hash.Hash Std.U128 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for usize}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def Usize.Insts.CoreHashHash.hash_slice_loop.body
@@ -6004,7 +6004,7 @@ def Usize.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for usize}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def Usize.Insts.CoreHashHash.hash_slice_loop
@@ -6017,7 +6017,7 @@ def Usize.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for usize}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def Usize.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.Usize) (state : H)
@@ -6030,7 +6030,7 @@ def Usize.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for usize}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def Usize.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.Usize) (state : H) :
@@ -6039,7 +6039,7 @@ def Usize.Insts.CoreHashHash.hash
   HasherInst.write_usize state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for usize}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def Usize.Insts.CoreHashHash : hash.Hash Std.Usize := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6049,7 +6049,7 @@ def Usize.Insts.CoreHashHash : hash.Hash Std.Usize := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i8}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def I8.Insts.CoreHashHash.hash_slice_loop.body
@@ -6068,7 +6068,7 @@ def I8.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i8}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def I8.Insts.CoreHashHash.hash_slice_loop
@@ -6081,7 +6081,7 @@ def I8.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i8}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def I8.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.I8) (state : H) :
@@ -6093,7 +6093,7 @@ def I8.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i8}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def I8.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.I8) (state : H) :
@@ -6102,7 +6102,7 @@ def I8.Insts.CoreHashHash.hash
   HasherInst.write_i8 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i8}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def I8.Insts.CoreHashHash : hash.Hash Std.I8 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6112,7 +6112,7 @@ def I8.Insts.CoreHashHash : hash.Hash Std.I8 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i16}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def I16.Insts.CoreHashHash.hash_slice_loop.body
@@ -6131,7 +6131,7 @@ def I16.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i16}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def I16.Insts.CoreHashHash.hash_slice_loop
@@ -6144,7 +6144,7 @@ def I16.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i16}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def I16.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.I16) (state : H) :
@@ -6156,7 +6156,7 @@ def I16.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i16}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def I16.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.I16) (state : H) :
@@ -6165,7 +6165,7 @@ def I16.Insts.CoreHashHash.hash
   HasherInst.write_i16 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i16}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def I16.Insts.CoreHashHash : hash.Hash Std.I16 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6175,7 +6175,7 @@ def I16.Insts.CoreHashHash : hash.Hash Std.I16 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i32}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def I32.Insts.CoreHashHash.hash_slice_loop.body
@@ -6194,7 +6194,7 @@ def I32.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i32}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def I32.Insts.CoreHashHash.hash_slice_loop
@@ -6207,7 +6207,7 @@ def I32.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i32}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def I32.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.I32) (state : H) :
@@ -6219,7 +6219,7 @@ def I32.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i32}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def I32.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.I32) (state : H) :
@@ -6228,7 +6228,7 @@ def I32.Insts.CoreHashHash.hash
   HasherInst.write_i32 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i32}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def I32.Insts.CoreHashHash : hash.Hash Std.I32 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6238,7 +6238,7 @@ def I32.Insts.CoreHashHash : hash.Hash Std.I32 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i64}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def I64.Insts.CoreHashHash.hash_slice_loop.body
@@ -6257,7 +6257,7 @@ def I64.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i64}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def I64.Insts.CoreHashHash.hash_slice_loop
@@ -6270,7 +6270,7 @@ def I64.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i64}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def I64.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.I64) (state : H) :
@@ -6282,7 +6282,7 @@ def I64.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i64}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def I64.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.I64) (state : H) :
@@ -6291,7 +6291,7 @@ def I64.Insts.CoreHashHash.hash
   HasherInst.write_i64 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i64}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def I64.Insts.CoreHashHash : hash.Hash Std.I64 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6301,7 +6301,7 @@ def I64.Insts.CoreHashHash : hash.Hash Std.I64 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i128}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def I128.Insts.CoreHashHash.hash_slice_loop.body
@@ -6320,7 +6320,7 @@ def I128.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i128}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def I128.Insts.CoreHashHash.hash_slice_loop
@@ -6333,7 +6333,7 @@ def I128.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i128}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def I128.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.I128) (state : H) :
@@ -6345,7 +6345,7 @@ def I128.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for i128}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def I128.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.I128) (state : H) :
@@ -6354,7 +6354,7 @@ def I128.Insts.CoreHashHash.hash
   HasherInst.write_i128 state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for i128}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def I128.Insts.CoreHashHash : hash.Hash Std.I128 := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6364,7 +6364,7 @@ def I128.Insts.CoreHashHash : hash.Hash Std.I128 := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for isize}::hash_slice]: loop body 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop_body]
 def Isize.Insts.CoreHashHash.hash_slice_loop.body
@@ -6383,7 +6383,7 @@ def Isize.Insts.CoreHashHash.hash_slice_loop.body
   else ok (done buffer)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for isize}::hash_slice]: loop 0:
-    Source: 'core-models/src/core/hash.rs', lines 460:20-463:21
+    Source: 'core-models/src/core/hash.rs', lines 465:20-468:21
     Visibility: public -/
 @[rust_loop]
 def Isize.Insts.CoreHashHash.hash_slice_loop
@@ -6396,7 +6396,7 @@ def Isize.Insts.CoreHashHash.hash_slice_loop
     (buffer, i)
 
 /-- [core_models::hash::{impl core_models::hash::Hash for isize}::hash_slice]:
-    Source: 'core-models/src/core/hash.rs', lines 457:16-465:17
+    Source: 'core-models/src/core/hash.rs', lines 462:16-470:17
     Visibility: public -/
 def Isize.Insts.CoreHashHash.hash_slice
   {H : Type} (HasherInst : hash.Hasher H) (data : Slice Std.Isize) (state : H)
@@ -6409,7 +6409,7 @@ def Isize.Insts.CoreHashHash.hash_slice
   HasherInst.write state s1
 
 /-- [core_models::hash::{impl core_models::hash::Hash for isize}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 449:16-454:17
+    Source: 'core-models/src/core/hash.rs', lines 454:16-459:17
     Visibility: public -/
 def Isize.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Std.Isize) (state : H) :
@@ -6418,7 +6418,7 @@ def Isize.Insts.CoreHashHash.hash
   HasherInst.write_isize state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for isize}]
-    Source: 'core-models/src/core/hash.rs', lines 448:12-466:13 -/
+    Source: 'core-models/src/core/hash.rs', lines 453:12-471:13 -/
 @[reducible]
 def Isize.Insts.CoreHashHash : hash.Hash Std.Isize := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6428,7 +6428,7 @@ def Isize.Insts.CoreHashHash : hash.Hash Std.Isize := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for bool}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 492:4-497:5
+    Source: 'core-models/src/core/hash.rs', lines 496:4-501:5
     Visibility: public -/
 def Bool.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Bool) (state : H) :
@@ -6438,7 +6438,7 @@ def Bool.Insts.CoreHashHash.hash
   HasherInst.write_u8 state i
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for bool}]
-    Source: 'core-models/src/core/hash.rs', lines 491:0-498:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 495:0-502:1 -/
 @[reducible]
 impl_def Bool.Insts.CoreHashHash : hash.Hash Bool := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6448,7 +6448,7 @@ impl_def Bool.Insts.CoreHashHash : hash.Hash Bool := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for str}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 517:4-522:5
+    Source: 'core-models/src/core/hash.rs', lines 521:4-526:5
     Visibility: public -/
 def Str.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Str) (state : H) :
@@ -6457,7 +6457,7 @@ def Str.Insts.CoreHashHash.hash
   HasherInst.write_str state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for str}]
-    Source: 'core-models/src/core/hash.rs', lines 516:0-523:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 520:0-527:1 -/
 @[reducible]
 impl_def Str.Insts.CoreHashHash : hash.Hash Str := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6467,7 +6467,7 @@ impl_def Str.Insts.CoreHashHash : hash.Hash Str := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for ()}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 528:4-528:47
+    Source: 'core-models/src/core/hash.rs', lines 532:4-532:47
     Visibility: public -/
 def Tuple.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (_ : Unit) (state : H) :
@@ -6476,7 +6476,7 @@ def Tuple.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for ()}]
-    Source: 'core-models/src/core/hash.rs', lines 527:0-529:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 531:0-533:1 -/
 @[reducible]
 impl_def Tuple.Insts.CoreHashHash : hash.Hash Unit := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6486,7 +6486,7 @@ impl_def Tuple.Insts.CoreHashHash : hash.Hash Unit := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T,)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleT.Insts.CoreHashHash.hash
   {T : Type} {S : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher S)
@@ -6496,7 +6496,7 @@ def TupleT.Insts.CoreHashHash.hash
   HashInst.hash HasherInst self state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T,)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleT.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
   hash.Hash T := {
@@ -6508,7 +6508,7 @@ impl_def TupleT.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def Pair.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {S : Type} (HashInst : hash.Hash T) (HashInst1 :
@@ -6520,7 +6520,7 @@ def Pair.Insts.CoreHashHash.hash
   HashInst1.hash HasherInst t1 state1
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def Pair.Insts.CoreHashHash {T : Type} {B : Type} (HashInst :
   hash.Hash T) (HashInst1 : hash.Hash B) : hash.Hash (T × B) := {
@@ -6532,7 +6532,7 @@ impl_def Pair.Insts.CoreHashHash {T : Type} {B : Type} (HashInst :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBC.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {S : Type} (HashInst : hash.Hash T)
@@ -6546,7 +6546,7 @@ def TupleTBC.Insts.CoreHashHash.hash
   HashInst2.hash HasherInst t2 state2
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBC.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   (HashInst : hash.Hash T) (HashInst1 : hash.Hash B) (HashInst2 : hash.Hash C)
@@ -6560,7 +6560,7 @@ impl_def TupleTBC.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCD.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {S : Type} (HashInst : hash.Hash
@@ -6575,7 +6575,7 @@ def TupleTBCD.Insts.CoreHashHash.hash
   HashInst3.hash HasherInst t3 state3
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCD.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} (HashInst : hash.Hash T) (HashInst1 : hash.Hash B) (HashInst2 :
@@ -6589,7 +6589,7 @@ impl_def TupleTBCD.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDE.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {S : Type} (HashInst :
@@ -6606,7 +6606,7 @@ def TupleTBCDE.Insts.CoreHashHash.hash
   HashInst4.hash HasherInst t4 state4
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDE.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} {E : Type} (HashInst : hash.Hash T) (HashInst1 : hash.Hash B)
@@ -6621,7 +6621,7 @@ impl_def TupleTBCDE.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEF.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {S : Type}
@@ -6640,7 +6640,7 @@ def TupleTBCDEF.Insts.CoreHashHash.hash
   HashInst5.hash HasherInst t5 state5
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEF.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} {E : Type} {F : Type} (HashInst : hash.Hash T) (HashInst1 :
@@ -6656,7 +6656,7 @@ impl_def TupleTBCDEF.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFG.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6676,7 +6676,7 @@ def TupleTBCDEFG.Insts.CoreHashHash.hash
   HashInst6.hash HasherInst t6 state6
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFG.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} (HashInst : hash.Hash T)
@@ -6693,7 +6693,7 @@ impl_def TupleTBCDEFG.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFGH.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6715,7 +6715,7 @@ def TupleTBCDEFGH.Insts.CoreHashHash.hash
   HashInst7.hash HasherInst t7 state7
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFGH.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} (HashInst :
@@ -6733,7 +6733,7 @@ impl_def TupleTBCDEFGH.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFGHI.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6756,7 +6756,7 @@ def TupleTBCDEFGHI.Insts.CoreHashHash.hash
   HashInst8.hash HasherInst t8 state8
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHI.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type}
@@ -6774,7 +6774,7 @@ impl_def TupleTBCDEFGHI.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFGHIJ.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6799,7 +6799,7 @@ def TupleTBCDEFGHIJ.Insts.CoreHashHash.hash
   HashInst9.hash HasherInst t9 state9
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJ.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6819,7 +6819,7 @@ impl_def TupleTBCDEFGHIJ.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFGHIJK.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6845,7 +6845,7 @@ def TupleTBCDEFGHIJK.Insts.CoreHashHash.hash
   HashInst10.hash HasherInst t10 state10
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJK.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6865,7 +6865,7 @@ impl_def TupleTBCDEFGHIJK.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K, L)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
+    Source: 'core-models/src/core/hash.rs', lines 542:12-544:13
     Visibility: public -/
 def TupleTBCDEFGHIJKL.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6894,7 +6894,7 @@ def TupleTBCDEFGHIJKL.Insts.CoreHashHash.hash
   HashInst11.hash HasherInst t11 state11
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K, L)}]
-    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 541:8-545:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJKL.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6915,7 +6915,7 @@ impl_def TupleTBCDEFGHIJKL.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for [T]}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 566:4-575:5
+    Source: 'core-models/src/core/hash.rs', lines 570:4-579:5
     Visibility: public -/
 def Slice.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
@@ -6927,7 +6927,7 @@ def Slice.Insts.CoreHashHash.hash
   HashInst.hash_slice HasherInst self state1
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for [T]}]
-    Source: 'core-models/src/core/hash.rs', lines 565:0-576:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 569:0-580:1 -/
 @[reducible]
 impl_def Slice.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
   hash.Hash (Slice T) := {
@@ -6939,7 +6939,7 @@ impl_def Slice.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for &'_0 T}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 584:4-586:5
+    Source: 'core-models/src/core/hash.rs', lines 588:4-590:5
     Visibility: public -/
 def Shared0T.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
@@ -6949,7 +6949,7 @@ def Shared0T.Insts.CoreHashHash.hash
   HashInst.hash HasherInst self state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for &'_0 T}]
-    Source: 'core-models/src/core/hash.rs', lines 583:0-587:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 587:0-591:1 -/
 @[reducible]
 impl_def Shared0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T)
   : hash.Hash T := {
@@ -6961,7 +6961,7 @@ impl_def Shared0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T)
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for &'_0 mut T}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 595:4-597:5
+    Source: 'core-models/src/core/hash.rs', lines 599:4-601:5
     Visibility: public -/
 def Mut0T.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
@@ -6971,7 +6971,7 @@ def Mut0T.Insts.CoreHashHash.hash
   HashInst.hash HasherInst self state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for &'_0 mut T}]
-    Source: 'core-models/src/core/hash.rs', lines 594:0-598:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 598:0-602:1 -/
 @[reducible]
 impl_def Mut0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
   hash.Hash T := {
@@ -10395,135 +10395,135 @@ def I128.Insts.CoreIterRangeStep : iter.range.Step Std.I128 := {
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Send for T}]
-    Source: 'core-models/src/core/marker.rs', lines 15:0-15:21 -/
+    Source: 'core-models/src/core/marker.rs', lines 19:0-19:21 -/
 @[reducible]
 def marker.Send.Blanket (T : Type) : marker.Send T := {
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Sync for T}]
-    Source: 'core-models/src/core/marker.rs', lines 16:0-16:21 -/
+    Source: 'core-models/src/core/marker.rs', lines 20:0-20:21 -/
 @[reducible]
 def marker.Sync.Blanket (T : Type) : marker.Sync T := {
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::PointeeSized for T}]
-    Source: 'core-models/src/core/marker.rs', lines 49:0-49:29 -/
+    Source: 'core-models/src/core/marker.rs', lines 53:0-53:29 -/
 @[reducible]
 def marker.PointeeSized.Blanket (T : Type) : marker.PointeeSized T := {
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::MetaSized for T}]
-    Source: 'core-models/src/core/marker.rs', lines 48:0-48:26 -/
+    Source: 'core-models/src/core/marker.rs', lines 52:0-52:26 -/
 @[reducible]
 def marker.MetaSized.Blanket (T : Type) : marker.MetaSized T := {
   PointeeSizedInst := marker.PointeeSized.Blanket T
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Sized for T}]
-    Source: 'core-models/src/core/marker.rs', lines 17:0-17:22 -/
+    Source: 'core-models/src/core/marker.rs', lines 21:0-21:22 -/
 @[reducible]
 def marker.Sized.Blanket (T : Type) : marker.Sized T := {
   MetaSizedInst := marker.MetaSized.Blanket T
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for u8}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def U8.Insts.CoreMarkerCopy : marker.Copy Std.U8 := {
   cloneCloneInst := U8.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for u16}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def U16.Insts.CoreMarkerCopy : marker.Copy Std.U16 := {
   cloneCloneInst := U16.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for u32}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def U32.Insts.CoreMarkerCopy : marker.Copy Std.U32 := {
   cloneCloneInst := U32.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for u64}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def U64.Insts.CoreMarkerCopy : marker.Copy Std.U64 := {
   cloneCloneInst := U64.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for u128}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def U128.Insts.CoreMarkerCopy : marker.Copy Std.U128 := {
   cloneCloneInst := U128.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for usize}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def Usize.Insts.CoreMarkerCopy : marker.Copy Std.Usize := {
   cloneCloneInst := Usize.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for i8}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def I8.Insts.CoreMarkerCopy : marker.Copy Std.I8 := {
   cloneCloneInst := I8.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for i16}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def I16.Insts.CoreMarkerCopy : marker.Copy Std.I16 := {
   cloneCloneInst := I16.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for i32}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def I32.Insts.CoreMarkerCopy : marker.Copy Std.I32 := {
   cloneCloneInst := I32.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for i64}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def I64.Insts.CoreMarkerCopy : marker.Copy Std.I64 := {
   cloneCloneInst := I64.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for i128}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def I128.Insts.CoreMarkerCopy : marker.Copy Std.I128 := {
   cloneCloneInst := I128.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for isize}]
-    Source: 'core-models/src/core/marker.rs', lines 25:12-25:31 -/
+    Source: 'core-models/src/core/marker.rs', lines 29:12-29:31 -/
 @[reducible]
 def Isize.Insts.CoreMarkerCopy : marker.Copy Std.Isize := {
   cloneCloneInst := Isize.Insts.CoreCloneClone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Freeze for T}]
-    Source: 'core-models/src/core/marker.rs', lines 54:0-54:23 -/
+    Source: 'core-models/src/core/marker.rs', lines 58:0-58:23 -/
 @[reducible]
 def marker.Freeze.Blanket (T : Type) : marker.Freeze T := {
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Unpin for T}]
-    Source: 'core-models/src/core/marker.rs', lines 55:0-55:22 -/
+    Source: 'core-models/src/core/marker.rs', lines 59:0-59:22 -/
 @[reducible]
 def marker.Unpin.Blanket (T : Type) : marker.Unpin T := {
 }
 
 /-- [core_models::marker::{impl core_models::fmt::Debug for core_models::marker::PhantomPinned}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 119:4-121:5
+    Source: 'core-models/src/core/marker.rs', lines 123:4-125:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreFmtDebug.fmt
   (self : marker.PhantomPinned) (f : fmt.Formatter) :
@@ -10532,7 +10532,7 @@ def marker.PhantomPinned.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::{impl core_models::fmt::Debug for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 118:0-122:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 122:0-126:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreFmtDebug : fmt.Debug
   marker.PhantomPinned := {
@@ -10540,14 +10540,14 @@ def marker.PhantomPinned.Insts.CoreFmtDebug : fmt.Debug
 }
 
 /-- [core_models::marker::{impl core_models::default::Default for core_models::marker::PhantomPinned}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 124:4-126:5
+    Source: 'core-models/src/core/marker.rs', lines 128:4-130:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreDefaultDefault.default
   : RustM marker.PhantomPinned := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::{impl core_models::default::Default for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 123:0-127:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 127:0-131:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreDefaultDefault : default.Default
   marker.PhantomPinned := {
@@ -10555,7 +10555,7 @@ def marker.PhantomPinned.Insts.CoreDefaultDefault : default.Default
 }
 
 /-- [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 137:4-139:5
+    Source: 'core-models/src/core/marker.rs', lines 139:4-141:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCloneClone.clone_from
   (self : marker.PhantomPinned) (source : marker.PhantomPinned) :
@@ -10564,14 +10564,14 @@ def marker.PhantomPinned.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 132:4-134:5
+    Source: 'core-models/src/core/marker.rs', lines 136:4-138:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCloneClone.clone
   (self : marker.PhantomPinned) : RustM marker.PhantomPinned := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 131:0-140:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 135:0-142:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreCloneClone : clone.Clone
   marker.PhantomPinned := {
@@ -10580,7 +10580,7 @@ def marker.PhantomPinned.Insts.CoreCloneClone : clone.Clone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 129:0-129:30 -/
+    Source: 'core-models/src/core/marker.rs', lines 133:0-133:30 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreMarkerCopy : marker.Copy
   marker.PhantomPinned := {
@@ -10588,14 +10588,14 @@ def marker.PhantomPinned.Insts.CoreMarkerCopy : marker.Copy
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::StructuralPartialEq for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 141:0-141:45 -/
+    Source: 'core-models/src/core/marker.rs', lines 143:0-143:45 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreMarkerStructuralPartialEq :
   marker.StructuralPartialEq marker.PhantomPinned := {
 }
 
 /-- [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 152:4-154:5
+    Source: 'core-models/src/core/marker.rs', lines 154:4-156:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
   (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
@@ -10604,7 +10604,7 @@ def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
   ok false
 
 /-- [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 149:4-151:5
+    Source: 'core-models/src/core/marker.rs', lines 151:4-153:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
   (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
@@ -10613,7 +10613,7 @@ def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
   ok true
 
 /-- Trait implementation: [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 148:0-155:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 150:0-157:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned :
   cmp.PartialEq marker.PhantomPinned marker.PhantomPinned := {
@@ -10622,7 +10622,7 @@ def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned :
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::cmp::Eq for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 146:0-146:40 -/
+    Source: 'core-models/src/core/marker.rs', lines 148:0-148:40 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreCmpEq : cmp.Eq marker.PhantomPinned
   := {
@@ -10631,7 +10631,7 @@ def marker.PhantomPinned.Insts.CoreCmpEq : cmp.Eq marker.PhantomPinned
 }
 
 /-- [core_models::marker::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 164:4-166:5
+    Source: 'core-models/src/core/marker.rs', lines 166:4-168:5
     Visibility: public -/
 def
   marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned.partial_cmp
@@ -10641,7 +10641,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 163:0-167:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 165:0-169:1 -/
 @[reducible]
 impl_def marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned :
   cmp.PartialOrd marker.PhantomPinned marker.PhantomPinned := {
@@ -10660,7 +10660,7 @@ impl_def marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned :
 }
 
 /-- [core_models::marker::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 158:4-160:5
+    Source: 'core-models/src/core/marker.rs', lines 160:4-162:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCmpOrd.cmp
   (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
@@ -10669,7 +10669,7 @@ def marker.PhantomPinned.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 157:0-161:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 159:0-163:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreCmpOrd : cmp.Ord marker.PhantomPinned
   := {
@@ -10680,7 +10680,7 @@ def marker.PhantomPinned.Insts.CoreCmpOrd : cmp.Ord marker.PhantomPinned
 }
 
 /-- [core_models::marker::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 170:4-170:60
+    Source: 'core-models/src/core/marker.rs', lines 172:4-172:60
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H) (self : marker.PhantomPinned)
@@ -10690,7 +10690,7 @@ def marker.PhantomPinned.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 169:0-171:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 171:0-173:1 -/
 @[reducible]
 impl_def marker.PhantomPinned.Insts.CoreHashHash : hash.Hash
   marker.PhantomPinned := {
@@ -10702,21 +10702,21 @@ impl_def marker.PhantomPinned.Insts.CoreHashHash : hash.Hash
 }
 
 /-- [core_models::marker::variance::variance]:
-    Source: 'core-models/src/core/marker.rs', lines 189:4-191:5
+    Source: 'core-models/src/core/marker.rs', lines 191:4-193:5
     Visibility: public -/
 def marker.variance.variance
   {T : Type} (VarianceInst : marker.variance.Variance T) : RustM T := do
   VarianceInst.defaultDefaultInst.default
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomCovariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 468:8-470:9
+    Source: 'core-models/src/core/marker.rs', lines 464:8-466:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.new
   (T : Type) : RustM (marker.variance.PhantomCovariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomCovariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 215:8-217:9
+    Source: 'core-models/src/core/marker.rs', lines 217:8-219:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.new
   : RustM marker.variance.PhantomCovariantLifetime := do
@@ -10724,7 +10724,7 @@ def marker.variance.PhantomCovariantLifetime.new
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariantLifetime<'a>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 280:8-282:9
+    Source: 'core-models/src/core/marker.rs', lines 282:8-284:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault.default
@@ -10733,7 +10733,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 279:4-283:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 281:4-285:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault :
   default.Default marker.variance.PhantomCovariantLifetime := {
@@ -10742,7 +10742,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 222:4-222:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 224:4-224:57 -/
 @[reducible]
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10752,7 +10752,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 226:8-228:9
+    Source: 'core-models/src/core/marker.rs', lines 228:8-230:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomCovariantLifetime) (f : fmt.Formatter) :
@@ -10761,7 +10761,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 225:4-229:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 227:4-231:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomCovariantLifetime := {
@@ -10769,14 +10769,14 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug :
 }
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomContravariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 547:8-549:9
+    Source: 'core-models/src/core/marker.rs', lines 541:8-543:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.new
   (T : Type) : RustM (marker.variance.PhantomContravariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomContravariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 236:8-238:9
+    Source: 'core-models/src/core/marker.rs', lines 238:8-240:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.new
   : RustM marker.variance.PhantomContravariantLifetime := do
@@ -10803,7 +10803,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 243:4-243:61 -/
+    Source: 'core-models/src/core/marker.rs', lines 245:4-245:61 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10813,7 +10813,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 247:8-249:9
+    Source: 'core-models/src/core/marker.rs', lines 249:8-251:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomContravariantLifetime) (f : fmt.Formatter) :
@@ -10822,7 +10822,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 246:4-250:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 248:4-252:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomContravariantLifetime := {
@@ -10831,14 +10831,14 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug :
 }
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomInvariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 626:8-628:9
+    Source: 'core-models/src/core/marker.rs', lines 618:8-620:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.new
   (T : Type) : RustM (marker.variance.PhantomInvariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomInvariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 257:8-259:9
+    Source: 'core-models/src/core/marker.rs', lines 259:8-261:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.new
   : RustM marker.variance.PhantomInvariantLifetime := do
@@ -10846,7 +10846,7 @@ def marker.variance.PhantomInvariantLifetime.new
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariantLifetime<'a>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 407:8-409:9
+    Source: 'core-models/src/core/marker.rs', lines 405:8-407:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault.default
@@ -10855,7 +10855,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 406:4-410:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 404:4-408:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault :
   default.Default marker.variance.PhantomInvariantLifetime := {
@@ -10864,7 +10864,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 264:4-264:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 266:4-266:57 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10874,7 +10874,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 268:8-270:9
+    Source: 'core-models/src/core/marker.rs', lines 270:8-272:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomInvariantLifetime) (f : fmt.Formatter) :
@@ -10883,7 +10883,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 267:4-271:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 269:4-273:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomInvariantLifetime := {
@@ -10902,7 +10902,7 @@ def
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariantLifetime<'a>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 287:8-289:9
+    Source: 'core-models/src/core/marker.rs', lines 289:8-291:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone.clone
   (self : marker.variance.PhantomCovariantLifetime) :
@@ -10912,7 +10912,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 286:4-295:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 288:4-295:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomCovariantLifetime := {
@@ -11061,7 +11061,7 @@ impl_def marker.variance.PhantomCovariantLifetime.Insts.CoreHashHash :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariantLifetime<'a>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 352:8-357:9
+    Source: 'core-models/src/core/marker.rs', lines 350:8-355:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone.clone_from
@@ -11083,7 +11083,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 346:4-358:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 346:4-356:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomContravariantLifetime := {
@@ -11094,7 +11094,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 364:4-364:64 -/
+    Source: 'core-models/src/core/marker.rs', lines 362:4-362:64 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerCopy :
   marker.Copy marker.variance.PhantomContravariantLifetime := {
@@ -11103,7 +11103,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerCopy :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::StructuralPartialEq for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 369:4-369:79 -/
+    Source: 'core-models/src/core/marker.rs', lines 367:4-367:79 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerStructuralPartialEq
@@ -11112,7 +11112,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 378:8-380:9
+    Source: 'core-models/src/core/marker.rs', lines 376:8-378:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime.ne
@@ -11123,7 +11123,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 374:8-376:9
+    Source: 'core-models/src/core/marker.rs', lines 372:8-374:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime.eq
@@ -11134,7 +11134,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 371:4-381:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 369:4-379:5 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime
@@ -11147,7 +11147,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 383:4-383:67 -/
+    Source: 'core-models/src/core/marker.rs', lines 381:4-381:67 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpEq :
   cmp.Eq marker.variance.PhantomContravariantLifetime := {
@@ -11156,7 +11156,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpEq :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 388:8-393:9
+    Source: 'core-models/src/core/marker.rs', lines 386:8-391:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialOrdPhantomContravariantLifetime.partial_cmp
@@ -11167,7 +11167,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 385:4-394:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 383:4-392:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialOrdPhantomContravariantLifetime
@@ -11188,7 +11188,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariantLifetime<'a>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 397:8-399:9
+    Source: 'core-models/src/core/marker.rs', lines 395:8-397:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd.cmp
   (self : marker.variance.PhantomContravariantLifetime)
@@ -11198,7 +11198,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 396:4-400:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 394:4-398:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd :
   cmp.Ord marker.variance.PhantomContravariantLifetime := {
@@ -11210,7 +11210,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariantLifetime<'a>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 403:8-403:64
+    Source: 'core-models/src/core/marker.rs', lines 401:8-401:64
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11220,7 +11220,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 402:4-404:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 400:4-402:5 -/
 @[reducible]
 impl_def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash
   : hash.Hash marker.variance.PhantomContravariantLifetime := {
@@ -11234,7 +11234,7 @@ impl_def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 419:8-421:9
+    Source: 'core-models/src/core/marker.rs', lines 415:8-417:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone_from
@@ -11245,7 +11245,7 @@ def
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 414:8-416:9
+    Source: 'core-models/src/core/marker.rs', lines 412:8-414:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone
   (self : marker.variance.PhantomInvariantLifetime) :
@@ -11255,7 +11255,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 413:4-422:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 411:4-418:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomInvariantLifetime := {
@@ -11266,7 +11266,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 428:4-428:60 -/
+    Source: 'core-models/src/core/marker.rs', lines 424:4-424:60 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerCopy :
   marker.Copy marker.variance.PhantomInvariantLifetime := {
@@ -11275,7 +11275,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerCopy :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::StructuralPartialEq for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 433:4-433:75 -/
+    Source: 'core-models/src/core/marker.rs', lines 429:4-429:75 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerStructuralPartialEq
@@ -11283,7 +11283,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 440:8-442:9
+    Source: 'core-models/src/core/marker.rs', lines 436:8-438:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime.ne
@@ -11294,7 +11294,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 436:8-438:9
+    Source: 'core-models/src/core/marker.rs', lines 432:8-434:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime.eq
@@ -11305,7 +11305,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 435:4-443:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 431:4-439:5 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime
@@ -11318,7 +11318,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 445:4-445:63 -/
+    Source: 'core-models/src/core/marker.rs', lines 441:4-441:63 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpEq : cmp.Eq
   marker.variance.PhantomInvariantLifetime := {
@@ -11327,7 +11327,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpEq : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 448:8-453:9
+    Source: 'core-models/src/core/marker.rs', lines 444:8-449:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialOrdPhantomInvariantLifetime.partial_cmp
@@ -11338,7 +11338,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 447:4-454:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 443:4-450:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialOrdPhantomInvariantLifetime
@@ -11359,7 +11359,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariantLifetime<'a>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 457:8-459:9
+    Source: 'core-models/src/core/marker.rs', lines 453:8-455:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd.cmp
   (self : marker.variance.PhantomInvariantLifetime)
@@ -11369,7 +11369,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 456:4-460:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 452:4-456:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd : cmp.Ord
   marker.variance.PhantomInvariantLifetime := {
@@ -11380,7 +11380,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd : cmp.Ord
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariantLifetime<'a>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 463:8-463:64
+    Source: 'core-models/src/core/marker.rs', lines 459:8-459:64
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11390,7 +11390,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 462:4-464:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 458:4-460:5 -/
 @[reducible]
 impl_def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash :
   hash.Hash marker.variance.PhantomInvariantLifetime := {
@@ -11404,14 +11404,14 @@ impl_def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash :
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 478:8-480:9
+    Source: 'core-models/src/core/marker.rs', lines 474:8-476:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault.default
   (T : Type) : RustM (marker.variance.PhantomCovariant T) := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 477:4-481:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 473:4-477:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault (T : Type)
   : default.Default (marker.variance.PhantomCovariant T) := {
@@ -11420,7 +11420,7 @@ def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 475:4-475:47 -/
+    Source: 'core-models/src/core/marker.rs', lines 471:4-471:47 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreMarkerVarianceVariance (T
   : Type) : marker.variance.Variance (marker.variance.PhantomCovariant T) := {
@@ -11429,7 +11429,7 @@ def marker.variance.PhantomCovariant.Insts.CoreMarkerVarianceVariance (T
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 485:8-487:9
+    Source: 'core-models/src/core/marker.rs', lines 481:8-483:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomCovariant T) (f : fmt.Formatter) :
@@ -11438,7 +11438,7 @@ def marker.variance.PhantomCovariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 484:4-488:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 480:4-484:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomCovariant T) := {
@@ -11446,7 +11446,7 @@ def marker.variance.PhantomCovariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 500:8-502:9
+    Source: 'core-models/src/core/marker.rs', lines 494:8-496:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomCovariant T)
@@ -11456,7 +11456,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 495:8-497:9
+    Source: 'core-models/src/core/marker.rs', lines 491:8-493:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomCovariant T) :
@@ -11465,7 +11465,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 494:4-503:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 490:4-497:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone (T : Type) :
   clone.Clone (marker.variance.PhantomCovariant T) := {
@@ -11475,7 +11475,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone (T : Type) :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 509:4-509:50 -/
+    Source: 'core-models/src/core/marker.rs', lines 503:4-503:50 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreMarkerCopy (T : Type) :
   marker.Copy (marker.variance.PhantomCovariant T) := {
@@ -11484,7 +11484,7 @@ def marker.variance.PhantomCovariant.Insts.CoreMarkerCopy (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 519:8-521:9
+    Source: 'core-models/src/core/marker.rs', lines 513:8-515:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant.ne
@@ -11495,7 +11495,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 515:8-517:9
+    Source: 'core-models/src/core/marker.rs', lines 509:8-511:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant.eq
@@ -11506,7 +11506,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 514:4-522:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 508:4-516:5 -/
 @[reducible]
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant
@@ -11519,7 +11519,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 524:4-524:53 -/
+    Source: 'core-models/src/core/marker.rs', lines 518:4-518:53 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
   (marker.variance.PhantomCovariant T) := {
@@ -11529,7 +11529,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 527:8-532:9
+    Source: 'core-models/src/core/marker.rs', lines 521:8-526:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialOrdPhantomCovariant.partial_cmp
@@ -11540,7 +11540,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 526:4-533:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 520:4-527:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialOrdPhantomCovariant
@@ -11566,7 +11566,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 536:8-538:9
+    Source: 'core-models/src/core/marker.rs', lines 530:8-532:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomCovariant T)
@@ -11576,7 +11576,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 535:4-539:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 529:4-533:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomCovariant T) := {
@@ -11588,7 +11588,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 542:8-542:64
+    Source: 'core-models/src/core/marker.rs', lines 536:8-536:64
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11598,7 +11598,7 @@ def marker.variance.PhantomCovariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 541:4-543:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 535:4-537:5 -/
 @[reducible]
 impl_def marker.variance.PhantomCovariant.Insts.CoreHashHash (T : Type)
   : hash.Hash (marker.variance.PhantomCovariant T) := {
@@ -11611,7 +11611,7 @@ impl_def marker.variance.PhantomCovariant.Insts.CoreHashHash (T : Type)
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 557:8-559:9
+    Source: 'core-models/src/core/marker.rs', lines 551:8-553:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreDefaultDefault.default
@@ -11619,7 +11619,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 556:4-560:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 550:4-554:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreDefaultDefault (T :
   Type) : default.Default (marker.variance.PhantomContravariant T) := {
@@ -11629,7 +11629,7 @@ def marker.variance.PhantomContravariant.Insts.CoreDefaultDefault (T :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 554:4-554:51 -/
+    Source: 'core-models/src/core/marker.rs', lines 548:4-548:51 -/
 @[reducible]
 def
   marker.variance.PhantomContravariant.Insts.CoreMarkerVarianceVariance
@@ -11640,7 +11640,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 564:8-566:9
+    Source: 'core-models/src/core/marker.rs', lines 558:8-560:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11650,7 +11650,7 @@ def marker.variance.PhantomContravariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 563:4-567:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 557:4-561:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomContravariant T) := {
@@ -11658,7 +11658,7 @@ def marker.variance.PhantomContravariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 579:8-581:9
+    Source: 'core-models/src/core/marker.rs', lines 571:8-573:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11668,7 +11668,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 574:8-576:9
+    Source: 'core-models/src/core/marker.rs', lines 568:8-570:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomContravariant T) :
@@ -11677,7 +11677,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 573:4-582:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 567:4-574:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone (T : Type)
   : clone.Clone (marker.variance.PhantomContravariant T) := {
@@ -11688,7 +11688,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 588:4-588:54 -/
+    Source: 'core-models/src/core/marker.rs', lines 580:4-580:54 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreMarkerCopy (T : Type)
   : marker.Copy (marker.variance.PhantomContravariant T) := {
@@ -11697,7 +11697,7 @@ def marker.variance.PhantomContravariant.Insts.CoreMarkerCopy (T : Type)
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 598:8-600:9
+    Source: 'core-models/src/core/marker.rs', lines 590:8-592:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant.ne
@@ -11708,7 +11708,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 594:8-596:9
+    Source: 'core-models/src/core/marker.rs', lines 586:8-588:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant.eq
@@ -11719,7 +11719,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 593:4-601:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 585:4-593:5 -/
 @[reducible]
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant
@@ -11732,7 +11732,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 603:4-603:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 595:4-595:57 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCmpEq (T : Type) :
   cmp.Eq (marker.variance.PhantomContravariant T) := {
@@ -11742,7 +11742,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpEq (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 606:8-611:9
+    Source: 'core-models/src/core/marker.rs', lines 598:8-603:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialOrdPhantomContravariant.partial_cmp
@@ -11753,7 +11753,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 605:4-612:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 597:4-604:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialOrdPhantomContravariant
@@ -11779,7 +11779,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 615:8-617:9
+    Source: 'core-models/src/core/marker.rs', lines 607:8-609:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11789,7 +11789,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 614:4-618:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 606:4-610:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomContravariant T) := {
@@ -11801,7 +11801,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 621:8-621:64
+    Source: 'core-models/src/core/marker.rs', lines 613:8-613:64
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11811,7 +11811,7 @@ def marker.variance.PhantomContravariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 620:4-622:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 612:4-614:5 -/
 @[reducible]
 impl_def marker.variance.PhantomContravariant.Insts.CoreHashHash (T :
   Type) : hash.Hash (marker.variance.PhantomContravariant T) := {
@@ -11825,14 +11825,14 @@ impl_def marker.variance.PhantomContravariant.Insts.CoreHashHash (T :
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 636:8-638:9
+    Source: 'core-models/src/core/marker.rs', lines 628:8-630:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault.default
   (T : Type) : RustM (marker.variance.PhantomInvariant T) := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 635:4-639:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 627:4-631:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault (T : Type)
   : default.Default (marker.variance.PhantomInvariant T) := {
@@ -11841,7 +11841,7 @@ def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 633:4-633:47 -/
+    Source: 'core-models/src/core/marker.rs', lines 625:4-625:47 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreMarkerVarianceVariance (T
   : Type) : marker.variance.Variance (marker.variance.PhantomInvariant T) := {
@@ -11850,7 +11850,7 @@ def marker.variance.PhantomInvariant.Insts.CoreMarkerVarianceVariance (T
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 643:8-645:9
+    Source: 'core-models/src/core/marker.rs', lines 635:8-637:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomInvariant T) (f : fmt.Formatter) :
@@ -11859,7 +11859,7 @@ def marker.variance.PhantomInvariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 642:4-646:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 634:4-638:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomInvariant T) := {
@@ -11867,7 +11867,7 @@ def marker.variance.PhantomInvariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 658:8-660:9
+    Source: 'core-models/src/core/marker.rs', lines 648:8-650:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomInvariant T)
@@ -11877,7 +11877,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 653:8-655:9
+    Source: 'core-models/src/core/marker.rs', lines 645:8-647:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomInvariant T) :
@@ -11886,7 +11886,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 652:4-661:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 644:4-651:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone (T : Type) :
   clone.Clone (marker.variance.PhantomInvariant T) := {
@@ -11896,7 +11896,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone (T : Type) :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 667:4-667:50 -/
+    Source: 'core-models/src/core/marker.rs', lines 657:4-657:50 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreMarkerCopy (T : Type) :
   marker.Copy (marker.variance.PhantomInvariant T) := {
@@ -11905,7 +11905,7 @@ def marker.variance.PhantomInvariant.Insts.CoreMarkerCopy (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 677:8-679:9
+    Source: 'core-models/src/core/marker.rs', lines 667:8-669:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant.ne
@@ -11916,7 +11916,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 673:8-675:9
+    Source: 'core-models/src/core/marker.rs', lines 663:8-665:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant.eq
@@ -11927,7 +11927,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 672:4-680:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 662:4-670:5 -/
 @[reducible]
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant
@@ -11940,7 +11940,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 682:4-682:53 -/
+    Source: 'core-models/src/core/marker.rs', lines 672:4-672:53 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
   (marker.variance.PhantomInvariant T) := {
@@ -11950,7 +11950,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 685:8-690:9
+    Source: 'core-models/src/core/marker.rs', lines 675:8-680:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialOrdPhantomInvariant.partial_cmp
@@ -11961,7 +11961,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 684:4-691:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 674:4-681:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialOrdPhantomInvariant
@@ -11987,7 +11987,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 694:8-696:9
+    Source: 'core-models/src/core/marker.rs', lines 684:8-686:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomInvariant T)
@@ -11997,7 +11997,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 693:4-697:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 683:4-687:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomInvariant T) := {
@@ -12009,7 +12009,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 700:8-700:64
+    Source: 'core-models/src/core/marker.rs', lines 690:8-690:64
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -12019,7 +12019,7 @@ def marker.variance.PhantomInvariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 699:4-701:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 689:4-691:5 -/
 @[reducible]
 impl_def marker.variance.PhantomInvariant.Insts.CoreHashHash (T : Type)
   : hash.Hash (marker.variance.PhantomInvariant T) := {

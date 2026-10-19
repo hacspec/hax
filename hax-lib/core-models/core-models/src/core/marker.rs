@@ -1,3 +1,7 @@
+//! Every `Clone` impl in this module overrides `clone_from` instead of inheriting
+//! the default: charon only emits the per-impl `clone_from` symbol when the impl
+//! overrides it, and clients resolve to it.
+
 use super::clone::Clone;
 
 /// See [`std::marker::Copy`]
@@ -132,8 +136,6 @@ impl Clone for PhantomPinned {
     fn clone(&self) -> PhantomPinned {
         PhantomPinned
     }
-    // Overridden, not left to the default: charon only emits the per-impl
-    // `clone_from` symbol when the impl overrides it, and clients resolve to it.
     fn clone_from(self, source: PhantomPinned) -> PhantomPinned {
         source
     }
@@ -287,8 +289,6 @@ mod variance {
         fn clone(&self) -> PhantomCovariantLifetime<'a> {
             PhantomCovariantLifetime::new()
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(self, source: PhantomCovariantLifetime<'a>) -> PhantomCovariantLifetime<'a> {
             source
         }
@@ -347,8 +347,6 @@ mod variance {
         fn clone(&self) -> PhantomContravariantLifetime<'a> {
             PhantomContravariantLifetime::new()
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(
             self,
             source: PhantomContravariantLifetime<'a>,
@@ -414,8 +412,6 @@ mod variance {
         fn clone(&self) -> PhantomInvariantLifetime<'a> {
             PhantomInvariantLifetime::new()
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(self, source: PhantomInvariantLifetime<'a>) -> PhantomInvariantLifetime<'a> {
             source
         }
@@ -495,8 +491,6 @@ mod variance {
         fn clone(&self) -> PhantomCovariant<T> {
             PhantomCovariant(std::marker::PhantomData)
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(self, source: PhantomCovariant<T>) -> PhantomCovariant<T> {
             source
         }
@@ -574,8 +568,6 @@ mod variance {
         fn clone(&self) -> PhantomContravariant<T> {
             PhantomContravariant(std::marker::PhantomData)
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(self, source: PhantomContravariant<T>) -> PhantomContravariant<T> {
             source
         }
@@ -653,8 +645,6 @@ mod variance {
         fn clone(&self) -> PhantomInvariant<T> {
             PhantomInvariant(std::marker::PhantomData)
         }
-        // Overridden, not left to the default: charon only emits the per-impl
-        // `clone_from` symbol when the impl overrides it, and clients resolve to it.
         fn clone_from(self, source: PhantomInvariant<T>) -> PhantomInvariant<T> {
             source
         }
