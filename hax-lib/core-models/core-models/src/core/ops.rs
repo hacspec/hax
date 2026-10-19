@@ -497,7 +497,8 @@ pub mod range {
             Bound::Unbounded => Bound::Unbounded,
         }
     }
-    // An exhausted iterator must look empty, even if `start` overflowed past `end`.
+    // An exhausted iterator must look empty whatever its bounds (newer std
+    // leaves `MIN..=MAX`): `start..start` always is.
     impl<T> RangeBounds<T> for RangeInclusive<T> {
         fn start_bound(&self) -> Bound<&T> {
             Bound::Included(&self.start_)
@@ -623,6 +624,28 @@ mod tests {
                 let iterated = std_range.inject();
                 prop_assert_eq!(iterated.contains(&item), std_range.contains(&item));
                 prop_assert_eq!(iterated.is_empty(), std_range.is_empty());
+            }
+        }
+
+        #[test]
+        fn test_range_inclusive_exhausted(
+            start in any::<u8>(),
+            end in any::<u8>(),
+            item in any::<u8>(),
+        ) {
+            // Whatever bounds std leaves, an exhausted range holds nothing.
+            let model = super::range::RangeInclusive { start_: start, end_: end, exhausted: true };
+            prop_assert!(!model.contains(&item));
+            prop_assert!(model.is_empty());
+            // Iterated up to the integer bounds, where newer std wraps.
+            let mut forward = start..=u8::MAX;
+            forward.nth((u8::MAX - start) as usize);
+            let mut backward = u8::MIN..=end;
+            backward.nth_back(end as usize);
+            for std_range in [forward, backward] {
+                let model = std_range.inject();
+                prop_assert_eq!(model.contains(&item), std_range.contains(&item));
+                prop_assert_eq!(model.is_empty(), std_range.is_empty());
             }
         }
 

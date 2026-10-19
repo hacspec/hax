@@ -52,9 +52,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # The repository's `rust-toolchain.toml`.
+      # Assigned before being written out, so that a failure fails the step.
+      - name: Resolve the hax toolchain
+        run: |
+          toolchain=$(tools/toolchain.sh hax)
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
+
       - name: Install Rust toolchain
-        run: rustup toolchain install
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUSTUP_TOOLCHAIN }}
 
       - uses: taiki-e/install-action@v2
         with:

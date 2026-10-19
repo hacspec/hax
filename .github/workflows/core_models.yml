@@ -32,31 +32,18 @@ defaults:
     working-directory: hax-lib/core-models
 
 jobs:
-  # ---------------------------------------------------------------- toolchains
-  # The models must build under both toolchains client code is compiled with:
-  # hax's, for the F* extraction, and the pinned charon's, for the Lean one.
-  toolchains:
-    name: resolve toolchains
-    runs-on: ubuntu-latest
-    outputs:
-      hax: ${{ steps.resolve.outputs.hax }}
-      charon: ${{ steps.resolve.outputs.charon }}
-    steps:
-      - uses: actions/checkout@v5
-      - id: resolve
-        run: |
-          echo "hax=$(tools/toolchain.sh hax)" >> "$GITHUB_OUTPUT"
-          echo "charon=$(tools/toolchain.sh charon)" >> "$GITHUB_OUTPUT"
-
   # ---------------------------------------------------------------- formatting
   rust-fmt:
     name: cargo fmt
     runs-on: ubuntu-latest
-    needs: [toolchains]
-    env:
-      RUSTUP_TOOLCHAIN: ${{ needs.toolchains.outputs.hax }}
     steps:
       - uses: actions/checkout@v5
+
+      # Assigned before being written out, so that a failure fails the step.
+      - name: Resolve the hax toolchain
+        run: |
+          toolchain=$(tools/toolchain.sh hax)
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -72,18 +59,23 @@ jobs:
         working-directory: hax-lib/core-models/tests
 
   # ---------------------------------------------------------------- rust tests
+  # The models must build under both toolchains client code is compiled with:
+  # hax's, for the F* extraction, and the pinned charon's, for the Lean one.
   rust-test:
     name: cargo test (${{ matrix.toolchain }} toolchain)
     runs-on: ubuntu-latest
-    needs: [toolchains]
     strategy:
       fail-fast: false
       matrix:
         toolchain: [hax, charon]
-    env:
-      RUSTUP_TOOLCHAIN: ${{ needs.toolchains.outputs[matrix.toolchain] }}
     steps:
       - uses: actions/checkout@v5
+
+      # Assigned before being written out, so that a failure fails the step.
+      - name: Resolve the ${{ matrix.toolchain }} toolchain
+        run: |
+          toolchain=$(tools/toolchain.sh ${{ matrix.toolchain }})
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -119,11 +111,14 @@ jobs:
   test-coverage:
     name: llvm-cov test coverage
     runs-on: ubuntu-latest
-    needs: [toolchains]
-    env:
-      RUSTUP_TOOLCHAIN: ${{ needs.toolchains.outputs.hax }}
     steps:
       - uses: actions/checkout@v5
+
+      # Assigned before being written out, so that a failure fails the step.
+      - name: Resolve the hax toolchain
+        run: |
+          toolchain=$(tools/toolchain.sh hax)
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master

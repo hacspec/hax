@@ -14,7 +14,8 @@ case "${1:-}" in
     toolchain="$(channel < "$ROOT/rust-toolchain.toml")"
     ;;
   charon)
-    version="$(sed -n 's/^charon *= *"\(.*\)"$/\1/p' "$ROOT/cli/cargo-hax/defaults.toml")"
+    # Only the `[tools]` table: another table may have a `charon` key too.
+    version="$(sed -n '/^\[tools\]/,/^\[/s/^charon *= *"\(.*\)"$/\1/p' "$ROOT/cli/cargo-hax/defaults.toml")"
     toolchain="$(curl -sSfL --retry 5 --retry-all-errors \
       "https://raw.githubusercontent.com/AeneasVerif/charon/$version/charon/rust-toolchain" \
       | channel)"
