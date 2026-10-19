@@ -6,9 +6,10 @@
 //! here. The opposite shape -- no call anywhere, so no field at all -- is what
 //! the `alloc` model extraction exercises.
 //!
-//! Also guards `RangeBounds::contains`, the other way round: nothing in this
-//! crate may call it, so only the charon root that `cargo hax` adds keeps the
-//! field in the instance below.
+//! Also guards `RangeBounds::contains`, `Hash::hash_slice`,
+//! `BuildHasher::hash_one` and the `Hasher::write_*` provided methods, the other
+//! way round: nothing in this crate may call them, so only the charon roots that
+//! `cargo hax` adds keep the fields in the instances below.
 
 #![allow(dead_code)]
 
@@ -150,4 +151,40 @@ impl core::ops::RangeBounds<u8> for Interval {
 
 pub fn interval_start(x: &Interval) -> core::ops::Bound<&u8> {
     core::ops::RangeBounds::start_bound(x)
+}
+
+// ----- a client `Hash`, `Hasher` and `BuildHasher` ---------------------------
+
+#[derive(Hash)]
+pub struct Key {
+    id: u8,
+    tag: u16,
+}
+
+pub struct Count(u64);
+
+impl core::hash::Hasher for Count {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, _bytes: &[u8]) {
+        self.0 += 1;
+    }
+}
+
+pub struct CountState;
+
+impl core::hash::BuildHasher for CountState {
+    type Hasher = Count;
+    fn build_hasher(&self) -> Count {
+        Count(0)
+    }
+}
+
+pub fn key_hash(k: &Key, h: &mut Count) {
+    core::hash::Hash::hash(k, h)
+}
+
+pub fn count_state_build(s: &CountState) -> Count {
+    core::hash::BuildHasher::build_hasher(s)
 }
