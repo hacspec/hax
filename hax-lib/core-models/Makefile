@@ -295,8 +295,9 @@ coverage:
 # there is no threshold to tune and no baseline file to keep in sync.
 # -----------------------------------------------------------------------------
 
-COV_TOOLCHAIN ?= nightly-2026-02-07
-LLVM_COV = cargo +$(COV_TOOLCHAIN) llvm-cov
+# Under the repository's `rust-toolchain.toml`: other toolchains instrument some
+# regions differently.
+LLVM_COV = cargo llvm-cov
 COV_PKGS = -p core-models -p alloc -p std -p rand_core@0.1.0 -p rust_primitives
 # `testing.rs` is the differential-test harness, not a model.
 COV_FILTER = --ignore-filename-regex 'core-models/src/testing\.rs'

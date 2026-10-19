@@ -13,6 +13,8 @@ mod testing {
     }
 
     /// Asserts the model and real `alloc` both panic on the same input.
+    // Test harness, not model code: its failure branches only run when a test fails.
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[track_caller]
     pub fn panics_like_core<A, B>(model: impl FnOnce() -> A, core: impl FnOnce() -> B) {
         use std::panic::{AssertUnwindSafe, catch_unwind};
