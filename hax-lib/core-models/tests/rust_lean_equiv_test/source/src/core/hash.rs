@@ -122,6 +122,38 @@ pub fn test_hash_bool() -> bool {
     h.finish() == 1
 }
 
+// A char hashes as the little-endian bytes of its scalar value.
+#[rust_lean_test]
+pub fn test_hash_char_ascii() -> bool {
+    let mut h = Sum(0);
+    'a'.hash(&mut h);
+    h.finish() == 97
+}
+
+#[rust_lean_test]
+pub fn test_hash_char_one_write() -> bool {
+    let mut h = Writes(0);
+    'x'.hash(&mut h);
+    h.finish() == 1
+}
+
+#[derive(Hash)]
+struct Labelled {
+    label: char,
+    value: u8,
+}
+
+#[rust_lean_test]
+pub fn test_hash_derived_with_char() -> bool {
+    let mut h = Sum(0);
+    Labelled {
+        label: 'b',
+        value: 3,
+    }
+    .hash(&mut h);
+    h.finish() == 98 + 3
+}
+
 #[rust_lean_test]
 pub fn test_hash_str() -> bool {
     let mut h = Sum(0);
@@ -143,6 +175,14 @@ pub fn test_hash_ref() -> bool {
     let x = 7u8;
     (&x).hash(&mut h);
     h.finish() == 7
+}
+
+#[rust_lean_test]
+pub fn test_hash_mut_ref() -> bool {
+    let mut h = Sum(0);
+    let mut x = 300u16;
+    (&mut x).hash(&mut h);
+    h.finish() == 45
 }
 
 #[rust_lean_test]

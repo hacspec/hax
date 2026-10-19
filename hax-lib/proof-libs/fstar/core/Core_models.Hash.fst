@@ -808,6 +808,46 @@ let impl_Hash_for_bool: t_Hash bool =
       state
   }
 
+/// See [`std::hash::Hash`] for `char`
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_Hash_for_char: t_Hash FStar.Char.char =
+  {
+    f_hash_pre
+    =
+    (fun
+        (#v_H: Type0)
+        (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+        (self: FStar.Char.char)
+        (state: v_H)
+        ->
+        true);
+    f_hash_post
+    =
+    (fun
+        (#v_H: Type0)
+        (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+        (self: FStar.Char.char)
+        (state: v_H)
+        (out: v_H)
+        ->
+        true);
+    f_hash
+    =
+    fun
+      (#v_H: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+      (self: FStar.Char.char)
+      (state: v_H)
+      ->
+      let state:v_H =
+        f_write_u32 #v_H
+          #FStar.Tactics.Typeclasses.solve
+          state
+          (cast (self <: FStar.Char.char) <: u32)
+      in
+      state
+  }
+
 /// See [`std::hash::Hash`] for `str`
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_Hash_for_str: t_Hash string =
@@ -879,7 +919,7 @@ let impl_Hash_for_tuple_: t_Hash Prims.unit =
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_27
+let impl_28
       (#v_T #v_B: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -919,7 +959,7 @@ let impl_27
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_28
+let impl_29
       (#v_T #v_B #v_C: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -961,7 +1001,7 @@ let impl_28
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_29
+let impl_30
       (#v_T #v_B #v_C #v_D: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1005,7 +1045,7 @@ let impl_29
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_30
+let impl_31
       (#v_T #v_B #v_C #v_D #v_E: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1051,7 +1091,7 @@ let impl_30
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_31
+let impl_32
       (#v_T #v_B #v_C #v_D #v_E #v_F: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1099,7 +1139,7 @@ let impl_31
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_32
+let impl_33
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1149,7 +1189,7 @@ let impl_32
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_33
+let impl_34
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G #v_H: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1201,7 +1241,7 @@ let impl_33
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_34
+let impl_35
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G #v_H #v_I: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1255,7 +1295,7 @@ let impl_34
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_35
+let impl_36
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G #v_H #v_I #v_J: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1311,7 +1351,7 @@ let impl_35
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_36
+let impl_37
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G #v_H #v_I #v_J #v_K: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1369,7 +1409,7 @@ let impl_36
 
 /// See [`std::hash::Hash`] for tuples
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_37
+let impl_38
       (#v_T #v_B #v_C #v_D #v_E #v_F #v_G #v_H #v_I #v_J #v_K #v_L: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Hash v_B)
@@ -1524,7 +1564,7 @@ let impl_9 (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v
 
 /// See [`std::hash::Hash`] for `[T]`
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_38 (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
+let impl_39 (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hash v_T)
     : t_Hash (t_Slice v_T) =
   {
     f_hash_pre

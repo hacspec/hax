@@ -19,6 +19,13 @@ instance cast_tc_bool_integer (t:inttype)
   : cast_tc bool (int_t t)
   = { cast = (fun x -> if x then Rust_primitives.Integers.mk_int 1 else Rust_primitives.Integers.mk_int 0) }
 
+/// A `char` casts as its Unicode scalar value, a `u32`, wrapping into narrower types.
+instance cast_tc_char_integer (t:inttype)
+  : cast_tc FStar.Char.char (int_t t)
+  = { cast = (fun x ->
+        Rust_primitives.Integers.cast_mod #U32 #t
+          (Rust_primitives.Integers.mk_u32 (FStar.UInt32.v (FStar.Char.u32_of_char x)))) }
+
 class unsize_tc source = {
   output: Type;
   unsize: source -> output;

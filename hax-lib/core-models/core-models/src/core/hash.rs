@@ -497,6 +497,20 @@ impl Hash for core::primitive::bool {
     }
 }
 
+/// See [`std::hash::Hash`] for `char`
+// Lean: aeneas cannot translate the `char` to `u32` cast. Hand-written in
+// `FunsEpilogue.lean`.
+#[cfg_attr(hax_backend_lean, hax_lib::exclude)]
+#[hax_lib::attributes]
+impl Hash for core::primitive::char {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        #[cfg(not(hax_backend_fstar))]
+        Hasher::write_u32(state, *self as u32);
+        #[cfg(hax_backend_fstar)]
+        HasherDefaults::write_u32(state, *self as u32);
+    }
+}
+
 /// See [`std::hash::Hash`] for `str`
 #[hax_lib::attributes]
 impl Hash for core::primitive::str {
@@ -569,6 +583,17 @@ impl<T: Hash> Hash for [T] {
 impl<T: ?Sized + Hash> Hash for &T {
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(*self, state)
+    }
+}
+
+/// See [`std::hash::Hash`] for `&mut T`
+// Not in F*, where `&mut T` is `T`: the impl would be an instance deriving
+// `Hash T` from itself.
+#[cfg_attr(hax_backend_fstar, hax_lib::exclude)]
+#[hax_lib::attributes]
+impl<T: ?Sized + Hash> Hash for &mut T {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&**self, state)
     }
 }
 
@@ -878,6 +903,18 @@ mod tests {
         }
 
         #[test]
+        fn test_hash_char(x in any::<char>()) {
+            let (m, s) = model_and_std_bytes(&x, &x);
+            prop_assert_eq!(m, s);
+        }
+
+        #[test]
+        fn test_hash_slice_of_char(v in prop::collection::vec(any::<char>(), 0..8)) {
+            let (m, s) = model_and_std_bytes(v.as_slice(), v.as_slice());
+            prop_assert_eq!(m, s);
+        }
+
+        #[test]
         fn test_hash_str(x in "\\PC{0,16}") {
             let (m, s) = model_and_std_bytes(x.as_str(), x.as_str());
             prop_assert_eq!(m, s);
@@ -900,6 +937,16 @@ mod tests {
             let (m, s) = model_and_std_bytes(&&x, &&x);
             prop_assert_eq!(m, s);
             let (m, s) = model_and_std_bytes(&y.as_str(), &y.as_str());
+            prop_assert_eq!(m, s);
+        }
+
+        #[test]
+        fn test_hash_mut_ref(mut x in any::<u32>(), mut y in "\\PC{0,8}") {
+            let mut x2 = x;
+            let (m, s) = model_and_std_bytes(&&mut x, &&mut x2);
+            prop_assert_eq!(m, s);
+            let mut y2 = y.clone();
+            let (m, s) = model_and_std_bytes(&y.as_mut_str(), &y2.as_mut_str());
             prop_assert_eq!(m, s);
         }
 

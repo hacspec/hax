@@ -556,6 +556,26 @@ def result.Result.Insts.CoreIterTraitsCollectFromIteratorResult
       FromIteratorInst IntoIteratorInst
 }
 
+/-! ## `Hash for char`
+
+Aeneas cannot translate the `char` to `u32` cast in the model's `hash`, so the
+impl is excluded from the extraction and written here, under the names aeneas
+gives it. A Lean `Char` holds its Unicode scalar value as a `UInt32`, the value
+`char as u32` yields. -/
+
+open Aeneas.Std (RustM) in
+def Char.Insts.CoreHashHash.hash
+    {H : Type} (HasherInst : hash.Hasher H) (self : Char) (state : H) : RustM H :=
+  HasherInst.write_u32 state ⟨self.val.toBitVec⟩
+
+@[reducible]
+impl_def Char.Insts.CoreHashHash : hash.Hash Char := {
+  hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    Char.Insts.CoreHashHash.hash HasherInst
+  hash_slice := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    hash.Hash.hash_slice.default Char.Insts.CoreHashHash HasherInst
+}
+
 
 end core
 

@@ -6448,7 +6448,7 @@ impl_def Bool.Insts.CoreHashHash : hash.Hash Bool := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for str}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 503:4-508:5
+    Source: 'core-models/src/core/hash.rs', lines 517:4-522:5
     Visibility: public -/
 def Str.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (self : Str) (state : H) :
@@ -6457,7 +6457,7 @@ def Str.Insts.CoreHashHash.hash
   HasherInst.write_str state self
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for str}]
-    Source: 'core-models/src/core/hash.rs', lines 502:0-509:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 516:0-523:1 -/
 @[reducible]
 impl_def Str.Insts.CoreHashHash : hash.Hash Str := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6467,7 +6467,7 @@ impl_def Str.Insts.CoreHashHash : hash.Hash Str := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for ()}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 514:4-514:47
+    Source: 'core-models/src/core/hash.rs', lines 528:4-528:47
     Visibility: public -/
 def Tuple.Insts.CoreHashHash.hash
   {H : Type} (HasherInst : hash.Hasher H) (_ : Unit) (state : H) :
@@ -6476,7 +6476,7 @@ def Tuple.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for ()}]
-    Source: 'core-models/src/core/hash.rs', lines 513:0-515:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 527:0-529:1 -/
 @[reducible]
 impl_def Tuple.Insts.CoreHashHash : hash.Hash Unit := {
   hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
@@ -6486,7 +6486,7 @@ impl_def Tuple.Insts.CoreHashHash : hash.Hash Unit := {
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T,)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleT.Insts.CoreHashHash.hash
   {T : Type} {S : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher S)
@@ -6496,7 +6496,7 @@ def TupleT.Insts.CoreHashHash.hash
   HashInst.hash HasherInst self state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T,)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleT.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
   hash.Hash T := {
@@ -6508,7 +6508,7 @@ impl_def TupleT.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def Pair.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {S : Type} (HashInst : hash.Hash T) (HashInst1 :
@@ -6520,7 +6520,7 @@ def Pair.Insts.CoreHashHash.hash
   HashInst1.hash HasherInst t1 state1
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def Pair.Insts.CoreHashHash {T : Type} {B : Type} (HashInst :
   hash.Hash T) (HashInst1 : hash.Hash B) : hash.Hash (T × B) := {
@@ -6532,7 +6532,7 @@ impl_def Pair.Insts.CoreHashHash {T : Type} {B : Type} (HashInst :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBC.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {S : Type} (HashInst : hash.Hash T)
@@ -6546,7 +6546,7 @@ def TupleTBC.Insts.CoreHashHash.hash
   HashInst2.hash HasherInst t2 state2
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBC.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   (HashInst : hash.Hash T) (HashInst1 : hash.Hash B) (HashInst2 : hash.Hash C)
@@ -6560,7 +6560,7 @@ impl_def TupleTBC.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCD.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {S : Type} (HashInst : hash.Hash
@@ -6575,7 +6575,7 @@ def TupleTBCD.Insts.CoreHashHash.hash
   HashInst3.hash HasherInst t3 state3
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCD.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} (HashInst : hash.Hash T) (HashInst1 : hash.Hash B) (HashInst2 :
@@ -6589,7 +6589,7 @@ impl_def TupleTBCD.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDE.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {S : Type} (HashInst :
@@ -6606,7 +6606,7 @@ def TupleTBCDE.Insts.CoreHashHash.hash
   HashInst4.hash HasherInst t4 state4
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDE.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} {E : Type} (HashInst : hash.Hash T) (HashInst1 : hash.Hash B)
@@ -6621,7 +6621,7 @@ impl_def TupleTBCDE.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEF.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {S : Type}
@@ -6640,7 +6640,7 @@ def TupleTBCDEF.Insts.CoreHashHash.hash
   HashInst5.hash HasherInst t5 state5
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEF.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
   {D : Type} {E : Type} {F : Type} (HashInst : hash.Hash T) (HashInst1 :
@@ -6656,7 +6656,7 @@ impl_def TupleTBCDEF.Insts.CoreHashHash {T : Type} {B : Type} {C : Type}
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFG.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6676,7 +6676,7 @@ def TupleTBCDEFG.Insts.CoreHashHash.hash
   HashInst6.hash HasherInst t6 state6
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFG.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} (HashInst : hash.Hash T)
@@ -6693,7 +6693,7 @@ impl_def TupleTBCDEFG.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFGH.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6715,7 +6715,7 @@ def TupleTBCDEFGH.Insts.CoreHashHash.hash
   HashInst7.hash HasherInst t7 state7
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFGH.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} (HashInst :
@@ -6733,7 +6733,7 @@ impl_def TupleTBCDEFGH.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFGHI.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6756,7 +6756,7 @@ def TupleTBCDEFGHI.Insts.CoreHashHash.hash
   HashInst8.hash HasherInst t8 state8
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHI.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type}
@@ -6774,7 +6774,7 @@ impl_def TupleTBCDEFGHI.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFGHIJ.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6799,7 +6799,7 @@ def TupleTBCDEFGHIJ.Insts.CoreHashHash.hash
   HashInst9.hash HasherInst t9 state9
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJ.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6819,7 +6819,7 @@ impl_def TupleTBCDEFGHIJ.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFGHIJK.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6845,7 +6845,7 @@ def TupleTBCDEFGHIJK.Insts.CoreHashHash.hash
   HashInst10.hash HasherInst t10 state10
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJK.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6865,7 +6865,7 @@ impl_def TupleTBCDEFGHIJK.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K, L)}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 524:12-526:13
+    Source: 'core-models/src/core/hash.rs', lines 538:12-540:13
     Visibility: public -/
 def TupleTBCDEFGHIJKL.Insts.CoreHashHash.hash
   {T : Type} {B : Type} {C : Type} {D : Type} {E : Type} {F : Type} {G : Type}
@@ -6894,7 +6894,7 @@ def TupleTBCDEFGHIJKL.Insts.CoreHashHash.hash
   HashInst11.hash HasherInst t11 state11
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for (T, B, C, D, E, F, G, H, I, J, K, L)}]
-    Source: 'core-models/src/core/hash.rs', lines 523:8-527:9 -/
+    Source: 'core-models/src/core/hash.rs', lines 537:8-541:9 -/
 @[reducible]
 impl_def TupleTBCDEFGHIJKL.Insts.CoreHashHash {T : Type} {B : Type} {C :
   Type} {D : Type} {E : Type} {F : Type} {G : Type} {H : Type} {I : Type} {J :
@@ -6915,7 +6915,7 @@ impl_def TupleTBCDEFGHIJKL.Insts.CoreHashHash {T : Type} {B : Type} {C :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for [T]}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 552:4-561:5
+    Source: 'core-models/src/core/hash.rs', lines 566:4-575:5
     Visibility: public -/
 def Slice.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
@@ -6927,7 +6927,7 @@ def Slice.Insts.CoreHashHash.hash
   HashInst.hash_slice HasherInst self state1
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for [T]}]
-    Source: 'core-models/src/core/hash.rs', lines 551:0-562:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 565:0-576:1 -/
 @[reducible]
 impl_def Slice.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
   hash.Hash (Slice T) := {
@@ -6939,7 +6939,7 @@ impl_def Slice.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
 }
 
 /-- [core_models::hash::{impl core_models::hash::Hash for &'_0 T}::hash]:
-    Source: 'core-models/src/core/hash.rs', lines 570:4-572:5
+    Source: 'core-models/src/core/hash.rs', lines 584:4-586:5
     Visibility: public -/
 def Shared0T.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
@@ -6949,7 +6949,7 @@ def Shared0T.Insts.CoreHashHash.hash
   HashInst.hash HasherInst self state
 
 /-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for &'_0 T}]
-    Source: 'core-models/src/core/hash.rs', lines 569:0-573:1 -/
+    Source: 'core-models/src/core/hash.rs', lines 583:0-587:1 -/
 @[reducible]
 impl_def Shared0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T)
   : hash.Hash T := {
@@ -6957,6 +6957,28 @@ impl_def Shared0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T)
     Shared0T.Insts.CoreHashHash.hash HashInst HasherInst
   hash_slice := fun {H : Type} (HasherInst : hash.Hasher H) =>
     hash.Hash.hash_slice.default (Shared0T.Insts.CoreHashHash HashInst)
+    HasherInst
+}
+
+/-- [core_models::hash::{impl core_models::hash::Hash for &'_0 mut T}::hash]:
+    Source: 'core-models/src/core/hash.rs', lines 595:4-597:5
+    Visibility: public -/
+def Mut0T.Insts.CoreHashHash.hash
+  {T : Type} {H : Type} (HashInst : hash.Hash T) (HasherInst : hash.Hasher H)
+  (self : T) (state : H) :
+  RustM H
+  := do
+  HashInst.hash HasherInst self state
+
+/-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for &'_0 mut T}]
+    Source: 'core-models/src/core/hash.rs', lines 594:0-598:1 -/
+@[reducible]
+impl_def Mut0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
+  hash.Hash T := {
+  hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    Mut0T.Insts.CoreHashHash.hash HashInst HasherInst
+  hash_slice := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    hash.Hash.hash_slice.default (Mut0T.Insts.CoreHashHash HashInst)
     HasherInst
 }
 
