@@ -237,11 +237,19 @@ def qualify_hash_trait_refs(text: str) -> str:
     a projection out of that field instead of the namespace and fails to elaborate.
     See https://github.com/AeneasVerif/aeneas/issues/1411.
     """
-    return _HASH_TRAIT_BLOCK.sub(
-        lambda m: m.group(1)
-        + re.sub(r"(?<![\w.])hash\.Hasher\b", "core.hash.Hasher", m.group(2)),
-        text,
-    )
+    qualified = 0
+
+    def qualify(m: re.Match) -> str:
+        nonlocal qualified
+        fields, n = re.subn(r"(?<![\w.])hash\.Hasher\b", "core.hash.Hasher", m.group(2))
+        qualified += n
+        return m.group(1) + fields
+
+    new = _HASH_TRAIT_BLOCK.sub(qualify, text)
+    # Counts the qualified references, not the blocks: a block without any
+    # occurrences of bare `hash.Hasher` means that the workaround is obsolete, too.
+    _record("qualify_hash_trait_refs", qualified)
+    return new
 
 
 # Defs matching on a scrutinee that repeats a type variable (`ControlFlow<T, T>`).
