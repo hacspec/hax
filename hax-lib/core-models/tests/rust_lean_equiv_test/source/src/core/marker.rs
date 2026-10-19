@@ -47,6 +47,39 @@ pub fn test_phantom_pinned_payload_max() -> bool {
     p.0 == u8::MAX
 }
 
+#[rust_lean_test]
+pub fn test_phantom_pinned_eq() -> bool {
+    core::marker::PhantomPinned == core::marker::PhantomPinned::default()
+}
+
+#[rust_lean_test]
+pub fn test_phantom_pinned_ne() -> bool {
+    !(core::marker::PhantomPinned != core::marker::PhantomPinned)
+}
+
+#[rust_lean_test]
+pub fn test_phantom_pinned_cmp() -> bool {
+    core::marker::PhantomPinned.cmp(&core::marker::PhantomPinned) == Ordering::Equal
+}
+
+#[rust_lean_test]
+pub fn test_phantom_pinned_partial_cmp() -> bool {
+    core::marker::PhantomPinned.partial_cmp(&core::marker::PhantomPinned) == Some(Ordering::Equal)
+}
+
+#[rust_lean_test]
+pub fn test_phantom_pinned_hash_writes_nothing() -> bool {
+    let mut h = Writes(0);
+    core::marker::PhantomPinned.hash(&mut h);
+    h.finish() == 0
+}
+
+#[rust_lean_test]
+pub fn test_phantom_pinned_clone_eq() -> bool {
+    let p = core::marker::PhantomPinned;
+    p.clone() == p
+}
+
 // ----- Variance markers ------------------------------------------------------
 
 use core::cmp::Ordering;

@@ -105,6 +105,65 @@ pub trait DiscriminantKind {
 /// See [`std::marker::PhantomPinned`]
 pub struct PhantomPinned;
 
+// The impls real core derives on `PhantomPinned`. Its negative `Unpin` impl has no
+// counterpart, as the model has no negative impls. Under F*, `Debug`, `Clone` and
+// `Copy` come from the blanket impls.
+#[cfg(not(hax_backend_fstar))]
+impl crate::fmt::Debug for PhantomPinned {
+    fn fmt(&self, f: &mut crate::fmt::Formatter) -> crate::fmt::Result {
+        crate::fmt::Result::Ok(())
+    }
+}
+impl crate::default::Default for PhantomPinned {
+    fn default() -> PhantomPinned {
+        PhantomPinned
+    }
+}
+#[cfg(not(hax_backend_fstar))]
+impl Copy for PhantomPinned {}
+#[cfg(not(hax_backend_fstar))]
+impl Clone for PhantomPinned {
+    fn clone(&self) -> PhantomPinned {
+        PhantomPinned
+    }
+    // Overridden, not left to the default: charon only emits the per-impl
+    // `clone_from` symbol when the impl overrides it, and clients resolve to it.
+    fn clone_from(self, source: PhantomPinned) -> PhantomPinned {
+        source
+    }
+}
+impl StructuralPartialEq for PhantomPinned {}
+// DEVIATION(std): no comparison or `Hash` impls in F*. They would make this
+// module depend on `cmp`, `option` and `hash`, which depend on it: a module
+// cycle F* rejects.
+#[cfg(not(hax_backend_fstar))]
+impl crate::cmp::Eq for PhantomPinned {}
+#[cfg(not(hax_backend_fstar))]
+impl crate::cmp::PartialEq<PhantomPinned> for PhantomPinned {
+    fn eq(&self, other: &PhantomPinned) -> bool {
+        true
+    }
+    fn ne(&self, other: &PhantomPinned) -> bool {
+        false
+    }
+}
+#[cfg(not(hax_backend_fstar))]
+impl crate::cmp::Ord for PhantomPinned {
+    fn cmp(&self, other: &PhantomPinned) -> crate::cmp::Ordering {
+        crate::cmp::Ordering::Equal
+    }
+}
+#[cfg(not(hax_backend_fstar))]
+impl crate::cmp::PartialOrd<PhantomPinned> for PhantomPinned {
+    fn partial_cmp(&self, other: &PhantomPinned) -> crate::option::Option<crate::cmp::Ordering> {
+        crate::option::Option::Some(crate::cmp::Ordering::Equal)
+    }
+}
+#[cfg(not(hax_backend_fstar))]
+impl crate::hash::Hash for PhantomPinned {
+    fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {}
+}
+
 pub use self::variance::{
     PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
     PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
@@ -749,6 +808,49 @@ mod tests {
             std::mem::size_of::<PhantomPinned>(),
             std::mem::size_of::<std::marker::PhantomPinned>()
         );
+        let _: PhantomPinned = crate::default::Default::default();
+    }
+
+    // The impls F* lacks or takes from its blanket `Clone` and `Debug` instead.
+    // The model's `Formatter` renders nothing, so only success is observable for
+    // `Debug`.
+    #[cfg(not(hax_backend_fstar))]
+    #[test]
+    fn test_phantom_pinned_not_fstar() {
+        let (m, n): (PhantomPinned, PhantomPinned) =
+            (PhantomPinned, crate::default::Default::default());
+        let (s, t): (std::marker::PhantomPinned, std::marker::PhantomPinned) =
+            (std::marker::PhantomPinned, std::default::Default::default());
+
+        assert_eq!(crate::cmp::PartialEq::eq(&m, &n), s == t);
+        assert_eq!(crate::cmp::PartialEq::ne(&m, &n), s != t);
+        assert_eq!(
+            crate::cmp::PartialOrd::partial_cmp(&m, &n),
+            std::cmp::PartialOrd::partial_cmp(&s, &t).inject()
+        );
+        assert_eq!(
+            crate::cmp::Ord::cmp(&m, &n),
+            std::cmp::Ord::cmp(&s, &t).inject()
+        );
+
+        let mut mh = Log(Vec::new());
+        crate::hash::Hash::hash(&m, &mut mh);
+        let mut sh = Log(Vec::new());
+        std::hash::Hash::hash(&s, &mut sh);
+        assert_eq!(mh, sh);
+
+        assert_eq!(
+            crate::cmp::PartialEq::ne(&m, &crate::clone::Clone::clone(&m)),
+            s != std::clone::Clone::clone(&s)
+        );
+        let m = crate::clone::Clone::clone_from(m, PhantomPinned);
+        assert!(crate::cmp::PartialEq::eq(&m, &PhantomPinned));
+
+        let mut f = crate::fmt::Formatter;
+        assert!(matches!(
+            crate::fmt::Debug::fmt(&m, &mut f),
+            crate::fmt::Result::Ok(())
+        ));
     }
 
     // Pins the model's own deviation: `variance()` goes through `Default`.

@@ -824,46 +824,46 @@ structure marker.DiscriminantKind (Self : Type) (Self_Discriminant : Type)
 def marker.PhantomPinned := Unit
 
 /-- Trait declaration: [core_models::marker::variance::Variance]
-    Source: 'core-models/src/core/marker.rs', lines 121:4-121:50
+    Source: 'core-models/src/core/marker.rs', lines 180:4-180:50
     Visibility: public -/
 structure marker.variance.Variance (Self : Type) where
   defaultDefaultInst : default.Default Self
 
 /-- [core_models::marker::variance::PhantomCovariant]
-    Source: 'core-models/src/core/marker.rs', lines 129:4-129:64
+    Source: 'core-models/src/core/marker.rs', lines 188:4-188:64
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomCovariant (T : Type) := core.marker.PhantomData T
 
 /-- [core_models::marker::variance::PhantomContravariant]
-    Source: 'core-models/src/core/marker.rs', lines 131:4-131:68
+    Source: 'core-models/src/core/marker.rs', lines 190:4-190:68
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomContravariant (T : Type) :=
   core.marker.PhantomData T
 
 /-- [core_models::marker::variance::PhantomInvariant]
-    Source: 'core-models/src/core/marker.rs', lines 133:4-133:64
+    Source: 'core-models/src/core/marker.rs', lines 192:4-192:64
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomInvariant (T : Type) := core.marker.PhantomData T
 
 /-- [core_models::marker::variance::PhantomCovariantLifetime]
-    Source: 'core-models/src/core/marker.rs', lines 135:4-135:70
+    Source: 'core-models/src/core/marker.rs', lines 194:4-194:70
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime :=
   marker.variance.PhantomCovariant Unit
 
 /-- [core_models::marker::variance::PhantomContravariantLifetime]
-    Source: 'core-models/src/core/marker.rs', lines 137:4-137:78
+    Source: 'core-models/src/core/marker.rs', lines 196:4-196:78
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime :=
   marker.variance.PhantomContravariant Unit
 
 /-- [core_models::marker::variance::PhantomInvariantLifetime]
-    Source: 'core-models/src/core/marker.rs', lines 139:4-139:70
+    Source: 'core-models/src/core/marker.rs', lines 198:4-198:70
     Visibility: public -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime :=

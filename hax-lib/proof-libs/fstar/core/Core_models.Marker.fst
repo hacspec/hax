@@ -98,3 +98,15 @@ class t_DiscriminantKind (v_Self: Type0) = {
 
 /// See [`std::marker::PhantomPinned`]
 type t_PhantomPinned = | PhantomPinned : t_PhantomPinned
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_6: Core_models.Default.t_Default t_PhantomPinned =
+  {
+    f_default_pre = (fun (_: Prims.unit) -> true);
+    f_default_post = (fun (_: Prims.unit) (out: t_PhantomPinned) -> true);
+    f_default = fun (_: Prims.unit) -> PhantomPinned <: t_PhantomPinned
+  }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_StructuralPartialEq_for_PhantomPinned: t_StructuralPartialEq t_PhantomPinned =
+  { __marker_trait_t_StructuralPartialEq = () }
