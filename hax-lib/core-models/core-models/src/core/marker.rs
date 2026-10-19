@@ -48,6 +48,12 @@ copy_impl_for_int!(
 impl<T> MetaSized for T {}
 impl<T> PointeeSized for T {}
 
+// DEVIATION(std): every type is `Freeze` and `Unpin`. In core both are auto traits
+// that nearly every type implements; the model has no negative impls for the
+// exceptions (`UnsafeCell`, `PhantomPinned` and the types containing them).
+impl<T> Freeze for T {}
+impl<T> Unpin for T {}
+
 /// See [`std::marker::PhantomData`]
 #[hax_lib::fstar::replace("type t_PhantomData (v_T: Type0) = | PhantomData : t_PhantomData v_T")]
 #[hax_lib::legacy_lean::replace("structure PhantomData (T : Type) where")]
@@ -57,15 +63,15 @@ struct PhantomData<T>(T);
 pub trait MetaSized: PointeeSized {}
 /// See [`std::marker::PointeeSized`]
 pub trait PointeeSized {}
+/// See [`std::marker::Freeze`]
+pub trait Freeze {}
+/// See [`std::marker::Unpin`]
+pub trait Unpin {}
 
 // Empty markers without impls, declared so that signatures mentioning them resolve.
 
 /// See [`std::marker::Unsize`]
 pub trait Unsize<T> {}
-/// See [`std::marker::Freeze`]
-pub trait Freeze {}
-/// See [`std::marker::Unpin`]
-pub trait Unpin {}
 /// See [`std::marker::Destruct`]
 pub trait Destruct {}
 /// See [`std::marker::Tuple`]
@@ -106,8 +112,8 @@ pub trait DiscriminantKind {
 pub struct PhantomPinned;
 
 // The impls real core derives on `PhantomPinned`. Its negative `Unpin` impl has no
-// counterpart, as the model has no negative impls. Under F*, `Debug`, `Clone` and
-// `Copy` come from the blanket impls.
+// counterpart, as the model has no negative impls: the blanket `Unpin` impl above
+// covers it. Under F*, `Debug`, `Clone` and `Copy` come from the blanket impls.
 #[cfg(not(hax_backend_fstar))]
 impl crate::fmt::Debug for PhantomPinned {
     fn fmt(&self, f: &mut crate::fmt::Formatter) -> crate::fmt::Result {
@@ -851,6 +857,16 @@ mod tests {
             crate::fmt::Debug::fmt(&m, &mut f),
             crate::fmt::Result::Ok(())
         ));
+    }
+
+    // Pins the model's own deviation: every type is `Freeze` and `Unpin`, even
+    // `PhantomPinned`.
+    #[test]
+    fn test_freeze_unpin_blanket() {
+        fn assert_freeze_unpin<T: Freeze + Unpin>() {}
+        assert_freeze_unpin::<u8>();
+        assert_freeze_unpin::<(bool, i64)>();
+        assert_freeze_unpin::<PhantomPinned>();
     }
 
     // Pins the model's own deviation: `variance()` goes through `Default`.

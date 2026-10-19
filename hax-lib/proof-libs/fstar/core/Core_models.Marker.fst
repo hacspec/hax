@@ -62,14 +62,20 @@ let impl_4 (#v_T: Type0) : t_MetaSized v_T = { _super_i0 = FStar.Tactics.Typecla
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_2 (#v_T: Type0) : t_Sized v_T = { _super_i0 = FStar.Tactics.Typeclasses.solve }
 
-/// See [`std::marker::Unsize`]
-class t_Unsize (v_Self: Type0) (v_T: Type0) = { __marker_trait_t_Unsize:Prims.unit }
-
 /// See [`std::marker::Freeze`]
 class t_Freeze (v_Self: Type0) = { __marker_trait_t_Freeze:Prims.unit }
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_6 (#v_T: Type0) : t_Freeze v_T = { __marker_trait_t_Freeze = () }
+
 /// See [`std::marker::Unpin`]
 class t_Unpin (v_Self: Type0) = { __marker_trait_t_Unpin:Prims.unit }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_7 (#v_T: Type0) : t_Unpin v_T = { __marker_trait_t_Unpin = () }
+
+/// See [`std::marker::Unsize`]
+class t_Unsize (v_Self: Type0) (v_T: Type0) = { __marker_trait_t_Unsize:Prims.unit }
 
 /// See [`std::marker::Destruct`]
 class t_Destruct (v_Self: Type0) = { __marker_trait_t_Destruct:Prims.unit }
@@ -100,7 +106,7 @@ class t_DiscriminantKind (v_Self: Type0) = {
 type t_PhantomPinned = | PhantomPinned : t_PhantomPinned
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: Core_models.Default.t_Default t_PhantomPinned =
+let impl_8: Core_models.Default.t_Default t_PhantomPinned =
   {
     f_default_pre = (fun (_: Prims.unit) -> true);
     f_default_post = (fun (_: Prims.unit) (out: t_PhantomPinned) -> true);
