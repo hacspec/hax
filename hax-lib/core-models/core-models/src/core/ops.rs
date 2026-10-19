@@ -497,14 +497,14 @@ pub mod range {
             Bound::Unbounded => Bound::Unbounded,
         }
     }
-    // An exhausted iterator ends with `start == end`, and must look empty.
+    // An exhausted iterator must look empty, even if `start` overflowed past `end`.
     impl<T> RangeBounds<T> for RangeInclusive<T> {
         fn start_bound(&self) -> Bound<&T> {
             Bound::Included(&self.start_)
         }
         fn end_bound(&self) -> Bound<&T> {
             if self.exhausted {
-                Bound::Excluded(&self.end_)
+                Bound::Excluded(&self.start_)
             } else {
                 Bound::Included(&self.end_)
             }
@@ -618,11 +618,11 @@ mod tests {
             prop_assert_eq!(model.contains(&item), std_range.contains(&item));
             prop_assert_eq!(model.is_empty(), std_range.is_empty());
             if start <= end {
-                let exhausted = super::range::RangeInclusive { start_: end, end_: end, exhausted: true };
                 let mut std_range = std_range;
                 std_range.nth((end - start) as usize);
-                prop_assert_eq!(exhausted.contains(&item), std_range.contains(&item));
-                prop_assert_eq!(exhausted.is_empty(), std_range.is_empty());
+                let iterated = std_range.inject();
+                prop_assert_eq!(iterated.contains(&item), std_range.contains(&item));
+                prop_assert_eq!(iterated.is_empty(), std_range.is_empty());
             }
         }
 
