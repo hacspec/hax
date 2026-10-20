@@ -118,6 +118,8 @@ pub struct PhantomPinned;
 // The impls real core derives on `PhantomPinned`. Its negative `Unpin` impl has no
 // counterpart, as the model has no negative impls: the blanket `Unpin` impl above
 // covers it. Under F*, `Debug`, `Clone` and `Copy` come from the blanket impls.
+// The comparison impls are in `cmp` and the `Hash` impl is in `hash` to avoid module
+// cycles that F* rejects.
 #[cfg(not(hax_backend_fstar))]
 impl crate::fmt::Debug for PhantomPinned {
     fn fmt(&self, f: &mut crate::fmt::Formatter) -> crate::fmt::Result {
@@ -141,37 +143,6 @@ impl Clone for PhantomPinned {
     }
 }
 impl StructuralPartialEq for PhantomPinned {}
-// DEVIATION(std): no comparison or `Hash` impls in F*. They would make this
-// module depend on `cmp`, `option` and `hash`, which depend on it: a module
-// cycle F* rejects.
-#[cfg(not(hax_backend_fstar))]
-impl crate::cmp::Eq for PhantomPinned {}
-#[cfg(not(hax_backend_fstar))]
-impl crate::cmp::PartialEq<PhantomPinned> for PhantomPinned {
-    fn eq(&self, other: &PhantomPinned) -> bool {
-        true
-    }
-    fn ne(&self, other: &PhantomPinned) -> bool {
-        false
-    }
-}
-#[cfg(not(hax_backend_fstar))]
-impl crate::cmp::Ord for PhantomPinned {
-    fn cmp(&self, other: &PhantomPinned) -> crate::cmp::Ordering {
-        crate::cmp::Ordering::Equal
-    }
-}
-#[cfg(not(hax_backend_fstar))]
-impl crate::cmp::PartialOrd<PhantomPinned> for PhantomPinned {
-    fn partial_cmp(&self, other: &PhantomPinned) -> crate::option::Option<crate::cmp::Ordering> {
-        crate::option::Option::Some(crate::cmp::Ordering::Equal)
-    }
-}
-#[cfg(not(hax_backend_fstar))]
-impl crate::hash::Hash for PhantomPinned {
-    fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {}
-}
-
 pub use self::variance::{
     PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
     PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
@@ -804,22 +775,13 @@ mod tests {
             std::mem::size_of::<PhantomPinned>(),
             std::mem::size_of::<std::marker::PhantomPinned>()
         );
-        let _: PhantomPinned = crate::default::Default::default();
-    }
 
-    // The impls F* lacks or takes from its blanket `Clone` and `Debug` instead.
-    // The model's `Formatter` renders nothing, so only success is observable for
-    // `Debug`.
-    #[cfg(not(hax_backend_fstar))]
-    #[test]
-    fn test_phantom_pinned_not_fstar() {
         let (m, n): (PhantomPinned, PhantomPinned) =
             (PhantomPinned, crate::default::Default::default());
         let (s, t): (std::marker::PhantomPinned, std::marker::PhantomPinned) =
             (std::marker::PhantomPinned, std::default::Default::default());
 
         assert_eq!(crate::cmp::PartialEq::eq(&m, &n), s == t);
-        assert_eq!(crate::cmp::PartialEq::ne(&m, &n), s != t);
         assert_eq!(
             crate::cmp::PartialOrd::partial_cmp(&m, &n),
             std::cmp::PartialOrd::partial_cmp(&s, &t).inject()
@@ -834,7 +796,15 @@ mod tests {
         let mut sh = Log(Vec::new());
         std::hash::Hash::hash(&s, &mut sh);
         assert_eq!(mh, sh);
+    }
 
+    // The methods F* lacks or takes from its blanket `Clone` and `Debug`
+    // instead. The model's `Formatter` renders nothing, so only success is
+    // observable for `Debug`.
+    #[cfg(not(hax_backend_fstar))]
+    #[test]
+    fn test_phantom_pinned_not_fstar() {
+        let (m, s) = (PhantomPinned, std::marker::PhantomPinned);
         assert_eq!(
             crate::cmp::PartialEq::ne(&m, &crate::clone::Clone::clone(&m)),
             s != std::clone::Clone::clone(&s)

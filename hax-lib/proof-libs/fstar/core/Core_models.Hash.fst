@@ -1467,6 +1467,40 @@ let impl_38
       state
   }
 
+/// See [`std::hash::Hash`] for [`crate::marker::PhantomPinned`]
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_42: t_Hash Core_models.Marker.t_PhantomPinned =
+  {
+    f_hash_pre
+    =
+    (fun
+        (#v_H: Type0)
+        (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+        (self: Core_models.Marker.t_PhantomPinned)
+        (state: v_H)
+        ->
+        true);
+    f_hash_post
+    =
+    (fun
+        (#v_H: Type0)
+        (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+        (self: Core_models.Marker.t_PhantomPinned)
+        (state: v_H)
+        (out: v_H)
+        ->
+        true);
+    f_hash
+    =
+    fun
+      (#v_H: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: t_Hasher v_H)
+      (self: Core_models.Marker.t_PhantomPinned)
+      (state: v_H)
+      ->
+      state
+  }
+
 /// See [`std::hash::BuildHasher`]
 class t_BuildHasher (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]f_Hasher:Type0;

@@ -601,6 +601,12 @@ impl<T: ?Sized + Hash> Hash for &mut T {
     }
 }
 
+/// See [`std::hash::Hash`] for [`crate::marker::PhantomPinned`]
+#[hax_lib::attributes]
+impl Hash for crate::marker::PhantomPinned {
+    fn hash<H: Hasher>(&self, state: &mut H) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

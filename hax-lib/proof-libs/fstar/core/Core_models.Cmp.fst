@@ -222,3 +222,11 @@ include Core_models.Bundle {impl_7 as impl_Eq_for_tuple_}
 include Core_models.Bundle {impl_8 as impl_8}
 
 include Core_models.Bundle {impl_9__from__cmp as impl_Ord_for_tuple_}
+
+include Core_models.Bundle {impl_59 as impl_59}
+
+include Core_models.Bundle {impl_60 as impl_60}
+
+include Core_models.Bundle {impl_61 as impl_61}
+
+include Core_models.Bundle {impl_62__from__cmp as impl_62}

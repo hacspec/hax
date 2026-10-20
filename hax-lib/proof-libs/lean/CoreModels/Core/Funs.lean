@@ -1409,6 +1409,91 @@ def cmp.Ordering.Insts.CoreCmpEq : cmp.Eq cmp.Ordering := {
   PartialEqInst := cmp.Ordering.Insts.CoreCmpPartialEqOrdering
 }
 
+/-- [core_models::cmp::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::ne]:
+    Source: 'core-models/src/core/cmp.rs', lines 384:4-386:5
+    Visibility: public -/
+def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
+  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
+  RustM Bool
+  := do
+  ok false
+
+/-- [core_models::cmp::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::eq]:
+    Source: 'core-models/src/core/cmp.rs', lines 380:4-382:5
+    Visibility: public -/
+def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
+  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
+  RustM Bool
+  := do
+  ok true
+
+/-- Trait implementation: [core_models::cmp::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
+    Source: 'core-models/src/core/cmp.rs', lines 379:0-387:1 -/
+@[reducible]
+def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned :
+  cmp.PartialEq marker.PhantomPinned marker.PhantomPinned := {
+  eq := marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
+  ne := marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
+}
+
+/-- Trait implementation: [core_models::cmp::{impl core_models::cmp::Eq for core_models::marker::PhantomPinned}]
+    Source: 'core-models/src/core/cmp.rs', lines 390:0-390:43 -/
+@[reducible]
+def marker.PhantomPinned.Insts.CoreCmpEq : cmp.Eq marker.PhantomPinned
+  := {
+  PartialEqInst :=
+    marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned
+}
+
+/-- [core_models::cmp::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::partial_cmp]:
+    Source: 'core-models/src/core/cmp.rs', lines 394:4-396:5
+    Visibility: public -/
+def
+  marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned.partial_cmp
+  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
+  RustM (option.Option cmp.Ordering)
+  := do
+  ok (option.Option.Some cmp.Ordering.Equal)
+
+/-- Trait implementation: [core_models::cmp::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
+    Source: 'core-models/src/core/cmp.rs', lines 393:0-397:1 -/
+@[reducible]
+impl_def marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned :
+  cmp.PartialOrd marker.PhantomPinned marker.PhantomPinned := {
+  PartialEqInst :=
+    marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned
+  partial_cmp :=
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned.partial_cmp
+  lt := cmp.PartialOrd.lt.default
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
+  le := cmp.PartialOrd.le.default
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
+  gt := cmp.PartialOrd.gt.default
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
+  ge := cmp.PartialOrd.ge.default
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
+}
+
+/-- [core_models::cmp::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}::cmp]:
+    Source: 'core-models/src/core/cmp.rs', lines 401:4-403:5
+    Visibility: public -/
+def marker.PhantomPinned.Insts.CoreCmpOrd.cmp
+  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
+  RustM cmp.Ordering
+  := do
+  ok cmp.Ordering.Equal
+
+/-- Trait implementation: [core_models::cmp::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}]
+    Source: 'core-models/src/core/cmp.rs', lines 400:0-404:1 -/
+@[reducible]
+def marker.PhantomPinned.Insts.CoreCmpOrd : cmp.Ord marker.PhantomPinned
+  := {
+  EqInst := marker.PhantomPinned.Insts.CoreCmpEq
+  PartialOrdInst :=
+    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
+  cmp := marker.PhantomPinned.Insts.CoreCmpOrd.cmp
+}
+
 /-- [core_models::convert::{impl core_models::convert::Into<U> for T}::into]:
     Source: 'core-models/src/core/convert.rs', lines 38:4-40:5
     Visibility: public -/
@@ -6982,6 +7067,28 @@ impl_def Mut0T.Insts.CoreHashHash {T : Type} (HashInst : hash.Hash T) :
     HasherInst
 }
 
+/-- [core_models::hash::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}::hash]:
+    Source: 'core-models/src/core/hash.rs', lines 608:4-608:47
+    Visibility: public -/
+def marker.PhantomPinned.Insts.CoreHashHash.hash
+  {H : Type} (HasherInst : hash.Hasher H) (self : marker.PhantomPinned)
+  (state : H) :
+  RustM H
+  := do
+  ok state
+
+/-- Trait implementation: [core_models::hash::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}]
+    Source: 'core-models/src/core/hash.rs', lines 607:0-609:1 -/
+@[reducible]
+impl_def marker.PhantomPinned.Insts.CoreHashHash : hash.Hash
+  marker.PhantomPinned := {
+  hash := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    marker.PhantomPinned.Insts.CoreHashHash.hash HasherInst
+  hash_slice := fun {H : Type} (HasherInst : hash.Hasher H) =>
+    hash.Hash.hash_slice.default marker.PhantomPinned.Insts.CoreHashHash
+    HasherInst
+}
+
 /-- [core_models::hint::black_box]:
     Source: 'core-models/src/core/hint.rs', lines 3:0-5:1
     Visibility: public -/
@@ -10523,7 +10630,7 @@ def marker.Unpin.Blanket (T : Type) : marker.Unpin T := {
 }
 
 /-- [core_models::marker::{impl core_models::fmt::Debug for core_models::marker::PhantomPinned}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 123:4-125:5
+    Source: 'core-models/src/core/marker.rs', lines 125:4-127:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreFmtDebug.fmt
   (self : marker.PhantomPinned) (f : fmt.Formatter) :
@@ -10532,7 +10639,7 @@ def marker.PhantomPinned.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::{impl core_models::fmt::Debug for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 122:0-126:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 124:0-128:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreFmtDebug : fmt.Debug
   marker.PhantomPinned := {
@@ -10540,14 +10647,14 @@ def marker.PhantomPinned.Insts.CoreFmtDebug : fmt.Debug
 }
 
 /-- [core_models::marker::{impl core_models::default::Default for core_models::marker::PhantomPinned}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 128:4-130:5
+    Source: 'core-models/src/core/marker.rs', lines 130:4-132:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreDefaultDefault.default
   : RustM marker.PhantomPinned := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::{impl core_models::default::Default for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 127:0-131:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 129:0-133:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreDefaultDefault : default.Default
   marker.PhantomPinned := {
@@ -10555,7 +10662,7 @@ def marker.PhantomPinned.Insts.CoreDefaultDefault : default.Default
 }
 
 /-- [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 139:4-141:5
+    Source: 'core-models/src/core/marker.rs', lines 141:4-143:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCloneClone.clone_from
   (self : marker.PhantomPinned) (source : marker.PhantomPinned) :
@@ -10564,14 +10671,14 @@ def marker.PhantomPinned.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 136:4-138:5
+    Source: 'core-models/src/core/marker.rs', lines 138:4-140:5
     Visibility: public -/
 def marker.PhantomPinned.Insts.CoreCloneClone.clone
   (self : marker.PhantomPinned) : RustM marker.PhantomPinned := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::{impl core_models::clone::Clone for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 135:0-142:1 -/
+    Source: 'core-models/src/core/marker.rs', lines 137:0-144:1 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreCloneClone : clone.Clone
   marker.PhantomPinned := {
@@ -10580,7 +10687,7 @@ def marker.PhantomPinned.Insts.CoreCloneClone : clone.Clone
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::Copy for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 133:0-133:30 -/
+    Source: 'core-models/src/core/marker.rs', lines 135:0-135:30 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreMarkerCopy : marker.Copy
   marker.PhantomPinned := {
@@ -10588,135 +10695,28 @@ def marker.PhantomPinned.Insts.CoreMarkerCopy : marker.Copy
 }
 
 /-- Trait implementation: [core_models::marker::{impl core_models::marker::StructuralPartialEq for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 143:0-143:45 -/
+    Source: 'core-models/src/core/marker.rs', lines 145:0-145:45 -/
 @[reducible]
 def marker.PhantomPinned.Insts.CoreMarkerStructuralPartialEq :
   marker.StructuralPartialEq marker.PhantomPinned := {
 }
 
-/-- [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 154:4-156:5
-    Visibility: public -/
-def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
-  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
-  RustM Bool
-  := do
-  ok false
-
-/-- [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 151:4-153:5
-    Visibility: public -/
-def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
-  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
-  RustM Bool
-  := do
-  ok true
-
-/-- Trait implementation: [core_models::marker::{impl core_models::cmp::PartialEq<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 150:0-157:1 -/
-@[reducible]
-def marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned :
-  cmp.PartialEq marker.PhantomPinned marker.PhantomPinned := {
-  eq := marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.eq
-  ne := marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned.ne
-}
-
-/-- Trait implementation: [core_models::marker::{impl core_models::cmp::Eq for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 148:0-148:40 -/
-@[reducible]
-def marker.PhantomPinned.Insts.CoreCmpEq : cmp.Eq marker.PhantomPinned
-  := {
-  PartialEqInst :=
-    marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned
-}
-
-/-- [core_models::marker::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 166:4-168:5
-    Visibility: public -/
-def
-  marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned.partial_cmp
-  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
-  RustM (option.Option cmp.Ordering)
-  := do
-  ok (option.Option.Some cmp.Ordering.Equal)
-
-/-- Trait implementation: [core_models::marker::{impl core_models::cmp::PartialOrd<core_models::marker::PhantomPinned> for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 165:0-169:1 -/
-@[reducible]
-impl_def marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned :
-  cmp.PartialOrd marker.PhantomPinned marker.PhantomPinned := {
-  PartialEqInst :=
-    marker.PhantomPinned.Insts.CoreCmpPartialEqPhantomPinned
-  partial_cmp :=
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned.partial_cmp
-  lt := cmp.PartialOrd.lt.default
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
-  le := cmp.PartialOrd.le.default
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
-  gt := cmp.PartialOrd.gt.default
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
-  ge := cmp.PartialOrd.ge.default
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
-}
-
-/-- [core_models::marker::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 160:4-162:5
-    Visibility: public -/
-def marker.PhantomPinned.Insts.CoreCmpOrd.cmp
-  (self : marker.PhantomPinned) (other : marker.PhantomPinned) :
-  RustM cmp.Ordering
-  := do
-  ok cmp.Ordering.Equal
-
-/-- Trait implementation: [core_models::marker::{impl core_models::cmp::Ord for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 159:0-163:1 -/
-@[reducible]
-def marker.PhantomPinned.Insts.CoreCmpOrd : cmp.Ord marker.PhantomPinned
-  := {
-  EqInst := marker.PhantomPinned.Insts.CoreCmpEq
-  PartialOrdInst :=
-    marker.PhantomPinned.Insts.CoreCmpPartialOrdPhantomPinned
-  cmp := marker.PhantomPinned.Insts.CoreCmpOrd.cmp
-}
-
-/-- [core_models::marker::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 172:4-172:60
-    Visibility: public -/
-def marker.PhantomPinned.Insts.CoreHashHash.hash
-  {H : Type} (hashHasherInst : hash.Hasher H) (self : marker.PhantomPinned)
-  (state : H) :
-  RustM H
-  := do
-  ok state
-
-/-- Trait implementation: [core_models::marker::{impl core_models::hash::Hash for core_models::marker::PhantomPinned}]
-    Source: 'core-models/src/core/marker.rs', lines 171:0-173:1 -/
-@[reducible]
-impl_def marker.PhantomPinned.Insts.CoreHashHash : hash.Hash
-  marker.PhantomPinned := {
-  hash := fun {H : Type} (hashHasherInst : hash.Hasher H) =>
-    marker.PhantomPinned.Insts.CoreHashHash.hash hashHasherInst
-  hash_slice := fun {H : Type} (HasherInst : hash.Hasher H) =>
-    hash.Hash.hash_slice.default marker.PhantomPinned.Insts.CoreHashHash
-    HasherInst
-}
-
 /-- [core_models::marker::variance::variance]:
-    Source: 'core-models/src/core/marker.rs', lines 191:4-193:5
+    Source: 'core-models/src/core/marker.rs', lines 162:4-164:5
     Visibility: public -/
 def marker.variance.variance
   {T : Type} (VarianceInst : marker.variance.Variance T) : RustM T := do
   VarianceInst.defaultDefaultInst.default
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomCovariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 464:8-466:9
+    Source: 'core-models/src/core/marker.rs', lines 435:8-437:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.new
   (T : Type) : RustM (marker.variance.PhantomCovariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomCovariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 217:8-219:9
+    Source: 'core-models/src/core/marker.rs', lines 188:8-190:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.new
   : RustM marker.variance.PhantomCovariantLifetime := do
@@ -10724,7 +10724,7 @@ def marker.variance.PhantomCovariantLifetime.new
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariantLifetime<'a>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 282:8-284:9
+    Source: 'core-models/src/core/marker.rs', lines 253:8-255:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault.default
@@ -10733,7 +10733,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 281:4-285:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 252:4-256:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault :
   default.Default marker.variance.PhantomCovariantLifetime := {
@@ -10742,7 +10742,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreDefaultDefault :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 224:4-224:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 195:4-195:57 -/
 @[reducible]
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10752,7 +10752,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 228:8-230:9
+    Source: 'core-models/src/core/marker.rs', lines 199:8-201:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomCovariantLifetime) (f : fmt.Formatter) :
@@ -10761,7 +10761,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 227:4-231:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 198:4-202:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomCovariantLifetime := {
@@ -10769,14 +10769,14 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreFmtDebug :
 }
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomContravariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 541:8-543:9
+    Source: 'core-models/src/core/marker.rs', lines 512:8-514:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.new
   (T : Type) : RustM (marker.variance.PhantomContravariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomContravariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 238:8-240:9
+    Source: 'core-models/src/core/marker.rs', lines 209:8-211:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.new
   : RustM marker.variance.PhantomContravariantLifetime := do
@@ -10784,7 +10784,7 @@ def marker.variance.PhantomContravariantLifetime.new
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariantLifetime<'a>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 340:8-342:9
+    Source: 'core-models/src/core/marker.rs', lines 311:8-313:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreDefaultDefault.default
@@ -10793,7 +10793,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 339:4-343:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 310:4-314:5 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreDefaultDefault
@@ -10803,7 +10803,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 245:4-245:61 -/
+    Source: 'core-models/src/core/marker.rs', lines 216:4-216:61 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10813,7 +10813,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 249:8-251:9
+    Source: 'core-models/src/core/marker.rs', lines 220:8-222:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomContravariantLifetime) (f : fmt.Formatter) :
@@ -10822,7 +10822,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 248:4-252:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 219:4-223:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomContravariantLifetime := {
@@ -10831,14 +10831,14 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreFmtDebug :
 }
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomInvariant<T>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 618:8-620:9
+    Source: 'core-models/src/core/marker.rs', lines 589:8-591:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.new
   (T : Type) : RustM (marker.variance.PhantomInvariant T) := do
   ok ()
 
 /-- [core_models::marker::variance::{core_models::marker::variance::PhantomInvariantLifetime<'a>}::new]:
-    Source: 'core-models/src/core/marker.rs', lines 259:8-261:9
+    Source: 'core-models/src/core/marker.rs', lines 230:8-232:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.new
   : RustM marker.variance.PhantomInvariantLifetime := do
@@ -10846,7 +10846,7 @@ def marker.variance.PhantomInvariantLifetime.new
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariantLifetime<'a>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 405:8-407:9
+    Source: 'core-models/src/core/marker.rs', lines 376:8-378:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault.default
@@ -10855,7 +10855,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 404:4-408:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 375:4-379:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault :
   default.Default marker.variance.PhantomInvariantLifetime := {
@@ -10864,7 +10864,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreDefaultDefault :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 266:4-266:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 237:4-237:57 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerVarianceVariance
@@ -10874,7 +10874,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariantLifetime<'a>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 270:8-272:9
+    Source: 'core-models/src/core/marker.rs', lines 241:8-243:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug.fmt
   (self : marker.variance.PhantomInvariantLifetime) (f : fmt.Formatter) :
@@ -10883,7 +10883,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 269:4-273:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 240:4-244:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug :
   fmt.Debug marker.variance.PhantomInvariantLifetime := {
@@ -10891,7 +10891,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreFmtDebug :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariantLifetime<'a>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 292:8-294:9
+    Source: 'core-models/src/core/marker.rs', lines 263:8-265:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone.clone_from
@@ -10902,7 +10902,7 @@ def
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariantLifetime<'a>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 289:8-291:9
+    Source: 'core-models/src/core/marker.rs', lines 260:8-262:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone.clone
   (self : marker.variance.PhantomCovariantLifetime) :
@@ -10912,7 +10912,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 288:4-295:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 259:4-266:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomCovariantLifetime := {
@@ -10923,7 +10923,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCloneClone :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 301:4-301:60 -/
+    Source: 'core-models/src/core/marker.rs', lines 272:4-272:60 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreMarkerCopy :
   marker.Copy marker.variance.PhantomCovariantLifetime := {
@@ -10932,7 +10932,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreMarkerCopy :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::StructuralPartialEq for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 306:4-306:75 -/
+    Source: 'core-models/src/core/marker.rs', lines 277:4-277:75 -/
 @[reducible]
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreMarkerStructuralPartialEq
@@ -10940,7 +10940,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariantLifetime<'a>> for core_models::marker::variance::PhantomCovariantLifetime<'a>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 313:8-315:9
+    Source: 'core-models/src/core/marker.rs', lines 284:8-286:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCmpPartialEqPhantomCovariantLifetime.ne
@@ -10951,7 +10951,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariantLifetime<'a>> for core_models::marker::variance::PhantomCovariantLifetime<'a>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 309:8-311:9
+    Source: 'core-models/src/core/marker.rs', lines 280:8-282:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCmpPartialEqPhantomCovariantLifetime.eq
@@ -10962,7 +10962,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariantLifetime<'a>> for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 308:4-316:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 279:4-287:5 -/
 @[reducible]
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCmpPartialEqPhantomCovariantLifetime
@@ -10975,7 +10975,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 318:4-318:63 -/
+    Source: 'core-models/src/core/marker.rs', lines 289:4-289:63 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpEq : cmp.Eq
   marker.variance.PhantomCovariantLifetime := {
@@ -10984,7 +10984,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpEq : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariantLifetime<'a>> for core_models::marker::variance::PhantomCovariantLifetime<'a>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 321:8-326:9
+    Source: 'core-models/src/core/marker.rs', lines 292:8-297:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCmpPartialOrdPhantomCovariantLifetime.partial_cmp
@@ -10995,7 +10995,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariantLifetime<'a>> for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 320:4-327:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 291:4-298:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomCovariantLifetime.Insts.CoreCmpPartialOrdPhantomCovariantLifetime
@@ -11016,7 +11016,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariantLifetime<'a>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 330:8-332:9
+    Source: 'core-models/src/core/marker.rs', lines 301:8-303:9
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpOrd.cmp
   (self : marker.variance.PhantomCovariantLifetime)
@@ -11026,7 +11026,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 329:4-333:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 300:4-304:5 -/
 @[reducible]
 def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpOrd : cmp.Ord
   marker.variance.PhantomCovariantLifetime := {
@@ -11037,7 +11037,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreCmpOrd : cmp.Ord
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariantLifetime<'a>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 336:8-336:64
+    Source: 'core-models/src/core/marker.rs', lines 307:8-307:64
     Visibility: public -/
 def marker.variance.PhantomCovariantLifetime.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11047,7 +11047,7 @@ def marker.variance.PhantomCovariantLifetime.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 335:4-337:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 306:4-308:5 -/
 @[reducible]
 impl_def marker.variance.PhantomCovariantLifetime.Insts.CoreHashHash :
   hash.Hash marker.variance.PhantomCovariantLifetime := {
@@ -11061,7 +11061,7 @@ impl_def marker.variance.PhantomCovariantLifetime.Insts.CoreHashHash :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariantLifetime<'a>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 350:8-355:9
+    Source: 'core-models/src/core/marker.rs', lines 321:8-326:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone.clone_from
@@ -11072,7 +11072,7 @@ def
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariantLifetime<'a>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 347:8-349:9
+    Source: 'core-models/src/core/marker.rs', lines 318:8-320:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone.clone
@@ -11083,7 +11083,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 346:4-356:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 317:4-327:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomContravariantLifetime := {
@@ -11094,7 +11094,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCloneClone :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 362:4-362:64 -/
+    Source: 'core-models/src/core/marker.rs', lines 333:4-333:64 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerCopy :
   marker.Copy marker.variance.PhantomContravariantLifetime := {
@@ -11103,7 +11103,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerCopy :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::StructuralPartialEq for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 367:4-367:79 -/
+    Source: 'core-models/src/core/marker.rs', lines 338:4-338:79 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreMarkerStructuralPartialEq
@@ -11112,7 +11112,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 376:8-378:9
+    Source: 'core-models/src/core/marker.rs', lines 347:8-349:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime.ne
@@ -11123,7 +11123,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 372:8-374:9
+    Source: 'core-models/src/core/marker.rs', lines 343:8-345:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime.eq
@@ -11134,7 +11134,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 369:4-379:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 340:4-350:5 -/
 @[reducible]
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialEqPhantomContravariantLifetime
@@ -11147,7 +11147,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 381:4-381:67 -/
+    Source: 'core-models/src/core/marker.rs', lines 352:4-352:67 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpEq :
   cmp.Eq marker.variance.PhantomContravariantLifetime := {
@@ -11156,7 +11156,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpEq :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 386:8-391:9
+    Source: 'core-models/src/core/marker.rs', lines 357:8-362:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialOrdPhantomContravariantLifetime.partial_cmp
@@ -11167,7 +11167,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariantLifetime<'a>> for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 383:4-392:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 354:4-363:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomContravariantLifetime.Insts.CoreCmpPartialOrdPhantomContravariantLifetime
@@ -11188,7 +11188,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariantLifetime<'a>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 395:8-397:9
+    Source: 'core-models/src/core/marker.rs', lines 366:8-368:9
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd.cmp
   (self : marker.variance.PhantomContravariantLifetime)
@@ -11198,7 +11198,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 394:4-398:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 365:4-369:5 -/
 @[reducible]
 def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd :
   cmp.Ord marker.variance.PhantomContravariantLifetime := {
@@ -11210,7 +11210,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreCmpOrd :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariantLifetime<'a>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 401:8-401:64
+    Source: 'core-models/src/core/marker.rs', lines 372:8-372:64
     Visibility: public -/
 def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11220,7 +11220,7 @@ def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 400:4-402:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 371:4-373:5 -/
 @[reducible]
 impl_def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash
   : hash.Hash marker.variance.PhantomContravariantLifetime := {
@@ -11234,7 +11234,7 @@ impl_def marker.variance.PhantomContravariantLifetime.Insts.CoreHashHash
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 415:8-417:9
+    Source: 'core-models/src/core/marker.rs', lines 386:8-388:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone_from
@@ -11245,7 +11245,7 @@ def
   ok ()
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 412:8-414:9
+    Source: 'core-models/src/core/marker.rs', lines 383:8-385:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone
   (self : marker.variance.PhantomInvariantLifetime) :
@@ -11255,7 +11255,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 411:4-418:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 382:4-389:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone :
   clone.Clone marker.variance.PhantomInvariantLifetime := {
@@ -11266,7 +11266,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCloneClone :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 424:4-424:60 -/
+    Source: 'core-models/src/core/marker.rs', lines 395:4-395:60 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerCopy :
   marker.Copy marker.variance.PhantomInvariantLifetime := {
@@ -11275,7 +11275,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerCopy :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::StructuralPartialEq for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 429:4-429:75 -/
+    Source: 'core-models/src/core/marker.rs', lines 400:4-400:75 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreMarkerStructuralPartialEq
@@ -11283,7 +11283,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 436:8-438:9
+    Source: 'core-models/src/core/marker.rs', lines 407:8-409:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime.ne
@@ -11294,7 +11294,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 432:8-434:9
+    Source: 'core-models/src/core/marker.rs', lines 403:8-405:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime.eq
@@ -11305,7 +11305,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 431:4-439:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 402:4-410:5 -/
 @[reducible]
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialEqPhantomInvariantLifetime
@@ -11318,7 +11318,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 441:4-441:63 -/
+    Source: 'core-models/src/core/marker.rs', lines 412:4-412:63 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpEq : cmp.Eq
   marker.variance.PhantomInvariantLifetime := {
@@ -11327,7 +11327,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpEq : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 444:8-449:9
+    Source: 'core-models/src/core/marker.rs', lines 415:8-420:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialOrdPhantomInvariantLifetime.partial_cmp
@@ -11338,7 +11338,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariantLifetime<'a>> for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 443:4-450:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 414:4-421:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomInvariantLifetime.Insts.CoreCmpPartialOrdPhantomInvariantLifetime
@@ -11359,7 +11359,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariantLifetime<'a>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 453:8-455:9
+    Source: 'core-models/src/core/marker.rs', lines 424:8-426:9
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd.cmp
   (self : marker.variance.PhantomInvariantLifetime)
@@ -11369,7 +11369,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 452:4-456:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 423:4-427:5 -/
 @[reducible]
 def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd : cmp.Ord
   marker.variance.PhantomInvariantLifetime := {
@@ -11380,7 +11380,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreCmpOrd : cmp.Ord
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariantLifetime<'a>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 459:8-459:64
+    Source: 'core-models/src/core/marker.rs', lines 430:8-430:64
     Visibility: public -/
 def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash.hash
   {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11390,7 +11390,7 @@ def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariantLifetime<'a>}]
-    Source: 'core-models/src/core/marker.rs', lines 458:4-460:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 429:4-431:5 -/
 @[reducible]
 impl_def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash :
   hash.Hash marker.variance.PhantomInvariantLifetime := {
@@ -11404,14 +11404,14 @@ impl_def marker.variance.PhantomInvariantLifetime.Insts.CoreHashHash :
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 474:8-476:9
+    Source: 'core-models/src/core/marker.rs', lines 445:8-447:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault.default
   (T : Type) : RustM (marker.variance.PhantomCovariant T) := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 473:4-477:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 444:4-448:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault (T : Type)
   : default.Default (marker.variance.PhantomCovariant T) := {
@@ -11420,7 +11420,7 @@ def marker.variance.PhantomCovariant.Insts.CoreDefaultDefault (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 471:4-471:47 -/
+    Source: 'core-models/src/core/marker.rs', lines 442:4-442:47 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreMarkerVarianceVariance (T
   : Type) : marker.variance.Variance (marker.variance.PhantomCovariant T) := {
@@ -11429,7 +11429,7 @@ def marker.variance.PhantomCovariant.Insts.CoreMarkerVarianceVariance (T
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 481:8-483:9
+    Source: 'core-models/src/core/marker.rs', lines 452:8-454:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomCovariant T) (f : fmt.Formatter) :
@@ -11438,7 +11438,7 @@ def marker.variance.PhantomCovariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 480:4-484:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 451:4-455:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomCovariant T) := {
@@ -11446,7 +11446,7 @@ def marker.variance.PhantomCovariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 494:8-496:9
+    Source: 'core-models/src/core/marker.rs', lines 465:8-467:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomCovariant T)
@@ -11456,7 +11456,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 491:8-493:9
+    Source: 'core-models/src/core/marker.rs', lines 462:8-464:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomCovariant T) :
@@ -11465,7 +11465,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 490:4-497:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 461:4-468:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCloneClone (T : Type) :
   clone.Clone (marker.variance.PhantomCovariant T) := {
@@ -11475,7 +11475,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCloneClone (T : Type) :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 503:4-503:50 -/
+    Source: 'core-models/src/core/marker.rs', lines 474:4-474:50 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreMarkerCopy (T : Type) :
   marker.Copy (marker.variance.PhantomCovariant T) := {
@@ -11484,7 +11484,7 @@ def marker.variance.PhantomCovariant.Insts.CoreMarkerCopy (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 513:8-515:9
+    Source: 'core-models/src/core/marker.rs', lines 484:8-486:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant.ne
@@ -11495,7 +11495,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 509:8-511:9
+    Source: 'core-models/src/core/marker.rs', lines 480:8-482:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant.eq
@@ -11506,7 +11506,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 508:4-516:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 479:4-487:5 -/
 @[reducible]
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialEqPhantomCovariant
@@ -11519,7 +11519,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 518:4-518:53 -/
+    Source: 'core-models/src/core/marker.rs', lines 489:4-489:53 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
   (marker.variance.PhantomCovariant T) := {
@@ -11529,7 +11529,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 521:8-526:9
+    Source: 'core-models/src/core/marker.rs', lines 492:8-497:9
     Visibility: public -/
 def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialOrdPhantomCovariant.partial_cmp
@@ -11540,7 +11540,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomCovariant<T>> for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 520:4-527:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 491:4-498:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomCovariant.Insts.CoreCmpPartialOrdPhantomCovariant
@@ -11566,7 +11566,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 530:8-532:9
+    Source: 'core-models/src/core/marker.rs', lines 501:8-503:9
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomCovariant T)
@@ -11576,7 +11576,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 529:4-533:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 500:4-504:5 -/
 @[reducible]
 def marker.variance.PhantomCovariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomCovariant T) := {
@@ -11588,7 +11588,7 @@ def marker.variance.PhantomCovariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 536:8-536:64
+    Source: 'core-models/src/core/marker.rs', lines 507:8-507:64
     Visibility: public -/
 def marker.variance.PhantomCovariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11598,7 +11598,7 @@ def marker.variance.PhantomCovariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomCovariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 535:4-537:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 506:4-508:5 -/
 @[reducible]
 impl_def marker.variance.PhantomCovariant.Insts.CoreHashHash (T : Type)
   : hash.Hash (marker.variance.PhantomCovariant T) := {
@@ -11611,7 +11611,7 @@ impl_def marker.variance.PhantomCovariant.Insts.CoreHashHash (T : Type)
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 551:8-553:9
+    Source: 'core-models/src/core/marker.rs', lines 522:8-524:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreDefaultDefault.default
@@ -11619,7 +11619,7 @@ def
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 550:4-554:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 521:4-525:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreDefaultDefault (T :
   Type) : default.Default (marker.variance.PhantomContravariant T) := {
@@ -11629,7 +11629,7 @@ def marker.variance.PhantomContravariant.Insts.CoreDefaultDefault (T :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 548:4-548:51 -/
+    Source: 'core-models/src/core/marker.rs', lines 519:4-519:51 -/
 @[reducible]
 def
   marker.variance.PhantomContravariant.Insts.CoreMarkerVarianceVariance
@@ -11640,7 +11640,7 @@ def
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 558:8-560:9
+    Source: 'core-models/src/core/marker.rs', lines 529:8-531:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11650,7 +11650,7 @@ def marker.variance.PhantomContravariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 557:4-561:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 528:4-532:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomContravariant T) := {
@@ -11658,7 +11658,7 @@ def marker.variance.PhantomContravariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 571:8-573:9
+    Source: 'core-models/src/core/marker.rs', lines 542:8-544:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11668,7 +11668,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 568:8-570:9
+    Source: 'core-models/src/core/marker.rs', lines 539:8-541:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomContravariant T) :
@@ -11677,7 +11677,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 567:4-574:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 538:4-545:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCloneClone (T : Type)
   : clone.Clone (marker.variance.PhantomContravariant T) := {
@@ -11688,7 +11688,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCloneClone (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 580:4-580:54 -/
+    Source: 'core-models/src/core/marker.rs', lines 551:4-551:54 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreMarkerCopy (T : Type)
   : marker.Copy (marker.variance.PhantomContravariant T) := {
@@ -11697,7 +11697,7 @@ def marker.variance.PhantomContravariant.Insts.CoreMarkerCopy (T : Type)
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 590:8-592:9
+    Source: 'core-models/src/core/marker.rs', lines 561:8-563:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant.ne
@@ -11708,7 +11708,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 586:8-588:9
+    Source: 'core-models/src/core/marker.rs', lines 557:8-559:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant.eq
@@ -11719,7 +11719,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 585:4-593:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 556:4-564:5 -/
 @[reducible]
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialEqPhantomContravariant
@@ -11732,7 +11732,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 595:4-595:57 -/
+    Source: 'core-models/src/core/marker.rs', lines 566:4-566:57 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCmpEq (T : Type) :
   cmp.Eq (marker.variance.PhantomContravariant T) := {
@@ -11742,7 +11742,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpEq (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 598:8-603:9
+    Source: 'core-models/src/core/marker.rs', lines 569:8-574:9
     Visibility: public -/
 def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialOrdPhantomContravariant.partial_cmp
@@ -11753,7 +11753,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomContravariant<T>> for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 597:4-604:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 568:4-575:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomContravariant.Insts.CoreCmpPartialOrdPhantomContravariant
@@ -11779,7 +11779,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 607:8-609:9
+    Source: 'core-models/src/core/marker.rs', lines 578:8-580:9
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomContravariant T)
@@ -11789,7 +11789,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 606:4-610:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 577:4-581:5 -/
 @[reducible]
 def marker.variance.PhantomContravariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomContravariant T) := {
@@ -11801,7 +11801,7 @@ def marker.variance.PhantomContravariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 613:8-613:64
+    Source: 'core-models/src/core/marker.rs', lines 584:8-584:64
     Visibility: public -/
 def marker.variance.PhantomContravariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -11811,7 +11811,7 @@ def marker.variance.PhantomContravariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomContravariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 612:4-614:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 583:4-585:5 -/
 @[reducible]
 impl_def marker.variance.PhantomContravariant.Insts.CoreHashHash (T :
   Type) : hash.Hash (marker.variance.PhantomContravariant T) := {
@@ -11825,14 +11825,14 @@ impl_def marker.variance.PhantomContravariant.Insts.CoreHashHash (T :
 }
 
 /-- [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariant<T>}::default]:
-    Source: 'core-models/src/core/marker.rs', lines 628:8-630:9
+    Source: 'core-models/src/core/marker.rs', lines 599:8-601:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault.default
   (T : Type) : RustM (marker.variance.PhantomInvariant T) := do
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::default::Default for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 627:4-631:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 598:4-602:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault (T : Type)
   : default.Default (marker.variance.PhantomInvariant T) := {
@@ -11841,7 +11841,7 @@ def marker.variance.PhantomInvariant.Insts.CoreDefaultDefault (T : Type)
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::variance::Variance for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 625:4-625:47 -/
+    Source: 'core-models/src/core/marker.rs', lines 596:4-596:47 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreMarkerVarianceVariance (T
   : Type) : marker.variance.Variance (marker.variance.PhantomInvariant T) := {
@@ -11850,7 +11850,7 @@ def marker.variance.PhantomInvariant.Insts.CoreMarkerVarianceVariance (T
 }
 
 /-- [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariant<T>}::fmt]:
-    Source: 'core-models/src/core/marker.rs', lines 635:8-637:9
+    Source: 'core-models/src/core/marker.rs', lines 606:8-608:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreFmtDebug.fmt
   {T : Type} (self : marker.variance.PhantomInvariant T) (f : fmt.Formatter) :
@@ -11859,7 +11859,7 @@ def marker.variance.PhantomInvariant.Insts.CoreFmtDebug.fmt
   ok (result.Result.Ok (), f)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::fmt::Debug for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 634:4-638:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 605:4-609:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreFmtDebug (T : Type) :
   fmt.Debug (marker.variance.PhantomInvariant T) := {
@@ -11867,7 +11867,7 @@ def marker.variance.PhantomInvariant.Insts.CoreFmtDebug (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}::clone_from]:
-    Source: 'core-models/src/core/marker.rs', lines 648:8-650:9
+    Source: 'core-models/src/core/marker.rs', lines 619:8-621:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone_from
   {T : Type} (self : marker.variance.PhantomInvariant T)
@@ -11877,7 +11877,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone_from
   ok source
 
 /-- [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}::clone]:
-    Source: 'core-models/src/core/marker.rs', lines 645:8-647:9
+    Source: 'core-models/src/core/marker.rs', lines 616:8-618:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone
   {T : Type} (self : marker.variance.PhantomInvariant T) :
@@ -11886,7 +11886,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone.clone
   ok ()
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::clone::Clone for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 644:4-651:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 615:4-622:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCloneClone (T : Type) :
   clone.Clone (marker.variance.PhantomInvariant T) := {
@@ -11896,7 +11896,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCloneClone (T : Type) :
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::marker::Copy for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 657:4-657:50 -/
+    Source: 'core-models/src/core/marker.rs', lines 628:4-628:50 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreMarkerCopy (T : Type) :
   marker.Copy (marker.variance.PhantomInvariant T) := {
@@ -11905,7 +11905,7 @@ def marker.variance.PhantomInvariant.Insts.CoreMarkerCopy (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::ne]:
-    Source: 'core-models/src/core/marker.rs', lines 667:8-669:9
+    Source: 'core-models/src/core/marker.rs', lines 638:8-640:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant.ne
@@ -11916,7 +11916,7 @@ def
   ok false
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::eq]:
-    Source: 'core-models/src/core/marker.rs', lines 663:8-665:9
+    Source: 'core-models/src/core/marker.rs', lines 634:8-636:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant.eq
@@ -11927,7 +11927,7 @@ def
   ok true
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialEq<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 662:4-670:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 633:4-641:5 -/
 @[reducible]
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialEqPhantomInvariant
@@ -11940,7 +11940,7 @@ def
 }
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Eq for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 672:4-672:53 -/
+    Source: 'core-models/src/core/marker.rs', lines 643:4-643:53 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
   (marker.variance.PhantomInvariant T) := {
@@ -11950,7 +11950,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpEq (T : Type) : cmp.Eq
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}::partial_cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 675:8-680:9
+    Source: 'core-models/src/core/marker.rs', lines 646:8-651:9
     Visibility: public -/
 def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialOrdPhantomInvariant.partial_cmp
@@ -11961,7 +11961,7 @@ def
   ok (option.Option.Some cmp.Ordering.Equal)
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::PartialOrd<core_models::marker::variance::PhantomInvariant<T>> for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 674:4-681:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 645:4-652:5 -/
 @[reducible]
 impl_def
   marker.variance.PhantomInvariant.Insts.CoreCmpPartialOrdPhantomInvariant
@@ -11987,7 +11987,7 @@ impl_def
 }
 
 /-- [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariant<T>}::cmp]:
-    Source: 'core-models/src/core/marker.rs', lines 684:8-686:9
+    Source: 'core-models/src/core/marker.rs', lines 655:8-657:9
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreCmpOrd.cmp
   {T : Type} (self : marker.variance.PhantomInvariant T)
@@ -11997,7 +11997,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpOrd.cmp
   ok cmp.Ordering.Equal
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::cmp::Ord for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 683:4-687:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 654:4-658:5 -/
 @[reducible]
 def marker.variance.PhantomInvariant.Insts.CoreCmpOrd (T : Type) :
   cmp.Ord (marker.variance.PhantomInvariant T) := {
@@ -12009,7 +12009,7 @@ def marker.variance.PhantomInvariant.Insts.CoreCmpOrd (T : Type) :
 }
 
 /-- [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariant<T>}::hash]:
-    Source: 'core-models/src/core/marker.rs', lines 690:8-690:64
+    Source: 'core-models/src/core/marker.rs', lines 661:8-661:64
     Visibility: public -/
 def marker.variance.PhantomInvariant.Insts.CoreHashHash.hash
   {T : Type} {H : Type} (hashHasherInst : hash.Hasher H)
@@ -12019,7 +12019,7 @@ def marker.variance.PhantomInvariant.Insts.CoreHashHash.hash
   ok state
 
 /-- Trait implementation: [core_models::marker::variance::{impl core_models::hash::Hash for core_models::marker::variance::PhantomInvariant<T>}]
-    Source: 'core-models/src/core/marker.rs', lines 689:4-691:5 -/
+    Source: 'core-models/src/core/marker.rs', lines 660:4-662:5 -/
 @[reducible]
 impl_def marker.variance.PhantomInvariant.Insts.CoreHashHash (T : Type)
   : hash.Hash (marker.variance.PhantomInvariant T) := {

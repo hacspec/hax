@@ -169,11 +169,11 @@ include Core_models.Bundle {impl_57 as impl_57}
 
 include Core_models.Bundle {impl_58 as impl_58}
 
-include Core_models.Bundle {impl_59 as impl_59}
+include Core_models.Bundle {impl_59__from__convert as impl_59}
 
-include Core_models.Bundle {impl_60 as impl_60}
+include Core_models.Bundle {impl_60__from__convert as impl_60}
 
-include Core_models.Bundle {impl_61 as impl_61}
+include Core_models.Bundle {impl_61__from__convert as impl_61}
 
 include Core_models.Bundle {impl_62 as impl_62}
 

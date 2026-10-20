@@ -371,6 +371,35 @@ impl PartialEq<Ordering> for Ordering {
 #[cfg(not(hax_backend_fstar))]
 impl Eq for Ordering {}
 
+/// See [`std::cmp::PartialEq`] for [`crate::marker::PhantomPinned`]
+#[hax_lib::attributes]
+impl PartialEq<crate::marker::PhantomPinned> for crate::marker::PhantomPinned {
+    fn eq(&self, other: &crate::marker::PhantomPinned) -> bool {
+        true
+    }
+    #[cfg(not(hax_backend_fstar))]
+    fn ne(&self, other: &crate::marker::PhantomPinned) -> bool {
+        false
+    }
+}
+/// See [`std::cmp::Eq`] for [`crate::marker::PhantomPinned`]
+#[hax_lib::attributes]
+impl Eq for crate::marker::PhantomPinned {}
+/// See [`std::cmp::PartialOrd`] for [`crate::marker::PhantomPinned`]
+#[hax_lib::attributes]
+impl PartialOrd<crate::marker::PhantomPinned> for crate::marker::PhantomPinned {
+    fn partial_cmp(&self, other: &crate::marker::PhantomPinned) -> Option<Ordering> {
+        Option::Some(Ordering::Equal)
+    }
+}
+/// See [`std::cmp::Ord`] for [`crate::marker::PhantomPinned`]
+#[hax_lib::attributes]
+impl Ord for crate::marker::PhantomPinned {
+    fn cmp(&self, other: &crate::marker::PhantomPinned) -> Ordering {
+        Ordering::Equal
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Ord, Ordering, PartialEq, PartialOrd};

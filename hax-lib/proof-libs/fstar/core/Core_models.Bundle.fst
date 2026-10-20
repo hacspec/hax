@@ -4629,6 +4629,33 @@ let impl_6: t_PartialEq Prims.unit Prims.unit =
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_7: t_Eq Prims.unit = { _super_i0 = FStar.Tactics.Typeclasses.solve }
 
+/// See [`std::cmp::PartialEq`] for [`crate::marker::PhantomPinned`]
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_59: t_PartialEq Core_models.Marker.t_PhantomPinned Core_models.Marker.t_PhantomPinned =
+  {
+    f_eq_pre
+    =
+    (fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+        true);
+    f_eq_post
+    =
+    (fun
+        (self: Core_models.Marker.t_PhantomPinned)
+        (other: Core_models.Marker.t_PhantomPinned)
+        (out: bool)
+        ->
+        true);
+    f_eq
+    =
+    fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+      true
+  }
+
+/// See [`std::cmp::Eq`] for [`crate::marker::PhantomPinned`]
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_60: t_Eq Core_models.Marker.t_PhantomPinned =
+  { _super_i0 = FStar.Tactics.Typeclasses.solve }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl__from__convert
       (#v_T #v_U: Type0)
@@ -5604,6 +5631,29 @@ let impl_8: t_PartialOrd Prims.unit Prims.unit =
       Option_Some (Ordering_Equal <: t_Ordering) <: t_Option t_Ordering
   }
 
+/// See [`std::cmp::PartialOrd`] for [`crate::marker::PhantomPinned`]
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_61: t_PartialOrd Core_models.Marker.t_PhantomPinned Core_models.Marker.t_PhantomPinned =
+  {
+    _super_i0 = FStar.Tactics.Typeclasses.solve;
+    f_partial_cmp_pre
+    =
+    (fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+        true);
+    f_partial_cmp_post
+    =
+    (fun
+        (self: Core_models.Marker.t_PhantomPinned)
+        (other: Core_models.Marker.t_PhantomPinned)
+        (out: t_Option t_Ordering)
+        ->
+        true);
+    f_partial_cmp
+    =
+    fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+      Option_Some (Ordering_Equal <: t_Ordering) <: t_Option t_Ordering
+  }
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1__from__convert
       (#v_T #v_U: Type0)
@@ -6076,7 +6126,7 @@ let impl_58: t_TryFrom i8 i32 =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_59: t_TryFrom i16 i32 =
+let impl_59__from__convert: t_TryFrom i16 i32 =
   {
     f_Error = Core_models.Num.Error.t_TryFromIntError;
     f_try_from_pre = (fun (x: i32) -> true);
@@ -6099,7 +6149,7 @@ let impl_59: t_TryFrom i16 i32 =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_60: t_TryFrom i8 i64 =
+let impl_60__from__convert: t_TryFrom i8 i64 =
   {
     f_Error = Core_models.Num.Error.t_TryFromIntError;
     f_try_from_pre = (fun (x: i64) -> true);
@@ -6121,7 +6171,7 @@ let impl_60: t_TryFrom i8 i64 =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_61: t_TryFrom i16 i64 =
+let impl_61__from__convert: t_TryFrom i16 i64 =
   {
     f_Error = Core_models.Num.Error.t_TryFromIntError;
     f_try_from_pre = (fun (x: i64) -> true);
@@ -9397,6 +9447,30 @@ let impl_9__from__cmp: t_Ord Prims.unit =
     f_cmp_pre = (fun (self: Prims.unit) (other: Prims.unit) -> true);
     f_cmp_post = (fun (self: Prims.unit) (other: Prims.unit) (out: t_Ordering) -> true);
     f_cmp = fun (self: Prims.unit) (other: Prims.unit) -> Ordering_Equal <: t_Ordering
+  }
+
+/// See [`std::cmp::Ord`] for [`crate::marker::PhantomPinned`]
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_62__from__cmp: t_Ord Core_models.Marker.t_PhantomPinned =
+  {
+    _super_i0 = FStar.Tactics.Typeclasses.solve;
+    _super_i1 = FStar.Tactics.Typeclasses.solve;
+    f_cmp_pre
+    =
+    (fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+        true);
+    f_cmp_post
+    =
+    (fun
+        (self: Core_models.Marker.t_PhantomPinned)
+        (other: Core_models.Marker.t_PhantomPinned)
+        (out: t_Ordering)
+        ->
+        true);
+    f_cmp
+    =
+    fun (self: Core_models.Marker.t_PhantomPinned) (other: Core_models.Marker.t_PhantomPinned) ->
+      Ordering_Equal <: t_Ordering
   }
 
 assume
