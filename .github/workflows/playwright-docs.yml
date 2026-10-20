@@ -39,7 +39,7 @@ jobs:
         set -euo pipefail
 
         nix build .#docs & pid1=$!
-        curl -sS "https://hax-playground.cryspen.com/query/$GITHUB_SHA/fstar" \
+        curl -fsS --max-time 1200 "https://hax-playground.cryspen.com/query/$GITHUB_SHA/fstar+tc" \
           -X POST \
           -H 'User-Agent: bot' \
           -H 'Accept: application/json' \
@@ -49,7 +49,7 @@ jobs:
         wait $pid1 || exit_code1=$?
         wait $pid2 || exit_code2=$?
 
-        exit ${exit_code1:-0} || exit ${exit_code2:-0}
+        exit $(( ${exit_code1:-0} != 0 ? ${exit_code1:-0} : ${exit_code2:-0} ))
     - name: Run Playwright tests
       working-directory: docs/.test
       run: npx playwright test --reporter github,html
