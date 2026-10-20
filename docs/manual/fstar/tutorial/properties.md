@@ -64,30 +64,11 @@ fn barrett_reduce(value: i32) -> i32 {
 }
 ```
 
-<!-- Note that we call to `cancel_mul_mod`, a lemma: in Rust, this have no
-effect, but in F\*, that establishes that `(quotient * 3329) % 3329` is
-zero. -->
-
-The proof for the code above uses the Z3 SMT solver to prove the
-post-condition.  Since the SMT solver needs to reason about non-linear
-arithmetic (multiplication, modulus, division) it needs more
-resources, hence we bump up the `rlimit` to 500 in an annotation above
-the function. With this annotation F\* and Z3 are able to automatically
-verify this function. However, it is worth noting that the heuristic
-strategies used by Z3 for non-linear arithmetic may sometimes fail to
-complete in the given `rlimit` depending on the solver version or random
-number generator, so we often give Z3 a generous resource limit.
-
-Conversely, instead of relying on the SMT solver, we can also
-elaborate the proof of this function by hand to make it more
-predictable.  For example, before the final line of the function, 
-we could call a mathematical lemma may have to help F\* prove
-the correctness of the reduction.  The lemma call would be:
-```
-    fstar!("Math.Lemmas.cancel_mul_mod (v quotient) 3329");
-```
-This lemma establishes that `(quotient * 3329) % 3329` is zero. We often use lemmas like
-these to limit our dependence on Z3. 
+Note that the post-condition uses `rem_euclid` rather than `%`. In Rust,
+`%` takes the sign of its left operand, and `barrett_reduce` can return a
+negative result for a positive input (for example, it returns `-1` for
+`3328`). So `result % FIELD_MODULUS == value % FIELD_MODULUS` would not
+hold, while `rem_euclid` always gives a value in `[0, FIELD_MODULUS)`.
 
 This Barrett reduction examples is taken from
 [libcrux](https://github.com/cryspen/libcrux/tree/main)'s proof of
