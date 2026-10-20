@@ -1912,19 +1912,25 @@ mod tests {
     // `array.rs` and `slice.rs`.
 
     proptest! {
-        /// `deref` returns the referent itself, not a copy of it.
+        /// `deref` on `&T` returns the same referent as std, not a copy of it.
         #[test]
         fn test_deref_ref_is_identity(x in any::<u8>()) {
             let r = &x;
-            prop_assert!(std::ptr::eq(super::deref::Deref::deref(&r), r));
+            let model: &u8 = super::deref::Deref::deref(&r);
+            let real: &u8 = std::ops::Deref::deref(&r);
+            prop_assert_eq!(model, real);
+            prop_assert!(std::ptr::eq(model, real));
         }
 
+        /// `deref` on `&mut T` returns the same referent as std, not a copy of it.
         #[test]
         fn test_deref_mut_ref_is_identity(x in any::<u8>()) {
             let mut v = x;
-            let p: *const u8 = &v;
             let r: &mut u8 = &mut v;
-            prop_assert!(std::ptr::eq(super::deref::Deref::deref(&r), p));
+            let model: &u8 = super::deref::Deref::deref(&r);
+            let real: &u8 = std::ops::Deref::deref(&r);
+            prop_assert_eq!(model, real);
+            prop_assert!(std::ptr::eq(model, real));
         }
     }
 }
