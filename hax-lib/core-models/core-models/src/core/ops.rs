@@ -1813,106 +1813,26 @@ mod tests {
         }
     }
 
-    // ----- DerefMut / IndexMut ----------------------------------------------
+    // ----- Deref ------------------------------------------------------------
+    // `Deref`, `DerefMut`, `Index` and `IndexMut` are declarations here; the
+    // only bodies in this module are `Deref for &T` and `Deref for &mut T`.
+    // The `Index`/`IndexMut` bodies (arrays, slices) are tested in
+    // `array.rs` and `slice.rs`.
 
-    #[cfg(not(hax_backend_fstar))]
-    mod mut_traits {
-        use super::*;
-
-        struct Cell(u8);
-
-        impl crate::ops::deref::Deref for Cell {
-            type Target = u8;
-            fn deref(&self) -> &u8 {
-                &self.0
-            }
+    proptest! {
+        /// `deref` returns the referent itself, not a copy of it.
+        #[test]
+        fn test_deref_ref_is_identity(x in any::<u8>()) {
+            let r = &x;
+            prop_assert!(std::ptr::eq(super::deref::Deref::deref(&r), r));
         }
 
-        impl crate::ops::deref::DerefMut for Cell {
-            fn deref_mut(&mut self) -> &mut u8 {
-                &mut self.0
-            }
-        }
-
-        impl std::ops::Deref for Cell {
-            type Target = u8;
-            fn deref(&self) -> &u8 {
-                &self.0
-            }
-        }
-
-        impl std::ops::DerefMut for Cell {
-            fn deref_mut(&mut self) -> &mut u8 {
-                &mut self.0
-            }
-        }
-
-        struct Buf([u8; 4]);
-
-        impl crate::ops::index::Index<usize> for Buf {
-            type Output = u8;
-            fn index(&self, i: usize) -> &u8 {
-                &self.0[i]
-            }
-        }
-
-        impl crate::ops::index::IndexMut<usize> for Buf {
-            fn index_mut(&mut self, i: usize) -> &mut u8 {
-                &mut self.0[i]
-            }
-        }
-
-        impl std::ops::Index<usize> for Buf {
-            type Output = u8;
-            fn index(&self, i: usize) -> &u8 {
-                &self.0[i]
-            }
-        }
-
-        impl std::ops::IndexMut<usize> for Buf {
-            fn index_mut(&mut self, i: usize) -> &mut u8 {
-                &mut self.0[i]
-            }
-        }
-
-        proptest! {
-            #[test]
-            fn test_deref(x in any::<u8>()) {
-                let model = Cell(x);
-                let std_value = Cell(x);
-                prop_assert_eq!(
-                    *crate::ops::deref::Deref::deref(&model),
-                    *std::ops::Deref::deref(&std_value)
-                );
-            }
-
-            #[test]
-            fn test_index(xs in prop::array::uniform4(any::<u8>()), i in 0usize..4) {
-                let model = Buf(xs);
-                let std_value = Buf(xs);
-                prop_assert_eq!(
-                    *crate::ops::index::Index::index(&model, i),
-                    *std::ops::Index::index(&std_value, i)
-                );
-            }
-
-            #[test]
-            fn test_deref_mut(x in any::<u8>(), v in any::<u8>()) {
-                let mut model = Cell(x);
-                *crate::ops::deref::DerefMut::deref_mut(&mut model) = v;
-                let mut std_value = Cell(x);
-                *std::ops::DerefMut::deref_mut(&mut std_value) = v;
-                prop_assert_eq!(model.0, std_value.0);
-            }
-
-            #[test]
-            fn test_index_mut(xs in prop::array::uniform4(any::<u8>()), i in 0usize..4, v in any::<u8>()) {
-                let mut model = Buf(xs);
-                *crate::ops::index::IndexMut::index_mut(&mut model, i) = v;
-                let mut std_value = Buf(xs);
-                *std::ops::IndexMut::index_mut(&mut std_value, i) = v;
-                prop_assert_eq!(model.0, std_value.0);
-            }
+        #[test]
+        fn test_deref_mut_ref_is_identity(x in any::<u8>()) {
+            let mut v = x;
+            let p: *const u8 = &v;
+            let r: &mut u8 = &mut v;
+            prop_assert!(std::ptr::eq(super::deref::Deref::deref(&r), p));
         }
     }
 }
