@@ -550,6 +550,57 @@ pub fn test_range_inclusive_is_empty_singleton() -> bool {
 pub fn test_range_inclusive_is_empty_reversed() -> bool {
     (5u8..=3u8).is_empty() == true
 }
+
+// =============================================================================
+// ControlFlow::into_value (its `do` is dropped by `patch_lean.py`)
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_control_flow_into_value_break() -> bool {
+    helpers::control_flow_break_u8(u8::MAX).into_value() == u8::MAX
+}
+
+#[rust_lean_test]
+pub fn test_control_flow_into_value_continue() -> bool {
+    helpers::control_flow_continue_u8(0).into_value() == 0
+}
+
+// =============================================================================
+// ControlFlow::break_ok / continue_ok
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_control_flow_break_ok() -> bool {
+    matches!(helpers::control_flow_break_u8(7).break_ok(), Ok(7))
+        && matches!(helpers::control_flow_continue_u8(3).break_ok(), Err(3))
+}
+
+#[rust_lean_test]
+pub fn test_control_flow_continue_ok() -> bool {
+    matches!(helpers::control_flow_continue_u8(7).continue_ok(), Ok(7))
+        && matches!(helpers::control_flow_break_u8(3).continue_ok(), Err(3))
+}
+
+// =============================================================================
+// Bound::copied / as_mut
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_bound_copied() -> bool {
+    let x: u8 = u8::MAX;
+    matches!(Bound::Excluded(&x).copied(), Bound::Excluded(u8::MAX))
+        && matches!(Bound::Included(&x).copied(), Bound::Included(u8::MAX))
+}
+
+#[rust_lean_test]
+pub fn test_bound_as_mut_writes_back() -> bool {
+    let mut b: Bound<u8> = Bound::Excluded(1);
+    if let Bound::Excluded(x) = b.as_mut() {
+        *x = 9;
+    }
+    matches!(b, Bound::Excluded(9))
+}
+
 // =============================================================================
 // RangeBounds::is_empty (the provided method), directly and through a dictionary
 // =============================================================================

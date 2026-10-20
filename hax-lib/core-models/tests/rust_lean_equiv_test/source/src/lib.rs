@@ -28,6 +28,10 @@
 // Unstable std items the Rust half of the tests calls.
 #![feature(
     array_into_iter_constructors,
+    bound_as_ref,
+    bound_copied,
+    control_flow_into_value,
+    control_flow_ok,
     drop_guard,
     ergonomic_clones,
     mem_copy_fn,
