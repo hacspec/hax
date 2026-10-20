@@ -306,7 +306,7 @@ structure cmp.Ord (Self : Type) where
   cmp : Self → Self → RustM cmp.Ordering
 
 /-- [core_models::cmp::Reverse]
-    Source: 'core-models/src/core/cmp.rs', lines 182:0-182:29
+    Source: 'core-models/src/core/cmp.rs', lines 196:0-196:29
     Visibility: public -/
 @[reducible]
 def cmp.Reverse (T : Type) := T

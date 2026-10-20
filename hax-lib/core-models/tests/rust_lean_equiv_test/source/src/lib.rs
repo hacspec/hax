@@ -31,7 +31,9 @@
     drop_guard,
     ergonomic_clones,
     mem_copy_fn,
+    one_sided_range,
     option_reduce,
+    range_bounds_is_empty,
     range_into_bounds
 )]
 #![allow(incomplete_features)]

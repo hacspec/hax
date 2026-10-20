@@ -646,7 +646,7 @@ pub mod range {
             (Bound::Included(x), Bound::Included(y)) => Bound::Included(crate::cmp::max(x, y)),
             (Bound::Excluded(x), Bound::Excluded(y)) => Bound::Excluded(crate::cmp::max(x, y)),
             (Bound::Included(i), Bound::Excluded(e)) | (Bound::Excluded(e), Bound::Included(i)) => {
-                if bound_lt(&e, &i) {
+                if bound_gt(&i, &e) {
                     Bound::Included(i)
                 } else {
                     Bound::Excluded(e)
@@ -677,6 +677,10 @@ pub mod range {
     fn bound_lt<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
         a.lt(b)
     }
+    #[cfg(not(hax_backend_fstar))]
+    fn bound_gt<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
+        a.gt(b)
+    }
     // F* has no `le`/`lt` between two different types: these ignore overrides.
     #[cfg(hax_backend_fstar)]
     fn bound_le<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
@@ -688,6 +692,13 @@ pub mod range {
     #[cfg(hax_backend_fstar)]
     fn bound_lt<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
         matches!(a.partial_cmp(b), Option::Some(crate::cmp::Ordering::Less))
+    }
+    #[cfg(hax_backend_fstar)]
+    fn bound_gt<A: ?Sized + PartialOrd<B>, B: ?Sized>(a: &A, b: &B) -> bool {
+        matches!(
+            a.partial_cmp(b),
+            Option::Some(crate::cmp::Ordering::Greater)
+        )
     }
 
     impl<T> RangeBounds<T> for RangeFull {
@@ -1811,6 +1822,87 @@ mod tests {
                 std::ops::RangeBounds::is_empty(&real)
             );
         }
+    }
+
+    // `intersect` decides a mixed start with `i > e` and a mixed end with
+    // `i < e`: a type whose `gt` (or `lt`) disagrees with its `cmp` tells
+    // them apart from any other way of comparing.
+    #[cfg(not(hax_backend_fstar))]
+    mod intersect_uses_gt_and_lt {
+        use super::*;
+
+        /// A type ordered by its `u8`, except that `$op` never holds.
+        macro_rules! skewed_ord {
+            ($name:ident, $op:ident) => {
+                #[derive(Clone, Copy, Debug)]
+                struct $name(u8);
+                impl std::cmp::PartialEq for $name {
+                    fn eq(&self, other: &Self) -> bool {
+                        self.0 == other.0
+                    }
+                }
+                impl std::cmp::Eq for $name {}
+                impl std::cmp::PartialOrd for $name {
+                    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                        Some(std::cmp::Ord::cmp(&self.0, &other.0))
+                    }
+                    fn $op(&self, _: &Self) -> bool {
+                        false
+                    }
+                }
+                impl std::cmp::Ord for $name {
+                    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                        std::cmp::Ord::cmp(&self.0, &other.0)
+                    }
+                }
+                impl crate::cmp::PartialEq<$name> for $name {
+                    fn eq(&self, other: &Self) -> bool {
+                        self.0 == other.0
+                    }
+                }
+                impl crate::cmp::Eq for $name {}
+                impl crate::cmp::PartialOrd<$name> for $name {
+                    fn partial_cmp(
+                        &self,
+                        other: &Self,
+                    ) -> crate::option::Option<crate::cmp::Ordering> {
+                        crate::option::Option::Some(std::cmp::Ord::cmp(&self.0, &other.0).inject())
+                    }
+                    fn $op(&self, _: &Self) -> bool {
+                        false
+                    }
+                }
+                impl crate::cmp::Ord for $name {
+                    fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+                        std::cmp::Ord::cmp(&self.0, &other.0).inject()
+                    }
+                }
+
+                paste! {
+                    proptest! {
+                        #[test]
+                        fn [<test_intersect_ $name:snake>](
+                            a in any::<u8>(), b in any::<u8>(), c in any::<u8>(), d in any::<u8>(),
+                            sa in 0u8..3, sb in 0u8..3, sc in 0u8..3, sd in 0u8..3,
+                        ) {
+                            let (ma, xa) = bound(sa, $name(a));
+                            let (mb, xb) = bound(sb, $name(b));
+                            let (mc, xc) = bound(sc, $name(c));
+                            let (md, xd) = bound(sd, $name(d));
+                            let (s, e) = IntoBoundsDefaults::intersect((ma, mb), (mc, md));
+                            let (rs, re) = std::ops::IntoBounds::intersect((xa, xb), (xc, xd));
+                            prop_assert_eq!(s.map(|x: $name| x.0), rs.map(|x| x.0).inject());
+                            prop_assert_eq!(e.map(|x: $name| x.0), re.map(|x| x.0).inject());
+                        }
+                    }
+                }
+            };
+        }
+
+        // Pins the start branch to `gt`.
+        skewed_ord!(NoGt, gt);
+        // Pins the end branch to `lt`.
+        skewed_ord!(NoLt, lt);
     }
 
     // ----- Deref ------------------------------------------------------------

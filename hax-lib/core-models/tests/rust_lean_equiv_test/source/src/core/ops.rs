@@ -550,3 +550,70 @@ pub fn test_range_inclusive_is_empty_singleton() -> bool {
 pub fn test_range_inclusive_is_empty_reversed() -> bool {
     (5u8..=3u8).is_empty() == true
 }
+// =============================================================================
+// RangeBounds::is_empty (the provided method), directly and through a dictionary
+// =============================================================================
+
+fn is_empty_via_bounds<R: RangeBounds<u8>>(r: R) -> bool {
+    r.is_empty()
+}
+
+#[rust_lean_test]
+pub fn test_range_bounds_is_empty_tuple() -> bool {
+    RangeBounds::is_empty(&(Bound::Excluded(3u8), Bound::Excluded(3u8)))
+        && !RangeBounds::is_empty(&(Bound::Included(3u8), Bound::Included(3u8)))
+        && !RangeBounds::is_empty(&(Bound::Excluded(3u8), helpers::bound_unbounded_u8()))
+}
+
+#[rust_lean_test]
+pub fn test_range_bounds_is_empty_generic() -> bool {
+    is_empty_via_bounds(3u8..3)
+        && !is_empty_via_bounds(3u8..=3)
+        && is_empty_via_bounds(4u8..=3)
+        && !is_empty_via_bounds(..0u8)
+        && !is_empty_via_bounds(u8::MAX..)
+}
+
+// =============================================================================
+// IntoBounds::into_bounds, and intersect's mixed-bound tie
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_into_bounds_ranges() -> bool {
+    use core::ops::IntoBounds;
+    matches!((2u8..5).into_bounds(), (Bound::Included(2), Bound::Excluded(5)))
+        && matches!((2u8..).into_bounds(), (Bound::Included(2), Bound::Unbounded))
+        && matches!((..5u8).into_bounds(), (Bound::Unbounded, Bound::Excluded(5)))
+        && matches!((2u8..=5).into_bounds(), (Bound::Included(2), Bound::Included(5)))
+        && matches!((..=5u8).into_bounds(), (Bound::Unbounded, Bound::Included(5)))
+}
+
+#[rust_lean_test]
+pub fn test_into_bounds_exhausted_range_inclusive() -> bool {
+    use core::ops::IntoBounds;
+    let mut r = 4u8..=4;
+    r.next();
+    matches!(r.into_bounds(), (Bound::Included(4), Bound::Excluded(4)))
+}
+
+#[rust_lean_test]
+pub fn test_into_bounds_intersect_tie() -> bool {
+    use core::ops::IntoBounds;
+    // `Included(i)` against `Excluded(e)` with `i == e` keeps the `Excluded`.
+    matches!(
+        (Bound::Included(3u8), Bound::Included(7u8)).intersect((Bound::Excluded(3u8), Bound::Excluded(7u8))),
+        (Bound::Excluded(3), Bound::Excluded(7))
+    )
+}
+
+// =============================================================================
+// OneSidedRange::bound
+// =============================================================================
+
+#[rust_lean_test]
+pub fn test_one_sided_range_bound() -> bool {
+    use core::ops::{OneSidedRange, OneSidedRangeBound};
+    matches!(OneSidedRange::bound(3u8..), (OneSidedRangeBound::StartInclusive, 3))
+        && matches!(OneSidedRange::bound(..4u8), (OneSidedRangeBound::End, 4))
+        && matches!(OneSidedRange::bound(..=u8::MAX), (OneSidedRangeBound::EndInclusive, u8::MAX))
+}

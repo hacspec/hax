@@ -163,6 +163,13 @@ pub trait Ord: Eq + PartialOrd<Self> {
 }
 
 /// See [`std::cmp::max`]
+// std's `Ord::max` decides with `v2 < v1`, so a type's own `lt` is used.
+#[cfg(not(hax_backend_fstar))]
+pub fn max<T: Ord>(v1: T, v2: T) -> T {
+    if v2.lt(&v1) { v1 } else { v2 }
+}
+// F* has no `lt` to override: this goes by `cmp`.
+#[cfg(hax_backend_fstar)]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     match v1.cmp(&v2) {
         Ordering::Greater => v1,
@@ -171,6 +178,13 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 }
 
 /// See [`std::cmp::min`]
+// std's `Ord::min` decides with `v2 < v1`, so a type's own `lt` is used.
+#[cfg(not(hax_backend_fstar))]
+pub fn min<T: Ord>(v1: T, v2: T) -> T {
+    if v2.lt(&v1) { v2 } else { v1 }
+}
+// F* has no `lt` to override: this goes by `cmp`.
+#[cfg(hax_backend_fstar)]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     match v1.cmp(&v2) {
         Ordering::Greater => v2,
@@ -728,6 +742,74 @@ mod tests {
                 assert_eq!(
                     <Ordering as PartialEq<Ordering>>::ne(&a.inject(), &b.inject()),
                     a != b
+                );
+            }
+        }
+    }
+
+    // std's `max`/`min` decide with `<`: a type whose `lt` disagrees with its
+    // `cmp` tells that apart from deciding with `cmp`.
+    #[cfg(not(hax_backend_fstar))]
+    mod max_min_use_lt {
+        use crate::testing::Inject;
+        use proptest::prelude::*;
+
+        /// Ordered by its `u8`, except that `lt` never holds.
+        #[derive(Clone, Copy, Debug)]
+        struct NoLt(u8);
+        impl std::cmp::PartialEq for NoLt {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+        impl std::cmp::Eq for NoLt {}
+        impl std::cmp::PartialOrd for NoLt {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(std::cmp::Ord::cmp(&self.0, &other.0))
+            }
+            fn lt(&self, _: &Self) -> bool {
+                false
+            }
+        }
+        impl std::cmp::Ord for NoLt {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                std::cmp::Ord::cmp(&self.0, &other.0)
+            }
+        }
+        impl crate::cmp::PartialEq<NoLt> for NoLt {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+        impl crate::cmp::Eq for NoLt {}
+        impl crate::cmp::PartialOrd<NoLt> for NoLt {
+            fn partial_cmp(&self, other: &Self) -> crate::option::Option<crate::cmp::Ordering> {
+                crate::option::Option::Some(std::cmp::Ord::cmp(&self.0, &other.0).inject())
+            }
+            fn lt(&self, _: &Self) -> bool {
+                false
+            }
+        }
+        impl crate::cmp::Ord for NoLt {
+            fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+                std::cmp::Ord::cmp(&self.0, &other.0).inject()
+            }
+        }
+
+        proptest! {
+            #[test]
+            fn test_max_uses_lt(x in any::<u8>(), y in any::<u8>()) {
+                prop_assert_eq!(
+                    crate::cmp::max(NoLt(x), NoLt(y)).0,
+                    std::cmp::max(NoLt(x), NoLt(y)).0
+                );
+            }
+
+            #[test]
+            fn test_min_uses_lt(x in any::<u8>(), y in any::<u8>()) {
+                prop_assert_eq!(
+                    crate::cmp::min(NoLt(x), NoLt(y)).0,
+                    std::cmp::min(NoLt(x), NoLt(y)).0
                 );
             }
         }
