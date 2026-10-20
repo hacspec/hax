@@ -104,6 +104,63 @@ let impl_5: t_Mixed u32 u64 u16 =
       (f_get #u16 #FStar.Tactics.Typeclasses.solve b <: u8)
   }
 
+/// Supertrait in a `where` clause, after a parameter bound.
+class t_WhereSuper (v_Self: Type0) (v_A: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_i0:t_Item v_A;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_i1:t_Other v_Self;
+  f_where_super_pre:v_Self -> v_A -> Type0;
+  f_where_super_post:v_Self -> v_A -> u8 -> Type0;
+  f_where_super:x0: v_Self -> x1: v_A
+    -> Prims.Pure u8 (f_where_super_pre x0 x1) (fun result -> f_where_super_post x0 x1 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let _ = fun (v_Self:Type0) (v_A:Type0) {|i: t_WhereSuper v_Self v_A|} -> i._super_i0
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let _ = fun (v_Self:Type0) (v_A:Type0) {|i: t_WhereSuper v_Self v_A|} -> i._super_i1
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_6: t_WhereSuper u32 u64 =
+  {
+    _super_i0 = FStar.Tactics.Typeclasses.solve;
+    _super_i1 = FStar.Tactics.Typeclasses.solve;
+    f_where_super_pre = (fun (self: u32) (a: u64) -> true);
+    f_where_super_post = (fun (self: u32) (a: u64) (out: u8) -> true);
+    f_where_super = fun (self: u32) (a: u64) -> f_get #u64 #FStar.Tactics.Typeclasses.solve a
+  }
+
+/// Bound on an associated type of a supertrait.
+class t_HasAssoc (v_Self: Type0) = { [@@@ FStar.Tactics.Typeclasses.no_method]f_X:Type0 }
+
+class t_AssocBound (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_i0:t_HasAssoc v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_i1:Core_models.Clone.t_Clone (_super_i0).f_X;
+  f_assoc_bound_pre:v_Self -> Type0;
+  f_assoc_bound_post:v_Self -> u8 -> Type0;
+  f_assoc_bound:x0: v_Self
+    -> Prims.Pure u8 (f_assoc_bound_pre x0) (fun result -> f_assoc_bound_post x0 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let _ = fun (v_Self:Type0) {|i: t_AssocBound v_Self|} -> i._super_i0
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let _ = fun (v_Self:Type0) {|i: t_AssocBound v_Self|} -> i._super_i1
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_HasAssoc_for_u32: t_HasAssoc u32 = { f_X = u64 }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_AssocBound_for_u32: t_AssocBound u32 =
+  {
+    _super_i0 = FStar.Tactics.Typeclasses.solve;
+    _super_i1 = FStar.Tactics.Typeclasses.solve;
+    f_assoc_bound_pre = (fun (self: u32) -> true);
+    f_assoc_bound_post = (fun (self: u32) (out: u8) -> true);
+    f_assoc_bound = fun (self: u32) -> mk_u8 2
+  }
+
 /// Trait without items.
 class t_Marker (v_Self: Type0) (v_T: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_i0:t_Item v_T
@@ -113,7 +170,7 @@ class t_Marker (v_Self: Type0) (v_T: Type0) = {
 let _ = fun (v_Self:Type0) (v_T:Type0) {|i: t_Marker v_Self v_T|} -> i._super_i0
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_6: t_Marker u8 u64 = { _super_i0 = FStar.Tactics.Typeclasses.solve }
+let impl_9: t_Marker u8 u64 = { _super_i0 = FStar.Tactics.Typeclasses.solve }
 
 let uuse_mixed
       (#v_S #v_A #v_B: Type0)

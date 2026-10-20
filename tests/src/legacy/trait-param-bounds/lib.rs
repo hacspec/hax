@@ -51,6 +51,38 @@ impl Mixed<u64, u16> for u32 {
     }
 }
 
+/// Supertrait in a `where` clause, after a parameter bound.
+trait WhereSuper<A: Item>
+where
+    Self: Other,
+{
+    fn where_super(&self, a: &A) -> u8;
+}
+impl WhereSuper<u64> for u32 {
+    fn where_super(&self, a: &u64) -> u8 {
+        a.get()
+    }
+}
+
+/// Bound on an associated type of a supertrait.
+trait HasAssoc {
+    type X;
+}
+trait AssocBound: HasAssoc
+where
+    Self::X: Clone,
+{
+    fn assoc_bound(&self) -> u8;
+}
+impl HasAssoc for u32 {
+    type X = u64;
+}
+impl AssocBound for u32 {
+    fn assoc_bound(&self) -> u8 {
+        2
+    }
+}
+
 /// Trait without items.
 trait Marker<T: Item> {}
 impl Marker<u64> for u8 {}

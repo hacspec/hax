@@ -438,12 +438,13 @@ pub struct Impl<Body: IsBody> {
             // Same clauses, in the same order, as the trait's own bounds
             // (see `region_bounds_at_current_owner`): backends turn both into
             // the trait's parent fields, matched by index.
-            predicates_defined_on(tcx, trait_did)
+            let options = hax_frontend_exporter_options::BoundsOptions {
+                resolve_destruct: false,
+                prune_sized: true,
+            };
+            implied_predicates(tcx, trait_did, options)
                 .iter()
                 .copied()
-                .filter(|(clause, _)| clause.as_trait_clause().is_some_and(|trait_predicate| {
-                    !is_sized_related_trait(tcx, trait_predicate.skip_binder().def_id())
-                }))
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {

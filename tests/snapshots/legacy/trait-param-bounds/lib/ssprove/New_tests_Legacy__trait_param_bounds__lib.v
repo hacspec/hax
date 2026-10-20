@@ -87,6 +87,36 @@ Class t_Mixed (Self : choice_type) (v_Self : v_Self) {v_A : v_A} {v_B : v_B} `{ 
 Fail Next Obligation.
 Hint Unfold int32_t_Mixed.
 
+Class t_WhereSuper (Self : choice_type) (v_Self : v_Self) {v_A : v_A} `{ t_Item v_A} `{ t_Other v_Self} := {
+  f_where_super : (both v_Self -> both v_A -> both int8) ;
+}.
+
+#[global] Program Instance int32_t_WhereSuper : t_WhereSuper int32 int64 :=
+  let f_where_super := fun  (self : both int32) (a : both int64) => f_get a : both int8 in
+  {| f_where_super := (@f_where_super)|}.
+Fail Next Obligation.
+Hint Unfold int32_t_WhereSuper.
+
+Class t_HasAssoc (Self : choice_type) (v_Self : v_Self) := {
+  f_X : choice_type ;
+}.
+
+Class t_AssocBound (Self : choice_type) (v_Self : v_Self) `{ t_HasAssoc v_Self} `{ t_Clone f_X} := {
+  f_assoc_bound : (both v_Self -> both int8) ;
+}.
+
+#[global] Program Instance int32_t_HasAssoc : t_HasAssoc int32 :=
+  let f_X := int64 : choice_type in
+  {| f_X := (@f_X)|}.
+Fail Next Obligation.
+Hint Unfold int32_t_HasAssoc.
+
+#[global] Program Instance int32_t_AssocBound : t_AssocBound int32 :=
+  let f_assoc_bound := fun  (self : both int32) => ret_both (2 : int8) : both int8 in
+  {| f_assoc_bound := (@f_assoc_bound)|}.
+Fail Next Obligation.
+Hint Unfold int32_t_AssocBound.
+
 Class t_Marker (Self : choice_type) (v_Self : v_Self) {v_T : v_T} `{ t_Item v_T} := {
 }.
 

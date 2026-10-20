@@ -77,12 +77,47 @@ Instance t_Mixed_28127595 : t_Mixed ((t_u32)) ((t_u64)) ((t_u16)) :=
       f_eq (f_get (a)) (f_get (b));
   }.
 
+Class t_WhereSuper (v_Self : Type) (v_A : Type) `{t_Item (v_A)} `{t_Other (v_Self)} : Type :=
+  {
+    f_where_super : v_Self -> v_A -> t_u8;
+  }.
+Arguments t_WhereSuper (_) (_) {_} {_}.
+
+Instance t_WhereSuper_555931687 : t_WhereSuper ((t_u32)) ((t_u64)) :=
+  {
+    implaabbcc_t_WhereSuper_f_where_super := fun  (self : t_u32) (a : t_u64)=>
+      f_get (a);
+  }.
+
+Class t_HasAssoc (v_Self : Type) : Type :=
+  {
+    f_X : Type;
+  }.
+Arguments t_HasAssoc (_).
+
+Class t_AssocBound (v_Self : Type) `{t_HasAssoc (v_Self)} `{t_Clone (f_X)} : Type :=
+  {
+    f_assoc_bound : v_Self -> t_u8;
+  }.
+Arguments t_AssocBound (_) {_} {_}.
+
+Instance t_HasAssoc_177810739 : t_HasAssoc ((t_u32)) :=
+  {
+    implaabbcc_t_HasAssoc_f_X := t_u64;
+  }.
+
+Instance t_AssocBound_921165141 : t_AssocBound ((t_u32)) :=
+  {
+    implaabbcc_t_AssocBound_f_assoc_bound := fun  (self : t_u32)=>
+      (2 : t_u8);
+  }.
+
 Class t_Marker (v_Self : Type) (v_T : Type) `{t_Item (v_T)} : Type :=
   {
   }.
 Arguments t_Marker (_) (_) {_}.
 
-Instance t_Marker_812538882 : t_Marker ((t_u8)) ((t_u64)) :=
+Instance t_Marker_933851825 : t_Marker ((t_u8)) ((t_u64)) :=
   {
   }.
 

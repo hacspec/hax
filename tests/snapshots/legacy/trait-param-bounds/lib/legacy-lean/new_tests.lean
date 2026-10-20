@@ -151,6 +151,93 @@ def Impl_5.mixed_hoisted (self : u32) (a : u64) (b : u16) : RustM Bool := do
 instance Impl_5 : Mixed u32 u64 u16 where
   mixed := (Impl_5.mixed_hoisted)
 
+--  Supertrait in a `where` clause, after a parameter bound.
+class WhereSuper.AssociatedTypes (Self : Type) (A : Type) where
+  [trait_constr_WhereSuper_i0 : Item.AssociatedTypes A]
+  [trait_constr_WhereSuper_i1 : Other.AssociatedTypes Self]
+
+attribute [instance_reducible, instance]
+  WhereSuper.AssociatedTypes.trait_constr_WhereSuper_i0
+
+attribute [instance_reducible, instance]
+  WhereSuper.AssociatedTypes.trait_constr_WhereSuper_i1
+
+class WhereSuper (Self : Type) (A : Type)
+  [associatedTypes : outParam (WhereSuper.AssociatedTypes (Self : Type) (A :
+      Type))]
+  where
+  [trait_constr_WhereSuper_i0 : Item A]
+  [trait_constr_WhereSuper_i1 : Other Self]
+  where_super (Self) (A) : (Self -> A -> RustM u8)
+
+attribute [instance_reducible, instance] WhereSuper.trait_constr_WhereSuper_i0
+
+attribute [instance_reducible, instance] WhereSuper.trait_constr_WhereSuper_i1
+
+@[spec]
+def Impl_6.where_super_hoisted (self : u32) (a : u64) : RustM u8 := do
+  (Item.get u64 a)
+
+@[reducible] instance Impl_6.AssociatedTypes :
+  WhereSuper.AssociatedTypes u32 u64
+  where
+
+instance Impl_6 : WhereSuper u32 u64 where
+  where_super := (Impl_6.where_super_hoisted)
+
+--  Bound on an associated type of a supertrait.
+class HasAssoc.AssociatedTypes (Self : Type) where
+  X : Type
+
+attribute [reducible] HasAssoc.AssociatedTypes.X
+
+abbrev HasAssoc.X :=
+  HasAssoc.AssociatedTypes.X
+
+class HasAssoc (Self : Type)
+  [associatedTypes : outParam (HasAssoc.AssociatedTypes (Self : Type))]
+  where
+
+class AssocBound.AssociatedTypes (Self : Type) where
+  [trait_constr_AssocBound_i0 : HasAssoc.AssociatedTypes Self]
+  [trait_constr_AssocBound_i1 :
+  core_models.clone.Clone.AssociatedTypes
+  (HasAssoc.X Self)]
+
+attribute [instance_reducible, instance]
+  AssocBound.AssociatedTypes.trait_constr_AssocBound_i0
+
+attribute [instance_reducible, instance]
+  AssocBound.AssociatedTypes.trait_constr_AssocBound_i1
+
+class AssocBound (Self : Type)
+  [associatedTypes : outParam (AssocBound.AssociatedTypes (Self : Type))]
+  where
+  [trait_constr_AssocBound_i0 : HasAssoc Self]
+  [trait_constr_AssocBound_i1 : core_models.clone.Clone (HasAssoc.X Self)]
+  assoc_bound (Self) : (Self -> RustM u8)
+
+attribute [instance_reducible, instance] AssocBound.trait_constr_AssocBound_i0
+
+attribute [instance_reducible, instance] AssocBound.trait_constr_AssocBound_i1
+
+@[reducible] instance Impl_7.AssociatedTypes :
+  HasAssoc.AssociatedTypes u32
+  where
+  X := u64
+
+instance Impl_7 : HasAssoc u32 where
+
+@[spec]
+def Impl_8.assoc_bound_hoisted (self : u32) : RustM u8 := do (pure (2 : u8))
+
+@[reducible] instance Impl_8.AssociatedTypes :
+  AssocBound.AssociatedTypes u32
+  where
+
+instance Impl_8 : AssocBound u32 where
+  assoc_bound := (Impl_8.assoc_bound_hoisted)
+
 --  Trait without items.
 class Marker.AssociatedTypes (Self : Type) (T : Type) where
   [trait_constr_Marker_i0 : Item.AssociatedTypes T]
@@ -165,11 +252,11 @@ class Marker (Self : Type) (T : Type)
 
 attribute [instance_reducible, instance] Marker.trait_constr_Marker_i0
 
-@[reducible] instance Impl_6.AssociatedTypes :
+@[reducible] instance Impl_9.AssociatedTypes :
   Marker.AssociatedTypes u8 u64
   where
 
-instance Impl_6 : Marker u8 u64 where
+instance Impl_9 : Marker u8 u64 where
 
 @[spec]
 def use_mixed
