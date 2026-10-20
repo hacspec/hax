@@ -35,6 +35,7 @@ Lean backend and library:
  - Breaking: the fields `start` and `«end»` of `ops.range.RangeInclusive` are
    now `start_` and `end_`, and `RangeInclusive.start` and `RangeInclusive.end`
    are functions
+ - `hax_mvcgen at` yields better results on programs that always panic
 
 F* backend and library:
  - Breaking: the fields `f_start` and `f_end` of `t_RangeInclusive` are now
