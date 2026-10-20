@@ -71,6 +71,17 @@ pub fn from_fn<T, const N: usize, F: FnMut(usize) -> T>(f: F) -> [T; N] {
     array_from_fn(f)
 }
 
+/// See [`std::array::repeat`]
+// Lean-only: Aeneas lowers an array repeat expression `[x; N]` to this
+// function, while the F* backend uses `Rust_primitives.Hax.repeat`.
+#[cfg(not(hax_backend_fstar))]
+pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
+    // Like std, `seq_create` clones into every slot but the last and moves `val`
+    // into that one; the elements are then moved out in order.
+    let mut s = seq_create(val, N);
+    array_from_fn(move |_i| seq_remove(&mut s, 0))
+}
+
 #[cfg_attr(hax_backend_legacy_lean, hax_lib::exclude)]
 impl<T, const N: usize> crate::iter::traits::collect::IntoIterator for [T; N] {
     type Item = T;
@@ -382,6 +393,22 @@ mod tests {
             let f = |i: usize| table[i];
             let model: [u8; 4] = super::from_fn(f);
             prop_assert_eq!(model, std::array::from_fn::<u8, 4, _>(f));
+        }
+
+        #[cfg(not(hax_backend_fstar))]
+        #[test]
+        fn test_repeat(x in any::<u8>()) {
+            prop_assert_eq!(super::repeat::<u8, 4>(x), std::array::repeat::<u8, 4>(x));
+            prop_assert_eq!(super::repeat::<u8, 0>(x), std::array::repeat::<u8, 0>(x));
+        }
+
+        #[cfg(not(hax_backend_fstar))]
+        #[test]
+        fn test_repeat_moves_last(x in any::<u8>()) {
+            prop_assert_eq!(
+                super::repeat::<CloneWitness, 3>(CloneWitness::new(x)),
+                std::array::repeat::<CloneWitness, 3>(CloneWitness::new(x))
+            );
         }
 
         #[test]

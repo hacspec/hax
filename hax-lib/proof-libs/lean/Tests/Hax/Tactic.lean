@@ -1,2 +1,5 @@
-import Tests.Hax.Tactic.ForLoopWithInvariantSpec
-import Tests.Hax.Tactic.HaxMvcgenAt
+module
+public import Tests.Hax.Tactic.ForLoopWithInvariantSpec
+public import Tests.Hax.Tactic.HaxMvcgenAt
+
+@[expose] public section

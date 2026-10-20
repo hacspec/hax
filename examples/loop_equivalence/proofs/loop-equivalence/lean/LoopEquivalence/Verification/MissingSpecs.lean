@@ -82,20 +82,20 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
   · -- j < N case
     have hjLt' : (j < N : Prop) := hjLt
     rw [if_pos hjLt']
-    rw [array_index_U64_eq a0 j hjLt]
+    rw [array_index_U64_eq a0 j hjLt, bind_ok]
     show Aeneas.Std.WP.spec (do
       let t1 ← rust_primitives.slice.array_index a1 j
       let b ← core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! t1
       if b then let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1)
       else RustM.ok (ControlFlow.done false)) _
-    rw [array_index_U64_eq a1 j hjLt]
+    rw [array_index_U64_eq a1 j hjLt, bind_ok]
     show Aeneas.Std.WP.spec (do
       let b ← core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! a1.val[j.val]!
       if b then let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1)
       else RustM.ok (ControlFlow.done false)) _
     have hcmp : core.U64.Insts.CoreCmpPartialEqU64.eq a0.val[j.val]! a1.val[j.val]!
         = .ok (a0.val[j.val]! == a1.val[j.val]!) := rfl
-    rw [hcmp]
+    rw [hcmp, bind_ok]
     show Aeneas.Std.WP.spec
       (if (a0.val[j.val]! == a1.val[j.val]!)
        then (do let i1 ← j + 1#usize; RustM.ok (ControlFlow.cont i1))
@@ -109,7 +109,7 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
       have hbeq' : (a0.val[j.val]! == a1.val[j.val]!) = true := beq_iff_eq.mpr hbeq
       rw [if_pos hbeq']
       obtain ⟨jp1, hjp1Eq, hjp1Val⟩ := add_one_usize j hj1Bound
-      rw [hjp1Eq]
+      rw [hjp1Eq, bind_ok, Aeneas.Std.WP.spec_ok]
       refine ⟨⟨?_, ?_⟩, ?_⟩
       · rw [hjp1Val]; omega
       · intro k hk
@@ -122,7 +122,7 @@ private theorem eq_loop_correct {N : Usize} (a0 a1 : Array U64 N) (i : Usize)
         rw [hjp1Val]; omega
     · -- not equal
       have hbeq' : (a0.val[j.val]! == a1.val[j.val]!) = false := beq_eq_false_iff_ne.mpr hbeq
-      rw [if_neg (by rw [hbeq']; simp)]
+      rw [if_neg (by rw [hbeq']; simp), Aeneas.Std.WP.spec_ok]
       show (false : Bool) = (a0.val == a1.val)
       have hne : a0.val ≠ a1.val := fun hEq => hbeq (by rw [hEq])
       simp [hne]
@@ -164,16 +164,16 @@ private theorem array_map_id {T F : Type} {N : Usize}
     (hid : ∀ x, inst.call_mut f x = ok (x, f)) :
     rust_primitives.slice.array_map inst a f = ok a := by
   have hpure : ∀ x ∈ a.val, ⦃ ⌜ True ⌝ ⦄ inst.call_mut f x ⦃ ⇓ r => ⌜ r.2 = f ⌝ ⦄ :=
-    fun x _ => WP.triple_iff_exists_ok.2 ⟨(x, f), hid x, rfl⟩
+    fun x _ => Aeneas.Std.triple_iff_exists_ok.2 ⟨(x, f), hid x, rfl⟩
   obtain ⟨b, hb, hpt⟩ :=
-    WP.triple_iff_exists_ok.1 (rust_primitives.slice.array_map_spec inst a f hpure)
+    Aeneas.Std.triple_iff_exists_ok.1 (rust_primitives.slice.array_map_spec inst a f hpure)
   have ha := a.property
   have hbp := b.property
   have : b = a := by
-    apply Subtype.ext
+    apply Aeneas.Std.Array.ext
     apply List.ext_getElem (by omega)
     intro i _ _
-    obtain ⟨y, hy, hyi⟩ := WP.triple_iff_exists_ok.1 (hpt i (by omega))
+    obtain ⟨y, hy, hyi⟩ := Aeneas.Std.triple_iff_exists_ok.1 (hpt i (by omega))
     rw [hid] at hy
     simp only [RustM.ok.injEq] at hy
     subst hy
@@ -190,10 +190,10 @@ theorem array.CloneArray.clone_spec {N : Usize} (arr : Array U64 N) :
     unfold core.Array.Insts.CoreCloneClone.clone core.array.Array.map
     apply array_map_id
     intro x
-    simp [core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut]
-    rfl
+    simp [core.array.CloneArray.clone.closure.Insts.CoreOpsFunctionFnMutTupleTT.call_mut,
+      core.U64.Insts.CoreCloneClone.clone]
   rw [h]
   apply RustM.ok_spec
-  simp
+  simp [PostCond.ok]
 
 end loop_equivalence

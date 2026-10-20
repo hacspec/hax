@@ -3,7 +3,7 @@
 `#[rust_lean_test]` functions found anywhere under `source/src/`.
 
 For each `#[rust_lean_test] pub fn <name>() -> bool` we emit
-`#guard <fully-qualified-name> == .ok true`, where the fully qualified
+`#guard rustLeanOk <fully-qualified-name>`, where the fully qualified
 name is read out of the extracted `RustLeanTests/Extraction/Funs.lean`
 rather than guessed from the source path: Aeneas's builtin name map rewrites some module
 components (notably `core` → `core_models`, `alloc` → `alloc_models`),
@@ -54,11 +54,14 @@ ATTR_FN_RE = re.compile(
 SKIP_RE = re.compile(r'skip_lean\s*=\s*"(?P<reason>[^"]*)"')
 PANICS_RE = re.compile(r'(?:^|,)\s*panics\s*(?:,|$)')
 
-# Emitted into both generated files, for the `panics` guards.
-PANICS_DEF = [
+# Emitted into both generated files: `RustM` is not an inductive type, so the
+# guards observe a result through `RustM.reducesTo` and `RustM.match`.
+GUARD_DEFS = [
+    "def rustLeanOk (x : Aeneas.Std.RustM Bool) : Bool := x.reducesTo true",
+    "",
     "def rustLeanPanics (x : Aeneas.Std.RustM Bool) : Bool :=",
-    "  match x with",
-    "  | .fail _ => true",
+    "  match x.match with",
+    "  | .vis (.fail _) _ => true",
     "  | _ => false",
     "",
 ]
@@ -134,12 +137,12 @@ def render(guards: list[tuple[str, str | None, bool]], preamble: list[str]) -> s
         # single broken extraction would otherwise hide all the others.
         "set_option maxErrors 10000",
         "",
-        *PANICS_DEF,
+        *GUARD_DEFS,
     ]
     for fq, reason, panics in guards:
         if reason is not None:
             lines.append(f"-- skip_lean: {reason}")
-        lines.append(f"#guard rustLeanPanics {fq}" if panics else f"#guard {fq} == .ok true")
+        lines.append(f"#guard rustLeanPanics {fq}" if panics else f"#guard rustLeanOk {fq}")
     lines.append("")
     return "\n".join(lines)
 
@@ -211,7 +214,7 @@ def report_skipped(log_path: pathlib.Path) -> None:
     if not OUT_SKIPPED.exists():
         sys.exit(f"gen_lean_tests.py: {OUT_SKIPPED} not found; run the generator first.")
     guards = re.findall(
-        r"^-- skip_lean: (?P<reason>.*)\n#guard (?:rustLeanPanics )?(?P<fq>\S+)",
+        r"^-- skip_lean: (?P<reason>.*)\n#guard (?:rustLeanOk |rustLeanPanics )(?P<fq>\S+)",
         OUT_SKIPPED.read_text(),
         re.MULTILINE,
     )

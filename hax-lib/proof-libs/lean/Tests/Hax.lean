@@ -1,1 +1,4 @@
-import Tests.Hax.Tactic
+module
+public import Tests.Hax.Tactic
+
+@[expose] public section

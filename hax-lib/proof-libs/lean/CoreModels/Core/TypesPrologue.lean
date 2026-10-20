@@ -1,4 +1,7 @@
-import Aeneas
+module
+public import Aeneas
+
+@[expose] public section
 
 /-!
 

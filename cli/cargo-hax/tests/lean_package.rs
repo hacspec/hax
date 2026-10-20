@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 
 use common::{path_entries, stub_pipeline_tools, write_executable};
 
+/// The shim hax writes to reach the user's models in `Assumptions/`.
+const SHIM: &str = "module\n\npublic import MyFixture.Assumptions.FunsExternal\n";
+
 /// A stub aeneas that emulates the extraction: it writes `Types.lean`,
 /// `Funs.lean` and the `ProofObligations.lean` template under
 /// `<-dest>/<-subdir>/`, keeping the last occurrence of each flag like the
@@ -90,8 +93,10 @@ fn first_run_scaffolds_a_complete_package() {
     assert_eq!(
         read(&lean_dir.join("MyFixture/Extraction.lean")),
         "-- Imports the extraction modules. Rewritten by hax on every extraction.\n\
-         import MyFixture.Extraction.Types\n\
-         import MyFixture.Extraction.Funs\n"
+         module\n\
+         \n\
+         public import MyFixture.Extraction.Types\n\
+         public import MyFixture.Extraction.Funs\n"
     );
     assert!(
         lean_dir
@@ -244,7 +249,7 @@ EOF
          -- regenerated template to see what changed.\n\
          -- fill in the external functions\n"
     );
-    assert_eq!(read(&shim), "import MyFixture.Assumptions.FunsExternal\n");
+    assert_eq!(read(&shim), SHIM);
     // The template keeps the banner but describes the Assumptions/ workflow
     // instead of instructing a rename.
     let template_contents = read(&template);
@@ -270,8 +275,10 @@ EOF
     std::fs::write(&assumptions, "def models := 0\n").unwrap();
     let (output, success) = run_backend(&crate_dir, &[]);
     assert!(success, "{output}");
+    // They are not a Lean module, which the extraction importing them is.
+    assert!(output.contains("is not a Lean module"), "{output}");
     assert_eq!(read(&assumptions), "def models := 0\n");
-    assert_eq!(read(&shim), "import MyFixture.Assumptions.FunsExternal\n");
+    assert_eq!(read(&shim), SHIM);
 }
 
 #[test]
@@ -293,7 +300,7 @@ fn external_models_living_in_extraction_are_rescued_before_the_clearing() {
         read(&lean_dir.join("MyFixture/Assumptions/FunsExternal.lean")),
         "def models := 0\n"
     );
-    assert_eq!(read(&old), "import MyFixture.Assumptions.FunsExternal\n");
+    assert_eq!(read(&old), SHIM);
 }
 
 /// An external model the rescue cannot read must stop the run: the clearing
@@ -369,7 +376,7 @@ fn project_files_false_keeps_the_assumptions_wiring() {
     );
     assert_eq!(
         read(&lean_dir.join("MyFixture/Extraction/FunsExternal.lean")),
-        "import MyFixture.Assumptions.FunsExternal\n"
+        SHIM
     );
     assert!(!lean_dir.join("lakefile.toml").exists());
 }
@@ -462,7 +469,7 @@ fn a_divergent_external_model_left_in_extraction_is_warned_about() {
     assert!(success, "{output}");
     assert!(output.contains("differs from"), "{output}");
     assert_eq!(read(&assumptions), "def models := 0\n");
-    assert_eq!(read(&old), "import MyFixture.Assumptions.FunsExternal\n");
+    assert_eq!(read(&old), SHIM);
 }
 
 #[test]
@@ -512,7 +519,7 @@ fn a_formatting_variant_of_the_shim_is_not_rescued_into_assumptions() {
         read(&lean_dir.join("MyFixture/Assumptions/FunsExternal.lean")),
         "-- fill in the external functions\n"
     );
-    assert_eq!(read(&old), "import MyFixture.Assumptions.FunsExternal\n");
+    assert_eq!(read(&old), SHIM);
 }
 
 #[test]

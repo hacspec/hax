@@ -1,7 +1,10 @@
 -- [adc]: external functions.
-import Aeneas
-import CoreModels
-import Adc.Extraction.Types
+module
+public import Aeneas
+public import CoreModels
+public import Adc.Extraction.Types
+@[expose] public section
+
 open CoreModels Aeneas
 open Aeneas.Std hiding namespace core alloc
 open RustM ControlFlow Error

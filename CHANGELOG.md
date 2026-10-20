@@ -27,6 +27,11 @@ Changes to the hax-lib crate:
 ### Changed
 
 Lean backend and library:
+ - Breaking: the Lean library and the extracted Lean files are Lean modules.
+   A module can only import modules, so the hand-written models in
+   `Assumptions/`, which the extraction imports, have to become modules too:
+   start each file with `module`, turn its `import`s into `public import`s,
+   and put `@[expose] public section` after them.
  - Breaking: the fields `start` and `«end»` of `ops.range.RangeInclusive` are
    now `start_` and `end_`, and `RangeInclusive.start` and `RangeInclusive.end`
    are functions

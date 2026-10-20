@@ -1,4 +1,7 @@
-import Hax.Tactic.HaxMvcgenAt
+module
+public import Hax.Tactic.HaxMvcgenAt
+
+@[expose] public section
 
 /-!
 
@@ -13,11 +16,11 @@ set_option autoImplicit true
 
 open Lean Std.Do Elab Parser Tactic Meta
 
-private def isTripleExpr (e : Expr) : MetaM Bool := do
+private meta def isTripleExpr (e : Expr) : MetaM Bool := do
   forallTelescope (cleanupAnnotations := true) (← instantiateMVars e) fun _ body =>
     return (← whnfR body).isAppOfArity' ``Triple 7
 
-private def goalNeedsMvcgen (e : Expr) : Bool :=
+private meta def goalNeedsMvcgen (e : Expr) : Bool :=
   if e.isAppOfArity' ``Triple 7 then true
   else if e.isAppOfArity' ``SPred.entails 3 then
     (e.appArg!.find? (·.isAppOf ``WP.wp)).isSome
@@ -25,7 +28,7 @@ private def goalNeedsMvcgen (e : Expr) : Bool :=
     (e.appArg!.find? (·.isAppOf ``PredTrans.apply)).isSome
   else false
 
-partial def haxMvcgenLoop (mainGoal : MVarId)
+meta partial def haxMvcgenLoop (mainGoal : MVarId)
     (cfgStx : TSyntax `Lean.Parser.Tactic.optConfig) (argStx : Syntax)
     (visited : Std.HashSet FVarId := {}) :
     TacticM (List MVarId) := do
@@ -61,7 +64,7 @@ syntax (name := hax_mvcgen) "hax_mvcgen" optConfig
 
 /-- `hax_mvcgen` runs `mvcgen` on both goals and hypotheses containing `Triple`s. -/
 @[tactic hax_mvcgen]
-def elabHaxMvcgenLoop : Tactic := fun stx => do
+meta def elabHaxMvcgenLoop : Tactic := fun stx => do
   let cfgStx : TSyntax `Lean.Parser.Tactic.optConfig := ⟨stx[1]⟩
   let argStx := stx[2]
   replaceMainGoal (← haxMvcgenLoop (← getMainGoal) cfgStx argStx)

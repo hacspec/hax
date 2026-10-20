@@ -1,7 +1,10 @@
-import Aeneas
-import CoreModels.Command
-import CoreModels.Core.TypesPrologue
-import CoreModels.Core.Types
+module
+public import Aeneas
+public import CoreModels.Command
+public import CoreModels.Core.TypesPrologue
+public import CoreModels.Core.Types
+
+@[expose] public section
 
 /-!
 
@@ -71,11 +74,11 @@ def rust_primitives.slice.slice_clone_from_slice
   Slice T → Slice T → RustM (Slice T) := fun dest src =>
   if dest.length = src.length then
     -- Cloned, so `clone`'s effects are observable and cannot be skipped.
-    match h : src.val.mapM corecloneCloneInst.clone with
-    | ok cloned => ok ⟨cloned, by
-        have := List.mapM_RustM_length h; have := src.property; omega⟩
-    | fail e => fail e
-    | div => div
+    match h : (src.val.mapM corecloneCloneInst.clone).match with
+    | .ok cloned => ok (Slice.from cloned (by
+        have := List.mapM_RustM_length (RustM.match.isOk.mp h); have := src.property; omega))
+    | .vis (.fail e) _ => fail e
+    | .div => div
   else fail .panic
 
 /-- [rust_primitives::slice::slice_index_mut]: returns the element together with
@@ -93,14 +96,14 @@ def rust_primitives.slice.slice_slice_mut
   {T : Type} : Slice T → Std.Usize → Std.Usize → RustM ((Slice T) × (Slice T → Slice T)) :=
   fun s b e => do
   let sub ← Slice.subslice s ⟨b, e⟩
-  ok (sub, fun ss => ⟨s.val.setSlice! b.val ss.val, by scalar_tac⟩)
+  ok (sub, fun ss => Slice.from (s.val.setSlice! b.val ss.val) (by scalar_tac))
 
 /-- [rust_primitives::slice::slice_reverse]: in-place reverse, threaded as
     `Slice T → Slice T`. -/
 @[spec]
 def rust_primitives.slice.slice_reverse
   {T : Type} : Slice T → RustM (Slice T) :=
-  fun s => ok ⟨ s.val.reverse, by simp [s.property] ⟩
+  fun s => ok (Slice.from s.val.reverse (by simp [s.property]))
 
 /-- [rust_primitives::slice::slice_swap]: swap elements `a` and `b`. -/
 @[spec]
@@ -120,8 +123,8 @@ def rust_primitives.slice.slice_copy_within
   Slice T → Std.Usize → Std.Usize → Std.Usize → RustM (Slice T) :=
   fun s start end_ dest =>
   if start.val ≤ end_.val ∧ end_.val ≤ s.length ∧ dest.val ≤ s.length - (end_.val - start.val) then
-    ok ⟨s.val.setSlice! dest.val ((s.val.drop start.val).take (end_.val - start.val)),
-      by have := s.property; simp only [List.length_setSlice!]; omega⟩
+    ok (Slice.from (s.val.setSlice! dest.val ((s.val.drop start.val).take (end_.val - start.val)))
+      (by have := s.property; simp only [List.length_setSlice!]; omega))
   else fail .panic
 
 /-- This helper function for `array_from_fn` takes a `FnMut` closure and produces a list. A list
@@ -144,20 +147,20 @@ private theorem foldlM_list_build_length {A T F : Type}
   | nil =>
     intro acc f result h
     simp only [List.foldlM_nil] at h
-    have heq : result = (acc, f) := (RustM.ok.inj h).symm
+    have heq : result = (acc, f) := (RustM.ok_injective h).symm
     simp [heq]
   | cons x xs ih =>
     intro acc f result h
     simp only [List.foldlM_cons] at h
     cases hstep_x : step (acc, f) x with
-    | ok r =>
+    | ret r =>
       obtain ⟨r1, r2⟩ := r
-      simp only [hstep_x] at h
+      simp only [hstep_x, bind_tc_eq, bind_ok] at h
       have hlen_r : r1.length = acc.length + 1 := by
         have := hstep acc f x ⟨r1, r2⟩ hstep_x; simpa using this
       have ih' := ih r1 r2 result h
       simp only [List.length_cons]; omega
-    | fail e => simp [hstep_x] at h
+    | vis i k => cases i; simp [hstep_x] at h
     | div => simp [hstep_x] at h
 
 def rust_primitives.slice.array_from_fn
@@ -167,7 +170,7 @@ def rust_primitives.slice.array_from_fn
   let p ← array_from_fn_go coreopsfunctionFnMutFTupleUsizeTInst f N.val
   -- The `else` is unreachable: `array_from_fn_go` always returns one element per
   -- index, so `p.1.length = N.val`. It's easier to prove that in the spec than here.
-  (if h : p.1.length = N.val then ok ⟨p.1, h⟩ else fail .panic)
+  (if h : p.1.length = N.val then ok (Array.from p.1 h) else fail .panic)
 
 /-- Recursive helper function for `array_map` -/
 def rust_primitives.slice.array_map_go {T U F : Type}
@@ -182,14 +185,15 @@ def rust_primitives.slice.array_map
   {T : Type} {U : Type} {F : Type} {N : Std.Usize}
   (coreopsfunctionFnMutFTupleTUInst : core.ops.function.FnMut F T U) :
   Array T N → F → RustM (Array U N) := fun a f =>
-  match h : a.val.foldlM
+  match h : (a.val.foldlM
     (fun (s : List U × F) (x : T) => do
       let (v, f') ← coreopsfunctionFnMutFTupleTUInst.call_mut s.2 x
       ok (s.1 ++ [v], f'))
-    ([], f) with
-  | fail e => fail e
-  | div => div
-  | ok result => ok ⟨result.1, by
+    ([], f)).match with
+  | .vis (.fail e) _ => fail e
+  | .div => div
+  | .ok result => ok (Array.from result.1 (by
+      replace h := RustM.match.isOk.mp h
       have hlen := foldlM_list_build_length
         (fun (s : List U × F) (x : T) => do
           let (v, f') ← coreopsfunctionFnMutFTupleTUInst.call_mut s.2 x
@@ -197,21 +201,20 @@ def rust_primitives.slice.array_map
         (fun l f x r hr => by
           simp only [] at hr
           cases hcall : coreopsfunctionFnMutFTupleTUInst.call_mut f x with
-          | ok p =>
+          | ret p =>
             obtain ⟨v, fv⟩ := p
-            simp only [hcall, bind_tc_ok] at hr
-            have heq : r = (l ++ [v], fv) := (RustM.ok.inj hr).symm
+            simp only [hcall, bind_ok] at hr
+            have heq : r = (l ++ [v], fv) := (RustM.ok_injective hr).symm
             simp [heq, List.length_append]
-          | fail e =>
-            simp only [hcall, bind_tc_fail] at hr
-            exact nomatch hr
+          | vis i k =>
+            cases i
+            simp [hcall] at hr
           | div =>
-            simp only [hcall, bind_tc_div] at hr
-            exact nomatch hr)
+            simp [hcall] at hr)
         _ [] f result h
       have := a.property
       simp only [List.length_nil, Nat.zero_add] at hlen
-      omega⟩
+      omega))
 
 @[spec]
 def rust_primitives.slice.array_as_slice
@@ -280,16 +283,16 @@ def rust_primitives.sequence.seq_remove_mut
   if h : i.val < s.val.length then
     let x := s.val.get ⟨i.val, h⟩
     let rest : rust_primitives.sequence.Seq T :=
-      ⟨s.val.take i.val ++ s.val.drop (i.val + 1), by
+      Slice.from (s.val.take i.val ++ s.val.drop (i.val + 1)) (by
         simp only [List.length_append, List.length_take, List.length_drop]
-        have := s.property; omega⟩
+        have := s.property; omega)
     let back : rust_primitives.sequence.Seq T → T →
         rust_primitives.sequence.Seq T := fun s' x' =>
       if h' : s'.val.length + 1 ≤ Std.Usize.max then
-        ⟨s'.val.take i.val ++ x' :: s'.val.drop i.val, by
+        Slice.from (s'.val.take i.val ++ x' :: s'.val.drop i.val) (by
           simp only [List.length_append, List.length_cons, List.length_take,
             List.length_drop]
-          omega⟩
+          omega)
       else s'
     ok (x, rest, back)
   else fail .panic
@@ -310,9 +313,9 @@ def rust_primitives.sequence.seq_remove
   rust_primitives.sequence.Seq T → Std.Usize → RustM (T ×
     (rust_primitives.sequence.Seq T)) := fun s i =>
   if h : i.val < s.val.length then
-    ok (s.val.get ⟨i.val, h⟩, ⟨s.val.take i.val ++ s.val.drop (i.val + 1), by
+    ok (s.val.get ⟨i.val, h⟩, Slice.from (s.val.take i.val ++ s.val.drop (i.val + 1)) (by
       simp only [List.length_append, List.length_take, List.length_drop]
-      have := s.property; omega⟩)
+      have := s.property; omega))
   else fail .panic
 
 def usaturating_mul {ty : UScalarTy} (x y : UScalar ty) : UScalar ty :=
@@ -840,31 +843,31 @@ def rust_primitives.arithmetic.to_be_bytes_u128 : Std.U128 → RustM (Array Std.
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_usize : Std.Usize → RustM (Array Std.U8 8#usize) :=
-  fun x => ok ⟨ (x.bv.setWidth 64).toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from ((x.bv.setWidth 64).toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_i8 : Std.I8 → RustM (Array Std.U8 1#usize) :=
-  fun x => ok ⟨ x.bv.toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from (x.bv.toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_i16 : Std.I16 → RustM (Array Std.U8 2#usize) :=
-  fun x => ok ⟨ x.bv.toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from (x.bv.toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_i32 : Std.I32 → RustM (Array Std.U8 4#usize) :=
-  fun x => ok ⟨ x.bv.toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from (x.bv.toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_i64 : Std.I64 → RustM (Array Std.U8 8#usize) :=
-  fun x => ok ⟨ x.bv.toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from (x.bv.toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_i128 : Std.I128 → RustM (Array Std.U8 16#usize) :=
-  fun x => ok ⟨ x.bv.toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from (x.bv.toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.to_be_bytes_isize : Std.Isize → RustM (Array Std.U8 8#usize) :=
-  fun x => ok ⟨ (x.bv.setWidth 64).toBEBytes.map UScalar.mk, by grind [BitVec.toBEBytes_length] ⟩
+  fun x => ok (Array.from ((x.bv.setWidth 64).toBEBytes.map UScalar.mk) (by grind [BitVec.toBEBytes_length]))
 
 @[spec]
 def rust_primitives.arithmetic.SIZE_BITS : RustM Std.U32 :=
@@ -911,7 +914,7 @@ def rust_primitives.sequence.seq_concat
     ((rust_primitives.sequence.Seq T) × (rust_primitives.sequence.Seq T)) :=
   fun s1 s2 =>
     let combined := s1.val ++ s2.val
-    if h : combined.length ≤ Usize.max then ok (⟨combined, h⟩, Slice.new T)
+    if h : combined.length ≤ Usize.max then ok (Slice.from combined h, Slice.new T)
     else fail .panic
 
 -- Appends `src`'s elements *cloned*.
@@ -920,13 +923,13 @@ def rust_primitives.sequence.seq_extend
   {T : Type} (corecloneCloneInst : core.clone.Clone T) :
   rust_primitives.sequence.Seq T → Slice T → RustM
     (rust_primitives.sequence.Seq T) := fun s src =>
-  match src.val.mapM corecloneCloneInst.clone with
-  | ok cloned =>
+  match (src.val.mapM corecloneCloneInst.clone).match with
+  | .ok cloned =>
     let combined := s.val ++ cloned
-    if h : combined.length ≤ Usize.max then ok ⟨combined, h⟩
+    if h : combined.length ≤ Usize.max then ok (Slice.from combined h)
     else fail .panic
-  | fail e => fail e
-  | div => div
+  | .vis (.fail e) _ => fail e
+  | .div => div
 
 @[spec]
 def rust_primitives.sequence.seq_push
@@ -934,7 +937,7 @@ def rust_primitives.sequence.seq_push
   rust_primitives.sequence.Seq T → T → RustM (rust_primitives.sequence.Seq T) :=
   fun s x =>
     let extended := s.val ++ [x]
-    if h : extended.length ≤ Usize.max then ok ⟨extended, h⟩
+    if h : extended.length ≤ Usize.max then ok (Slice.from extended h)
     else fail .panic
 
 -- std clones `x` for all but the last element, which is `x` itself moved in.
@@ -944,13 +947,13 @@ def rust_primitives.sequence.seq_create
   T → Std.Usize → RustM (rust_primitives.sequence.Seq T) := fun x n =>
   if n.val = 0 then ok (Slice.new T)
   else
-    match (List.replicate (n.val - 1) x).mapM corecloneCloneInst.clone with
-    | ok cloned =>
+    match ((List.replicate (n.val - 1) x).mapM corecloneCloneInst.clone).match with
+    | .ok cloned =>
       let combined := cloned ++ [x]
-      if h : combined.length ≤ Usize.max then ok ⟨combined, h⟩
+      if h : combined.length ≤ Usize.max then ok (Slice.from combined h)
       else fail .panic
-    | fail e => fail e
-    | div => div
+    | .vis (.fail e) _ => fail e
+    | .div => div
 
 @[spec]
 def rust_primitives.sequence.seq_drain
@@ -961,7 +964,7 @@ def rust_primitives.sequence.seq_drain
     if h : start.val ≤ «end».val ∧ «end».val ≤ s.length then
       let drained := (s.val.drop start.val).take («end».val - start.val)
       let remaining := s.val.take start.val ++ s.val.drop «end».val
-      ok (⟨drained, by grind⟩, ⟨remaining, by grind⟩)
+      ok (Slice.from drained (by grind), Slice.from remaining (by grind))
     else fail .panic
 
 @[spec]

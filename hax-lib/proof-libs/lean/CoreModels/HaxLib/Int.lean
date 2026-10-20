@@ -1,8 +1,11 @@
-import Aeneas
-import CoreModels.Command
-import CoreModels.Core.TypesPrologue
-import CoreModels.Core.Types
-import CoreModels.Core.FunsPrologue
+module
+public import Aeneas
+public import CoreModels.Command
+public import CoreModels.Core.TypesPrologue
+public import CoreModels.Core.Types
+public import CoreModels.Core.FunsPrologue
+
+@[expose] public section
 open Aeneas
 open Aeneas.Std hiding namespace core
 open RustM ControlFlow Error

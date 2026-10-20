@@ -1,4 +1,7 @@
-import Aeneas
+module
+public import Aeneas
+
+@[expose] public section
 
 /-!
 # Missing Aeneas
@@ -44,3 +47,16 @@ macro_rules
                               component, got '{n}'"
 
 end Aeneas.Std.ScalarElab
+
+namespace Aeneas.Std
+
+open Std.Do
+
+/-- The equation lemmas of a structurally recursive definition state its `do` blocks with
+`Std.bind`, which `mvcgen` does not step through: it only knows `>>=`. Registered as a spec,
+this equation lets `mvcgen` rewrite the former into the latter. -/
+@[spec]
+theorem bind_eq_tc_bind {α β : Type} (x : RustM α) (f : α → RustM β) :
+    Std.bind x f = x >>= f := rfl
+
+end Aeneas.Std

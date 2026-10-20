@@ -89,20 +89,20 @@ def rewrite_imports_and_opens(text: str) -> str:
     # import
     text = sub(
         "core/import CoreModels",
-        r"^import CoreModels$",
-        "import CoreModels.Command\nimport CoreModels.Core.TypesPrologue",
+        r"^public import CoreModels$",
+        "public import CoreModels.Command\npublic import CoreModels.Core.TypesPrologue",
         text, flags=re.MULTILINE,
     )
     text = sub(
         "core/import FunsExternal",
-        r"^import CoreModels.Core.FunsExternal$",
-        "import CoreModels.RustPrimitives.Funs",
+        r"^public import CoreModels.Core.FunsExternal$",
+        "public import CoreModels.RustPrimitives.Funs",
         text, flags=re.MULTILINE,
     )
     text = sub(
         "core/import TypesExternal",
-        r"^import CoreModels.Core.TypesExternal$",
-        "import CoreModels.RustPrimitives.Types",
+        r"^public import CoreModels.Core.TypesExternal$",
+        "public import CoreModels.RustPrimitives.Types",
         text, flags=re.MULTILINE,
     )
     return text
@@ -192,21 +192,21 @@ def rewrite_alloc_imports(text: str) -> str:
     crate. The `alloc_models` rename has already happened by the time this
     runs, so the import paths still look like `import CoreModels.Alloc.<X>`.
     """
-    # Replace `import Aeneas` with the explicit pieces it needs.
+    # Replace `import CoreModels` with the explicit pieces it needs.
     text = sub(
         "alloc/import CoreModels",
-        r"^import CoreModels$",
-        "import CoreModels.Core.TypesPrologue\nimport CoreModels.Core.Types\n"
-        "import CoreModels.RustPrimitives.Types",
+        r"^public import CoreModels$",
+        "public import CoreModels.Core.TypesPrologue\npublic import CoreModels.Core.Types\n"
+        "public import CoreModels.RustPrimitives.Types",
         text,
         flags=re.MULTILINE,
     )
     # Additional imports just for `Funs.lean`
     text = sub(
         "alloc/import Alloc.Types",
-        r"^import CoreModels.Alloc.Types$",
-        "import CoreModels.Alloc.Types\nimport CoreModels.RustPrimitives.Funs\n"
-        "import CoreModels.Core.Funs",
+        r"^public import CoreModels.Alloc.Types$",
+        "public import CoreModels.Alloc.Types\npublic import CoreModels.RustPrimitives.Funs\n"
+        "public import CoreModels.Core.Funs",
         text,
         flags=re.MULTILINE,
     )
@@ -215,7 +215,7 @@ def rewrite_alloc_imports(text: str) -> str:
     # `Aeneas.Alloc.{Funs,Types}External` don't exist anymore.
     text = sub(
         "alloc/drop External imports",
-        r"^import CoreModels\.Alloc\.(?:Funs|Types)External$",
+        r"^public import CoreModels\.Alloc\.(?:Funs|Types)External$",
         "-- (alloc-side externals live in parent CoreModels.RustPrimitives)",
         text, flags=re.MULTILINE,
     )
@@ -465,8 +465,8 @@ def add_funs_prologue_import(text: str) -> str:
     """Funs.lean needs CoreModels.Core.FunsPrologue."""
     return replace(
         "add_funs_prologue_import", text,
-        "import Aeneas\n",
-        "import Aeneas\nimport CoreModels.Core.FunsPrologue\n",
+        "public import Aeneas\n",
+        "public import Aeneas\npublic import CoreModels.Core.FunsPrologue\n",
     )
 
 # Identifies the start of a top-level "block" (a doc comment, an attribute,

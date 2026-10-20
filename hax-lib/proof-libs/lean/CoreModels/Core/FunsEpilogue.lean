@@ -1,4 +1,7 @@
-import CoreModels.Alloc.Funs
+module
+public import CoreModels.Alloc.Funs
+
+@[expose] public section
 
 namespace CoreModels
 namespace core
@@ -42,6 +45,17 @@ abbrev result.Result.Insts.CoreOpsTry_traitTry.branch :=
 /-- Same aliasing as `Result` above, for `?` on `Option`. -/
 abbrev option.Option.Insts.CoreOpsTry_traitTry.branch :=
   @option.Option.Insts.CoreOpsTry_traitTryTOptionInfallible.branch
+
+/-- Downstream `?` on `Result` converts the residual through std's
+    `FromResidual<Result<!, E>>` impl: std's `Infallible` is an alias of `!`, so that
+    impl is suffixed `…NeverE`, while ours, written against our own `Infallible`, is
+    suffixed `…InfallibleE`. Alias so `?` on `Result` elaborates. -/
+abbrev result.Result.Insts.CoreOpsTry_traitFromResidualResultNeverE.from_residual :=
+  @result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+
+/-- Same aliasing as `Result` above, for `?` on `Option`. -/
+abbrev option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual :=
+  @option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
 
 /-! ## Scalar Debug instances -/
 

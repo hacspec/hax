@@ -1,4 +1,8 @@
-import CoreModels.Core.Funs
+module
+public import CoreModels.Core.Funs
+public import CoreModels.MissingAeneas
+
+@[expose] public section
 
 /-! # Specs for `rust_primitives::slice` -/
 
@@ -67,7 +71,7 @@ theorem rust_primitives.slice.array_from_fn_spec
   -- it to `c`:
   have hpure' : ∀ k, k < N.val → ∀ c', c' = c →
       ⦃ ⌜ True ⌝ ⦄ inst.call_mut c' ⟨BitVec.ofNat _ k⟩ ⦃ ⇓ r => ⌜ r.2 = c ⌝ ⦄ :=
-    fun k hk c' hc' => hc' ▸ hpure k hk
+    fun k hk c' hc' => by subst hc'; exact hpure k hk
   mvcgen [rust_primitives.slice.array_from_fn, hpure']
   · -- then-branch
     rename_i r hlen hconj
@@ -163,7 +167,7 @@ private theorem foldlM_map_ok {T U F : Type}
     obtain ⟨res, hres, hres2, hlen, hpre, hpt⟩ :=
       ih (acc ++ [v]) (fun z hz => hpure z (by simp [hz]))
     refine ⟨res, ?_, hres2, ?_, ?_, ?_⟩
-    · simp only [List.foldlM_cons, hy, bind_tc_ok]
+    · simp only [List.foldlM_cons, hy, bind_tc_eq, bind_ok]
       exact hres
     · simp at hlen ⊢
       omega
@@ -190,24 +194,20 @@ theorem rust_primitives.slice.array_map_spec {T U F : Type} {N : Std.Usize}
                   ⦃ ⇓ y => ⌜ y.1 = b.val[i]'(by have := b.property; omega) ⌝ ⦄ ⌝ ⦄ := by
   have ha := a.property
   have hpure' : ∀ x ∈ a.val, ∃ y, inst.call_mut f x = ok y ∧ y.2 = f :=
-    fun x hx => WP.triple_iff_exists_ok.1 (hpure x hx)
+    fun x hx => Aeneas.Std.triple_iff_exists_ok.1 (hpure x hx)
   obtain ⟨res, hres, _, hlen, _, hpt⟩ := foldlM_map_ok inst f a.val [] hpure'
   simp only [List.length_nil, Nat.zero_add] at hlen hpt
-  rw [WP.triple_iff_exists_ok]
-  refine ⟨⟨res.1, by omega⟩, ?_, ?_⟩
+  rw [Aeneas.Std.triple_iff_exists_ok]
+  refine ⟨Array.from res.1 (by omega), ?_, ?_⟩
   · simp only [rust_primitives.slice.array_map]
-    split <;> rename_i h <;> rw [hres] at h
-    · simp at h
-    · simp at h
-    · simp only [RustM.ok.injEq] at h
-      subst h
-      rfl
+    split <;> rename_i h <;> erw [hres] at h <;> simp at h
+    subst h; rfl
   · intro i hi
     obtain ⟨y, hy, hidx⟩ := hpt i (by omega)
-    rw [WP.triple_iff_exists_ok]
+    rw [Aeneas.Std.triple_iff_exists_ok]
     refine ⟨y, hy, ?_⟩
     have hlt : i < res.1.length := by omega
     rw [List.getElem?_eq_getElem hlt] at hidx
-    exact (Option.some.inj hidx).symm
+    simpa using (Option.some.inj hidx).symm
 
 end CoreModels

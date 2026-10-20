@@ -1,4 +1,7 @@
-import Hax.MissingLean.Std.Do.Triple.Basic
+module
+public import Hax.MissingLean.Std.Do.Triple.Basic
+
+@[expose] public section
 
 /-!
 

@@ -13604,13 +13604,14 @@
    },
    {
     "module": "array",
-    "covered": 3,
+    "covered": 4,
     "total": 25,
     "in_scope": true,
     "covered_items": [
      "IntoIter",
      "TryFromSliceError",
-     "from_fn"
+     "from_fn",
+     "repeat"
     ],
     "missing_items": [
      "IntoIter::as_mut_slice",
@@ -13633,7 +13634,6 @@
      "array::try_map",
      "from_mut",
      "from_ref",
-     "repeat",
      "try_from_fn"
     ]
    },

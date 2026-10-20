@@ -1,5 +1,8 @@
-import CoreModels.Alloc.Funs
-import CoreModels.Alloc.Types
+module
+public import CoreModels.Alloc.Funs
+public import CoreModels.Alloc.Types
+
+@[expose] public section
 
 /-!
 

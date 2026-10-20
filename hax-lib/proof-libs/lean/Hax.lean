@@ -1,7 +1,10 @@
-import Hax.MissingLean
-import Hax.MissingAeneas
-import Hax.Tactic
-import Hax.Tactic.ForLoopWithInvariantSpec
+module
+public import Hax.MissingLean
+public import Hax.MissingAeneas
+public import Hax.Tactic
+public import Hax.Tactic.ForLoopWithInvariantSpec
+
+@[expose] public section
 
 /-!
 

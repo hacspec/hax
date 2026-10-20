@@ -1,4 +1,7 @@
-import Lean
+module
+public import Lean
+
+@[expose] public section
 open Lean Elab Command
 
 /-!
@@ -18,7 +21,7 @@ namespace CoreModels.Command
 syntax (name := openHidingNs) "open" ident "hiding" "namespace" ident+ : command
 
 @[command_elab openHidingNs]
-def elabOpenHidingNs : CommandElab := fun stx => do
+meta def elabOpenHidingNs : CommandElab := fun stx => do
   let nsStx  : Ident                    := ⟨stx[1]⟩
   let subStxs : Array (TSyntax `ident)  := stx[4].getArgs.map (⟨·⟩)
 

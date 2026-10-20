@@ -1,7 +1,10 @@
 -- [adc]: external types.
 -- This is a template file: rename it to "TypesExternal.lean" and fill the holes.
-import Aeneas
-import CoreModels
+module
+public import Aeneas
+public import CoreModels
+@[expose] public section
+
 open CoreModels Aeneas
 open Aeneas.Std hiding namespace core alloc
 open RustM ControlFlow Error

@@ -1,4 +1,7 @@
-import CoreModels.Command.OpenHidingNamespace
+module
+public import CoreModels.Command.OpenHidingNamespace
+
+@[expose] public section
 
 /-!
 

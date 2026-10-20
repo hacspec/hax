@@ -688,7 +688,8 @@ pub fn run(
     // (`Funs.lean`/`Types.lean`, and any proof-obligation / external-template
     // files) separately, and `-subdir <LibName>/Extraction` so they land in
     // `<lean_dir>/<LibName>/Extraction/` with import paths prefixed by
-    // `<LibName>.Extraction.`
+    // `<LibName>.Extraction.`. The files are Lean modules (aeneas's default),
+    // like the hax Lean library they import.
     let subdir = format!("{lib_name}/Extraction");
     let mut aeneas_cmd = process::Command::new(&aeneas);
     aeneas_cmd.args([

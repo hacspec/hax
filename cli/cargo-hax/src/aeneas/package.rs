@@ -176,9 +176,41 @@ fn is_external(stem: &str) -> bool {
 }
 
 /// The shim redirecting a generated `import <Pkg>.Extraction.<stem>` to
-/// the user's models in `Assumptions/`.
+/// the user's models in `Assumptions/`. A Lean module, like the extraction
+/// files importing it.
 fn external_shim(lib_name: &str, stem: &str) -> String {
-    format!("import {lib_name}.Assumptions.{stem}\n")
+    format!("module\n\npublic import {lib_name}.Assumptions.{stem}\n")
+}
+
+/// Whether `contents` is a Lean module: its first command, after comments
+/// and blank lines, is `module`.
+fn is_lean_module(contents: &str) -> bool {
+    let mut in_block_comment = false;
+    for line in contents.lines() {
+        let mut line = line.trim();
+        if in_block_comment {
+            let Some((_, rest)) = line.split_once("-/") else {
+                continue;
+            };
+            in_block_comment = false;
+            line = rest.trim();
+        }
+        if line.is_empty() || line.starts_with("--") {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("/-") {
+            match rest.split_once("-/") {
+                Some((_, after)) if after.trim().is_empty() => continue,
+                Some(_) => return false,
+                None => {
+                    in_block_comment = true;
+                    continue;
+                }
+            }
+        }
+        return line == "module";
+    }
+    false
 }
 
 /// The header line by which aeneas instructs renaming a template file and
@@ -283,7 +315,9 @@ pub fn rescue_external_files(
             .active
             .contains(&assumptions_import)
         {
-            if contents.trim() != format!("import {assumptions_import}") {
+            let is_shim = contents.trim() == external_shim(lib_name, stem).trim()
+                || contents.trim() == format!("import {assumptions_import}");
+            if !is_shim {
                 HaxMessage::GenericWarning {
                     message: format!(
                         "{} imports {} and is removed with the rest of the \
@@ -395,6 +429,19 @@ pub fn process_external_templates(
             error = true;
         }
         error |= write_if_absent(&assumption, &seed_contents, message_format);
+        if fs::read_to_string(&assumption).is_ok_and(|contents| !is_lean_module(&contents)) {
+            HaxMessage::GenericWarning {
+                message: format!(
+                    "{} is not a Lean module, but the extraction importing it is: \
+                     start it with `module`, mark its imports `public import` and \
+                     wrap its definitions in `@[expose] public section`, as in \
+                     {}",
+                    assumption.display(),
+                    template.display()
+                ),
+            }
+            .report(message_format, None);
+        }
         let shim = extraction_dir.join(format!("{stem}.lean"));
         if let Err(e) = fs::write(&shim, external_shim(lib_name, stem)) {
             HaxMessage::GenericError {
@@ -423,7 +470,7 @@ fn verification_stub_path(lean_dir: &Path, lib_name: &str) -> PathBuf {
 
 /// The header of the aggregate extraction module, marking it as hax-owned.
 const EXTRACTION_MODULE_HEADER: &str =
-    "-- Imports the extraction modules. Rewritten by hax on every extraction.\n";
+    "-- Imports the extraction modules. Rewritten by hax on every extraction.\nmodule\n\n";
 
 /// The extraction module stems imported first, in build order; further
 /// files the extraction produces follow alphabetically.
@@ -456,7 +503,7 @@ fn extraction_module_contents(lean_dir: &Path, lib_name: &str) -> String {
         .collect();
     let mut contents = String::from(EXTRACTION_MODULE_HEADER);
     for stem in ordered.into_iter().chain(stems) {
-        contents += &format!("import {lib_name}.Extraction.{stem}\n");
+        contents += &format!("public import {lib_name}.Extraction.{stem}\n");
     }
     contents
 }
@@ -525,6 +572,8 @@ fn parse_root_imports(contents: &str) -> RootImports {
             Some(rest) => (rest.trim_start(), true),
             None => (line, false),
         };
+        let line = line.strip_prefix("public ").unwrap_or(line);
+        let line = line.strip_prefix("meta ").unwrap_or(line);
         let Some(rest) = line.strip_prefix("import") else {
             continue;
         };
@@ -1126,11 +1175,40 @@ mod tests {
             extraction_module_contents(dir.path(), "MyCrate"),
             format!(
                 "{EXTRACTION_MODULE_HEADER}\
-                 import MyCrate.Extraction.Types\n\
-                 import MyCrate.Extraction.Funs\n\
-                 import MyCrate.Extraction.Extra\n"
+                 public import MyCrate.Extraction.Types\n\
+                 public import MyCrate.Extraction.Funs\n\
+                 public import MyCrate.Extraction.Extra\n"
             )
         );
+    }
+
+    /// A file is a module when `module` is its first command, whatever
+    /// comments precede it.
+    #[test]
+    fn modules_are_recognized_after_comments() {
+        assert!(is_lean_module("module\npublic import Aeneas\n"));
+        assert!(is_lean_module(
+            "-- [crate]: external functions.\n\n/- A block\ncomment. -/\nmodule\n"
+        ));
+        assert!(is_lean_module("/-! Doc. -/\nmodule\n"));
+        assert!(!is_lean_module(
+            "-- [crate]: external functions.\nimport Aeneas\n"
+        ));
+        assert!(!is_lean_module("/- module -/ import Aeneas\nmodule\n"));
+        assert!(!is_lean_module(""));
+    }
+
+    /// `public` and `meta` imports are imports.
+    #[test]
+    fn module_imports_are_parsed() {
+        let imports = parse_root_imports(
+            "module\npublic import A.Extraction\nmeta import A.Meta\n-- public import A.Off\n",
+        );
+        assert_eq!(
+            imports.active,
+            BTreeSet::from(["A.Extraction".into(), "A.Meta".into()])
+        );
+        assert_eq!(imports.commented, BTreeSet::from(["A.Off".into()]));
     }
 
     /// The root module imports the aggregate extraction module and the

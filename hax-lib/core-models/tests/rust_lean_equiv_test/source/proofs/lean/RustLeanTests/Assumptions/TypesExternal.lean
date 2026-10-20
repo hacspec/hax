@@ -1,2 +1,4 @@
 -- Hand-written stub. See `FunsExternal.lean` for the rationale.
-import Aeneas
+module
+public import Aeneas
+@[expose] public section
