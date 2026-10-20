@@ -39,7 +39,7 @@ jobs:
         set -euo pipefail
 
         nix build .#docs & pid1=$!
-        curl -sS "https://hax-playground.cryspen.com/query/$GITHUB_SHA/fstar" \
+        curl -sS "https://hax-playground.cryspen.com/query/$GITHUB_SHA/fstar+tc" \
           -X POST \
           -H 'User-Agent: bot' \
           -H 'Accept: application/json' \
