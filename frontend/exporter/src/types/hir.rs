@@ -435,8 +435,12 @@ pub struct Impl<Body: IsBody> {
         let (tcx, owner_id) = (s.base().tcx, s.owner_id());
         if self.of_trait.is_some() {
             let trait_did = tcx.impl_trait_id(owner_id);
-            tcx.explicit_super_predicates_of(trait_did)
-                .iter_identity_copied()
+            // Same clauses, in the same order, as the trait's own bounds
+            // (see `region_bounds_at_current_owner`): backends turn both into
+            // the trait's parent fields, matched by index.
+            predicates_defined_on(tcx, trait_did)
+                .iter()
+                .copied()
                 .filter(|(clause, _)| clause.as_trait_clause().is_some_and(|trait_predicate| {
                     !is_sized_related_trait(tcx, trait_predicate.skip_binder().def_id())
                 }))
@@ -446,8 +450,9 @@ pub struct Impl<Body: IsBody> {
             vec![]
         }
     })]
-    /// The clauses and impl expressions corresponding to the impl's
-    /// trait (if not inherent) super bounds (if any).
+    /// The clauses and impl expressions corresponding to the bounds of the
+    /// impl's trait (if not inherent): its super bounds and the bounds on its
+    /// generic parameters.
     pub parent_bounds: Vec<(Clause, ImplExpr, Span)>,
 }
 

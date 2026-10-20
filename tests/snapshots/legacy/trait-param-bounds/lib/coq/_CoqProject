@@ -1,0 +1,5 @@
+-R ./ TODO
+-arg -w
+-arg all
+
+New_tests_Legacy__trait_param_bounds__lib.v
