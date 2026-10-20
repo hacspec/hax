@@ -220,8 +220,10 @@ def rewrite_alloc_imports(text: str) -> str:
         text, flags=re.MULTILINE,
     )
     return text
+
+
 # Defs matching on a scrutinee that repeats a type variable (`ControlFlow<T, T>`).
-_DUPLICATE_BINDER_DEFS = ("def ops.control_flow.ControlFlow.into_value",)
+_DUPLICATE_BINDER_DEFS = ("ops.control_flow.ControlFlow.into_value",)
 
 
 def drop_do_on_duplicate_binder_matches(text: str) -> str:
@@ -230,16 +232,15 @@ def drop_do_on_duplicate_binder_matches(text: str) -> str:
     Aeneas's `do` rejects their duplicate pattern binders; the bodies have no binds.
     See https://github.com/AeneasVerif/aeneas/issues/1406.
     """
-    lines = text.split("\n")
-    for i, line in enumerate(lines):
-        if not any(line.startswith(d) for d in _DUPLICATE_BINDER_DEFS):
-            continue
-        # The signature spans a few lines; `:= do` closes it.
-        for j in range(i, min(i + 6, len(lines))):
-            if lines[j].endswith(":= do"):
-                lines[j] = lines[j][: -len(" do")]
-                break
-    return "\n".join(lines)
+    for name in _DUPLICATE_BINDER_DEFS:
+        # The exact name, then up to five signature lines; `:= do` closes it.
+        text = sub(
+            f"drop do on {name}",
+            rf"^(def {re.escape(name)}\s(?:.*\n){{0,5}}?.*:=) do$",
+            r"\1",
+            text, flags=re.MULTILINE,
+        )
+    return text
 
 
 def rewrite_phantom_data(text: str) -> str:
