@@ -14,6 +14,7 @@ on:
       - 'frontend/**'
       - 'flake.nix'
       - 'flake.lock'
+      - 'rust-toolchain.toml'
       - '.github/workflows/core_models.yml'
   pull_request:
     branches: [main, dev]
@@ -25,6 +26,7 @@ on:
       - 'frontend/**'
       - 'flake.nix'
       - 'flake.lock'
+      - 'rust-toolchain.toml'
       - '.github/workflows/core_models.yml'
 
 defaults:
@@ -87,11 +89,14 @@ jobs:
           RUSTFLAGS: "" # disable `cfg(hax)` from `.cargo/config.toml`
 
       # Both crates have cfg-exclusive models the default-cfg run can't reach.
+      # F* clients are only ever compiled with hax's toolchain.
       - run: cargo test -p alloc
+        if: matrix.toolchain == 'hax'
         env:
           RUSTFLAGS: "--cfg hax_backend_fstar"
 
       - run: cargo test -p core-models
+        if: matrix.toolchain == 'hax'
         env:
           RUSTFLAGS: "--cfg hax_backend_fstar"
 
