@@ -18,7 +18,7 @@ use rustc_middle::ty;
 use rustc_span::def_id::DefId as RDefId;
 
 #[cfg(feature = "rustc")]
-pub use utils::is_sized_related_trait;
+pub use utils::{is_sized_related_trait, prune_sized_predicates};
 
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
@@ -193,14 +193,13 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
     let tcx = s.base().tcx;
-    if clause.as_trait_clause().is_none()
-        || !matches!(
-            tcx.def_kind(impl_did),
-            rustc_hir::def::DefKind::Impl { of_trait: true }
-        )
-    {
+    if !matches!(
+        tcx.def_kind(impl_did),
+        rustc_hir::def::DefKind::Impl { of_trait: true }
+    ) {
         return None;
     }
+    let trait_clause = clause.as_trait_clause()?;
     let impl_trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity();
     let original_predicate_id = {
         // We don't want the id of the substituted clause id, but the
@@ -214,13 +213,8 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         impl_trait_ref.args,
     );
     let new_clause = ty::EarlyBinder::bind(clause).instantiate(tcx, args);
-    let impl_expr = solve_trait(
-        s,
-        new_clause
-            .as_predicate()
-            .as_trait_clause()?
-            .to_poly_trait_ref(),
-    );
+    let new_trait_clause = ty::EarlyBinder::bind(trait_clause).instantiate(tcx, args);
+    let impl_expr = solve_trait(s, new_trait_clause.to_poly_trait_ref());
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))
