@@ -166,25 +166,9 @@ Equations main (_ : both 'unit) : both 'unit :=
     letb _ := eq_good_message in
     letb _ := ne_good in
     letb _ := ne_good_message in
-    letb _ := assert (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
- : chString)) (ret_both (core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte... : chString))) in
-    letb _ := assert (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
- : chString)) (ret_both (core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte... : chString))) in
-    letb _ := assert (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
- : chString)) (ret_both (core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte... : chString))) in
-    letb _ := assert (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
- : chString)) (ret_both (core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte... : chString))) in
+    letb _ := assert (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST : chString)) (ret_both ( : chString))) in
+    letb _ := assert (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST : chString)) (ret_both ( : chString))) in
+    letb _ := assert (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST : chString)) (ret_both ( : chString))) in
+    letb _ := assert (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST : chString)) (ret_both ( : chString))) in
     ret_both (tt : 'unit) : both 'unit.
 Fail Next Obligation.

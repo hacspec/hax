@@ -17,79 +17,10 @@ let f (x: u8)
         fun r ->
           let r:t_Array u8 (mk_usize 4) = r in
           (r.[ mk_usize 0 ] <: u8) >. x) =
-  Rust_primitives.Hax.failure "Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutPointer`.\n"
-    "{\n let y: raw_pointer!() = { cast(x) };\n {\n let _: tuple0 = {\n {\n let _: tuple0 = {\n {\n let _: tuple0 = {\n std::io::stdio::e_print({\n let args: tuple1<&int> = { Tuple1(&(deref(y))) };\n {\n let args: [c..."
+  Rust_primitives.Hax.failure "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Raw_pointer] have been found in the AST"
+    ""
 
-(* item error backend: Explicit rejection by a phase in the Hax engine:
-a node of kind [Raw_pointer] have been found in the AST
-
-Note: the error was labeled with context `reject_RawOrMutPointer`.
-
-Last available AST for this item:
-
-/// This struct contains a field which uses raw pointers, which are
-/// not supported by hax. This item cannot be extracted at all: we
-/// need to exclude it with `-i '-*::Foo'`.
-/// @fail(extraction): proverif(HAX0008), fstar(HAX0008), coq(HAX0008), ssprove(HAX0008)
-/// @fail(extraction): legacy-lean(HAX0008)
-#[allow(dead_code)]
-#[allow(dead_code, unused, unconditional_recursion)]
-#[feature(register_tool, if_let_guard)]
-#[feature(
-    coverage_attribute,
-    stmt_expr_attributes,
-    custom_inner_attributes,
-    test,
-    yield_expr,
-    coroutines,
-    coroutine_trait,
-    no_core,
-    core_intrinsics
-)]
-#[register_tool(_hax)]
-struct t_Foo {
-    f_unsupported_field: raw_pointer!(),
-}
-
-
-Last AST:
-/** print_rust: pitem: not implemented  (item: { Concrete_ident.T.def_id =
-  { Explicit_def_id.T.is_constructor = false;
-    def_id =
-    { Types.index = (0, 0, None); is_local = true; kind = Types.Struct;
-      krate = "new_tests";
-      parent =
-      (Some { Types.contents =
-              { Types.id = 0;
-                value =
-                { Types.index = (0, 0, None); is_local = true;
-                  kind = Types.Mod; krate = "new_tests";
-                  parent =
-                  (Some { Types.contents =
-                          { Types.id = 0;
-                            value =
-                            { Types.index = (0, 0, None); is_local = true;
-                              kind = Types.Mod; krate = "new_tests";
-                              parent = None; path = [] }
-                            }
-                          });
-                  path =
-                  [{ Types.data =
-                     (Types.TypeNs "legacy__cli__interface_only__lib");
-                     disambiguator = 0 }
-                    ]
-                  }
-                }
-              });
-      path =
-      [{ Types.data = (Types.TypeNs "legacy__cli__interface_only__lib");
-         disambiguator = 0 };
-        { Types.data = (Types.TypeNs "Foo"); disambiguator = 0 }]
-      }
-    };
-  moved = None; suffix = None }) */
-const _: () = ();
- *)
+(* [hax::excluded] t_Foo — Explicit rejection by a phase in the Hax engine: a node of kind [Raw_pointer] have been found in the AST *)
 
 type t_Bar = | Bar : t_Bar
 

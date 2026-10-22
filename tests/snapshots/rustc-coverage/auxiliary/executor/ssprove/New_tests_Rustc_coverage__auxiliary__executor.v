@@ -32,16 +32,5 @@ Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
 Equations block_on {v_F : v_F} `{ t_Future v_F} (future : both v_F) : both f_Output :=
   block_on future  :=
-    failure (ret_both (The mutation of this &mut is not allowed here.
-
-This is discussed in issue https://github.com/hacspec/hax/issues/420.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `DirectAndMut`.
- : chString)) (ret_both ({
- let mut future: core_models::pin::t_Pin<&mut F> = {
- {
- let mut pinned: F = { future };
- {
- rust_primitives::hax::failure(
- "Explicit rejection by a phase in the Hax engine:\na node of kind [Unsafe... : chString)) : both f_Output.
+    failure (ret_both ([hax::opaque] The mutation of this &mut is not allowed here. : chString)) (ret_both ( : chString)) : both f_Output.
 Fail Next Obligation.

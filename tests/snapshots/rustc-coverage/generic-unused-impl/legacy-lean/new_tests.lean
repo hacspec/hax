@@ -42,7 +42,7 @@ def Impl.from_hoisted
     [trait_constr_from_hoisted_i0 : Foo T ]
     (_from : (RustArray (Foo.Assoc T) 1)) :
     RustM (W T) := do
-  (pure sorry)
+  (pure sorry /- [hax::opaque] something is not implemented yet. Pat:Array -/)
 
 --  @fail(extraction): fstar(HAX0001), coq(HAX0001), proverif(HAX0001), ssprove(HAX0001), legacy-lean(HAX0001)
 @[reducible] instance Impl.AssociatedTypes

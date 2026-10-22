@@ -42,18 +42,8 @@ letfun new_tests__rustc_coverage__unicode__v_サビ(wildcard2 : bitstring) =
 letfun new_tests__rustc_coverage__unicode__main(wildcard8 : bitstring) =
        let wildcard7: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _İ in (core_models::iter::traits::collect::f_into_iter(
- core_models::ops::range::impl_7__new::<char>('А', 'Я'),
- )) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard6: bitstring = (

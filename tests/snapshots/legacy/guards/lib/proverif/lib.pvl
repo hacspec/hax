@@ -35,17 +35,8 @@ letfun bool_default() = false.
 
 letfun new_tests__legacy__guards__lib__if_let_guard(x : Option) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Match_guard] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-         "(match (x) {
- core_models::option::Option_None => 0,
- core_models::option::Option_Some(
- v,
- ) if let core_models::result::Result_Ok(y) = v => y,
- core_models::option::Option_Some(core_models::result:..."
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Match_guard] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__legacy__guards__lib__equivalent(x : Option) =
@@ -66,30 +57,13 @@ letfun new_tests__legacy__guards__lib__equivalent(x : Option) =
 
 letfun new_tests__legacy__guards__lib__multiple_guards(x : Option) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Match_guard] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-         "(match (x) {
- core_models::option::Option_None => 0,
- core_models::option::Option_Some(
- core_models::result::Result_Ok(v),
- ) if let core_models::option::Option_Some(1) = core_models::option::Option_..."
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Match_guard] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__legacy__guards__lib__if_guard(x : Option) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Match_guard] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-         "(match (x) {
- core_models::option::Option_Some(
- v,
- ) if let true = core_models::cmp::f_gt(v, 0) => v,
- _ => 0,
- })"
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Match_guard] have been found in the AST",
+         ""
        ).
 

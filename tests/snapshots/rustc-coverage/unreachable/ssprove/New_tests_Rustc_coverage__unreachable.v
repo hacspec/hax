@@ -33,39 +33,17 @@ Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 Equations v_UNREACHABLE_CLOSURE : both 'unit :=
   v_UNREACHABLE_CLOSURE  :=
     fun _ =>
-      failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe {
- rust_primitives::hax::never_to_any(
- core_models::hint::unreachable_unchecked(Tuple0),
- )
- } : chString)) : both 'unit.
+      failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString)) : both 'unit.
 Fail Next Obligation.
 
 Equations unreachable_function (_ : both 'unit) : both 'unit :=
   unreachable_function _  :=
-    failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe {
- rust_primitives::hax::never_to_any(
- core_models::hint::unreachable_unchecked(Tuple0),
- )
- } : chString)) : both 'unit.
+    failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString)) : both 'unit.
 Fail Next Obligation.
 
 Equations unreachable_intrinsic (_ : both 'unit) : both 'unit :=
   unreachable_intrinsic _  :=
-    failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe {
- rust_primitives::hax::never_to_any(core_models::intrinsics::unreachable(Tuple0))
- } : chString)) : both 'unit.
+    failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString)) : both 'unit.
 Fail Next Obligation.
 
 Equations main (_ : both 'unit) : both 'unit :=

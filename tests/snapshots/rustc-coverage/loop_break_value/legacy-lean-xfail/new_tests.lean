@@ -19,7 +19,9 @@ namespace new_tests.rustc_coverage__loop_break_value
 def main (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
   let result : i32 :=
-    (rust_primitives.hax.Tuple2.mk sorry rust_primitives.hax.Tuple0.mk);
+    (rust_primitives.hax.Tuple2.mk
+      sorry /- [hax::opaque] something is not implemented yet. Unhandled loop kind -/
+      rust_primitives.hax.Tuple0.mk);
   (pure rust_primitives.hax.Tuple0.mk)
 
 end new_tests.rustc_coverage__loop_break_value

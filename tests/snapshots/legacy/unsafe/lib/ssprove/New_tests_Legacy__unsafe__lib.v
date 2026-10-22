@@ -41,24 +41,10 @@ Fail Next Obligation.
 
 Equations impossible (_ : both 'unit) : both t_Impossible :=
   impossible _  :=
-    failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe {
- rust_primitives::hax::never_to_any(
- core_models::hint::unreachable_unchecked(Tuple0),
- )
- } : chString)) : both t_Impossible.
+    failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString)) : both t_Impossible.
 Fail Next Obligation.
 
 Equations get_unchecked_example (slice : both (seq int8)) : both int8 :=
   get_unchecked_example slice  :=
-    failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe {
- deref(core_models::slice::impl__get_unchecked::<int, int>(&(deref(slice)), 6))
- } : chString)) : both int8.
+    failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString)) : both int8.
 Fail Next Obligation.

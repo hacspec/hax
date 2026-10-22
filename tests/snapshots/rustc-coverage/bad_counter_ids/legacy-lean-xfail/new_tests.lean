@@ -203,25 +203,33 @@ def main (_ : rust_primitives.hax.Tuple0) :
   let _ ← (ne_good_message rust_primitives.hax.Tuple0.mk);
   let _ ←
     (hax_lib.assert
-      (← (core_models.result.Impl.is_err rust_primitives.hax.Tuple0 sorry
+      (← (core_models.result.Impl.is_err
+        rust_primitives.hax.Tuple0
+        sorry /- [hax::opaque] Unsupported `dyn` traits -/
         (← (std.panic.catch_unwind
           (rust_primitives.hax.Tuple0 -> RustM rust_primitives.hax.Tuple0)
           rust_primitives.hax.Tuple0 eq_bad)))));
   let _ ←
     (hax_lib.assert
-      (← (core_models.result.Impl.is_err rust_primitives.hax.Tuple0 sorry
+      (← (core_models.result.Impl.is_err
+        rust_primitives.hax.Tuple0
+        sorry /- [hax::opaque] Unsupported `dyn` traits -/
         (← (std.panic.catch_unwind
           (rust_primitives.hax.Tuple0 -> RustM rust_primitives.hax.Tuple0)
           rust_primitives.hax.Tuple0 eq_bad_message)))));
   let _ ←
     (hax_lib.assert
-      (← (core_models.result.Impl.is_err rust_primitives.hax.Tuple0 sorry
+      (← (core_models.result.Impl.is_err
+        rust_primitives.hax.Tuple0
+        sorry /- [hax::opaque] Unsupported `dyn` traits -/
         (← (std.panic.catch_unwind
           (rust_primitives.hax.Tuple0 -> RustM rust_primitives.hax.Tuple0)
           rust_primitives.hax.Tuple0 ne_bad)))));
   let _ ←
     (hax_lib.assert
-      (← (core_models.result.Impl.is_err rust_primitives.hax.Tuple0 sorry
+      (← (core_models.result.Impl.is_err
+        rust_primitives.hax.Tuple0
+        sorry /- [hax::opaque] Unsupported `dyn` traits -/
         (← (std.panic.catch_unwind
           (rust_primitives.hax.Tuple0 -> RustM rust_primitives.hax.Tuple0)
           rust_primitives.hax.Tuple0 ne_bad_message)))));

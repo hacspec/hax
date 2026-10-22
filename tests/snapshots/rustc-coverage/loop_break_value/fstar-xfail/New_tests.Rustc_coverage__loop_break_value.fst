@@ -6,8 +6,8 @@ open Core_models
 /// @fail(extraction): fstar(HAX0001), proverif(HAX0008), ssprove(HAX0001), coq(HAX0001, HAX0001), legacy-lean(HAX0001)
 let main (_: Prims.unit) : Prims.unit =
   let result:i32 =
-    Rust_primitives.Hax.failure "something is not implemented yet.\nUnhandled loop kind\n\nThis is discussed in issue https://github.com/hacspec/hax/issues/933.\nPlease upvote or comment this issue if you see this error message.\nNote: the error was labeled with context `FunctionalizeLoops`.\n"
-      "{\n loop {\n core_models::ops::control_flow::ControlFlow_Break(Tuple2(10, Tuple0()))\n }\n }",
+    Rust_primitives.Hax.failure "[hax::opaque] something is not implemented yet. Unhandled loop kind"
+      "",
     ()
     <:
     (Prims.unit & Prims.unit)

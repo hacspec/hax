@@ -63,21 +63,8 @@ letfun new_tests__rustc_coverage__assert__main(wildcard4 : bitstring) =
        let countdown = (10) in
        let countdown = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |countdown| {
- (if core_models::cmp::f_gt(countdown, 0) {
- {
- let _: tuple0 = {
- (if core_models::cmp::f_eq(countdown, 1) {
- {
- let _: tuple0 = {
- new_tests::rustc_coverage__assert::might_..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        ().

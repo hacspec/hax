@@ -22,7 +22,9 @@ def main (_ : rust_primitives.hax.Tuple0) :
       rust_primitives.hax.Tuple0
       rust_primitives.hax.Tuple0)
     := do
-  (pure (rust_primitives.hax.Tuple2.mk sorry rust_primitives.hax.Tuple0.mk))
+  (pure (rust_primitives.hax.Tuple2.mk
+    sorry /- [hax::opaque] something is not implemented yet. Unhandled loop kind -/
+    rust_primitives.hax.Tuple0.mk))
 
 end new_tests.rustc_coverage__loop_break
 

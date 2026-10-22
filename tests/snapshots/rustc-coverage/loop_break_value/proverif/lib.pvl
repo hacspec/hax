@@ -37,16 +37,8 @@ letfun new_tests__rustc_coverage__loop_break_value__main(wildcard1 : bitstring) 
        let result = (
          (
            rust_primitives__hax__failure(
-             "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-             "{
- loop {
- (break (10))
- }
- }"
+             "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+             ""
            ),
            ()
          )

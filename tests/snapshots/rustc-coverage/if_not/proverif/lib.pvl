@@ -84,34 +84,14 @@ letfun new_tests__rustc_coverage__if_not__if_not(cond : bool) =
 letfun new_tests__rustc_coverage__if_not__main(wildcard12 : bitstring) =
        let wildcard11: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 8,
- })) {
- new_tests::rustc_coverage__if_not::if_not(
- core_models::hint::black_box::..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 4,
- })) {
- new_tests::rustc_coverage__if_not::if_not(
- core_models::hint::black_box::..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).

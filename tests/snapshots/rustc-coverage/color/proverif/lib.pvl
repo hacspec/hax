@@ -36,19 +36,8 @@ letfun bool_default() = false.
 letfun new_tests__rustc_coverage__color__main(wildcard1 : bitstring) =
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _i in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 0,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).

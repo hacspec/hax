@@ -39,7 +39,12 @@ def main (_ : rust_primitives.hax.Tuple0) :
       (2 : i32)
       (fun _ _ => (do (pure true) : RustM Bool))
       rust_primitives.hax.Tuple0.mk
-      (fun _ _ => (do (pure sorry) : RustM rust_primitives.hax.Tuple0))))
+      (fun _ _ =>
+        (do
+        (pure
+        sorry /- [hax::opaque] something is not implemented yet. Sorry, Hax does not support declare-first let bindings (see https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) for now. -/)
+        :
+        RustM rust_primitives.hax.Tuple0))))
     rust_primitives.hax.Tuple0.mk))
 
 end new_tests.rustc_coverage__simple_match

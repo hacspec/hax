@@ -62,14 +62,7 @@ Fail Next Obligation.
 a node of kind [Trait_item_default] have been found in the AST
 
 Note: the error was labeled with context `reject_TraitItemDefault`.
-
-Last available AST for this item:
-
-/** @fail(extraction): ssprove(HAX0008), fstar(HAX0008), proverif(HAX0008), coq(HAX0008)*/#[allow(unused_assignments, unused_variables, dead_code)]#[allow(dead_code, unused, unconditional_recursion)]#[feature(register_tool, if_let_guard)]#[feature(coverage_attribute, stmt_expr_attributes, custom_inner_attributes, test,
-yield_expr, coroutines, coroutine_trait, no_core, core_intrinsics)]#[register_tool(_hax)]trait main__t_InTrait<Self_>{#[allow(unused_assignments, unused_variables, dead_code)]#[allow(dead_code, unused, unconditional_recursion)]#[feature(register_tool, if_let_guard)]#[feature(coverage_attribute, stmt_expr_attributes, custom_inner_attributes, test,
-yield_expr, coroutines, coroutine_trait, no_core, core_intrinsics)]#[register_tool(_hax)]fn main__f_trait_func(_: Self,_: int) -> Self;
-#[allow(unused_assignments, unused_variables, dead_code)]#[allow(dead_code, unused, unconditional_recursion)]#[feature(register_tool, if_let_guard)]#[feature(coverage_attribute, stmt_expr_attributes, custom_inner_attributes, test,
-yield_expr, coroutines, coroutine_trait, no_core, core_intrinsics)]#[register_tool(_hax)]fn main__f_default_trait_func((self: Self)) -> Self{{let _: tuple0 = {new_tests::rustc_coverage__inner_items::main__in_func(new_tests::rustc_coverage__inner_items::main__v_IN_CONST)};{let self: Self = {new_tests::rustc_coverage__inner_items::main__f_trait_func(self,new_tests::rustc_coverage__inner_items::main__v_IN_CONST)};self}}}} todo(item)*)
+ todo(item)*)
 
 #[global] Program Instance main__t_InStruct_main__t_InTrait : main__t_InTrait main__t_InStruct :=
   let main__f_trait_func := fun  (self : both main__t_InStruct) (incr : both int32) => letb self := Build_main__t_InStruct[self] (main__f_in_struct_field := (main__f_in_struct_field self) .+ incr) in

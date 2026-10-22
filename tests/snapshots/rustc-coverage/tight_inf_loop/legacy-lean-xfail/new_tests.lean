@@ -20,7 +20,9 @@ def main (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
   if false then do
     (rust_primitives.hax.never_to_any
-      (rust_primitives.hax.Tuple2.mk sorry rust_primitives.hax.Tuple0.mk))
+      (rust_primitives.hax.Tuple2.mk
+        sorry /- [hax::opaque] something is not implemented yet. Unhandled loop kind -/
+        rust_primitives.hax.Tuple0.mk))
   else do
     (pure rust_primitives.hax.Tuple0.mk)
 

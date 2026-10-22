@@ -55,13 +55,7 @@ Class t_Foo (Self : choice_type) (v_Self : v_Self) := {
 }.
 
 #[global] Program Instance t_W v_T_t_From {v_T : v_T} `{ t_Foo v_T} : t_From (t_W v_T) (nseq f_Assoc 1) :=
-  let f_from := fun  (from : both (nseq f_Assoc 1)) => failure (ret_both (something is not implemented yet.
-Pat:Array
-
-This is discussed in issue https://github.com/hacspec/hax/issues/804.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `AST import`.
- : chString)) (ret_both ( : chString)) : both (t_W v_T) in
+  let f_from := fun  (from : both (nseq f_Assoc 1)) => failure (ret_both ([hax::opaque] something is not implemented yet. Pat:Array : chString)) (ret_both ( : chString)) : both (t_W v_T) in
   {| f_from := (@f_from)|}.
 Fail Next Obligation.
 Hint Unfold t_W v_T_t_From.

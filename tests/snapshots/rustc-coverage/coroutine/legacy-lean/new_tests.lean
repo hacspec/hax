@@ -29,7 +29,8 @@ def get_u32 (val : Bool) :
 @[spec]
 def main (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
-  (pure sorry)
+  (pure
+  sorry /- [hax::opaque] something is not implemented yet. Got type `Coroutine`: coroutines are not supported by hax -/)
 
 end new_tests.rustc_coverage__coroutine
 

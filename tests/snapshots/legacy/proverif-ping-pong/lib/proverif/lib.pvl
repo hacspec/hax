@@ -226,17 +226,8 @@ letfun new_tests__legacy__proverif_ping_pong__lib__b__read_ping_alt(
          msg : new_tests__legacy__proverif_ping_pong__lib__t_Message
        ) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Match_guard] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-         "(match (msg) {
- new_tests::legacy__proverif_ping_pong__lib::Message_Ping(
- received,
- ) if let true = core_models::cmp::f_eq(received, 42) => {
- core_models::result::Result_Ok(
- new_tests::legacy__pro..."
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Match_guard] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__legacy__proverif_ping_pong__lib__b__write_pong(

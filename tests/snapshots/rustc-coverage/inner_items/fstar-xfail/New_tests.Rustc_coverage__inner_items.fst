@@ -37,75 +37,7 @@ type main__t_InStruct = { main__f_in_struct_field:u32 }
 
 let main__v_IN_CONST: u32 = mk_u32 1234
 
-(* item error backend: Explicit rejection by a phase in the Hax engine:
-a node of kind [Trait_item_default] have been found in the AST
-
-Note: the error was labeled with context `reject_TraitItemDefault`.
-
-Last available AST for this item:
-
-/** @fail(extraction): ssprove(HAX0008), fstar(HAX0008), proverif(HAX0008), coq(HAX0008)*/#[allow(unused_assignments, unused_variables, dead_code)]#[allow(dead_code, unused, unconditional_recursion)]#[feature(register_tool, if_let_guard)]#[feature(coverage_attribute, stmt_expr_attributes, custom_inner_attributes, test,
-yield_expr, coroutines, coroutine_trait, no_core, core_intrinsics)]#[register_tool(_hax)]trait main__t_InTrait<Self_>{#[_hax::json("\"TraitMethodNoPrePost\"")]fn main__f_trait_func_pre(_: Self,_: int) -> bool;
-#[_hax::json("\"TraitMethodNoPrePost\"")]fn main__f_trait_func_post(_: Self,_: int,_: Self) -> bool;
-fn main__f_trait_func(_: Self,_: int) -> Self;
-fn main__f_default_trait_func((self: Self)) -> Self{{let _: tuple0 = {new_tests::rustc_coverage__inner_items::main__in_func(new_tests::rustc_coverage__inner_items::main__v_IN_CONST)};{let self: Self = {new_tests::rustc_coverage__inner_items::main__f_trait_func(self,new_tests::rustc_coverage__inner_items::main__v_IN_CONST)};self}}}}
-
-Last AST:
-/** print_rust: pitem: not implemented  (item: { Concrete_ident.T.def_id =
-  { Explicit_def_id.T.is_constructor = false;
-    def_id =
-    { Types.index = (0, 0, None); is_local = true; kind = Types.Trait;
-      krate = "new_tests";
-      parent =
-      (Some { Types.contents =
-              { Types.id = 0;
-                value =
-                { Types.index = (0, 0, None); is_local = true;
-                  kind = Types.Fn; krate = "new_tests";
-                  parent =
-                  (Some { Types.contents =
-                          { Types.id = 0;
-                            value =
-                            { Types.index = (0, 0, None); is_local = true;
-                              kind = Types.Mod; krate = "new_tests";
-                              parent =
-                              (Some { Types.contents =
-                                      { Types.id = 0;
-                                        value =
-                                        { Types.index = (0, 0, None);
-                                          is_local = true; kind = Types.Mod;
-                                          krate = "new_tests"; parent = None;
-                                          path = [] }
-                                        }
-                                      });
-                              path =
-                              [{ Types.data =
-                                 (Types.TypeNs "rustc_coverage__inner_items");
-                                 disambiguator = 0 }
-                                ]
-                              }
-                            }
-                          });
-                  path =
-                  [{ Types.data =
-                     (Types.TypeNs "rustc_coverage__inner_items");
-                     disambiguator = 0 };
-                    { Types.data = (Types.ValueNs "main"); disambiguator = 0
-                      }
-                    ]
-                  }
-                }
-              });
-      path =
-      [{ Types.data = (Types.TypeNs "rustc_coverage__inner_items");
-         disambiguator = 0 };
-        { Types.data = (Types.ValueNs "main"); disambiguator = 0 };
-        { Types.data = (Types.TypeNs "InTrait"); disambiguator = 0 }]
-      }
-    };
-  moved = None; suffix = None }) */
-const _: () = ();
- *)
+(* [hax::excluded] main__t_InTrait — Explicit rejection by a phase in the Hax engine: a node of kind [Trait_item_default] have been found in the AST *)
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let main__impl: main__t_InTrait main__t_InStruct =

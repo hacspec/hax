@@ -27,8 +27,7 @@ def Impl.bar (self : Never) : RustM rust_primitives.hax.Tuple0 := do
 
 --  @fail(extraction): fstar(HAX0001), ssprove(HAX0001), legacy-lean(HAX0001), coq(HAX0001)
 --  @fail(extraction): proverif(HAX0001)
-@[spec]
-def foo2 (never : Never) : RustM sorry := do (pure sorry)
+-- [hax::excluded] foo2 — something is not implemented yet. Got type `Coroutine`: coroutines are not supported by hax
 
 @[spec]
 def make (_ : rust_primitives.hax.Tuple0) :

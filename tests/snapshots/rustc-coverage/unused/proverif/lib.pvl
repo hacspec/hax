@@ -37,25 +37,8 @@ letfun new_tests__rustc_coverage__unused__foo(x : v_T) =
        let i = (0) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |i| {
- (if core_models::cmp::f_lt(i, 10) {
- {
- let _: bool = {
- BinOp::Ast
- .Or(
- core_models::cmp::f_ne(i, 0),
- core_models::cmp::f_ne(i, 0),
- )
- };
- {
- let i: int = { core_models::ops::a..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).
@@ -64,25 +47,8 @@ letfun new_tests__rustc_coverage__unused__unused_template_func(x : v_T) =
        let i = (0) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |i| {
- (if core_models::cmp::f_lt(i, 10) {
- {
- let _: bool = {
- BinOp::Ast
- .Or(
- core_models::cmp::f_ne(i, 0),
- core_models::cmp::f_ne(i, 0),
- )
- };
- {
- let i: int = { core_models::ops::a..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).

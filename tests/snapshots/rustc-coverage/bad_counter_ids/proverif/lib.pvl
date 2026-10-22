@@ -287,12 +287,8 @@ letfun new_tests__rustc_coverage__bad_counter_ids__main(wildcard41 : bitstring) 
          if
            core_models__ops__bit__f_not(
                rust_primitives__hax__failure(
-                 "Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
-",
-                 "core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte..."
+                 "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST",
+                 ""
                )
              )
          then (bitstring_err())
@@ -302,12 +298,8 @@ Note: the error was labeled with context `reject_Dyn`.
          if
            core_models__ops__bit__f_not(
                rust_primitives__hax__failure(
-                 "Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
-",
-                 "core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte..."
+                 "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST",
+                 ""
                )
              )
          then (bitstring_err())
@@ -317,12 +309,8 @@ Note: the error was labeled with context `reject_Dyn`.
          if
            core_models__ops__bit__f_not(
                rust_primitives__hax__failure(
-                 "Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
-",
-                 "core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte..."
+                 "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST",
+                 ""
                )
              )
          then (bitstring_err())
@@ -332,12 +320,8 @@ Note: the error was labeled with context `reject_Dyn`.
          if
            core_models__ops__bit__f_not(
                rust_primitives__hax__failure(
-                 "Explicit rejection by a phase in the Hax engine:
-a node of kind [Dyn] have been found in the AST
-
-Note: the error was labeled with context `reject_Dyn`.
-",
-                 "core_models::result::impl__is_err::<tuple0,dyn(core_models::any::t_Any + core_models::marker::t_Send)>(std::panic::catch_unwind::<arrow!(tuple0 -> tuple0),tuple0>(new_tests::rustc_coverage__bad_counte..."
+                 "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Dyn] have been found in the AST",
+                 ""
                )
              )
          then (bitstring_err())

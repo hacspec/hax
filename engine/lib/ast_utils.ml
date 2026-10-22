@@ -970,19 +970,12 @@ module Make (F : Features.T) = struct
     end
   end
 
-  let hax_failure_expr' span (typ : ty) (context, kind) (ast : string) =
-    let ast =
-      (* Remove consecutive withe spaces *)
-      String.split ~on:' ' ast
-      |> List.filter ~f:(String.is_empty >> not)
-      |> String.concat ~sep:" "
+  let hax_failure_expr' span (typ : ty) (context, kind) (_ast : string) =
+    let error =
+      "[hax::opaque] "
+      ^ Diagnostics.oneline (Diagnostics.pretty_print_context_kind context kind)
     in
-    let ast =
-      if String.length ast > 200 then String.sub ~pos:0 ~len:200 ast ^ "..."
-      else ast
-    in
-    let error = Diagnostics.pretty_print_context_kind context kind in
-    HaxFailure.Build.expr span typ error ast
+    HaxFailure.Build.expr span typ error ""
 
   let hax_failure_expr span (typ : ty) (context, kind) (expr0 : Ast.Full.expr) =
     hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)

@@ -40,19 +40,8 @@ letfun new_tests__rustc_coverage__branch__if_let__say(message : bitstring) =
 letfun new_tests__rustc_coverage__branch__if_let__if_let(input : Option) =
        let wildcard6: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard5: bitstring = (
@@ -80,22 +69,10 @@ letfun new_tests__rustc_coverage__branch__if_let__if_let_chain(
        let wildcard11: bitstring = (
          if
            rust_primitives__hax__failure(
-               "something is not implemented yet.
-Let-chains (e.g. `if let .. && let ..`) are not supported.
-
-This is discussed in issue https://github.com/hacspec/hax/issues/2018.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `AST import`.
-",
+               "[hax::opaque] something is not implemented yet. Let-chains (e.g. `if let .. && let ..`) are not supported.",
                ""
              ) && rust_primitives__hax__failure(
-               "something is not implemented yet.
-Let-chains (e.g. `if let .. && let ..`) are not supported.
-
-This is discussed in issue https://github.com/hacspec/hax/issues/2018.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `AST import`.
-",
+               "[hax::opaque] something is not implemented yet. Let-chains (e.g. `if let .. && let ..`) are not supported.",
                ""
              )
          then
@@ -134,50 +111,20 @@ letfun new_tests__rustc_coverage__branch__if_let__main(wildcard19 : bitstring) =
        ) in
        let wildcard15: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 8,
- })) {
- new_tests::rustc_coverage__branch__if_let::if_let_chain(
- core_models::opt..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard14: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 4,
- })) {
- new_tests::rustc_coverage__branch__if_let::if_let_chain(
- core_models::opt..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard13: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 2,
- })) {
- new_tests::rustc_coverage__branch__if_let::if_let_chain(
- core_models::opt..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard12: bitstring = (

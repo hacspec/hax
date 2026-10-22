@@ -38,41 +38,15 @@ letfun new_tests__rustc_coverage__branch__while__while_cond(
        ) =
        let wildcard1: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let a = (8) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |a| {
- (if core_models::cmp::f_gt(a, 0) {
- {
- let a: int = { core_models::ops::arith::f_sub(a, 1) };
- a
- }
- } else {
- {
- #[note("rhs.typ=int")]
- let hoist1: rust_primitives::hax::t_Never =..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).
@@ -82,41 +56,15 @@ letfun new_tests__rustc_coverage__branch__while__while_cond_not(
        ) =
        let wildcard3: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let a = (8) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |a| {
- (if core_models::ops::bit::f_not(core_models::cmp::f_eq(a, 0)) {
- {
- let a: int = { core_models::ops::arith::f_sub(a, 1) };
- a
- }
- } else {
- {
- #[note("rhs.typ=int")]
- let hoist3: r..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).
@@ -126,40 +74,16 @@ letfun new_tests__rustc_coverage__branch__while__while_op_and(
        ) =
        let wildcard5: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let a = (8) in
        let b = (4) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |Tuple2(a, b)| {
- (if BinOp::Ast
- .And(core_models::cmp::f_gt(a, 0), core_models::cmp::f_gt(b, 0))
- {
- {
- let a: int = { core_models::ops::arith::f_sub(a, 1) };
- {
- let b: int = { core_mod..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).
@@ -169,40 +93,16 @@ letfun new_tests__rustc_coverage__branch__while__while_op_or(
        ) =
        let wildcard7: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let a = (4) in
        let b = (8) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (loop {
- |Tuple2(a, b)| {
- (if BinOp::Ast
- .Or(core_models::cmp::f_gt(a, 0), core_models::cmp::f_gt(b, 0))
- {
- {
- let a: int = { core_models::ops::arith::f_sub(a, 1) };
- {
- let b: int = { core_mode..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).

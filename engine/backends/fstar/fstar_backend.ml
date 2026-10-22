@@ -1041,12 +1041,15 @@ struct
           (* Print comments only for items that are being printed *)
           pdoc_comments e.attrs @ printed_items
     with Diagnostics.SpanFreeError.Exn error ->
-      let error = Diagnostics.SpanFreeError.payload error in
-      let error = [%show: Diagnostics.Context.t * Diagnostics.kind] error in
+      let context, kind = Diagnostics.SpanFreeError.payload error in
+      let error =
+        Diagnostics.oneline (Diagnostics.pretty_print_context_kind context kind)
+      in
       [
         `Comment
-          ("item error backend: " ^ error ^ "\n\nLast AST:\n"
-          ^ (U.LiftToFullAst.item e |> Print_rust.pitem_str));
+          ("[hax::excluded] "
+          ^ (pconcrete_ident e.ident |> F.Ident.text_of_lid)
+          ^ " — " ^ error);
       ]
 
   and pitem_unwrapped (e : item) :
@@ -1761,8 +1764,10 @@ struct
     | HaxError details ->
         [
           `Comment
-            ("item error backend: " ^ details ^ "\n\nLast AST:\n"
-            ^ (U.LiftToFullAst.item e |> Print_rust.pitem_str));
+            ("[hax::excluded] "
+            ^ (pconcrete_ident e.ident |> F.Ident.text_of_lid)
+            ^ " — "
+            ^ Diagnostics.oneline details);
         ]
     | Use _ (* TODO: Not Yet Implemented *) | NotImplementedYet -> []
     | _ -> .

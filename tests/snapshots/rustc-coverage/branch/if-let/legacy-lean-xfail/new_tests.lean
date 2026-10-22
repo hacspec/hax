@@ -49,7 +49,12 @@ def if_let_chain
     (b : (core_models.option.Option String)) :
     RustM rust_primitives.hax.Tuple0 := do
   let _ ←
-    if (← (sorry &&? sorry)) then do
+    if
+    (←
+    (sorry /- [hax::opaque] something is not implemented yet. Let-chains (e.g. `if let .. && let ..`) are not supported. -/
+      &&?
+      sorry /- [hax::opaque] something is not implemented yet. Let-chains (e.g. `if let .. && let ..`) are not supported. -/))
+    then do
       let _ ← (say x);
       let _ ← (say y);
       (pure rust_primitives.hax.Tuple0.mk)

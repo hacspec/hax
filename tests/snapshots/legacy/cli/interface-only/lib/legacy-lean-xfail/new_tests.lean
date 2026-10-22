@@ -22,7 +22,9 @@ namespace new_tests.legacy__cli__interface_only__lib
 --  post-conditions.
 --  @fail(extraction): proverif(HAX0008, HAX0008, HAX0008, HAX0008), ssprove(HAX0008, HAX0008, HAX0008, HAX0008), coq(HAX0008, HAX0008, HAX0008, HAX0008), fstar(HAX0008, HAX0008, HAX0008, HAX0008)
 --  @fail(extraction): legacy-lean(HAX0008, HAX0008, HAX0008, HAX0008)
-def f (x : u8) : RustM (RustArray u8 4) := do (pure sorry)
+def f (x : u8) : RustM (RustArray u8 4) := do
+  (pure
+  sorry /- [hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Raw_pointer] have been found in the AST -/)
 
 set_option hax_mvcgen.specset "bv" in
 @[hax_spec]
@@ -40,7 +42,10 @@ structure Bar where
   -- no fields
 
 @[spec]
-def Impl.from_hoisted sorry : RustM Bar := do (pure Bar.mk)
+def Impl.from_hoisted
+    sorry /- [hax::opaque] Function parameters must not contain patterns -/ :
+    RustM Bar := do
+  (pure Bar.mk)
 
 --  Non-inherent implementations are extracted, their bodies are not
 --  dropped. This might be a bit surprising: see
@@ -70,7 +75,9 @@ structure Holder (T : Type) where
   value : (alloc.vec.Vec T alloc.alloc.Global)
 
 @[spec]
-def Impl_2.from_hoisted (T : Type) sorry : RustM (Holder T) := do
+def Impl_2.from_hoisted (T : Type)
+    sorry /- [hax::opaque] Function parameters must not contain patterns -/ :
+    RustM (Holder T) := do
   (pure (Holder.mk
     (value := (← (alloc.vec.Impl.new T rust_primitives.hax.Tuple0.mk)))))
 
@@ -87,7 +94,9 @@ structure Param (SIZE : usize) where
   value : (RustArray u8 SIZE)
 
 @[spec]
-def Impl_3.from_hoisted (SIZE : usize) sorry : RustM (Param (SIZE)) := do
+def Impl_3.from_hoisted (SIZE : usize)
+    sorry /- [hax::opaque] Function parameters must not contain patterns -/ :
+    RustM (Param (SIZE)) := do
   (pure (Param.mk (value := (← (rust_primitives.hax.repeat (0 : u8) SIZE)))))
 
 @[reducible] instance Impl_3.AssociatedTypes (SIZE : usize) :

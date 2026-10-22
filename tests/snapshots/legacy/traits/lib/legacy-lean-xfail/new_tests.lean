@@ -117,7 +117,9 @@ def closure_impl_expr_fngen
       (associatedTypes := {
         show core_models.iter.traits.iterator.Iterator.AssociatedTypes I
         by infer_instance
-        with Item := rust_primitives.hax.Tuple0, sorry})]
+        with
+          Item := rust_primitives.hax.Tuple0,
+          sorry /- [hax::opaque] Unsupported equality constraints on associated types of parent trait -/})]
     [trait_constr_closure_impl_expr_fngen_associated_type_i1 :
       core_models.ops.function.FnMut.AssociatedTypes
       F
@@ -131,7 +133,8 @@ def closure_impl_expr_fngen
           F
           (rust_primitives.hax.Tuple1 rust_primitives.hax.Tuple0)
         by infer_instance
-        with sorry})]
+        with
+          sorry /- [hax::opaque] Unsupported equality constraints on associated types of parent trait -/})]
     (it : I)
     (f : F) :
     RustM (alloc.vec.Vec rust_primitives.hax.Tuple0 alloc.alloc.Global) := do
@@ -275,7 +278,9 @@ class Trait (Self : Type)
         P
         (rust_primitives.hax.Tuple1 u8)
       by infer_instance
-      with sorry})] :
+      with
+        sorry /- [hax::opaque] Unsupported equality constraints on associated types of parent trait -/})]
+  :
   Trait.AssociatedTypes P
   where
 
@@ -294,7 +299,9 @@ instance Impl
         P
         (rust_primitives.hax.Tuple1 u8)
       by infer_instance
-      with sorry})] :
+      with
+        sorry /- [hax::opaque] Unsupported equality constraints on associated types of parent trait -/})]
+  :
   Trait P
   where
 

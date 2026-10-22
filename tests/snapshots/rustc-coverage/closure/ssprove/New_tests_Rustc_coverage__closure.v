@@ -32,19 +32,5 @@ Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
 Equations main (_ : both 'unit) : both 'unit :=
   main _  :=
-    failure (ret_both (The bindings ["countdown"] cannot be mutated here: they don't belong to the closure scope, and this is not allowed.
-
-This is discussed in issue https://github.com/hacspec/hax/issues/1060.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `LocalMutation`.
- : chString)) (ret_both ({
- let is_true: bool = {
- core_models::cmp::f_eq(
- core_models::iter::traits::exact_size::f_len(std::env::args(Tuple0)),
- 1,
- )
- };
- {
- let is_false: bool = { core_models::ops::bit::f_not(is_true) };
-... : chString)) : both 'unit.
+    failure (ret_both ([hax::opaque] The bindings ["countdown"] cannot be mutated here: they don't belong to the closure scope, and this is not allowed. : chString)) (ret_both ( : chString)) : both 'unit.
 Fail Next Obligation.

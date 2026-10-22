@@ -32,54 +32,13 @@ Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
 Equations f (x : both int8) : both (nseq int8 4) :=
   f x  :=
-    failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Raw_pointer] have been found in the AST
-
-Note: the error was labeled with context `reject_RawOrMutPointer`.
- : chString)) (ret_both ({
- let y: raw_pointer!() = { cast(x) };
- {
- let _: tuple0 = {
- {
- let _: tuple0 = {
- {
- let _: tuple0 = {
- std::io::stdio::e_print({
- let args: tuple1<&int> = { Tuple1(&(deref(y))) };
- {
- let args: [c... : chString)) : both (nseq int8 4).
+    failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Raw_pointer] have been found in the AST : chString)) (ret_both ( : chString)) : both (nseq int8 4).
 Fail Next Obligation.
 
 (*Explicit rejection by a phase in the Hax engine:
 a node of kind [Raw_pointer] have been found in the AST
 
 Note: the error was labeled with context `reject_RawOrMutPointer`.
-
-Last available AST for this item:
-
-/// This struct contains a field which uses raw pointers, which are
-/// not supported by hax. This item cannot be extracted at all: we
-/// need to exclude it with `-i '-*::Foo'`.
-/// @fail(extraction): proverif(HAX0008), fstar(HAX0008), coq(HAX0008), ssprove(HAX0008)
-/// @fail(extraction): legacy-lean(HAX0008)
-#[allow(dead_code)]
-#[allow(dead_code, unused, unconditional_recursion)]
-#[feature(register_tool, if_let_guard)]
-#[feature(
-    coverage_attribute,
-    stmt_expr_attributes,
-    custom_inner_attributes,
-    test,
-    yield_expr,
-    coroutines,
-    coroutine_trait,
-    no_core,
-    core_intrinsics
-)]
-#[register_tool(_hax)]
-struct t_Foo {
-    f_unsupported_field: raw_pointer!(),
-}
  todo(item)*)
 
 Definition t_Bar : choice_type :=

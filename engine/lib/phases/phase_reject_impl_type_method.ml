@@ -33,12 +33,7 @@ module Make (F : Features.T) =
             try super#visit_item (Some i.span) i
             with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
               let error = Diagnostics.pretty_print_context_kind context kind in
-              let cast_item : item -> Ast.Full.item = Stdlib.Obj.magic in
-              let ast = cast_item i |> Print_rust.pitem_str in
-              let msg =
-                error ^ "\nLast available AST for this item:\n\n" ^ ast
-              in
-              make_hax_error_item i.span i.ident msg
+              make_hax_error_item i.span i.ident error
         end
 
       let ditems = List.map ~f:(reject_anon_assoc_ty#visit_item None)

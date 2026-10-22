@@ -93,49 +93,28 @@ Note: the error was labeled with context `AST import`.
 
 Equations test1 (_ : both 'unit) : both 'unit :=
   test1 _  :=
-    letb _ := ifb failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) } : chString))
+    letb _ := ifb failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString))
     then letb _ := e_print (impl_1__new_const (array_from_list [ret_both (debug is enabled
  : chString)])) in
     letb _ := ret_both (tt : 'unit) in
     ret_both (tt : 'unit)
     else ret_both (tt : 'unit) in
-    letb _ := ifb failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) } : chString))
+    letb _ := ifb failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString))
     then letb _ := e_print (impl_1__new_const (array_from_list [ret_both (debug is enabled
  : chString)])) in
     letb _ := ret_both (tt : 'unit) in
     ret_both (tt : 'unit)
     else ret_both (tt : 'unit) in
     letb _ := ret_both (0 : int32) in
-    letb _ := ifb failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) } : chString))
+    letb _ := ifb failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString))
     then letb _ := e_print (impl_1__new_const (array_from_list [ret_both (debug is enabled
  : chString)])) in
     letb _ := ret_both (tt : 'unit) in
     ret_both (tt : 'unit)
     else ret_both (tt : 'unit) in
-    letb _ := failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Arbitrary_lhs] have been found in the AST
-
-Note: the error was labeled with context `reject_ArbitraryLhs`.
- : chString)) (ret_both ((rust_primitives::hax::failure(
- "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the e... : chString)) in
+    letb _ := failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Arbitrary_lhs] have been found in the AST : chString)) (ret_both ( : chString)) in
     letb _ := ret_both (tt : 'unit) in
-    letb _ := ifb failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) } : chString))
+    letb _ := ifb failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString))
     then letb _ := e_print (impl_1__new_const (array_from_list [ret_both (debug is enabled
  : chString)])) in
     letb _ := ret_both (tt : 'unit) in
@@ -151,11 +130,7 @@ Fail Next Obligation.
 Equations test2 (_ : both 'unit) : both 'unit :=
   test2 _  :=
     letb _ := test2__call_print (ret_both (called from call_debug:  : chString)) in
-    letb _ := ifb failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
- : chString)) (ret_both (unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) } : chString))
+    letb _ := ifb failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST : chString)) (ret_both ( : chString))
     then letb _ := e_print (impl_1__new_const (array_from_list [ret_both (debug is enabled
  : chString)])) in
     letb _ := ret_both (tt : 'unit) in

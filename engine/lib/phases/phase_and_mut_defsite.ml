@@ -310,12 +310,7 @@ struct
             try super#visit_item () i
             with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
               let error = Diagnostics.pretty_print_context_kind context kind in
-              let cast_item : B.item -> Ast.Full.item = Stdlib.Obj.magic in
-              let ast = cast_item i |> Print_rust.pitem_str in
-              let msg =
-                error ^ "\nLast available AST for this item:\n\n" ^ ast
-              in
-              B.make_hax_error_item i.span i.ident msg
+              B.make_hax_error_item i.span i.ident error
 
           method! visit_item' () item' =
             (match item' with

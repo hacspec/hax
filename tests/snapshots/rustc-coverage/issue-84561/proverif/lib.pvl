@@ -550,12 +550,8 @@ letfun new_tests__rustc_coverage__issue_84561___test1(wildcard54 : bitstring) =
        let wildcard53: bitstring = (
          if
            rust_primitives__hax__failure(
-               "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-               "unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) }"
+               "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+               ""
              )
          then
            (let wildcard52: bitstring = (
@@ -571,12 +567,8 @@ Note: the error was labeled with context `reject_Unsafe`.
        let wildcard50: bitstring = (
          if
            rust_primitives__hax__failure(
-               "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-               "unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) }"
+               "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+               ""
              )
          then
            (let wildcard49: bitstring = (
@@ -593,12 +585,8 @@ Note: the error was labeled with context `reject_Unsafe`.
        let wildcard46: bitstring = (
          if
            rust_primitives__hax__failure(
-               "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-               "unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) }"
+               "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+               ""
              )
          then
            (let wildcard45: bitstring = (
@@ -613,25 +601,16 @@ Note: the error was labeled with context `reject_Unsafe`.
        ) in
        let wildcard43: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Arbitrary_lhs] have been found in the AST
-
-Note: the error was labeled with context `reject_ArbitraryLhs`.
-",
-           "(rust_primitives::hax::failure(
- "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the e..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Arbitrary_lhs] have been found in the AST",
+           ""
          )
        ) in
        let wildcard42: bitstring = (()) in
        let wildcard41: bitstring = (
          if
            rust_primitives__hax__failure(
-               "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-               "unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) }"
+               "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+               ""
              )
          then
            (let wildcard40: bitstring = (
@@ -666,12 +645,8 @@ letfun new_tests__rustc_coverage__issue_84561___test2(wildcard61 : bitstring) =
        let wildcard59: bitstring = (
          if
            rust_primitives__hax__failure(
-               "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-               "unsafe { deref(new_tests::rustc_coverage__issue_84561_::v_DEBUG_LEVEL_ENABLED) }"
+               "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+               ""
              )
          then
            (let wildcard58: bitstring = (

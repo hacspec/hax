@@ -329,64 +329,14 @@ let test3 (_: Prims.unit) : Prims.unit =
   in
   ()
 
-(* item error backend: something is not implemented yet.
-Mutable static items are not supported.
-
-This is discussed in issue https://github.com/hacspec/hax/issues/1343.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `AST import`.
-
-
-Last AST:
-/** print_rust: pitem: not implemented  (item: { Concrete_ident.T.def_id =
-  { Explicit_def_id.T.is_constructor = false;
-    def_id =
-    { Types.index = (0, 0, None); is_local = true;
-      kind =
-      Types.Static {mutability = true; nested = false; safety = Types.Safe};
-      krate = "new_tests";
-      parent =
-      (Some { Types.contents =
-              { Types.id = 0;
-                value =
-                { Types.index = (0, 0, None); is_local = true;
-                  kind = Types.Mod; krate = "new_tests";
-                  parent =
-                  (Some { Types.contents =
-                          { Types.id = 0;
-                            value =
-                            { Types.index = (0, 0, None); is_local = true;
-                              kind = Types.Mod; krate = "new_tests";
-                              parent = None; path = [] }
-                            }
-                          });
-                  path =
-                  [{ Types.data =
-                     (Types.TypeNs "rustc_coverage__issue_84561");
-                     disambiguator = 0 }
-                    ]
-                  }
-                }
-              });
-      path =
-      [{ Types.data = (Types.TypeNs "rustc_coverage__issue_84561");
-         disambiguator = 0 };
-        { Types.data = (Types.ValueNs "DEBUG_LEVEL_ENABLED");
-          disambiguator = 0 }
-        ]
-      }
-    };
-  moved = None; suffix = None }) */
-const _: () = ();
- *)
+(* [hax::excluded] v_DEBUG_LEVEL_ENABLED — something is not implemented yet. Mutable static items are not supported. *)
 
 /// @fail(extraction): ssprove(HAX0002, HAX0008, HAX0008, HAX0008), coq(HAX0008, HAX0008, HAX0008, HAX0002), fstar(HAX0002, HAX0002, HAX0008, HAX0008, HAX0008), proverif(HAX0002, HAX0008, HAX0008, HAX0008), legacy-lean(HAX0002, HAX0002, HAX0008, HAX0008, HAX0008)
 let test1 (_: Prims.unit) : Prims.unit =
   let _:Prims.unit =
     if
-      Rust_primitives.Hax.failure "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the error was labeled with context `DirectAndMut`.\n"
-        "rust_primitives::hax::failure(\n \"Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutP..."
-
+      Rust_primitives.Hax.failure "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here"
+        ""
     then
       let _:Prims.unit =
         Std.Io.Stdio.e_print (Core_models.Fmt.Rt.impl_1__new_const (mk_usize 1)
@@ -401,9 +351,8 @@ let test1 (_: Prims.unit) : Prims.unit =
   in
   let _:Prims.unit =
     if
-      Rust_primitives.Hax.failure "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the error was labeled with context `DirectAndMut`.\n"
-        "rust_primitives::hax::failure(\n \"Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutP..."
-
+      Rust_primitives.Hax.failure "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here"
+        ""
     then
       let _:Prims.unit =
         Std.Io.Stdio.e_print (Core_models.Fmt.Rt.impl_1__new_const (mk_usize 1)
@@ -419,9 +368,8 @@ let test1 (_: Prims.unit) : Prims.unit =
   let _:i32 = mk_i32 0 in
   let _:Prims.unit =
     if
-      Rust_primitives.Hax.failure "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the error was labeled with context `DirectAndMut`.\n"
-        "rust_primitives::hax::failure(\n \"Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutP..."
-
+      Rust_primitives.Hax.failure "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here"
+        ""
     then
       let _:Prims.unit =
         Std.Io.Stdio.e_print (Core_models.Fmt.Rt.impl_1__new_const (mk_usize 1)
@@ -435,16 +383,14 @@ let test1 (_: Prims.unit) : Prims.unit =
       ()
   in
   let _:Prims.unit =
-    Rust_primitives.Hax.failure "Explicit rejection by a phase in the Hax engine:\na node of kind [Arbitrary_lhs] have been found in the AST\n\nNote: the error was labeled with context `reject_ArbitraryLhs`.\n"
-      "(rust_primitives::hax::failure(\n \"Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the e..."
-
+    Rust_primitives.Hax.failure "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Arbitrary_lhs] have been found in the AST"
+      ""
   in
   let _:Prims.unit = () in
   let _:Prims.unit =
     if
-      Rust_primitives.Hax.failure "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the error was labeled with context `DirectAndMut`.\n"
-        "rust_primitives::hax::failure(\n \"Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutP..."
-
+      Rust_primitives.Hax.failure "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here"
+        ""
     then
       let _:Prims.unit =
         Std.Io.Stdio.e_print (Core_models.Fmt.Rt.impl_1__new_const (mk_usize 1)
@@ -485,9 +431,8 @@ let test2 (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = test2__call_print "called from call_debug: " in
   let _:Prims.unit =
     if
-      Rust_primitives.Hax.failure "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!\nDetails: expected an arrow type here\n\nNote: the error was labeled with context `DirectAndMut`.\n"
-        "rust_primitives::hax::failure(\n \"Explicit rejection by a phase in the Hax engine:\na node of kind [Raw_pointer] have been found in the AST\n\nNote: the error was labeled with context `reject_RawOrMutP..."
-
+      Rust_primitives.Hax.failure "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here"
+        ""
     then
       let _:Prims.unit =
         Std.Io.Stdio.e_print (Core_models.Fmt.Rt.impl_1__new_const (mk_usize 1)

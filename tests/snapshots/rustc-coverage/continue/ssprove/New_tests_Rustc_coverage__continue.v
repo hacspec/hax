@@ -70,11 +70,7 @@ Equations main (_ : both 'unit) : both 'unit :=
     letb x := foldi_both_list (f_into_iter (Build_t_Range (f_start := ret_both (0 : int32)) (f_end := ret_both (10 : int32)))) (fun _ =>
       ssp (fun x =>
         letb _ := ifb is_true
-        then never_to_any (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Continue] have been found in the AST
-
-Note: the error was labeled with context `reject_Continue`.
- : chString)) (ret_both (continue; : chString)))
+        then never_to_any (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Continue] have been found in the AST : chString)) (ret_both ( : chString)))
         else ret_both (tt : 'unit) in
         letb x := ret_both (3 : int32) in
         x : (both int32))) x in
@@ -97,13 +93,7 @@ Note: the error was labeled with context `reject_Continue`.
           letb x := ret_both (1 : int32) in
           x
         | _ =>
-          letb hoist1 := failure (ret_both (something is not implemented yet.
-TODO: Monad for loop-related control flow
-
-This is discussed in issue https://github.com/hacspec/hax/issues/15.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `CfIntoMonads`.
- : chString)) (ret_both ((break (Tuple0)) : chString)) in
+          letb hoist1 := failure (ret_both ([hax::opaque] something is not implemented yet. TODO: Monad for loop-related control flow : chString)) (ret_both ( : chString)) in
           x
         end in
         letb x := ret_both (3 : int32) in

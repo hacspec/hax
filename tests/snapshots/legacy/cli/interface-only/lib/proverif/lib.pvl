@@ -98,23 +98,8 @@ reduc forall new_tests__legacy__cli__interface_only__lib__f_value: bitstring;
 
 letfun new_tests__legacy__cli__interface_only__lib__f(x : nat) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Raw_pointer] have been found in the AST
-
-Note: the error was labeled with context `reject_RawOrMutPointer`.
-",
-         "{
- let y: raw_pointer!() = { cast(x) };
- {
- let _: tuple0 = {
- {
- let _: tuple0 = {
- {
- let _: tuple0 = {
- std::io::stdio::e_print({
- let args: tuple1<&int> = { Tuple1(&(deref(y))) };
- {
- let args: [c..."
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Raw_pointer] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__legacy__cli__interface_only__lib__f_from__impl_1__from(

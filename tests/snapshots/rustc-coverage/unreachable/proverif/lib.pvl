@@ -39,30 +39,16 @@ letfun new_tests__rustc_coverage__unreachable__unreachable_function(
          wildcard1 : bitstring
        ) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-         "unsafe {
- rust_primitives::hax::never_to_any(
- core_models::hint::unreachable_unchecked(Tuple0),
- )
- }"
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__rustc_coverage__unreachable__unreachable_intrinsic(
          wildcard2 : bitstring
        ) =
        rust_primitives__hax__failure(
-         "Explicit rejection by a phase in the Hax engine:
-a node of kind [Unsafe] have been found in the AST
-
-Note: the error was labeled with context `reject_Unsafe`.
-",
-         "unsafe {
- rust_primitives::hax::never_to_any(core_models::intrinsics::unreachable(Tuple0))
- }"
+         "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Unsafe] have been found in the AST",
+         ""
        ).
 
 letfun new_tests__rustc_coverage__unreachable__main(wildcard8 : bitstring) =

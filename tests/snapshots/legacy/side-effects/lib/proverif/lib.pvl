@@ -353,16 +353,8 @@ letfun new_tests__legacy__side_effects__lib__local_mutation(x : nat) =
           let hoist4 = (core_models__iter__traits__collect__f_into_iter(hoist3)) in
           let y = (
             rust_primitives__hax__failure(
-              "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-              "{
- (for i in (hoist4) {
- |y| { core_models::num::impl_u32__wrapping_add(x, i) }
- })(y)
- }"
+              "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+              ""
             )
           ) in
           core_models__num__impl_u32__wrapping_add(x, y))
@@ -565,16 +557,8 @@ letfun new_tests__legacy__side_effects__lib__assign_non_trivial_lhs(
              new_tests__legacy__side_effects__lib__t_Bar(
 
                  rust_primitives__hax__failure(
-                   "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!
-Details: Construct unexpected constructors
-
-Note: the error was labeled with context `Generic generic printer`.
-",
-                   "tuple2 {
- print_rust_last_of_global_ident_error: rust_primitives::hax::monomorphized_update_at::update_at_usize(
- proj_proj_tuple0(
- proj_new_tests::legacy__side_effects__lib::f_b(
- proj_new_tests::le..."
+                   "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: Construct unexpected constructors",
+                   ""
                  )
 
              )
@@ -598,16 +582,8 @@ Note: the error was labeled with context `Generic generic printer`.
          new_tests__legacy__side_effects__lib__t_Foo(
 
              rust_primitives__hax__failure(
-               "Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub!
-Details: Construct unexpected constructors
-
-Note: the error was labeled with context `Generic generic printer`.
-",
-               "tuple2 {
- print_rust_last_of_global_ident_error: alloc::slice::impl__to_vec(
- rust_primitives::hax::monomorphized_update_at::update_at_usize(
- alloc::vec::impl_1__as_slice(
- proj_proj_tuple1(proj_new_..."
+               "[hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: Construct unexpected constructors",
+               ""
              )
 
          )

@@ -383,7 +383,9 @@ def test3 (_ : rust_primitives.hax.Tuple0) :
 def test1 (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
   let _ ←
-    if sorry then do
+    if
+    sorry /- [hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here -/
+    then do
       let _ ←
         (std.io.stdio._print
           (← (core_models.fmt.rt.Impl_1.new_const ((1 : usize))
@@ -393,7 +395,9 @@ def test1 (_ : rust_primitives.hax.Tuple0) :
     else do
       (pure rust_primitives.hax.Tuple0.mk);
   let _ ←
-    if sorry then do
+    if
+    sorry /- [hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here -/
+    then do
       let _ ←
         (std.io.stdio._print
           (← (core_models.fmt.rt.Impl_1.new_const ((1 : usize))
@@ -404,7 +408,9 @@ def test1 (_ : rust_primitives.hax.Tuple0) :
       (pure rust_primitives.hax.Tuple0.mk);
   let _ := (0 : i32);
   let _ ←
-    if sorry then do
+    if
+    sorry /- [hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here -/
+    then do
       let _ ←
         (std.io.stdio._print
           (← (core_models.fmt.rt.Impl_1.new_const ((1 : usize))
@@ -413,10 +419,13 @@ def test1 (_ : rust_primitives.hax.Tuple0) :
       (pure rust_primitives.hax.Tuple0.mk)
     else do
       (pure rust_primitives.hax.Tuple0.mk);
-  let _ := sorry;
+  let _ :=
+    sorry /- [hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Arbitrary_lhs] have been found in the AST -/;
   let _ := rust_primitives.hax.Tuple0.mk;
   let _ ←
-    if sorry then do
+    if
+    sorry /- [hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here -/
+    then do
       let _ ←
         (std.io.stdio._print
           (← (core_models.fmt.rt.Impl_1.new_const ((1 : usize))
@@ -449,7 +458,9 @@ def test2 (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
   let _ ← (test2.call_print "called from call_debug: ");
   let _ ←
-    if sorry then do
+    if
+    sorry /- [hax::opaque] Fatal error: something we considered as impossible occurred! Please report this by submitting an issue on GitHub! Details: expected an arrow type here -/
+    then do
       let _ ←
         (std.io.stdio._print
           (← (core_models.fmt.rt.Impl_1.new_const ((1 : usize))

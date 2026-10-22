@@ -32,13 +32,7 @@ Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
 Equations accept_7_conditions (bool_arr : both (nseq 'bool 7)) : both 'unit :=
   accept_7_conditions bool_arr  :=
-    failure (ret_both (something is not implemented yet.
-Pat:Array
-
-This is discussed in issue https://github.com/hacspec/hax/issues/804.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `AST import`.
- : chString)) (ret_both ( : chString)) : both 'unit.
+    failure (ret_both ([hax::opaque] something is not implemented yet. Pat:Array : chString)) (ret_both ( : chString)) : both 'unit.
 Fail Next Obligation.
 
 Equations main (_ : both 'unit) : both 'unit :=

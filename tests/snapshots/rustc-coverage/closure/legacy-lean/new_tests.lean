@@ -18,7 +18,8 @@ namespace new_tests.rustc_coverage__closure
 @[spec]
 def main (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
-  (pure sorry)
+  (pure
+  sorry /- [hax::opaque] The bindings ["countdown"] cannot be mutated here: they don't belong to the closure scope, and this is not allowed. -/)
 
 end new_tests.rustc_coverage__closure
 

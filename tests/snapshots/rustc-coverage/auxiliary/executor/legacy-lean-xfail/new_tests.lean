@@ -25,7 +25,8 @@ def block_on
     [trait_constr_block_on_i0 : core_models.future.future.Future F ]
     (future : F) :
     RustM (core_models.future.future.Future.Output F) := do
-  (pure sorry)
+  (pure
+  sorry /- [hax::opaque] The mutation of this &mut is not allowed here. -/)
 
 end new_tests.rustc_coverage__auxiliary__executor
 

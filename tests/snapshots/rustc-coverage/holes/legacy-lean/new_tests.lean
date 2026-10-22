@@ -18,7 +18,8 @@ namespace new_tests.rustc_coverage__holes
 @[spec]
 def main (_ : rust_primitives.hax.Tuple0) :
     RustM rust_primitives.hax.Tuple0 := do
-  (pure sorry)
+  (pure
+  sorry /- [hax::opaque] something is not implemented yet. Got type `Coroutine`: coroutines are not supported by hax -/)
 
 def main.MY_STATIC : rust_primitives.hax.Tuple0 :=
   RustM.of_isOk (do (pure rust_primitives.hax.Tuple0.mk)) (by rfl)

@@ -40,19 +40,8 @@ letfun new_tests__rustc_coverage__branch__if__say(message : bitstring) =
 letfun new_tests__rustc_coverage__branch__if__branch_not(a : bool) =
        let wildcard8: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard7: bitstring = (
@@ -90,19 +79,8 @@ Note: the error was labeled with context `reject_not_in_ProVerif`.
 letfun new_tests__rustc_coverage__branch__if__branch_not_as(a : bool) =
        let wildcard14: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        let wildcard13: bitstring = (
@@ -137,19 +115,8 @@ Note: the error was labeled with context `reject_not_in_ProVerif`.
 letfun new_tests__rustc_coverage__branch__if__branch_and(a : bool, b : bool) =
        let wildcard17: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        if a && b
@@ -168,19 +135,8 @@ Note: the error was labeled with context `reject_not_in_ProVerif`.
 letfun new_tests__rustc_coverage__branch__if__branch_or(a : bool, b : bool) =
        let wildcard20: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 1,
- })) {
- Tuple0
- }
- }"
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        if a || b
@@ -199,37 +155,14 @@ Note: the error was labeled with context `reject_not_in_ProVerif`.
 letfun new_tests__rustc_coverage__branch__if__main(wildcard22 : bitstring) =
        let wildcard21: bitstring = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for a in (core_models::iter::traits::collect::f_into_iter([false, true, true])) {
- {
- let _: tuple0 = { new_tests::rustc_coverage__branch__if::branch_not(a) };
- {
- let _: tuple0 = {
- new_tests::rus..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- for a in (core_models::iter::traits::collect::f_into_iter([
- false, true, true, true, true,
- ])) {
- {
- for b in (core_models::iter::traits::collect::f_into_iter([
- false, true, true,
- ])) {
- {
- let..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          ),
          ()
        ).

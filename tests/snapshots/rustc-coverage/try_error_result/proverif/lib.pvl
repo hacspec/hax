@@ -76,20 +76,8 @@ letfun new_tests__rustc_coverage__try_error_result__test1(wildcard1 : bitstring)
        let countdown = (10) in
        let countdown = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 10,
- })) {
- |countdown| {
- {
- let countdown: int = {
- core_models::ops::arith::f_sub..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        ().
@@ -113,20 +101,8 @@ letfun new_tests__rustc_coverage__try_error_result__test2(wildcard2 : bitstring)
        let countdown = (10) in
        let countdown = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (for _ in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: 10,
- })) {
- |countdown| {
- {
- let countdown: int = {
- core_models::ops::arith::f_sub..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        ().

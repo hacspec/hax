@@ -18,7 +18,7 @@ namespace new_tests.rustc_coverage__mcdc__condition_limit
 @[spec]
 def accept_7_conditions (bool_arr : (RustArray Bool 7)) :
     RustM rust_primitives.hax.Tuple0 := do
-  (pure sorry)
+  (pure sorry /- [hax::opaque] something is not implemented yet. Pat:Array -/)
 
 @[spec]
 def main (_ : rust_primitives.hax.Tuple0) :

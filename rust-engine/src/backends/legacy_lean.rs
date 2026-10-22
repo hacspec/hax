@@ -10,8 +10,10 @@ use std::sync::OnceLock;
 use super::prelude::*;
 use crate::{
     ast::{
+        diagnostics::Diagnostic,
         identifiers::global_id::view::{ConstructorKind, PathSegment, TypeDefKind},
         span::Span,
+        visitors::AstVisitor,
     },
     attributes::hax_proof_attributes,
     names::rust_primitives::hax::{
@@ -36,6 +38,90 @@ mod binops {
 const LIFT: GlobalId = lift;
 const PURE: GlobalId = pure;
 const CAST_OP: GlobalId = cast_op;
+
+/// An un-stateable type found in an item signature, driving item exclusion.
+enum SigError {
+    /// Detected by the printer (e.g. `dyn`, opaque types); emit a fresh diagnostic.
+    Fresh {
+        reason: String,
+        issue_id: Option<u32>,
+    },
+    /// Carried from an upstream `ErrorNode`; already reported when it was built.
+    Reported { reason: String },
+}
+
+impl SigError {
+    fn reason(&self) -> &str {
+        match self {
+            SigError::Fresh { reason, .. } | SigError::Reported { reason } => reason,
+        }
+    }
+}
+
+/// Collapse a diagnostic message to a single line fit for an inline comment.
+fn oneline(s: &str) -> String {
+    s.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .replace("-/", "- /")
+}
+
+/// The core message of a diagnostic, without any marker prefix, issue-link or
+/// context footer. The OCaml engine relays failures as an opaque payload string
+/// (already carrying a `[hax::opaque]` marker for opacified bodies).
+fn diagnostic_core_message(d: &Diagnostic) -> String {
+    let info = d.info();
+    let core = match &info.kind {
+        hax_types::diagnostics::Kind::OcamlEngineErrorPayload(payload) => payload.clone(),
+        _ => format!(
+            "{}",
+            hax_types::diagnostics::Diagnostics {
+                kind: info.kind.clone(),
+                span: info.span.as_frontend_spans().to_vec(),
+                context: format!("{}", info.context),
+                owner_id: None,
+            }
+        ),
+    };
+    let core = core.strip_prefix("[hax::opaque] ").unwrap_or(&core);
+    oneline(core.split("\n\n").next().unwrap_or(core))
+}
+
+/// Collects the first non-empty error-node reason reachable in a subtree.
+#[derive(Default)]
+struct FirstErrorReason(Option<String>);
+
+impl FirstErrorReason {
+    fn record(&mut self, e: &ErrorNode) {
+        if self.0.is_none() {
+            let reason = e
+                .diagnostics
+                .first()
+                .map(diagnostic_core_message)
+                .unwrap_or_default();
+            if !reason.is_empty() {
+                self.0 = Some(reason);
+            }
+        }
+    }
+}
+
+impl AstVisitor for FirstErrorReason {
+    fn enter_expr_kind(&mut self, kind: &ExprKind) {
+        if let ExprKind::Error(e) = kind {
+            self.record(e);
+        }
+    }
+}
+
+/// The first error reason reachable from a function body. Used when the
+/// signature failure carries no reason (e.g. an `&mut` return mangled to an
+/// empty failure type by the and-mut phase).
+fn body_error_reason(body: &Expr) -> Option<String> {
+    let mut visitor = FirstErrorReason::default();
+    visitor.visit_expr(body);
+    visitor.0
+}
 
 /// The Lean printer
 #[setup_printer_struct]
@@ -373,6 +459,91 @@ const _: () = {
             } else {
                 self.positional_arguments(fields)
             }
+        }
+
+        /// Inline marker appended to a `sorry` standing in for an unsupported body node.
+        fn opaque_marker<A: 'static + Clone>(&self, reason: &str) -> DocBuilder<A> {
+            let reason = oneline(reason);
+            if reason.is_empty() {
+                docs![" /- [hax::opaque] -/"]
+            } else {
+                docs![" /- [hax::opaque] ", text!(reason), " -/"]
+            }
+        }
+
+        /// Tombstone comment replacing an item whose signature cannot be stated.
+        fn excluded_comment<A: 'static + Clone>(
+            &self,
+            ident: &GlobalId,
+            reason: &str,
+        ) -> DocBuilder<A> {
+            let reason = oneline(reason);
+            if reason.is_empty() {
+                docs!["-- [hax::excluded] ", text!(self.render_last(ident))]
+            } else {
+                docs![
+                    "-- [hax::excluded] ",
+                    text!(self.render_last(ident)),
+                    " — ",
+                    text!(reason)
+                ]
+            }
+        }
+
+        /// The reason carried by an `ErrorNode`, or a generic fallback.
+        fn error_node_reason(&self, e: &ErrorNode) -> String {
+            e.diagnostics
+                .first()
+                .map(diagnostic_core_message)
+                .unwrap_or_else(|| "unsupported construct".to_string())
+        }
+
+        /// An un-stateable type in `ty`, if any (recurses into nested types).
+        fn ty_unstateable_reason(&self, ty: &Ty) -> Option<SigError> {
+            match ty.kind() {
+                TyKind::Dyn(_) => Some(SigError::Fresh {
+                    reason: "Unsupported `dyn` traits".to_string(),
+                    issue_id: Some(1708),
+                }),
+                TyKind::Opaque(_) => Some(SigError::Fresh {
+                    reason: "Unsupported opaque type definitions".to_string(),
+                    issue_id: Some(1714),
+                }),
+                TyKind::Error(e) => Some(SigError::Reported {
+                    reason: self.error_node_reason(e),
+                }),
+                TyKind::App { args, .. } => args.iter().find_map(|arg| match arg {
+                    GenericValue::Ty(t) => self.ty_unstateable_reason(t),
+                    _ => None,
+                }),
+                TyKind::Arrow { inputs, output } => inputs
+                    .iter()
+                    .find_map(|t| self.ty_unstateable_reason(t))
+                    .or_else(|| self.ty_unstateable_reason(output)),
+                TyKind::Slice(t) => self.ty_unstateable_reason(t),
+                TyKind::Array { ty, .. } => self.ty_unstateable_reason(ty),
+                TyKind::Ref { inner, .. } => self.ty_unstateable_reason(inner),
+                _ => None,
+            }
+        }
+
+        /// An un-stateable type in a function signature, if any.
+        fn signature_error(
+            &self,
+            params: &[Param],
+            generics: &Generics,
+            return_ty: &Ty,
+        ) -> Option<SigError> {
+            params
+                .iter()
+                .find_map(|p| self.ty_unstateable_reason(&p.ty))
+                .or_else(|| self.ty_unstateable_reason(return_ty))
+                .or_else(|| {
+                    generics.params.iter().find_map(|gp| match &gp.kind {
+                        GenericParamKind::Const { ty } => self.ty_unstateable_reason(ty),
+                        _ => None,
+                    })
+                })
         }
 
         /// Prints fields of structures (when in braced notation)
@@ -814,7 +985,7 @@ const _: () = {
                     details: Some(message.into()),
                 },
             );
-            text!("sorry")
+            docs![text!("sorry"), self.opaque_marker(message)]
         }
 
         fn module(&self, module: &Module) -> DocBuilder<A> {
@@ -1458,6 +1629,32 @@ const _: () = {
         }
 
         fn item(&self, item @ Item { ident, kind, meta }: &Item) -> DocBuilder<A> {
+            // An un-stateable signature excludes the whole item: drop the definition
+            // and leave a tombstone comment in its place.
+            if let ItemKind::Fn {
+                generics,
+                body,
+                params,
+                ..
+            } = kind
+                && let Some(error) = self.signature_error(params, generics, &body.ty)
+            {
+                if let SigError::Fresh { reason, issue_id } = &error {
+                    <Self as PrettyAst<A>>::emit_diagnostic(
+                        self,
+                        hax_types::diagnostics::Kind::Unimplemented {
+                            issue_id: *issue_id,
+                            details: Some(reason.clone()),
+                        },
+                    );
+                }
+                let reason = if error.reason().is_empty() {
+                    body_error_reason(body).unwrap_or_default()
+                } else {
+                    error.reason().to_string()
+                };
+                return docs![meta, self.excluded_comment(ident, &reason)];
+            }
             let body = match kind {
                 ItemKind::Fn {
                     name,
@@ -1969,7 +2166,7 @@ const _: () = {
                     // Lean, as items can be named correctly in any file.
                     emit_error!(issue 1658, "Unsupported alias item")
                 }
-                ItemKind::Error(e) => docs![e],
+                ItemKind::Error(e) => self.excluded_comment(ident, &self.error_node_reason(e)),
             };
             docs![meta, body]
         }
@@ -2185,9 +2382,11 @@ const _: () = {
             .nest(INDENT)
         }
 
-        fn error_node(&self, _error_node: &ErrorNode) -> DocBuilder<A> {
-            // TODO : Should be made unreachable by https://github.com/cryspen/hax/pull/1672
-            text!("sorry")
+        fn error_node(&self, error_node: &ErrorNode) -> DocBuilder<A> {
+            docs![
+                text!("sorry"),
+                self.opaque_marker(&self.error_node_reason(error_node))
+            ]
         }
 
         // Impl expressions

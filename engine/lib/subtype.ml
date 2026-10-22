@@ -478,10 +478,7 @@ struct
       try ditem_unwrapped i
       with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
         let error = Diagnostics.pretty_print_context_kind context kind in
-        let cast_item : A.item -> Ast.Full.item = Stdlib.Obj.magic in
-        let ast = cast_item i |> Print_rust.pitem_str in
-        let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
-        [ B.make_hax_error_item i.span i.ident msg ]
+        [ B.make_hax_error_item i.span i.ident error ]
 
     and ditem_unwrapped (item : A.item) : B.item list =
       [

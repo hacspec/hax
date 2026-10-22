@@ -36,13 +36,7 @@ Equations double_sum (_ : both 'unit) : both int32 :=
     letb sum := foldi_both_list (f_into_iter (Build_t_Range (f_start := ret_both (1 : int32)) (f_end := ret_both (10 : int32)))) (fun i =>
       ssp (fun sum =>
         letb _ := ifb i <.? (ret_both (0 : int32))
-        then letb hoist7 := failure (ret_both (something is not implemented yet.
-TODO: Monad for loop-related control flow
-
-This is discussed in issue https://github.com/hacspec/hax/issues/15.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `CfIntoMonads`.
- : chString)) (ret_both ((break (Tuple0)) : chString)) in
+        then letb hoist7 := failure (ret_both ([hax::opaque] something is not implemented yet. TODO: Monad for loop-related control flow : chString)) (ret_both ( : chString)) in
         never_to_any hoist7
         else ret_both (tt : 'unit) in
         letb sum := sum .+ i in
@@ -58,13 +52,7 @@ Equations double_sum2 (_ : both 'unit) : both int32 :=
     letb '(sum,sum2) := foldi_both_list (f_into_iter (Build_t_Range (f_start := ret_both (1 : int32)) (f_end := ret_both (10 : int32)))) (fun i =>
       ssp (fun '(sum,sum2) =>
         letb _ := ifb i <.? (ret_both (0 : int32))
-        then letb hoist8 := failure (ret_both (something is not implemented yet.
-TODO: Monad for loop-related control flow
-
-This is discussed in issue https://github.com/hacspec/hax/issues/15.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `CfIntoMonads`.
- : chString)) (ret_both ((break (Tuple0)) : chString)) in
+        then letb hoist8 := failure (ret_both ([hax::opaque] something is not implemented yet. TODO: Monad for loop-related control flow : chString)) (ret_both ( : chString)) in
         never_to_any hoist8
         else ret_both (tt : 'unit) in
         letb sum := sum .+ i in
@@ -143,13 +131,7 @@ Equations nested (_ : both 'unit) : both int32 :=
         letb sum := foldi_both_list (f_into_iter (Build_t_Range (f_start := ret_both (1 : int32)) (f_end := ret_both (10 : int32)))) (fun j =>
           ssp (fun sum =>
             letb _ := ifb j <.? (ret_both (0 : int32))
-            then letb hoist16 := failure (ret_both (something is not implemented yet.
-TODO: Monad for loop-related control flow
-
-This is discussed in issue https://github.com/hacspec/hax/issues/15.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `CfIntoMonads`.
- : chString)) (ret_both ((break (Tuple0)) : chString)) in
+            then letb hoist16 := failure (ret_both ([hax::opaque] something is not implemented yet. TODO: Monad for loop-related control flow : chString)) (ret_both ( : chString)) in
             never_to_any hoist16
             else ret_both (tt : 'unit) in
             letb sum := sum .+ j in
@@ -185,11 +167,7 @@ Equations continue_only (x : both (seq int32)) : both (int32 × 'unit) :=
     prod_b (foldi_both_list (f_into_iter x) (fun i =>
         ssp (fun product =>
           letb _ := ifb i =.? (ret_both (0 : int32))
-          then never_to_any (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Continue] have been found in the AST
-
-Note: the error was labeled with context `reject_Continue`.
- : chString)) (ret_both (continue; : chString)))
+          then never_to_any (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Continue] have been found in the AST : chString)) (ret_both ( : chString)))
           else ret_both (tt : 'unit) in
           f_mul_assign product i : (both int32))) product,ret_both (tt : 'unit)) : both (int32 × 'unit).
 Fail Next Obligation.
@@ -200,20 +178,10 @@ Equations continue_and_break (x : both (seq int32)) : both (int32 × 'unit) :=
     prod_b (foldi_both_list (f_into_iter x) (fun i =>
         ssp (fun product =>
           letb _ := ifb i =.? (ret_both (0 : int32))
-          then never_to_any (failure (ret_both (Explicit rejection by a phase in the Hax engine:
-a node of kind [Continue] have been found in the AST
-
-Note: the error was labeled with context `reject_Continue`.
- : chString)) (ret_both (continue; : chString)))
+          then never_to_any (failure (ret_both ([hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Continue] have been found in the AST : chString)) (ret_both ( : chString)))
           else ret_both (tt : 'unit) in
           letb _ := ifb i <.? (ret_both (0 : int32))
-          then letb hoist18 := failure (ret_both (something is not implemented yet.
-TODO: Monad for loop-related control flow
-
-This is discussed in issue https://github.com/hacspec/hax/issues/15.
-Please upvote or comment this issue if you see this error message.
-Note: the error was labeled with context `CfIntoMonads`.
- : chString)) (ret_both ((break (Tuple0)) : chString)) in
+          then letb hoist18 := failure (ret_both ([hax::opaque] something is not implemented yet. TODO: Monad for loop-related control flow : chString)) (ret_both ( : chString)) in
           never_to_any hoist18
           else ret_both (tt : 'unit) in
           f_mul_assign product i : (both int32))) product,ret_both (tt : 'unit)) : both (int32 × 'unit).

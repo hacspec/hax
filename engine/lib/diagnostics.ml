@@ -105,6 +105,18 @@ let pretty_print_context_kind : Context.t -> kind -> string =
   let span = Span.to_thir (Span.dummy ()) in
   pretty_print { context; kind; span; owner_id = None }
 
+(* Collapse a diagnostic message to a single line: keep the core message, drop
+   the issue-link and context footer, and squash inner whitespace. *)
+let oneline (s : string) : string =
+  let core =
+    match String.substr_index s ~pattern:"\n\n" with
+    | Some i -> String.prefix s i
+    | None -> s
+  in
+  String.split_on_chars core ~on:[ '\n'; '\r'; '\t'; ' ' ]
+  |> List.filter ~f:(fun s -> not (String.is_empty s))
+  |> String.concat ~sep:" "
+
 module Core : sig
   val raise_fatal_error : 'never. t -> 'never
   val report : t -> unit

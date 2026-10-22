@@ -141,20 +141,8 @@ letfun new_tests__legacy__generics__lib__foo(arr : bitstring) =
        let acc = (core_models__ops__arith__f_add(v_LEN, 9)) in
        let acc = (
          rust_primitives__hax__failure(
-           "Explicit rejection by a phase in the Hax engine:
-a node of kind [Loop] have been found in the AST
-
-Note: the error was labeled with context `reject_not_in_ProVerif`.
-",
-           "{
- (for i in (core_models::iter::traits::collect::f_into_iter(core_models::ops::range::Range {
- f_start: 0,
- f_end: LEN,
- })) {
- |acc| {
- core_models::ops::arith::f_add(
- acc,
- core_models::ops::index..."
+           "[hax::opaque] Explicit rejection by a phase in the Hax engine: a node of kind [Loop] have been found in the AST",
+           ""
          )
        ) in
        acc.
