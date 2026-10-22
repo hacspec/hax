@@ -1,7 +1,7 @@
 //! @fls: fls_i5ko1t2wbgxe, fls_54d5uydc87td, fls_7frvr2nm2mcj
 //! @title: Labeled break out of a nested loop
 //! @lean(tier): supported
-//! @lean(reason): Annex A.1 of the input-language reference lists labeled break as a transient gap.
+//! @lean(reason): aeneas rejects a `break` to an outer loop (`Breaks to outer loops are not supported yet`); the loops section of the input-language reference.
 
 pub fn first_pair_summing_to(target: i32) -> (i32, i32) {
     let mut found = (0, 0);

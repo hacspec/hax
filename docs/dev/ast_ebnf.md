@@ -1,6 +1,6 @@
 # Grammar of the supported Rust subset
 
-The eBNF grammar below describes the subset of Rust that hax accepts as input, i.e. the shape of the AST after the frontend has exported it and the engine has imported it. Literals are strings, numbers and booleans.
+The eBNF grammar below describes the subset of Rust that hax accepts as input, i.e. the shape of the AST after the frontend has exported it and the engine has imported it. Literals are strings, numbers and booleans. It describes the syntax the engine accepts; the semantics the pipeline supports, construct by construct, are described in the input-language section of the manual.
 
 ``` ebnf
 char ::= [a-zA-Z]

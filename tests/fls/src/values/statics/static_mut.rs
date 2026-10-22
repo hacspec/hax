@@ -1,7 +1,7 @@
 //! @fls: fls_doi4z6u55bi7, fls_74hp208pto22
 //! @title: Read and write of a mutable static
 //! @lean(tier): unsupported
-//! @lean(reason): Section 2.9 of the input-language reference places mutable global state outside the value model.
+//! @lean(reason): The input-language reference places mutable global state outside the value model.
 
 pub static mut COUNTER: u32 = 0;
 

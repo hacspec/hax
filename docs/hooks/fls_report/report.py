@@ -15,6 +15,11 @@ from pathlib import Path
 FLS_RENDERING = "https://rust-lang.github.io/fls"
 # The coverage page, relative to the backend pages (`manual/<backend>/support.md`).
 COVERAGE = "../fls-coverage.md"
+# The input-language section of the manual, relative to the backend pages
+# (`manual/<backend>/support.md`) and to the coverage page (`manual/fls-coverage.md`).
+INPUT_LANGUAGE = "../input-language/index.md"
+INPUT_LANGUAGE_TIERS = f"{INPUT_LANGUAGE}#status-vocabulary"
+INPUT_LANGUAGE_FROM_COVERAGE = "input-language/index.md"
 FLS_SOURCES = "https://github.com/rust-lang/fls"
 # The revision the test links point at. The deployed site renders the report
 # from a release, and its build replaces this with that release's commit.
@@ -54,6 +59,10 @@ CATEGORIES = [
     "concurrency",
     "macro-expanded",
 ]
+
+# The key of an `@<backend>(reason)` directive, with the whitespace the
+# directive grammar of the test driver allows.
+REASON_KEY = re.compile(r"([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\s*\(\s*reason\s*\)")
 
 CHAPTER_PREFIX = "# chapter:"
 REVISION_PREFIX = "# fls-revision:"
@@ -128,15 +137,21 @@ class Report:
     backends: dict[str, Backend]
     pending_chapters: list[str]
     exclusions: list[ExclusionTable]
+    # Whether the manual has the input-language section. The site may build
+    # the manual of a release that predates it, so the pages link to it only
+    # when it is there.
+    input_language: bool = True
+    # The header of every test file by its path. A test claims its paragraphs
+    # whether or not a results file lists it, as in the coverage check.
+    headers: dict[str, Header] = field(default_factory=dict)
     claimed: dict[str, set[str]] = field(default_factory=dict)
     by_id: dict[str, Paragraph] = field(default_factory=dict)
 
     def __post_init__(self):
         self.by_id = {p.id: p for p in self.ids.paragraphs}
-        for backend in self.backends.values():
-            for test in backend.tests.values():
-                for id in test.fls:
-                    self.claimed.setdefault(id, set()).add(test.path)
+        for path, h in self.headers.items():
+            for id in h.fls:
+                self.claimed.setdefault(id, set()).add(path)
 
 
 # ----------------------------------------------------------------- loading
@@ -207,8 +222,9 @@ def parse_header(text: str) -> Header:
             title = value
         elif key == "fls":
             fls += [id.strip() for id in value.split(",") if id.strip()]
-        elif key.endswith("(reason)"):
-            reasons[key.removesuffix("(reason)")] = value
+        elif m := REASON_KEY.fullmatch(key):
+            # The driver reads the backend name case-insensitively.
+            reasons[m[1].lower()] = value
     return Header(title, fls, reasons)
 
 
@@ -272,16 +288,26 @@ def load(repo_root: Path) -> Report:
     )
     pending, exclusions = parse_exclusions((tests / "fls-excluded.toml").read_text())
     src = tests / "fls" / "src"
+    # Hidden entries, such as editor lock files, are no tests, as for the
+    # test driver.
+    headers = {
+        path.relative_to(src).with_suffix("").as_posix(): parse_header(path.read_text())
+        for path in sorted(src.rglob("*.rs"))
+        if not any(part.startswith(".") for part in path.relative_to(src).parts)
+    }
     backends = {}
     for path in sorted((tests / "fls-results").glob("*.toml")):
-        backend = parse_results(
-            path.read_text(), lambda test: parse_header((src / f"{test}.rs").read_text())
-        )
+        backend = parse_results(path.read_text(), headers.__getitem__)
         backends[backend.name] = backend
-    return Report(ids, backends, pending, exclusions)
+    input_language = (repo_root / "docs" / "manual" / "input-language" / "index.md").exists()
+    return Report(ids, backends, pending, exclusions, input_language, headers)
 
 
 # --------------------------------------------------------------- rendering
+
+
+def input_language_link(report: Report, text: str, target: str) -> str:
+    return f"[{text}]({target})" if report.input_language else text
 
 
 def front_matter(weight: int, headless: bool = False) -> str:
@@ -411,8 +437,10 @@ def render_backend(report: Report, backend_name: str) -> str:
     out += (
         "Every construct has a test in the FLS test suite, which claims the paragraphs "
         f"it covers of the [FLS]({FLS_RENDERING}/), the Rust project's language "
-        "specification. The *status* compares the support the input-language reference "
-        "\"The Hax Input Language and Feature Support\" intends for the construct with "
+        f"specification. The {input_language_link(report, '*status*', INPUT_LANGUAGE_TIERS)} "
+        "compares the support the "
+        f"{input_language_link(report, 'input-language reference', INPUT_LANGUAGE)} "
+        "intends for the construct with "
         "how far the pipeline gets on the test; where the two differ, hovering the "
         "status shows why.\n\n"
     )
@@ -454,8 +482,9 @@ def render_backend(report: Report, backend_name: str) -> str:
     out += "## Planned\n\n"
     if planned:
         out += (
-            "Constructs the input-language reference intends to support that the pipeline does "
-            "not carry through yet.\n\n"
+            f"Constructs the {input_language_link(report, 'input-language reference', INPUT_LANGUAGE)} "
+            "intends to support "
+            "that the pipeline does not carry through yet.\n\n"
         )
         out += table(
             ["Test", "Classification", "Stage", "Reason"],
@@ -473,8 +502,10 @@ def render_backend(report: Report, backend_name: str) -> str:
     if unexpected:
         out += "## Unexpectedly accepted\n\n"
         out += (
-            "Constructs the input-language reference places outside the value model that the "
-            "pipeline accepts. Each is either an outdated entry of the input-language reference or "
+            f"Constructs the {input_language_link(report, 'input-language reference', INPUT_LANGUAGE)} "
+            "places outside the "
+            "value model that the pipeline accepts. Each is either an outdated entry of the "
+            "input-language reference or "
             "a soundness question, and is triaged before the next release.\n\n"
         )
         out += table(
@@ -500,7 +531,9 @@ def render_coverage(report: Report) -> str:
         "claimed by a test, excluded with a reason, informational, or in a chapter not "
         "yet triaged, so this page has no list of uncovered paragraphs. The `hax` "
         "chapter lists the specification surface of `hax-lib`, which is not part of "
-        "the FLS.\n\n"
+        "the FLS; the "
+        f"{input_language_link(report, 'input-language reference', INPUT_LANGUAGE_FROM_COVERAGE)} "
+        "describes it.\n\n"
     )
     out += revision_note(report)
 

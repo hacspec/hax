@@ -69,12 +69,12 @@ HEADERS = {
     "values/statics/gap": """\
 //! @fls: fls_v2
 //! @title: Static with | a pipe
-//! @lean(reason): Annex A.1
+//! @lean(reason): the loops section of the input-language reference
 """,
     "values/statics/unsupported": """\
 //! @fls: fls_v1
 //! @title: Outside the value model
-//! @lean(reason): Section 2.9
+//! @lean(reason): the value-model boundary of the input-language reference
 """,
     "values/statics/accepted": """\
 //! @fls: fls_v2
@@ -91,7 +91,8 @@ def synthetic() -> report.Report:
     ids = report.merge_id_lists(report.parse_id_list(IDS), report.parse_id_list(HAX_IDS))
     pending, exclusions = report.parse_exclusions(EXCLUDED)
     backend = report.parse_results(RESULTS, header)
-    return report.Report(ids, {backend.name: backend}, pending, exclusions)
+    headers = {test: header(test) for test in HEADERS}
+    return report.Report(ids, {backend.name: backend}, pending, exclusions, headers=headers)
 
 
 class ParsingTest(unittest.TestCase):
@@ -113,6 +114,24 @@ class ParsingTest(unittest.TestCase):
         self.assertEqual(header.title, "T")
         self.assertEqual(header.fls, ["fls_a", "fls_b", "fls_c"])
         self.assertEqual(header.reasons, {"lean": "why: because"})
+
+    def test_header_reason_whitespace(self):
+        header = report.parse_header("//! @lean ( reason ): spaced\n//! @f-star(reason): x\n")
+        self.assertEqual(header.reasons, {"lean": "spaced", "f-star": "x"})
+
+    def test_header_reason_case(self):
+        header = report.parse_header("//! @Lean(reason): why\n")
+        self.assertEqual(header.reasons, {"lean": "why"})
+
+    def test_escape_keeps_code_spans(self):
+        self.assertEqual(report.escape("a | `|x| x` | ``b | c``"), "a \\| `|x| x` \\| ``b | c``")
+
+    def test_claims_of_tests_without_results(self):
+        ids = report.merge_id_lists(report.parse_id_list(IDS), report.parse_id_list(HAX_IDS))
+        pending, exclusions = report.parse_exclusions(EXCLUDED)
+        headers = {"values/statics/untiered": report.parse_header("//! @fls: fls_v4\n")}
+        r = report.Report(ids, {}, pending, exclusions, headers=headers)
+        self.assertEqual(r.claimed, {"fls_v4": {"values/statics/untiered"}})
 
     def test_results(self):
         backend = report.parse_results(RESULTS, header)
@@ -173,7 +192,8 @@ class BackendPageTest(unittest.TestCase):
     def test_status_is_coloured_and_carries_the_reason(self):
         chapters = self.chapters()
         self.assertIn(
-            '<span class="fls-status fls-planned fls-reason" title="Annex A.1">'
+            '<span class="fls-status fls-planned fls-reason" '
+            'title="the loops section of the input-language reference">'
             "planned</span>",
             chapters,
         )
@@ -226,7 +246,7 @@ class BackendPageTest(unittest.TestCase):
 
     def test_gap_and_unexpected_sections(self):
         planned = self.page.split("## Planned\n")[1].split("## Unexpectedly accepted\n")
-        self.assertIn("Annex A.1", planned[0])
+        self.assertIn("the loops section", planned[0])
         self.assertNotIn("Plain static", planned[0])
         self.assertIn("Should have been rejected", planned[1])
 
@@ -251,6 +271,17 @@ class BackendPageTest(unittest.TestCase):
             "[`0123456789`](https://github.com/rust-lang/fls/tree/0123456789abcdef/src)",
             self.page,
         )
+
+    def test_input_language_links(self):
+        chapters = self.page.split("## Constructs by chapter\n")[1]
+        self.assertIn(
+            "[input-language reference](../input-language/index.md)", chapters
+        )
+        self.assertIn(
+            "[*status*](../input-language/index.md#status-vocabulary)", chapters
+        )
+        planned = self.page.split("## Planned\n")[1]
+        self.assertIn("[input-language reference](../input-language/index.md)", planned)
 
 
 class CoveragePageTest(unittest.TestCase):
@@ -283,6 +314,16 @@ class CoveragePageTest(unittest.TestCase):
         data = synthetic()
         data.pending_chapters = []
         self.assertNotIn("## Pending chapters", report.render_coverage(data))
+
+    def test_input_language_link(self):
+        self.assertIn("[input-language reference](input-language/index.md)", self.page)
+
+    def test_no_input_language_link_without_the_section(self):
+        data = synthetic()
+        data.input_language = False
+        for page in (report.render_coverage(data), report.render_backend(data, "lean")):
+            self.assertIn("input-language reference", page)
+            self.assertNotIn("input-language/index.md", page)
 
     def test_hax_ids_have_no_link(self):
         data = synthetic()
