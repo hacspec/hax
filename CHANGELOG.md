@@ -24,6 +24,9 @@ F* backend and library:
 Changes to the hax-lib crate:
  - The Rust semantics of `implies` is no longer reversed
 
+Changes to the frontend:
+ - Impls now list the bounds on the generic parameters of their trait as parent bounds (#1554)
+
 ### Changed
 
 Lean backend and library:
