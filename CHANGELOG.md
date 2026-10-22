@@ -35,6 +35,10 @@ Lean backend and library:
  - Breaking: the fields `start` and `«end»` of `ops.range.RangeInclusive` are
    now `start_` and `end_`, and `RangeInclusive.start` and `RangeInclusive.end`
    are functions
+ - Breaking: bump Lean to v4.35.0 and update aeneas. Proofs may need updating:
+   `if_pos`/`if_neg` no longer rewrite `if`s (use `ite_eq_left`/`ite_eq_right`),
+   and hand-written models that extracted code instantiates must take `Type _`
+   rather than `Type` parameters
 
 F* backend and library:
  - Breaking: the fields `f_start` and `f_end` of `t_RangeInclusive` are now
