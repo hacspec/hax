@@ -259,6 +259,42 @@ def ops.range.Range.Insts.CoreIterTraitsDouble_endedDoubleEndedIterator {A : Typ
   next_back := IteratorRange.next_back StepInst
 }
 
+/-- `Iterator::count` for `core::ops::range::RangeInclusive<A>`: one more than
+    `Step::steps_between`, or `0` when the range is empty. -/
+def ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.count {A : Type _}
+    (StepInst : iter.range.Step A) (range : ops.range.RangeInclusive A) : RustM Usize := do
+  if range.exhausted then ok 0#usize else
+  let le ← StepInst.corecmpPartialOrdInst.le range.start_ range.end_
+  if le then do
+    let (steps, _) ← StepInst.steps_between range.start_ range.end_
+    steps + 1#usize
+  else ok 0#usize
+
+/-- `next_back` for `RangeInclusive<A>`, the mirror of `IteratorRangeInclusive.next`. -/
+def IteratorRangeInclusive.next_back {A : Type _} (StepInst : iter.range.Step A) :
+    ops.range.RangeInclusive A → RustM ((Option A) × ops.range.RangeInclusive A) :=
+  fun range => do
+  if range.exhausted then .ok (Option.none, range) else
+  let cmp ← StepInst.corecmpPartialOrdInst.partial_cmp range.start_ range.end_
+  match cmp with
+  | Option.some core.cmp.Ordering.Less =>
+    let cur ← StepInst.cloneCloneInst.clone range.end_
+    let prev? ← StepInst.backward_checked cur 1#usize
+    match prev? with
+    | Option.none      => .fail .panic
+    | Option.some prev => .ok (Option.some cur, { range with end_ := prev })
+  | Option.some core.cmp.Ordering.Equal =>
+    let cur ← StepInst.cloneCloneInst.clone range.end_
+    .ok (Option.some cur, { range with exhausted := true })
+  | _ => .ok (Option.none, range)
+
+def ops.range.RangeInclusive.Insts.CoreIterTraitsDouble_endedDoubleEndedIterator {A : Type _}
+    (StepInst : iter.range.Step A) :
+    iter.traits.double_ended.DoubleEndedIterator (ops.range.RangeInclusive A) A := {
+  iteratorIteratorInst := ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator StepInst
+  next_back := IteratorRangeInclusive.next_back StepInst
+}
+
 /-- [core::cmp::impls::{core::cmp::PartialOrd<&0 (B)> for &1 (A)}::lt]:
     Source: '/rustc/library/core/src/cmp.rs', lines 2133:8-2133:40
     Name pattern: [core::cmp::impls::{core::cmp::PartialOrd<&'1 @A, &'0 @B>}::lt]
