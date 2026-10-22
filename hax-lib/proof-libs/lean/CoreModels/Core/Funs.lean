@@ -13772,7 +13772,7 @@ impl_def PairBoundBound.Insts.CoreOpsRangeRangeBounds (T : Type _) :
 }
 
 /-- [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeInclusive<T>}::end_bound]:
-    Source: 'core-models/src/core/ops.rs', lines 506:8-512:9
+    Source: 'core-models/src/core/ops.rs', lines 505:8-511:9
     Visibility: public -/
 def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds.end_bound
   {T : Type _} (self : ops.range.RangeInclusive T) :
@@ -13783,7 +13783,7 @@ def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds.end_bound
   else ok (ops.range.Bound.Included self.end_)
 
 /-- [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeInclusive<T>}::start_bound]:
-    Source: 'core-models/src/core/ops.rs', lines 503:8-505:9
+    Source: 'core-models/src/core/ops.rs', lines 502:8-504:9
     Visibility: public -/
 def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds.start_bound
   {T : Type _} (self : ops.range.RangeInclusive T) :
@@ -13792,7 +13792,7 @@ def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds.start_bound
   ok (ops.range.Bound.Included self.start_)
 
 /-- Trait implementation: [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeInclusive<T>}]
-    Source: 'core-models/src/core/ops.rs', lines 502:4-513:5 -/
+    Source: 'core-models/src/core/ops.rs', lines 501:4-512:5 -/
 @[reducible]
 impl_def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds (T :
   Type _) : ops.range.RangeBounds (ops.range.RangeInclusive T) T := {
@@ -13808,7 +13808,7 @@ impl_def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds (T :
 }
 
 /-- [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeToInclusive<T>}::end_bound]:
-    Source: 'core-models/src/core/ops.rs', lines 518:8-520:9
+    Source: 'core-models/src/core/ops.rs', lines 517:8-519:9
     Visibility: public -/
 def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds.end_bound
   {T : Type _} (self : ops.range.RangeToInclusive T) :
@@ -13817,7 +13817,7 @@ def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds.end_bound
   ok (ops.range.Bound.Included self.end)
 
 /-- [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeToInclusive<T>}::start_bound]:
-    Source: 'core-models/src/core/ops.rs', lines 515:8-517:9
+    Source: 'core-models/src/core/ops.rs', lines 514:8-516:9
     Visibility: public -/
 def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds.start_bound
   {T : Type _} (self : ops.range.RangeToInclusive T) :
@@ -13826,7 +13826,7 @@ def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds.start_bound
   ok ops.range.Bound.Unbounded
 
 /-- Trait implementation: [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeToInclusive<T>}]
-    Source: 'core-models/src/core/ops.rs', lines 514:4-521:5 -/
+    Source: 'core-models/src/core/ops.rs', lines 513:4-520:5 -/
 @[reducible]
 impl_def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds (T :
   Type _) : ops.range.RangeBounds (ops.range.RangeToInclusive T) T := {
@@ -13842,7 +13842,7 @@ impl_def ops.range.RangeToInclusive.Insts.CoreOpsRangeRangeBounds (T :
 }
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::new]:
-    Source: 'core-models/src/core/ops.rs', lines 524:8-530:9
+    Source: 'core-models/src/core/ops.rs', lines 523:8-529:9
     Visibility: public -/
 def ops.range.RangeInclusive.new
   {T : Type _} (start : T) («end» : T) :
@@ -13851,28 +13851,28 @@ def ops.range.RangeInclusive.new
   ok { start_ := start, end_ := «end», exhausted := false }
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::start]:
-    Source: 'core-models/src/core/ops.rs', lines 532:8-534:9
+    Source: 'core-models/src/core/ops.rs', lines 531:8-533:9
     Visibility: public -/
 def ops.range.RangeInclusive.start
   {T : Type _} (self : ops.range.RangeInclusive T) : RustM T := do
   ok self.start_
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::end]:
-    Source: 'core-models/src/core/ops.rs', lines 536:8-538:9
+    Source: 'core-models/src/core/ops.rs', lines 535:8-537:9
     Visibility: public -/
 def ops.range.RangeInclusive.end
   {T : Type _} (self : ops.range.RangeInclusive T) : RustM T := do
   ok self.end_
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::into_inner]:
-    Source: 'core-models/src/core/ops.rs', lines 540:8-542:9
+    Source: 'core-models/src/core/ops.rs', lines 539:8-541:9
     Visibility: public -/
 def ops.range.RangeInclusive.into_inner
   {T : Type _} (self : ops.range.RangeInclusive T) : RustM (T × T) := do
   ok (self.start_, self.end_)
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::contains]:
-    Source: 'core-models/src/core/ops.rs', lines 549:8-555:9
+    Source: 'core-models/src/core/ops.rs', lines 548:8-554:9
     Visibility: public -/
 def ops.range.RangeInclusive.contains
   {T : Type _} {U : Type _} (cmpPartialOrdInst : cmp.PartialOrd T T)
@@ -13893,7 +13893,7 @@ def ops.range.RangeInclusive.contains
   else ok false
 
 /-- [core_models::ops::range::{core_models::ops::range::RangeInclusive<T>}::is_empty]:
-    Source: 'core-models/src/core/ops.rs', lines 558:8-563:9
+    Source: 'core-models/src/core/ops.rs', lines 557:8-562:9
     Visibility: public -/
 def ops.range.RangeInclusive.is_empty
   {T : Type _} (cmpPartialOrdInst : cmp.PartialOrd T T) (cmpPartialOrdInst1 :
