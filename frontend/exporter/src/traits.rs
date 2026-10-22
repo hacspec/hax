@@ -193,10 +193,12 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
     let tcx = s.base().tcx;
-    if !matches!(
-        tcx.def_kind(impl_did),
-        rustc_hir::def::DefKind::Impl { of_trait: true }
-    ) {
+    if clause.as_trait_clause().is_none()
+        || !matches!(
+            tcx.def_kind(impl_did),
+            rustc_hir::def::DefKind::Impl { of_trait: true }
+        )
+    {
         return None;
     }
     let impl_trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity();

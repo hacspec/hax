@@ -387,11 +387,8 @@ pub enum ImplItemKind<Body: IsBody> {
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             // An inherent associated type has no trait declaration to inherit bounds from.
             assoc_item.trait_item_def_id().map_or(vec![], |decl_did| {
-                tcx.explicit_item_bounds(decl_did)
-                    .iter_identity_copied()
-                    .filter(|(clause, _)| clause.as_trait_clause().is_some_and(|trait_predicate| {
-                        !is_sized_related_trait(tcx, trait_predicate.skip_binder().def_id())
-                    }))
+                owner_bounds(tcx, decl_did)
+                    .into_iter()
                     .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, owner_id, clause, span))
                     .collect()
             })
@@ -826,22 +823,13 @@ fn owner_bounds<'tcx>(
     tcx: ty::TyCtxt<'tcx>,
     def_id: rustc_span::def_id::DefId,
 ) -> Vec<(ty::Clause<'tcx>, rustc_span::Span)> {
+    use hir::def::DefKind;
     // According to what kind of node we are looking at, we should
     // either call `predicates_defined_on` or `item_bounds`
-    let use_item_bounds = {
-        if let Some(oid) = def_id.as_local() {
-            let hir_id = tcx.local_def_id_to_hir_id(oid);
-            let node = tcx.hir_node(hir_id);
-            matches!(
-                node,
-                hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Type(..),
-                    ..
-                }) | hir::Node::OpaqueTy(..),
-            )
-        } else {
-            false
-        }
+    let use_item_bounds = match tcx.def_kind(def_id) {
+        DefKind::AssocTy => matches!(tcx.def_kind(tcx.parent(def_id)), DefKind::Trait),
+        DefKind::OpaqueTy => true,
+        _ => false,
     };
 
     let clauses: Vec<(ty::Clause<'tcx>, rustc_span::Span)> = if use_item_bounds {
