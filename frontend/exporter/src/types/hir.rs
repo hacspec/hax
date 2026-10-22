@@ -435,16 +435,9 @@ pub struct Impl<Body: IsBody> {
         let (tcx, owner_id) = (s.base().tcx, s.owner_id());
         if self.of_trait.is_some() {
             let trait_did = tcx.impl_trait_id(owner_id);
-            // Same clauses, in the same order, as the trait's own bounds
-            // (see `region_bounds_at_current_owner`): backends turn both into
-            // the trait's parent fields, matched by index.
-            let options = hax_frontend_exporter_options::BoundsOptions {
-                resolve_destruct: false,
-                prune_sized: true,
-            };
-            implied_predicates(tcx, trait_did, options)
-                .iter()
-                .copied()
+            // Backends match these with the trait's bounds by index.
+            owner_bounds(tcx, trait_did)
+                .into_iter()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
@@ -827,15 +820,16 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, ForeignItem<Body>> for h
 /// Reflects [`hir::GenericBounds`]
 type GenericBounds = Vec<Clause>;
 
-/// Compute the bounds for the owner registed in the state `s`
+/// The bounds of `def_id`, with their spans, without sized-related bounds.
 #[cfg(feature = "rustc")]
-fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> GenericBounds {
-    let tcx = s.base().tcx;
-
+fn owner_bounds<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    def_id: rustc_span::def_id::DefId,
+) -> Vec<(ty::Clause<'tcx>, rustc_span::Span)> {
     // According to what kind of node we are looking at, we should
     // either call `predicates_defined_on` or `item_bounds`
     let use_item_bounds = {
-        if let Some(oid) = s.owner_id().as_local() {
+        if let Some(oid) = def_id.as_local() {
             let hir_id = tcx.local_def_id_to_hir_id(oid);
             let node = tcx.hir_node(hir_id);
             matches!(
@@ -850,30 +844,29 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
         }
     };
 
-    let clauses: Vec<ty::Clause<'tcx>> = if use_item_bounds {
-        tcx.explicit_item_bounds(s.owner_id())
-            .map_bound(|clauses| {
-                clauses
-                    .iter()
-                    .map(|(x, _span)| x)
-                    .copied()
-                    .collect::<Vec<_>>()
-            })
-            .instantiate_identity()
-    } else {
-        predicates_defined_on(tcx, s.owner_id())
-            .iter()
-            .map(|(x, _span)| x)
-            .copied()
+    let clauses: Vec<(ty::Clause<'tcx>, rustc_span::Span)> = if use_item_bounds {
+        tcx.explicit_item_bounds(def_id)
+            .iter_identity_copied()
             .collect()
+    } else {
+        predicates_defined_on(tcx, def_id).to_vec()
     };
     clauses
         .into_iter()
-        .filter(|clause| {
+        .filter(|(clause, _)| {
             clause.as_trait_clause().is_none_or(|trait_predicate| {
                 !is_sized_related_trait(tcx, trait_predicate.skip_binder().def_id())
             })
         })
+        .collect()
+}
+
+/// Compute the bounds for the owner registed in the state `s`
+#[cfg(feature = "rustc")]
+fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> GenericBounds {
+    owner_bounds(s.base().tcx, s.owner_id())
+        .into_iter()
+        .map(|(clause, _)| clause)
         .collect::<Vec<_>>()
         .sinto(s)
 }

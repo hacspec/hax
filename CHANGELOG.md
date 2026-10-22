@@ -25,9 +25,7 @@ Changes to the hax-lib crate:
  - The Rust semantics of `implies` is no longer reversed
 
 Changes to the frontend:
- - An impl of a trait whose generic parameters have bounds now lists these
-   bounds as parent bounds, so backends set the trait's corresponding parent
-   fields (#1554)
+ - Impls now list the bounds on the generic parameters of their trait as parent bounds (#1554)
 
 ### Changed
 
