@@ -1,9 +1,11 @@
 # fls-revision: hand-written
 # columns: id	chapter	section	section-title	flags
 # chapter: hax	hax
+hax_attributes	hax	contracts	Contracts	
 hax_decreases	hax	contracts	Contracts	
 hax_ensures	hax	contracts	Contracts	
 hax_ensures_ref	hax	contracts	Contracts	
+hax_future	hax	contracts	Contracts	
 hax_loop_decreases	hax	contracts	Contracts	
 hax_loop_invariant	hax	contracts	Contracts	
 hax_requires	hax	contracts	Contracts	
@@ -23,7 +25,6 @@ hax_refine_as	hax	refinement-and-abstraction	Refinement and Abstraction
 hax_refinement	hax	refinement-and-abstraction	Refinement and Abstraction	
 hax_refinement_type	hax	refinement-and-abstraction	Refinement and Abstraction	
 hax_to_int	hax	refinement-and-abstraction	Refinement and Abstraction	
-hax_attributes	hax	controlling-extraction	Controlling Extraction	
 hax_exclude	hax	controlling-extraction	Controlling Extraction	
 hax_include	hax	controlling-extraction	Controlling Extraction	
 hax_lemma	hax	controlling-extraction	Controlling Extraction	
