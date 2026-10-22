@@ -1,5 +1,5 @@
 name = "hax"
-version = "0.3.33"
+version = "0.3.34"
 defaultTargets = ["Hax", "CoreModels"]
 
 [[lean_lib]]
