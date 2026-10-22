@@ -13779,7 +13779,7 @@ def ops.range.RangeInclusive.Insts.CoreOpsRangeRangeBounds.end_bound
   RustM (ops.range.Bound T)
   := do
   if self.exhausted
-  then ok (ops.range.Bound.Excluded self.end_)
+  then ok (ops.range.Bound.Excluded self.start_)
   else ok (ops.range.Bound.Included self.end_)
 
 /-- [core_models::ops::range::{impl core_models::ops::range::RangeBounds<T> for core_models::ops::range::RangeInclusive<T>}::start_bound]:

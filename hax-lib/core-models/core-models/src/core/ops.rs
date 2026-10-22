@@ -497,14 +497,14 @@ pub mod range {
             Bound::Unbounded => Bound::Unbounded,
         }
     }
-    // An exhausted iterator ends with `start == end`, and must look empty.
+    // std may leave any bounds once exhausted: `start..start` is always empty.
     impl<T> RangeBounds<T> for RangeInclusive<T> {
         fn start_bound(&self) -> Bound<&T> {
             Bound::Included(&self.start_)
         }
         fn end_bound(&self) -> Bound<&T> {
             if self.exhausted {
-                Bound::Excluded(&self.end_)
+                Bound::Excluded(&self.start_)
             } else {
                 Bound::Included(&self.end_)
             }
@@ -618,11 +618,33 @@ mod tests {
             prop_assert_eq!(model.contains(&item), std_range.contains(&item));
             prop_assert_eq!(model.is_empty(), std_range.is_empty());
             if start <= end {
-                let exhausted = super::range::RangeInclusive { start_: end, end_: end, exhausted: true };
                 let mut std_range = std_range;
                 std_range.nth((end - start) as usize);
-                prop_assert_eq!(exhausted.contains(&item), std_range.contains(&item));
-                prop_assert_eq!(exhausted.is_empty(), std_range.is_empty());
+                let iterated = std_range.inject();
+                prop_assert_eq!(iterated.contains(&item), std_range.contains(&item));
+                prop_assert_eq!(iterated.is_empty(), std_range.is_empty());
+            }
+        }
+
+        #[test]
+        fn test_range_inclusive_exhausted(
+            start in any::<u8>(),
+            end in any::<u8>(),
+            item in any::<u8>(),
+        ) {
+            // Whatever bounds std leaves, an exhausted range holds nothing.
+            let model = super::range::RangeInclusive { start_: start, end_: end, exhausted: true };
+            prop_assert!(!model.contains(&item));
+            prop_assert!(model.is_empty());
+            // Iterated up to the integer bounds, where some std versions wrap.
+            let mut forward = start..=u8::MAX;
+            forward.nth((u8::MAX - start) as usize);
+            let mut backward = u8::MIN..=end;
+            backward.nth_back(end as usize);
+            for std_range in [forward, backward] {
+                let model = std_range.inject();
+                prop_assert_eq!(model.contains(&item), std_range.contains(&item));
+                prop_assert_eq!(model.is_empty(), std_range.is_empty());
             }
         }
 

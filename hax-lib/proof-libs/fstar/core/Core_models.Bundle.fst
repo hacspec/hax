@@ -4866,7 +4866,7 @@ let impl_5 (#v_T: Type0) : t_RangeBounds (t_RangeInclusive v_T) v_T =
     =
     fun (self: t_RangeInclusive v_T) ->
       if self.f_exhausted
-      then Bound_Excluded self.f_end_ <: t_Bound v_T
+      then Bound_Excluded self.f_start_ <: t_Bound v_T
       else Bound_Included self.f_end_ <: t_Bound v_T
   }
 
