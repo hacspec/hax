@@ -1,13 +1,32 @@
 ---
 authors:
   - maxime
-title: "Presenting Rust core models"
+title: "Core-models: handling dependencies of Rust code with Rust"
 date: 2026-09-30
 ---
 
-The obvious factor that limits Rust code that can be analyzed using hax is the set of features supported by the translation. But extracted code relies on the Rust standard library, which needs a model in our proof backends and this also limits what code can be analyzed with hax.
+Verification does not happens in a vacuum, but as part of a stack: verifying a
+system amounts to explicitly stating what properties it *assumes* of its
+*dependencies*, what guarantees it *provides* to its *users*, and in between
+those two interfaces, checking that the system behaves accordingly.  For code,
+dependencies can be external libraries, system calls, or the primitives of the
+language itself. They have to be modeled in some way.
 
-For example, the following Rust code: 
+Specifically for Rust, almost any crate depend on the functions and type
+definitions coming from `core` and `alloc` libraries, which all verification
+pipelines needs to model in some way. While they are written in Rust, those
+libraries are highly optimized and intertwined with the compiler, making them a
+hassle to handle. A typical workaround is to exclude those library from the
+translation, and provide directly in the backend (F\*, Lean, etc) a model of
+what they are doing. Such model is crucially part of the *Trusted Computing
+Base* (TCB).
+
+Yet, writing backend specific models is time-consuming, error-prone, hard to
+review, test and extend. This post present hax' solution to this problem: we
+write the models of `core` and `alloc` directly in rust,
+
+
+For example, the following Rust code:
 ```rust
 fn length(x: &[u8]) -> usize {
     x.len()
@@ -21,16 +40,16 @@ Extracts to the following F* code:
 let length (x: t_Slice u8) : usize =
   Core_models.Slice.impl__len #u8 x
 ```
+
 The translation didn't do anything clever here and in this case the semantics of the rust program mostly depends on the definitions of `t_Slice` and `Core_models.Slice.impl__len` that are provided by the hax F* proof library.
 
-
 Until about a year ago, we relied on standard library models written by hand for each backend. This approach had many issues:
-- The work has to be done for each backend (Lean, F* ProVerif)
+- The work has to be redone for each backend (Lean, F* ProVerif)
 - It is hard to check that the models have the right semantics which results in bugs and potentially invalid program proofs
 - The models have to be updated every time there is a change in conventions in the translation
 - Writing these models is time-consuming so we always added only what was needed for our projects and covered only a very small part of the Rust standard library
 
-The obvious idea to fix all these issues would be to directly extract the Rust `core` and `alloc` crates, they are written in Rust so there is no reason not to try hax on them. We tried several times but never got anything useful out of it, for several reasons: 
+The obvious idea to fix all these issues would be to directly extract the Rust `core` and `alloc` crates, they are written in Rust so there is no reason not to try hax on them. We tried several times but never got anything useful out of it, for several reasons:
 - `core` is one of the most challenging crates one can imagine for a tool like hax: it is huge and it uses the most advanced and hard to support Rust features
 - It is written for performance which makes its code complex while what we need is a clear specification of what it does (without the optimization details)
 
