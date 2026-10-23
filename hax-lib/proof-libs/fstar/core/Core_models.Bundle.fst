@@ -1482,6 +1482,12 @@ let impl_12__count_ones (x: i8) : u32 =
   in
   n
 
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_12__unsigned_abs (x: i8) : u8 =
+  if x <. mk_i8 0
+  then (cast (Rust_primitives.Arithmetic.neg (x +! mk_i8 1 <: i8) <: i8) <: u8) +! mk_u8 1
+  else cast (x <: i8) <: u8
+
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
 val impl_12__rotate_right': x: i8 -> n: u32 -> i8
@@ -1697,6 +1703,12 @@ let impl_13__count_ones (x: i16) : u32 =
           else n)
   in
   n
+
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_13__unsigned_abs (x: i16) : u16 =
+  if x <. mk_i16 0
+  then (cast (Rust_primitives.Arithmetic.neg (x +! mk_i16 1 <: i16) <: i16) <: u16) +! mk_u16 1
+  else cast (x <: i16) <: u16
 
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
@@ -1915,6 +1927,12 @@ let impl_14__count_ones (x: i32) : u32 =
   in
   n
 
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_14__unsigned_abs (x: i32) : u32 =
+  if x <. mk_i32 0
+  then (cast (Rust_primitives.Arithmetic.neg (x +! mk_i32 1 <: i32) <: i32) <: u32) +! mk_u32 1
+  else cast (x <: i32) <: u32
+
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
 val impl_14__rotate_right': x: i32 -> n: u32 -> i32
@@ -2132,6 +2150,12 @@ let impl_15__count_ones (x: i64) : u32 =
   in
   n
 
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_15__unsigned_abs (x: i64) : u64 =
+  if x <. mk_i64 0
+  then (cast (Rust_primitives.Arithmetic.neg (x +! mk_i64 1 <: i64) <: i64) <: u64) +! mk_u64 1
+  else cast (x <: i64) <: u64
+
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
 val impl_15__rotate_right': x: i64 -> n: u32 -> i64
@@ -2348,6 +2372,12 @@ let impl_16__count_ones (x: i128) : u32 =
           else n)
   in
   n
+
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_16__unsigned_abs (x: i128) : u128 =
+  if x <. mk_i128 0
+  then (cast (Rust_primitives.Arithmetic.neg (x +! mk_i128 1 <: i128) <: i128) <: u128) +! mk_u128 1
+  else cast (x <: i128) <: u128
 
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
@@ -2570,6 +2600,14 @@ let impl_17__count_ones (x: isize) : u32 =
           else n)
   in
   n
+
+/// See [`std::primitive::i8::unsigned_abs`] (and similar for other signed integer types)
+let impl_17__unsigned_abs (x: isize) : usize =
+  if x <. mk_isize 0
+  then
+    (cast (Rust_primitives.Arithmetic.neg (x +! mk_isize 1 <: isize) <: isize) <: usize) +!
+    mk_usize 1
+  else cast (x <: isize) <: usize
 
 /// See [`std::primitive::u8::rotate_right`] (and similar for other integer types)
 assume
