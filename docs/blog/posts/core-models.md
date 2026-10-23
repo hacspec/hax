@@ -25,37 +25,51 @@ Yet, writing backend specific models is time-consuming, error-prone, hard to
 review, test and extend. This post present hax' solution to this problem: we
 write the models of `core` and `alloc` directly in rust,
 
+## The issues with backend-specific models of core
 
-For example, the following Rust code:
+For example, let us consider the following Rust code:
+
 ```rust
 fn length(x: &[u8]) -> usize {
     x.len()
 }
-
 ```
+
 [Open this code snippet in the playground](https://hax-playground.cryspen.com/#fstar/f8fe69339b/gist=ff368134f461edc228c2212b49320742)
 
 Extracts to the following F* code:
+
 ```ocaml
 let length (x: t_Slice u8) : usize =
   Core_models.Slice.impl__len #u8 x
 ```
 
-The translation didn't do anything clever here and in this case the semantics of the rust program mostly depends on the definitions of `t_Slice` and `Core_models.Slice.impl__len` that are provided by the hax F* proof library.
+Here, the translation didn't do anything clever: the semantics of the rust
+program only depends on the definitions of `t_Slice` and
+`Core_models.Slice.impl__len` that are provided by the hax F* proof library.
 
-Until about a year ago, we relied on standard library models written by hand for each backend. This approach had many issues:
-- The work has to be redone for each backend (Lean, F* ProVerif)
-- It is hard to check that the models have the right semantics which results in bugs and potentially invalid program proofs
-- The models have to be updated every time there is a change in conventions in the translation
-- Writing these models is time-consuming so we always added only what was needed for our projects and covered only a very small part of the Rust standard library
+Until about a year ago, we relied on standard library models written
+specifically for each backend. This approach had many issues:
+- The work has to be redone for each backend (Lean, F*, ProVerif, etc), increasing the TCB.
+- Writing a semantically correct model for every possible corner case is hard,
+  even just for bounded arithmetic (see [this hax
+  bug](https://github.com/pereq-dev/hax/issues/1459) for instance).
+- The models have to be updated every time there is a change in the
+  translation. Keeping up with upstream updates of core is challenging.
+- We extended the models *on-demand*, when we stumbled upon missing entries in
+  real proof campaigns, or when hax users reported missing definitions. The
+  models where always somewhat incomplete.
 
-The obvious idea to fix all these issues would be to directly extract the Rust `core` and `alloc` crates, they are written in Rust so there is no reason not to try hax on them. We tried several times but never got anything useful out of it, for several reasons:
-- `core` is one of the most challenging crates one can imagine for a tool like hax: it is huge and it uses the most advanced and hard to support Rust features
-- It is written for performance which makes its code complex while what we need is a clear specification of what it does (without the optimization details)
+One natural idea to address all these would be to directly extract the Rust
+`core` and `alloc` crates using the same toolchain. However, `core` is an
+extremely challenging rust crate: besides it sheer size, it uses nightly and
+hard-to-support Rust features, and is highly optimized.
 
-As `hax` supports more and more features of Rust, we may retry this in the future, at least for some parts of `core`. But with the current capabilities, we went for a third hybrid approach that I will present in this blog post: Rust core models
+Overall, even if hax could extract `core`, the resulting backend library would
+be hard to use in proofs and reason about. There seems to be value in
+abstracting the content of core and only reason about a model of the library.
 
-## Presenting hax's core-models
+## Presenting hax's *core-models*
 
 The basic idea of core-models is to have manual models for Rust `core`, but written in Rust. The first advantage is to remove the duplication between backends. We still rely on some backend-specific models for primitive operations like arithmetic and sequences (that are the basis for models of arrays, slices, vecs, etc.) which use the most adapted abstraction in each backend language. We call these rust-primitives and there is also a Rust version of them which is not extracted, but used in the models for `core` and `alloc`, which are actually extracted.
 
